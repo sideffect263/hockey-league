@@ -35,32 +35,54 @@ on an external input — **nothing here blocks the live site.**
   domain — nice-to-have from the original `WHEN-VERCEL-ACCESS.md` plan.
 - Consider setting `VITE_SITE_URL` handling / canonical for `www` vs apex if any deep links surface.
 
-## Deployment workflow decision (pending)
+## Deployment workflow — DECIDED 2026-09-21 (was "pending")
 
-The app is deployed to the new Vercel account **from the local copy via CLI** — there is **no
-auto-deploy on `git push`**, because the source repo (`IdanLichter/hockey-league`) can't be
-GitHub-imported by a collaborator. Options to get CI/CD back:
+The fork option won, and both environments now come from **`sideffect263/hockey-league`**:
 
-- **Keep CLI deploys** (`vercel deploy --prod --scope rinkhockeyil`) — simplest, fully self-owned.
-- **Fork** `IdanLichter/hockey-league` to `sideffect263/hockey-league` and import the fork into
-  Vercel — restores auto-deploy, but you maintain a fork.
-- **Ask Idan** to install the Vercel GitHub app on his account / add the `rinkhockeyil` Vercel team —
-  deploy from the canonical repo, but his account controls the source.
+| branch | site | how it deploys |
+|---|---|---|
+| `dev` | hockey-league-dev.vercel.app | `.github/workflows/deploy-dev.yml` — on push, and by hand |
+| `main` | **rinkhockeyil.com** | `.github/workflows/deploy-public.yml` — **`workflow_dispatch` only** |
 
-## Native app auth (bigger — actual development, not config)
+`git push` still does not publish the league's site, and that is deliberate, not a leftover of the
+old CLI-only setup: landing code on a branch must never be able to publish to the league. Somebody
+presses the button — from the Actions tab, or from the live-edit panel's promote action, or by
+running `scripts/deploy-public.sh` locally (which is also the only path that announces a new Android
+APK version to `league_settings`, so an app release still goes through the script).
 
-- **Native Google Sign-In is NOT implemented in the apps** (no `google-services.json` /
-  `GoogleService-Info.plist`, no SDK, no client-ID references — only planning docs). The GCP OAuth
-  clients (Web/iOS/Android) are **created and wired into Supabase**, ready and waiting.
-  - When building it: use Supabase `signInWithIdToken` (audience = one of the registered client IDs).
-  - Add the **debug-keystore SHA-1** to the Android OAuth client if testing native sign-in on debug
-    builds (the release SHA-1 is already registered for sideloaded release builds).
-  - **Publish the GCP consent screen to production** (currently in Testing → only test users can sign
-    in). Basic scopes (openid/email/profile) need no Google verification review.
-- **Apple Sign-In** — not started. Needs an Apple **Services ID** + a `.p8` key + the
-  `.p8`-signed client-secret JWT (expires ≤6 months → recurring rotation). Only required if social
-  login is surfaced in the shipped apps (Apple review requires Sign-in-with-Apple wherever Google is
-  offered).
+Read the trade-off before touching any of it. The public site used to be published from
+`IdanLichter/hockey-league@main` with a separate PAT, `UPSTREAM_TOKEN`, as the only credential able
+to write there — the fork's own token could not. One repo means one token, so what stands between
+the live-edit agent and the league's website is now `api/live-edit-promote.js`'s audit and the
+protected-path fence in `deploy-dev.yml`, **not a credential it does not hold**. Those two are
+load-bearing. `UPSTREAM_REPO` / `UPSTREAM_TOKEN` survive as env overrides, so splitting it back
+apart is a configuration change, not a rewrite.
+
+One consequence worth writing down because nobody will notice it failing:
+`IdanLichter/hockey-league@main` still auto-deploys **hockey-league-pro.vercel.app**, which is
+outside our Vercel account. Nothing we do feeds it any more, so it will drift, silently.
+
+## Native app auth (updated 2026-07-13)
+
+**Current state (verified against code + live Supabase config):**
+- **Web** — Google is **live** (`AuthContext.signInWithGoogle` → `signInWithOAuth`, button in
+  `AuthModal.jsx`); Supabase `google: true`. No Apple.
+- **Android** — native Google is **fully wired** (`GoogleSignInHelper` → Credential Manager →
+  `signInWithIdToken`) with the real web client id `663565111087-mq28g5gcqoc1ff8mf40ldnvkq5fk34au`;
+  live button in `AuthScreen.kt`. No Apple (not required on Android).
+- **iOS** — Google + Apple sign-in **built + configured + enabled (2026-07-13)**:
+  `SupabaseAuth.signInWithIdToken`, `AuthStore.signInWithGoogle/Apple`, `GoogleSignInService`
+  (GoogleSignIn SwiftPM 8.x), `AppleSignInService` (nonce+token), buttons in `AuthSheet.swift`,
+  entitlement + URL scheme in `project.yml`, `socialLoginEnabled = true`. Simulator build passes.
+
+**Config all done (2026-07-13):** iOS Google client id wired
+(`663565111087-re1or1lmomikljk37hls0v778i3k6664`); **GCP consent published**; **Supabase Apple
+provider enabled** (Client IDs = bundle id — native flow, **no `.p8`/secret needed**, that's web-only);
+**App ID has "Sign in with Apple"**. See `MOBILE-BUILD/APPLE-SIGNIN-SETUP.md`.
+
+**Only remaining:** bump `CURRENT_PROJECT_VERSION` 11→12, `xcodegen generate`, archive → TestFlight,
+and device-test both buttons before any App Store submission (watch for the Apple nonce edge case —
+enable `external_apple_skip_nonce_check` if it bites).
 
 ## Store / metadata (low urgency)
 
