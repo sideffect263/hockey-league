@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { Wand2, Crosshair, X, Send, Loader2, ChevronDown, ExternalLink, CheckCircle2, History, ArrowRight } from 'lucide-react'
+import { Wand2, Crosshair, X, Send, Loader2, ChevronDown, ExternalLink, CheckCircle2, History, ArrowRight, Rocket } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import { describeElement, buildPayload, submitLiveEdit, reasonText } from '@/lib/liveEdit'
 import LiveEditProgress from './LiveEditProgress'
 import LiveEditHistory from './LiveEditHistory'
+import LiveEditPromote from './LiveEditPromote'
 
 // עריכה חיה pushes code and redeploys — it belongs to the DEV deployment only.
 // Both environments build from the same commit, so this has to be decided from the
@@ -14,6 +15,14 @@ import LiveEditHistory from './LiveEditHistory'
 const DEV_HOSTS = /^(localhost|127\.0\.0\.1|\[::1\]|hockey-league-dev(-[a-z0-9-]+)?\.vercel\.app)$/i
 const IS_DEV_SITE =
   typeof window !== 'undefined' && DEV_HOSTS.test(window.location.hostname)
+
+// The header says where you are; without it the back arrow is the only clue, and a
+// promote screen that looks like the report screen is the wrong place to be wrong.
+const VIEW_TITLES = {
+  form: 'עריכה חיה',
+  history: 'היסטוריית בקשות',
+  promote: 'שליחה לאתר הליגה',
+}
 
 const EASE_OUT = 'easeOut'
 const MS = 0.18
@@ -48,7 +57,8 @@ function Panel() {
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState(null)
   const [sentRoute, setSentRoute] = useState('')
-  const [history, setHistory] = useState(false)
+  // 'form' | 'history' | 'promote' — see VIEW_TITLES.
+  const [view, setView] = useState('form')
 
   // Our own chrome is part of the page while picking, and capturing the panel
   // that is asking the question would be useless to the fixer.
@@ -56,7 +66,7 @@ function Panel() {
 
   const startPick = () => { setResult(null); setRect(null); setPicking(true) }
   const stopPick = () => { setPicking(false); setRect(null) }
-  const close = () => { stopPick(); setHistory(false); setOpen(false) }
+  const close = () => { stopPick(); setView('form'); setOpen(false) }
   const reset = () => { setResult(null); setRequest(''); setPicked(null); setShowPayload(false) }
 
   useEffect(() => {
@@ -132,14 +142,14 @@ function Panel() {
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       if (picking) stopPick()
-      else if (history) setHistory(false) // one step back, not all the way out
+      else if (view !== 'form') setView('form') // one step back, not all the way out
       else setOpen(false)
     }
     // Capture phase: a page that stops a keydown from bubbling must not be able
     // to trap the admin inside picking mode.
     document.addEventListener('keydown', onKey, true)
     return () => document.removeEventListener('keydown', onKey, true)
-  }, [open, picking, history])
+  }, [open, picking, view])
 
   const preview = useMemo(
     () => (showPayload ? buildPayload({ request, picked }) : null),
@@ -242,21 +252,28 @@ function Panel() {
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               <div className="flex items-center gap-2 px-4 h-12 border-b border-line-subtle shrink-0">
-                {history ? (
+                {view !== 'form' ? (
                   // Back, not close: RTL means the arrow points the way the eye
                   // came from.
-                  <button onClick={() => setHistory(false)} aria-label="חזרה" className="p-2 -ms-2 rounded-lg text-fg-muted hover:bg-surface-sunken transition-colors">
+                  <button onClick={() => setView('form')} aria-label="חזרה" className="p-2 -ms-2 rounded-lg text-fg-muted hover:bg-surface-sunken transition-colors">
                     <ArrowRight className="size-4" />
                   </button>
                 ) : (
                   <Wand2 className="size-4 text-brand" />
                 )}
-                <h3 className="font-bold text-fg-strong flex-1">{history ? 'היסטוריית בקשות' : 'עריכה חיה'}</h3>
-                {!history && (
-                  <button onClick={() => setHistory(true)} className="btn-ghost btn-sm" title="היסטוריה">
-                    <History className="size-3.5" />
-                    היסטוריה
-                  </button>
+                <h3 className="font-bold text-fg-strong flex-1">{VIEW_TITLES[view]}</h3>
+                {view === 'form' && (
+                  <>
+                    {/* Icon-only. "היסטוריה" already spends the header's spare width,
+                        and a second labelled button wraps the row on a phone. */}
+                    <button onClick={() => setView('promote')} aria-label="שליחה לאתר הליגה" title="שליחה לאתר הליגה" className="p-2 rounded-lg text-fg-muted hover:bg-surface-sunken transition-colors">
+                      <Rocket className="size-4" />
+                    </button>
+                    <button onClick={() => setView('history')} className="btn-ghost btn-sm" title="היסטוריה">
+                      <History className="size-3.5" />
+                      היסטוריה
+                    </button>
+                  </>
                 )}
                 <button onClick={close} aria-label="סגור" className="p-2 -me-2 rounded-lg text-fg-muted hover:bg-surface-sunken transition-colors">
                   <X className="size-4" />
@@ -264,8 +281,10 @@ function Panel() {
               </div>
 
               <div className="p-4 space-y-3 overflow-y-auto">
-                {history ? (
+                {view === 'history' ? (
                   <LiveEditHistory />
+                ) : view === 'promote' ? (
+                  <LiveEditPromote />
                 ) : result?.ok && result.number ? (
                   // The point of the whole feature: four-odd minutes of silence
                   // replaced by the actual stage, and then by what changed.
@@ -347,7 +366,7 @@ function Panel() {
                 )}
               </div>
 
-              {!result?.ok && !history && (
+              {!result?.ok && view === 'form' && (
                 <div className="px-4 pb-4 pt-1 shrink-0">
                   <button onClick={send} disabled={!request.trim() || sending} className="btn-primary w-full">
                     {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

@@ -366,3 +366,90 @@ export function relativeTime(iso) {
   try { return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: he }) }
   catch { return '' }
 }
+
+// ─── Promote & undo ─────────────────────────────────────────────────────────
+/**
+ * The last mile. `dev` is where edits land and where they are safe to look at;
+ * these two are the only ways an admin moves anything after that.
+ *
+ *   promote — ship everything sitting on `dev` to the league's site
+ *   undo    — put one change back the way it was, on `dev`
+ *
+ * Both are POSTs with consequences, so both follow submitLiveEdit's discipline
+ * exactly: never throw, always resolve to the endpoint's own { ok, ... } shape.
+ * A dead network must arrive as a `reason` the panel can say in Hebrew, because
+ * a thrown exception here reads to the admin as "nothing happened" — and with a
+ * promote in flight that is the one thing we cannot let them believe.
+ */
+async function call(path, init = {}) {
+  let res
+  try {
+    res = await fetch(path, {
+      ...init,
+      headers: {
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(await authHeaders()),
+      },
+    })
+  } catch {
+    return { ok: false, reason: 'network' }
+  }
+
+  let body = null
+  try { body = await res.json() } catch { /* not JSON — handled below */ }
+  if (body && typeof body.ok === 'boolean') return body
+
+  return { ok: false, reason: res.ok || res.status === 404 ? 'not-configured' : `http-${res.status}` }
+}
+
+/**
+ * What is waiting to go public.
+ * { ok: true, pending: [{sha, shortSha, message, ...}], count, lastPromotedAt,
+ *   blockedFiles: [] }
+ */
+export const fetchPending = () => call('/api/live-edit-promote')
+
+/** Ship it. { ok: true, merged, run, count, branch, deployTriggered, ... } */
+export const promoteToLeague = () => call('/api/live-edit-promote', { method: 'POST' })
+
+/** Undo one change on `dev`. { ok: true, sha, shortSha, reverted, files, url } */
+export const undoLiveEdit = (sha) =>
+  call('/api/live-edit-revert', { method: 'POST', body: JSON.stringify({ sha }) })
+
+// Said in full sentences, because each one is the admin's whole explanation for why
+// a button they pressed did not do the thing. "needs-human" and "changed-since" are
+// not failures — they are the safety rules working, and they have to read that way
+// rather than as something broken.
+const PROMOTE_REASONS = {
+  'nothing-to-promote': 'אין שינויים חדשים לשליחה — אתר הליגה כבר מעודכן',
+  'needs-human': 'השינויים נוגעים בקבצים רגישים. צריך אישור ידני ב-GitHub',
+  conflict: 'השינויים לא מתמזגים אוטומטית. צריך טיפול ידני ב-GitHub',
+  'github-error': 'GitHub לא זמין כרגע. נסו שוב בעוד רגע',
+  'not-configured': "השליחה לאתר הליגה עדיין לא מחוברת",
+  forbidden: 'אין לך הרשאה',
+  unauthorized: 'צריך להתחבר מחדש',
+  network: 'אין חיבור לשרת',
+}
+
+export const promoteReasonText = (reason) =>
+  PROMOTE_REASONS[reason] || 'השליחה נכשלה. נסו שוב בעוד רגע'
+
+const UNDO_REASONS = {
+  'changed-since': 'מאז השינוי הזה נערכו אותם קבצים שוב — ביטול ימחק גם את העריכה המאוחרת',
+  'needs-human': 'השינוי נוגע בקבצים רגישים. צריך ביטול ידני ב-GitHub',
+  'not-revertable': 'אי אפשר לבטל את השינוי הזה אוטומטית',
+  'not-on-dev': 'השינוי כבר לא נמצא בענף הפיתוח',
+  'nothing-to-undo': 'אין מה לבטל — הקוד כבר במצב הקודם',
+  'too-large': 'השינוי גדול מדי לביטול אוטומטי',
+  'too-far-behind': 'השינוי ישן מדי לביטול אוטומטי',
+  moved: 'משהו נדחף לענף בזמן הביטול. נסו שוב',
+  'not-found': 'השינוי לא נמצא',
+  'bad-request': 'השינוי לא נמצא',
+  'github-error': 'GitHub לא זמין כרגע. נסו שוב בעוד רגע',
+  'not-configured': 'הביטול עדיין לא מחובר',
+  forbidden: 'אין לך הרשאה',
+  unauthorized: 'צריך להתחבר מחדש',
+  network: 'אין חיבור לשרת',
+}
+
+export const undoReasonText = (reason) => UNDO_REASONS[reason] || 'הביטול נכשל. נסו שוב בעוד רגע'
