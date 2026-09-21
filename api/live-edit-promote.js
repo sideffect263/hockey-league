@@ -66,6 +66,27 @@ const MAX_MESSAGE = 200
 
 const json = (res, status, body) => res.status(status).json(body)
 
+// ------------------------------------------------------- environment gate
+// These endpoints belong to the DEV deployment. The panel that calls them is already
+// hidden on rinkhockeyil.com, but hiding a button hides the button, not the route —
+// the function is deployed to both sites and a verified admin's own session token
+// works against either. So the publish trigger and the branch writer refuse to run
+// at all on the league's site, where nothing should ever be calling them.
+//
+// An ALLOWLIST, like the panel's, and for the same reason: a new domain or alias must
+// default to refusing. Failing that way is loud and fixable in one env var; failing
+// open is a write path on the public site that nobody knows is there.
+const DEV_HOSTS = /^(localhost(:\d+)?|127\.0\.0\.1(:\d+)?|hockey-league-dev(-[a-z0-9-]+)?\.vercel\.app)$/i
+
+function wrongEnvironment(req) {
+  const extra = String(process.env.LIVE_EDIT_HOSTS || '')
+    .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
+  const host = String(req.headers?.['x-forwarded-host'] || req.headers?.host || '').toLowerCase()
+  if (!host) return true
+  return !(DEV_HOSTS.test(host) || extra.includes(host))
+}
+
+
 const timeout = () => (typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(FETCH_TIMEOUT_MS) : undefined)
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -503,6 +524,7 @@ export default async function handler(req, res) {
       return json(res, 501, { ok: false, reason: 'not-configured' })
     }
 
+    if (wrongEnvironment(req)) return json(res, 403, { ok: false, reason: 'wrong-environment' })
     const auth = req.headers?.authorization || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
     if (!token) return json(res, 401, { ok: false, reason: 'unauthorized' })
