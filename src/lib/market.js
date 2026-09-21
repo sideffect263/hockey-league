@@ -200,10 +200,20 @@ export async function listMarkets() {
   })
 }
 
-/** My open positions, keyed by outcome id. */
+/**
+ * My open positions, keyed by outcome id.
+ *
+ * The user filter is explicit and load-bearing: market_positions is readable by
+ * its owner OR an admin, so leaning on RLS alone handed a manager the whole
+ * league's book. Keyed by outcome, two traders holding the same outcome then
+ * collapsed onto one row, and the wallet hero added strangers' shares into
+ * "שווי תיק" — an admin with an empty portfolio was shown 2,534 coins.
+ */
 export async function getMyPositions() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return {}
   const { data, error } = await supabase
-    .from('market_positions').select('*').gt('shares', 0)
+    .from('market_positions').select('*').eq('user_id', user.id).gt('shares', 0)
   if (error) return {}
   return Object.fromEntries((data || []).map(p => [p.outcome_id, p]))
 }
