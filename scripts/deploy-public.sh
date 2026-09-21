@@ -6,20 +6,38 @@
 # does NOT auto-deploy. Standing rule (Ariel): ALWAYS run this after pushing web
 # changes to main, so the public site never lags behind the -pro preview.
 #
-# It deploys origin/main (the committed, pushed state) from a CLEAN worktree — NOT
-# the working tree — so parallel sessions' uncommitted WIP never leaks to the public
-# site. Requires: `vercel` CLI logged into the rinkhockeyil team, and the repo's
-# .vercel/ link present (it points the CLI at the rinkhockeyil project).
+# It deploys the PUBLISH REMOTE's main (the committed, pushed state) from a CLEAN
+# worktree — NOT the working tree — so parallel sessions' uncommitted WIP never leaks
+# to the public site. Requires: `vercel` CLI logged into the rinkhockeyil team, and
+# the repo's .vercel/ link present (it points the CLI at the rinkhockeyil project).
+#
+# WHICH REMOTE: `fork` (sideffect263/hockey-league), which now holds both `dev` and
+# the `main` that rinkhockeyil.com serves. It used to be `origin`
+# (IdanLichter/hockey-league); that remote still exists and still feeds
+# hockey-league-pro.vercel.app, but it is no longer what the league sees. Resolved
+# by name below and asserted, because deploying the WRONG repo's main to the public
+# site would look entirely successful.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WT="$(mktemp -d)/rinkdeploy"
 
-echo "→ fetching origin/main…"
-git -C "$REPO" fetch origin --quiet
+# Overridable, so a clone whose remotes are named differently is a one-word fix
+# rather than an edit to this script.
+PUBLISH_REMOTE="${PUBLISH_REMOTE:-fork}"
 
-echo "→ creating clean worktree at origin/main…"
-git -C "$REPO" worktree add --detach "$WT" origin/main >/dev/null
+if ! git -C "$REPO" remote get-url "$PUBLISH_REMOTE" >/dev/null 2>&1; then
+  echo "✗ no git remote named '$PUBLISH_REMOTE' — refusing to deploy." >&2
+  echo "  rinkhockeyil.com serves sideffect263/hockey-league@main. Add that remote," >&2
+  echo "  or re-run with PUBLISH_REMOTE=<name>." >&2
+  exit 1
+fi
+
+echo "→ fetching $PUBLISH_REMOTE/main… ($(git -C "$REPO" remote get-url "$PUBLISH_REMOTE"))"
+git -C "$REPO" fetch "$PUBLISH_REMOTE" --quiet
+
+echo "→ creating clean worktree at $PUBLISH_REMOTE/main…"
+git -C "$REPO" worktree add --detach "$WT" "$PUBLISH_REMOTE/main" >/dev/null
 cp -R "$REPO/.vercel" "$WT/.vercel"
 echo "  deploying: $(git -C "$WT" log -1 --oneline)"
 
@@ -29,7 +47,7 @@ echo "→ vercel --prod (remote build)…"
 echo "→ cleaning up worktree…"
 git -C "$REPO" worktree remove "$WT" --force
 git -C "$REPO" worktree prune
-echo "✓ rinkhockeyil.com is now serving origin/main"
+echo "✓ rinkhockeyil.com is now serving $PUBLISH_REMOTE/main"
 
 # ---------------------------------------------------------------------------
 # Announce the Android build to the app.

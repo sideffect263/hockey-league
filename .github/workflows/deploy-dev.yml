@@ -23,6 +23,17 @@ name: deploy dev
 on:
   push:
     branches: [dev]
+  # Pressed by a human, from the Actions tab, to deploy whatever `dev` currently
+  # holds. This exists because the fence below compares a push against the commit
+  # BEFORE it — so catching `dev` up with `main` (a merge carrying months of already
+  # reviewed, already public changes to supabase/ and api/) is refused, correctly,
+  # and then there is no way left to deploy the branch at all. On a dispatch the
+  # fence has no "before" and falls back to the tip's parent, which is the honest
+  # question anyway: what did the last commit change?
+  #
+  # This does NOT weaken the fence — it still runs, and still refuses. And it cannot
+  # reach the public site: the project id below is hardcoded to hockey-league-dev.
+  workflow_dispatch:
 
 concurrency:
   group: deploy-dev

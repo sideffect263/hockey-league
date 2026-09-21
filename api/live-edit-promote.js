@@ -7,20 +7,24 @@
 //
 // THIS ENDPOINT PUBLISHES TO A SITE REAL PEOPLE READ. Everything fails CLOSED, and
 // the destructive verbs are deliberately absent: no force-push, no branch deletion,
-// no PR creation, nothing ever touches `main` ON THE FORK. The only writes it can
-// perform are (1) create a new branch ref upstream, (2) a MERGE commit onto upstream
-// `main`, (3) a workflow_dispatch. A merge that does not apply cleanly is reported,
-// never forced.
+// no PR creation. The only writes it can perform are (1) create a new branch ref,
+// (2) a MERGE commit onto `main`, (3) a workflow_dispatch. A merge that does not
+// apply cleanly is reported, never forced.
 //
-// THE TOPOLOGY (there are two repos and two tokens; mixing them up is the one way
-// to get this badly wrong):
-//   fork      sideffect263/hockey-league   branch `dev`   — where agents work.
-//             Read + workflow_dispatch with GITHUB_TOKEN, the same token
-//             api/live-edit.js already uses.
-//   upstream  IdanLichter/hockey-league    branch `main`  — what rinkhockeyil.com
-//             deploys. Written with UPSTREAM_TOKEN (fine-grained PAT, contents:write
-//             on the upstream repo ONLY). The fork's token has no rights there, and
-//             that separation is the point: a leaked GITHUB_TOKEN cannot publish.
+// THE TOPOLOGY. Both branches now live in ONE repo, sideffect263/hockey-league:
+//   `dev`   — where agents work, deployed to hockey-league-dev by deploy-dev.yml.
+//   `main`  — what rinkhockeyil.com deploys, via deploy-public.yml.
+//
+// It used to be two repos: `main` lived in IdanLichter/hockey-league and was written
+// with a second credential, UPSTREAM_TOKEN, that GITHUB_TOKEN could not stand in for.
+// That split was the safety property — a leaked fork token could not publish. It is
+// GONE now that both branches are in the fork, so the thing standing between an
+// agent and the league's website is no longer a credential boundary but this file's
+// own audit: auditCommits() and the protected-path fence below. Weaken those and
+// there is nothing behind them.
+//
+// UPSTREAM_REPO / UPSTREAM_TOKEN survive as env overrides so a deployment can still
+// point `main` at a different repo. Unset, they mean "the same repo, the same token".
 //
 // Style/shape mirrors api/live-edit.js exactly — env loading, Supabase bearer auth,
 // the server-side admin check, the { ok, reason } failure vocabulary,
@@ -30,9 +34,13 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || ''
-const UPSTREAM_TOKEN = process.env.UPSTREAM_TOKEN || ''
 const FORK_REPO = process.env.GITHUB_REPO || 'sideffect263/hockey-league'
-const UPSTREAM_REPO = process.env.UPSTREAM_REPO || 'IdanLichter/hockey-league'
+// Same repo as the fork unless something explicitly says otherwise, and therefore
+// the same token. Defaulting the token to GITHUB_TOKEN rather than leaving it empty
+// is what keeps the `!GITHUB_TOKEN || !UPSTREAM_TOKEN` guard below from reporting
+// `not-configured` on a perfectly configured single-repo deployment.
+const UPSTREAM_REPO = process.env.UPSTREAM_REPO || FORK_REPO
+const UPSTREAM_TOKEN = process.env.UPSTREAM_TOKEN || process.env.GITHUB_TOKEN || ''
 
 const FORK_OWNER = FORK_REPO.split('/')[0]
 const DEV_BRANCH = 'dev'

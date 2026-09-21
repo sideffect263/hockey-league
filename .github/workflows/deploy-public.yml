@@ -7,9 +7,14 @@
 #     The button is normally pressed by /api/live-edit-promote (the admin panel's
 #     "ship it" action), which merges `dev` into upstream `main` first; you can
 #     also press it by hand from the Actions tab to re-ship whatever main holds.
-#   * It ships upstream `main` — IdanLichter/hockey-league — NOT this fork, and not
-#     the branch this workflow file happens to live on. `main` is the public site's
-#     source of truth, exactly as in scripts/deploy-public.sh.
+#   * It ships THIS repo's `main` — sideffect263/hockey-league — and not the branch
+#     this workflow file happens to live on. `main` is the public site's source of
+#     truth, exactly as in scripts/deploy-public.sh.
+#     It used to ship IdanLichter/hockey-league@main, with a PAT (UPSTREAM_TOKEN) as
+#     the only credential able to write there. Both branches are in this repo now, so
+#     that token is gone and so is the boundary it enforced. Note what follows: this
+#     repo's `main` is a publish button. IdanLichter/hockey-league@main still feeds
+#     hockey-league-pro.vercel.app, which nobody here controls, and it will now drift.
 #   * To stop a bad deploy: cancel the run, then fix `main` upstream and run this
 #     again. There is no rollback step here; Vercel's dashboard has instant rollback.
 #
@@ -54,8 +59,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      # This job needs nothing from the repo it runs in — it fetches upstream with
-      # UPSTREAM_TOKEN and talks to Vercel with VERCEL_TOKEN. Least privilege.
+      # Read the repo, talk to Vercel with VERCEL_TOKEN, write nothing. Least
+      # privilege: a publish step has no business pushing commits.
       contents: read
     env:
       # Hardcoded, like deploy-dev.yml, and for the same reason turned around: these
@@ -64,16 +69,16 @@ jobs:
       VERCEL_ORG_ID: team_LuBaggO3yTGb6EoNmLCZGCXA
       VERCEL_PROJECT_ID: prj_0DuFW7a6zra5uCw4Y5uEXPWvmsNL
     steps:
-      # The code being published. `repository` + `ref` are explicit so this is the
-      # upstream repo's `main` and nothing else — not this fork, not the dispatch
-      # ref. UPSTREAM_TOKEN (a PAT with access to IdanLichter/hockey-league) is what
-      # makes that checkout work; the job's own GITHUB_TOKEN has no rights there.
-      - name: Check out upstream main (the public site's source of truth)
+      # The code being published: this repo's `main`, and nothing else.
+      - name: Check out main (the public site's source of truth)
         uses: actions/checkout@v4
         with:
-          repository: IdanLichter/hockey-league
+          # `ref` is spelled out rather than left to default, because the default is
+          # the ref this run was dispatched ON. Dispatching from `dev` would then
+          # quietly publish dev to the league. It is always `main`, whatever branch
+          # the button was pressed from. No `repository:`/`token:` — this is our own
+          # repo now, so the job's GITHUB_TOKEN reads it.
           ref: main
-          token: ${{ secrets.UPSTREAM_TOKEN }}
           # Only the tip is built. Depth 1 keeps the checkout fast; the step below
           # still prints the exact commit because that is all anyone needs to know.
           fetch-depth: 1
@@ -83,7 +88,7 @@ jobs:
       - name: Announce the commit being shipped
         run: |
           set -euo pipefail
-          echo "Shipping IdanLichter/hockey-league@main to rinkhockeyil.com:"
+          echo "Shipping ${GITHUB_REPOSITORY}@main to rinkhockeyil.com:"
           git log -1 --pretty=format:'  %H%n  %an, %ad%n  %s' --date=iso
           echo
           {
