@@ -13,6 +13,7 @@ import DecisionCard from '@/career/components/DecisionCard'
 import CareerCard from '@/career/components/CareerCard'
 import SeasonRecap from '@/career/components/SeasonRecap'
 import Landing from '@/career/components/Landing'
+import { CareerSkeleton } from "@/components/skeletons/PageSkeletons"
 
 /**
  * "ליגיונר על גלגלים" — a career simulator for Israeli rink hockey.
@@ -130,17 +131,7 @@ export default function Career() {
     if (params.get('c')) setParams({}, { replace: true })
   }, [params, setParams])
 
-  if (!teams) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-4" aria-busy="true" aria-label="טוען">
-        <div className="h-28 rounded-2xl bg-surface border border-line" />
-        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="h-80 rounded-2xl bg-surface border border-line" />
-          <div className="h-80 rounded-2xl bg-surface border border-line" />
-        </div>
-      </div>
-    )
-  }
+  if (!teams) return <CareerSkeleton />
 
   if (!config || !state) return <Landing hall={hall} teams={teams} onStart={begin} />
 

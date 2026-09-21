@@ -39,6 +39,7 @@ import {
   JudgeGameSkeleton,
   AdminSkeleton,
   CreatorsSkeleton,
+  CareerSkeleton,
   GenericPageSkeleton,
 } from "./PageSkeletons"
 
@@ -87,6 +88,7 @@ const ROUTES = [
   [/^\/creators\/?$/, CreatorsSkeleton],
   [/^\/admin\/?$/, AdminSkeleton],
   [/^\/me\/?$/, ProfileSkeleton],
+  [/^\/career\/?$/, CareerSkeleton],
 ]
 
 /**
