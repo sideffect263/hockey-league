@@ -6,6 +6,15 @@ import { describeElement, buildPayload, submitLiveEdit, reasonText } from '@/lib
 import LiveEditProgress from './LiveEditProgress'
 import LiveEditHistory from './LiveEditHistory'
 
+// עריכה חיה pushes code and redeploys — it belongs to the DEV deployment only.
+// Both environments build from the same commit, so this has to be decided from the
+// hostname at runtime; anything baked in at build time ships to rinkhockeyil.com too.
+// An ALLOWLIST, not a block on the public host: a new public domain or alias must
+// default to "no panel", never to "panel for every admin on the league's site".
+const DEV_HOSTS = /^(localhost|127\.0\.0\.1|\[::1\]|hockey-league-dev(-[a-z0-9-]+)?\.vercel\.app)$/i
+const IS_DEV_SITE =
+  typeof window !== 'undefined' && DEV_HOSTS.test(window.location.hostname)
+
 const EASE_OUT = 'easeOut'
 const MS = 0.18
 
@@ -19,8 +28,9 @@ const MS = 0.18
 export default function LiveEditPanel() {
   const { isAdmin } = useAuth()
   // Not "hidden for everyone else" — nothing mounts at all, so no listeners and
-  // no stray floating button on a visitor's phone.
-  if (!isAdmin) return null
+  // no stray floating button on a visitor's phone. The host check is first: on
+  // rinkhockeyil.com this feature does not exist, admin or not.
+  if (!IS_DEV_SITE || !isAdmin) return null
   return <Panel />
 }
 
