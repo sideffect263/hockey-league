@@ -117,7 +117,9 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
           )
         })}
         {rest > 0 && (
-          <p className="text-[11px] text-fg-subtle px-2.5 pt-0.5">ועוד {rest} אפשרויות</p>
+          <p className="text-[11px] text-fg-subtle px-2.5 pt-0.5">
+            {rest === 1 ? 'ועוד אפשרות אחת' : `ועוד ${rest} אפשרויות`}
+          </p>
         )}
       </div>
 
