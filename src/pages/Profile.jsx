@@ -17,6 +17,7 @@ import BirthDateCard from "@/components/BirthDateCard"
 import BlockedUsersCard from "@/components/BlockedUsersCard"
 import { RoleBadges, deriveRoleItems } from "@/components/RoleBadges"
 import { entityPath } from "@/lib/slugs"
+import { ProfileSkeleton } from "@/components/skeletons/PageSkeletons"
 
 const sizedUrl = (url, w = 600) => (url ? url.replace(/=w\d+(-h\d+)?.*$/, `=w${w}`) : url)
 
@@ -167,13 +168,7 @@ export default function Profile() {
     )
   }
 
-  if (authLoading || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (authLoading || loading) return <ProfileSkeleton />
 
   const player = data?.player || null
   const pendingClaim = data?.pendingClaim || null

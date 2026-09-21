@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import {
   Gavel, HeartPulse, AlertTriangle, X, Check, RefreshCw, Coins, Download, Copy, ClipboardCheck,
 } from "lucide-react"
@@ -77,7 +78,7 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
     const a = document.createElement("a"); a.href = url; a.download = "officials-pay.csv"; a.click(); URL.revokeObjectURL(url)
   }
 
-  if (loading) return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" /></div>
+  if (loading) return <SkeletonPanelRows />
 
   const RoleSlot = ({ game, role }) => {
     const RIcon = roleIcon[role]

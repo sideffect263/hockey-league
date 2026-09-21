@@ -6,6 +6,7 @@ import { Trophy, Calendar, ChevronLeft, RefreshCw } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { entityPath } from "@/lib/slugs"
+import { TournamentsSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export const TOURNAMENT_STATUS = {
   upcoming: { label: "מתקרב", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -38,13 +39,7 @@ export default function Tournaments() {
     finally { setLoading(false) }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <TournamentsSkeleton />
 
   if (error) {
     return (

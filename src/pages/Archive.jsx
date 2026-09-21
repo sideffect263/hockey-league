@@ -10,6 +10,7 @@ import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import { useSlugId } from "@/lib/slugs"
+import { ArchiveSkeleton, ArchiveSeasonSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function ArchivePage() {
   // /archive/2025-26, or the season's UUID for any older link.
@@ -34,13 +35,7 @@ function SeasonsList() {
 
   useEffect(() => { loadSeasons() }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <ArchiveSkeleton />
 
   if (error) {
     return (
@@ -128,13 +123,7 @@ function SeasonDetail({ routeKey }) {
     else if (unknownSeason) { setError('העונה לא נמצאה'); setLoading(false) }
   }, [seasonId, unknownSeason])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <ArchiveSeasonSkeleton />
 
   if (error) {
     return (

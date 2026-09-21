@@ -9,6 +9,7 @@ import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import JudgeGate from "@/components/judge/JudgeGate"
+import { JudgeSkeleton } from "@/components/skeletons/PageSkeletons"
 
 const OFFICIABLE = ["scheduled", "in_progress", "waiting_result"]
 const statusCfg = {
@@ -46,13 +47,7 @@ function JudgePicker() {
     finally { setLoading(false) }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <JudgeSkeleton />
 
   if (error) {
     return (
@@ -155,5 +150,5 @@ function JudgePicker() {
 }
 
 export default function Judge() {
-  return <JudgeGate><JudgePicker /></JudgeGate>
+  return <JudgeGate skeleton={<JudgeSkeleton />}><JudgePicker /></JudgeGate>
 }

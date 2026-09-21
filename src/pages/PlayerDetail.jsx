@@ -18,6 +18,7 @@ import { BRAND_ORANGE } from '@/lib/brand'
 import { useSeo } from '@/lib/seo'
 import { useSlugId, entityPath } from '@/lib/slugs'
 import FollowButton from "@/components/FollowButton"
+import { PlayerDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function PlayerDetail() {
   // The route param is a Hebrew slug (/players/יואב-תורגמן) or, for every link
@@ -87,13 +88,7 @@ export default function PlayerDetail() {
     finally { setLoading(false) }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <PlayerDetailSkeleton />
 
   if (error) {
     return (

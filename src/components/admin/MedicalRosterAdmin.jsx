@@ -3,6 +3,7 @@ import { getMedicalRoster, signMedical, getPlayerMedicalCerts, revokeMedical, se
 import { HeartPulse, RefreshCw, Search, Eye, Ban, CalendarClock, X, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 // Problems-first severity ranking, so the default "חומרה" sort surfaces the
 // players who need attention (missing/expired) above those already covered.
@@ -156,7 +157,7 @@ export default function MedicalRosterAdmin() {
       <SortBar options={MED_SORT_OPTIONS} sort={sort} onChange={setSort} />
 
       {rows === null ? (
-        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-7 w-7 border-2 border-orange-500 border-t-transparent" /></div>
+        <SkeletonPanelRows />
       ) : shown.length === 0 ? (
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-10">אין שחקנים תואמים</p>
       ) : (

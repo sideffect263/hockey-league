@@ -3,6 +3,7 @@ import { getPendingTeamJoins, approveTeamJoin, rejectTeamJoin } from "@/lib/team
 import { Check, X, ArrowLeftRight, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 function joinError(e, fallback) {
   if (e?.message === "not-authorized") return "אין לך הרשאה לאשר או לדחות בקשה זו"
@@ -42,11 +43,7 @@ export default function TeamJoinRequestsReview({ teamsMap = {}, coachTeamIds = n
   const visible = coachScoped ? items.filter(r => coachTeamIds.includes(r.team_id)) : items
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-      </div>
-    )
+    return <SkeletonPanelRows />
   }
 
   return (

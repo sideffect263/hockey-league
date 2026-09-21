@@ -23,6 +23,7 @@ import RadarChart from "@/components/charts/RadarChart"
 import StatTile from "@/components/charts/StatTile"
 import Legend from "@/components/charts/Legend"
 import { entityPath } from "@/lib/slugs"
+import { StatisticsSkeleton } from "@/components/skeletons/PageSkeletons"
 
 // game_stats does not exist for every completed game — anything derived from it must
 // carry this caveat (per the data contract for this page). Derived live rather than
@@ -369,13 +370,7 @@ export default function Statistics() {
     </div>
   )
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <StatisticsSkeleton />
 
   if (error) {
     return (

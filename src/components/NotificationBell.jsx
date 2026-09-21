@@ -9,6 +9,7 @@ import {
   subscribeToNotifications, notificationText, notificationIcon, notificationHref,
 } from '../lib/notifications'
 import { pushSupported, pushStatus, enablePush } from '../lib/push'
+import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
 
 function timeAgo(iso) {
   try { return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: he }) }
@@ -123,8 +124,8 @@ export default function NotificationBell() {
           </div>
 
           {loading ? (
-            <div className="p-6 flex justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-brand border-t-transparent" />
+            <div className="p-3">
+              <SkeletonNotificationRows count={3} compact />
             </div>
           ) : items.length === 0 ? (
             <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">אין התראות עדיין</div>

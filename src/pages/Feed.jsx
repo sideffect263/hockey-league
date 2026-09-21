@@ -21,6 +21,7 @@ import FeedFilters, { matchesFilter } from "@/components/feed/FeedFilters"
 import QuickActions from "@/components/feed/QuickActions"
 import { StandingsWidget, NextGameWidget, LeadersWidget } from "@/components/feed/Widgets"
 import OnlinePresence from "@/components/OnlinePresence"
+import { FeedSkeleton, SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
 
 const PAGE_SIZE = 25
 // Stable identity so the feed useMemo doesn't rebuild on every render for guests.
@@ -162,13 +163,7 @@ export default function Feed() {
     return () => obs.disconnect()
   }, [hasMore, filtered.length])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <FeedSkeleton />
 
   if (error) {
     return (
@@ -257,8 +252,8 @@ export default function Feed() {
           {filtered.length > 0 && (
             <div className="flex flex-col items-center gap-2 pt-2">
               {hasMore && (
-                <div ref={sentinelRef} className="flex items-center justify-center py-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-brand border-t-transparent" />
+                <div ref={sentinelRef} className="w-full pt-2">
+                  <SkeletonFeedPosts count={1} />
                 </div>
               )}
               <p className="text-[11px] text-slate-500 dark:text-slate-400">

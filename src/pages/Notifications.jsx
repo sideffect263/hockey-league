@@ -7,6 +7,7 @@ import {
 } from "@/lib/notifications"
 import { useSeo } from "@/lib/seo"
 import { Bell, CheckCheck, ArrowRight, RefreshCw } from "lucide-react"
+import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Full notifications list.
@@ -77,7 +78,7 @@ export default function Notifications() {
       {error && <div className="card p-3 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-400">{error}</div>}
 
       {rows === null ? (
-        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" /></div>
+        <SkeletonNotificationRows />
       ) : rows.length === 0 ? (
         <div className="card p-10 text-center text-sm text-slate-500 dark:text-slate-400">אין התראות</div>
       ) : (

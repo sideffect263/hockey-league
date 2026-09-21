@@ -1,21 +1,20 @@
 import { useAuth } from "@/lib/AuthContext"
 import { Gavel, Lock } from "lucide-react"
+import { JudgeSkeleton } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Gates judge-only screens. Renders children only for admins or judge-role
- * users; otherwise shows a spinner / sign-in prompt / not-authorized state.
- * (hasRole('judge') already returns true for admins.)
+ * users; otherwise shows the page skeleton / sign-in prompt / not-authorized
+ * state. (hasRole('judge') already returns true for admins.)
+ *
+ * `skeleton` lets each gated page hand in its own shape — the gate sits above
+ * two different screens (the picker and the scoreboard) and a wrong skeleton is
+ * worse than none, because it promises a layout that never arrives.
  */
-export default function JudgeGate({ children }) {
+export default function JudgeGate({ children, skeleton }) {
   const { user, hasRole, loading, openAuth } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return skeleton || <JudgeSkeleton />
 
   if (!user) {
     return (

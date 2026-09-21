@@ -6,6 +6,7 @@ import { useSeo } from "@/lib/seo"
 import { supabase } from "@/lib/supabase"
 import { getViewerIceServersDetailed } from "@/lib/video"
 import { probeIce, playWHEP, hasTurn } from "@/lib/whep"
+import { GenericPageSkeleton } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Admin-only stream diagnostics — /stream-debug
@@ -127,13 +128,7 @@ export default function StreamDebug() {
     } catch { /* clipboard blocked — the raw JSON is on screen anyway */ }
   }
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (authLoading) return <GenericPageSkeleton />
 
   if (!user || !isAdmin) {
     return (

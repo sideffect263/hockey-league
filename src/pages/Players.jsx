@@ -8,6 +8,7 @@ import { Player as PlayerIcon } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import PlayerAvatar from "@/components/PlayerAvatar"
 import { entityPath } from "@/lib/slugs"
+import { PlayersSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function Players() {
   const [players, setPlayers] = useState([])
@@ -56,13 +57,7 @@ export default function Players() {
       return 0
     })
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <PlayersSkeleton />
 
   if (error) {
     return (

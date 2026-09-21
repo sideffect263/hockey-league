@@ -12,6 +12,7 @@ import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
 import { useSeasonName } from "@/App"
 import { entityPath } from "@/lib/slugs"
+import { TeamsSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function Teams() {
   const { profile } = useAuth()
@@ -44,13 +45,7 @@ export default function Teams() {
     finally { setLoading(false) }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <TeamsSkeleton />
 
   if (error) {
     return (

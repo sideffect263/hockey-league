@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { getNotificationReadiness, reachOf, REACH } from "@/lib/readiness"
 import { BellRing, RefreshCw, Search, Copy, Check } from "lucide-react"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * P0 — notification readiness. Every scheduled reminder in the sheet (rows 1, 9, 10,
@@ -154,7 +155,7 @@ export default function ReadinessAdmin() {
       <SortBar options={SORT_OPTIONS} sort={sort} onChange={setSort} />
 
       {rows === null ? (
-        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-7 w-7 border-2 border-brand border-t-transparent" /></div>
+        <SkeletonPanelRows />
       ) : shown.length === 0 ? (
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-10">אין שחקנים תואמים</p>
       ) : (

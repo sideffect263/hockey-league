@@ -11,6 +11,7 @@ import { MediaClusters } from "@/pages/Media"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
+import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 const tabs = [
   { id: "media", label: "מדיה", icon: Camera },
@@ -39,13 +40,7 @@ export default function ContentCreators() {
     getPlayers().then(setPlayers).catch(() => setPlayers([]))
   }, [authLoading, canAccess])
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (authLoading) return <CreatorsSkeleton />
 
   if (!user || !canAccess) {
     return <AccessDenied signedIn={!!user} email={user?.email} />
@@ -230,9 +225,7 @@ function AlbumSubmissions() {
 
       {/* Submitted albums list */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-        </div>
+        <SkeletonPanelRows />
       ) : loadError ? (
         <div className="card p-6 text-center space-y-3">
           <p className="text-sm font-medium text-red-600 dark:text-red-400">{loadError}</p>

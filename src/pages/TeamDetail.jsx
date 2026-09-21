@@ -19,6 +19,7 @@ import { TeamLink } from "@/components/EntityLinks"
 import { getApprovedMedicalPlayerIds } from "@/lib/medical"
 import { getTeamSubmissions } from "@/lib/playerSubmissions"
 import FollowButton from "@/components/FollowButton"
+import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function TeamDetail() {
   const { id: routeKey } = useParams()
@@ -81,13 +82,7 @@ export default function TeamDetail() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <TeamDetailSkeleton />
 
   if (error) {
     return (
