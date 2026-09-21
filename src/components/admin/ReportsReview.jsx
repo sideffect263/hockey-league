@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getReports, resolveReport, removeReportedContent, TARGET_LABEL } from "@/lib/moderation"
 import { Flag, Trash2, X, RefreshCw, Loader2 } from "lucide-react"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Admin review queue for user-submitted content reports (moderation).
@@ -102,9 +103,7 @@ export default function ReportsReview() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-        </div>
+        <SkeletonPanelRows />
       ) : error ? (
         <div className="card p-10 text-center space-y-3">
           <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>

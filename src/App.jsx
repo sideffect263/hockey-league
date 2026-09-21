@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation, useNavig
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react'
 import Layout from './Layout'
 import RouteSeo from './components/RouteSeo'
+import RouteSkeleton from './components/skeletons/RouteSkeleton'
 import { getLeagueSetting, getCurrentSeason } from './lib/api'
 
 // Route-level code splitting: each page ships as its own chunk, so the home
@@ -137,25 +138,23 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
-
+  // While the season settings are in flight the SHELL still renders — header,
+  // nav, and the skeleton of whatever page the URL asks for — instead of the
+  // old blank screen with a spinner in the middle of it. The routes themselves
+  // stay gated: `useSeasonName` must never hand a page an empty season and have
+  // it print "עונת " with nothing after it, which is exactly what this gate has
+  // always been for.
+  //
+  // (Layout's own season badge lives inside the closed mobile menu, so it has no
+  // way to be seen during the fetch.)
   return (
     <SeasonModeContext.Provider value={{ seasonMode, setSeasonMode, seasonName, setSeasonName }}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RouteSeo />
         <ScrollToTop />
         <Layout>
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-[60vh]">
-              <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-            </div>
-          }>
+          {loading ? <RouteSkeleton /> : (
+          <Suspense fallback={<RouteSkeleton />}>
           <Routes>
             <Route path="/" element={<Feed />} />
             <Route path="/standings" element={<Home />} />
@@ -193,6 +192,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
+          )}
         </Layout>
       </Router>
     </SeasonModeContext.Provider>

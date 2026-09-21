@@ -4,6 +4,7 @@ import { Camera, HelpCircle, Check, ExternalLink, RefreshCw, Send, CalendarDays 
 import { Camera as CameraIcon } from "@/components/icons/HockeyIcons"
 import { getMediaClusters, getSuggestionSummary, submitSuggestion, getResolvedCount } from "@/lib/media"
 import { useAuth } from "@/lib/AuthContext"
+import { MediaClustersSkeleton } from "@/components/skeletons/PageSkeletons"
 
 const PAGE = 24
 
@@ -38,13 +39,7 @@ export function MediaClusters() {
     return { ...s, [key]: { ...cur, suggestion_count: cur.suggestion_count + 1 } }
   })
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <MediaClustersSkeleton />
   if (error) {
     return (
       <div className="card p-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 flex flex-col items-center gap-3 min-h-[240px] justify-center text-center">

@@ -20,6 +20,7 @@ import GameChangeOpponentCard from "@/components/GameChangeOpponentCard"
 import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
 import GameFormExport from "@/components/GameFormExport"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
+import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 
 const statusCfg = {
   scheduled: { label: "מתוכנן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -115,13 +116,7 @@ export default function GameDetail() {
     } finally { setLoading(false) }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <GameDetailSkeleton />
 
   if (error || !game) {
     const notFound = error === 'notfound' || !game

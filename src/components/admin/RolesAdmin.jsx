@@ -3,6 +3,7 @@ import { getProfiles, getAllRoles, grantRole, revokeRole, deleteUser, linkPlayer
 import { Award, X, Plus, RefreshCw, Check, Loader2, Search, Trash2, Link2, Link2Off } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 const ROLE_SORT_OPTIONS = [
   { key: "name", label: "שם", dir: "asc" },
@@ -157,11 +158,7 @@ export default function RolesAdmin({ teamsMap = {}, players = [] }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-      </div>
-    )
+    return <SkeletonPanelRows />
   }
 
   return (

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { getLiveGame, subscribeLiveGame } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import TeamLogo from "@/components/TeamLogo"
+import { Skeleton, SkeletonBlock } from "@/components/ui/Skeleton"
 
 /**
  * Public live scoreboard for a game in progress. Reads the `live_game_state`
@@ -134,8 +135,12 @@ export default function LiveGame({ gameId, home, away, initial = null }) {
 
   if (loading) {
     return (
-      <div className="card p-6 flex items-center justify-center min-h-[160px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
+      <div className="card p-6 min-h-[160px]">
+        <SkeletonBlock className="space-y-4">
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-4 w-2/3" />
+        </SkeletonBlock>
       </div>
     )
   }

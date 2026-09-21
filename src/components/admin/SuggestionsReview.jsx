@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getSuggestionQueue, resolveCluster, hideCluster } from "@/lib/media"
 import { Camera, Check, EyeOff, RefreshCw, HelpCircle } from "lucide-react"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Admin review queue for crowdsourced face-cluster name suggestions.
@@ -71,9 +72,7 @@ export default function SuggestionsReview({ players = [] }) {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-        </div>
+        <SkeletonPanelRows />
       ) : queue.length === 0 ? (
         <div className="card p-10 text-center">
           <HelpCircle className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />

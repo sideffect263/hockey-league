@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { getActiveSuspensions, issueSuspension, clearSuspension } from "@/lib/suspensions"
 import { Ban, RefreshCw, Plus, Undo2, Loader2 } from "lucide-react"
 import { format } from "date-fns"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Red-card blocks — league manager / admin (sheet rows 5 + 15).
@@ -103,7 +104,7 @@ export default function SuspensionsAdmin({ players = [], teamsMap = {} }) {
       )}
 
       {rows === null ? (
-        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-7 w-7 border-2 border-brand border-t-transparent" /></div>
+        <SkeletonPanelRows />
       ) : rows.length === 0 ? (
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-10">אין הרחקות פעילות</p>
       ) : (

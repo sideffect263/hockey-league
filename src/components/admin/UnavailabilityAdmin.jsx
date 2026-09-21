@@ -5,6 +5,7 @@ import {
 } from "@/lib/unavailability"
 import { CalendarOff, RefreshCw, Plus, Check, X, Undo2, Loader2, Clock } from "lucide-react"
 import { format } from "date-fns"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Player availability constraints — coach / league manager / admin.
@@ -234,7 +235,7 @@ export default function UnavailabilityAdmin({ players = [], teamsMap = {}, membe
       </div>
 
       {rows === null ? (
-        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-7 w-7 border-2 border-brand border-t-transparent" /></div>
+        <SkeletonPanelRows />
       ) : shown.length === 0 ? (
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-10">
           {filter === "open" ? "אין היעדרויות פעילות" : "אין היעדרויות להצגה"}

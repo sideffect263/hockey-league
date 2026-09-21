@@ -3,6 +3,7 @@ import { getPendingClaims, approveClaim, rejectClaim } from "@/lib/claims"
 import { Check, X, UserPlus, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 // Translate claims.js error codes into the Hebrew copy shown in the queue.
 function claimErrorMessage(e, fallback) {
@@ -52,11 +53,7 @@ export default function ClaimsReview({ teamsMap = {}, coachTeamIds = null }) {
     : claims
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-      </div>
-    )
+    return <SkeletonPanelRows />
   }
 
   return (

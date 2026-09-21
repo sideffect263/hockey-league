@@ -4,6 +4,7 @@ import { getPendingGameChangeRequests, finalizeGameChange, rejectGameChange } fr
 import { Check, X, CalendarClock, RefreshCw, MapPin, ExternalLink, ArrowLeft } from "lucide-react"
 import { format } from "date-fns"
 import { entityPath } from "@/lib/slugs"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * League-manager / admin FINALIZATION queue (#5). These requests already cleared the
@@ -41,7 +42,7 @@ export default function GameChangeRequestsReview({ teamsMap = {} }) {
     catch (e) { setError(e.message || "שגיאה בדחייה") } finally { setBusyId(null) }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" /></div>
+  if (loading) return <SkeletonPanelRows />
 
   return (
     <div className="space-y-4">

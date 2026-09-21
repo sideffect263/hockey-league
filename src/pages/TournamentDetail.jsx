@@ -15,6 +15,7 @@ import TeamLogo from "@/components/TeamLogo"
 import { TeamLink } from "@/components/EntityLinks"
 import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
+import { TournamentDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 
 const statusLabel = {
   scheduled: "מתוכנן", in_progress: "משחק חי", waiting_result: "ממתין לתוצאה",
@@ -71,13 +72,7 @@ export default function TournamentDetail() {
     catch (e) { alert('שגיאה: ' + (e.message || e)) }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <TournamentDetailSkeleton />
 
   if (error || !tournament) {
     return (

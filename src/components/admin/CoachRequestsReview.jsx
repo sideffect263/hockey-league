@@ -3,6 +3,7 @@ import { getPendingCoachRequests, reviewCoachRequest } from "@/lib/coachRequests
 import { Check, X, ShieldPlus, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Review queue for "request to coach a team". Approve/reject go through the
@@ -33,11 +34,7 @@ export default function CoachRequestsReview({ teamsMap = {} }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-      </div>
-    )
+    return <SkeletonPanelRows />
   }
 
   return (

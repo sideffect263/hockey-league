@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Coins, Loader2, LayoutGrid, Wallet, Trophy, Settings, CalendarDays, Star, History, Gift } from 'lucide-react'
+import { Coins, LayoutGrid, Wallet, Trophy, Settings, CalendarDays, Star, History, Gift } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import {
   getBlockReason, getWallet, listMarkets, getMyPositions, getConflicts,
@@ -13,6 +13,7 @@ import FeaturedMarket from '@/components/market/FeaturedMarket'
 import Leaderboard from '@/components/market/Leaderboard'
 import MarketAdmin from '@/components/market/MarketAdmin'
 import { useSeasonName } from '@/App'
+import { MarketSkeleton, MarketBoardSkeleton } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Repoints the design tokens at the market palette for as long as this screen is
@@ -91,7 +92,7 @@ export default function Market() {
   }, [featured?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (authLoading || reason === undefined) {
-    return <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-brand" /></div>
+    return <MarketSkeleton />
   }
   if (reason) return <MarketGate reason={reason} onUnlocked={load} />
 
@@ -169,7 +170,7 @@ export default function Market() {
 
       {tab === 'board' && (
         !markets ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-brand" /></div>
+          <MarketBoardSkeleton />
         ) : (
           <div className="space-y-10">
             {featured && (

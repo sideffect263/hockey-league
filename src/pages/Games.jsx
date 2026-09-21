@@ -16,6 +16,7 @@ import { useLiveGames } from "@/lib/useLiveGames"
 import { Radio } from "lucide-react"
 import { useSeasonName } from "@/App"
 import { entityPath } from "@/lib/slugs"
+import { GamesSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function Games() {
   const { coachTeamIds } = useAuth()
@@ -124,13 +125,7 @@ export default function Games() {
   const upcoming = filtered.filter(g => ['scheduled', 'in_progress', 'waiting_result'].includes(g.status))
     .sort((a, b) => new Date(a.game_date) - new Date(b.game_date))
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <GamesSkeleton />
 
   if (error) {
     return (

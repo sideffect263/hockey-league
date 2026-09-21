@@ -9,6 +9,7 @@ import TeamLogo from "@/components/TeamLogo"
 import { TeamLink } from "@/components/EntityLinks"
 import FinalFourBracket from "@/components/FinalFourBracket"
 import { useSeasonName } from "@/App"
+import { StandingsSkeleton } from "@/components/skeletons/PageSkeletons"
 
 // The dev deployment says so on the page, so nobody mistakes it for the league's
 // site — and the league's site must never say it. Decided from the hostname at
@@ -50,13 +51,7 @@ export default function Home() {
   const leaderPts = first?.points || 0
   const pointsBarPct = (pts) => leaderPts > 0 ? Math.max(0, Math.min(100, ((pts || 0) / leaderPts) * 100)) : 0
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (loading) return <StandingsSkeleton />
 
   return (
     <div data-ff-connector-host className="relative p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-5">

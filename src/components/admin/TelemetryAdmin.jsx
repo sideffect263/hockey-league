@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, AlertTriangle, MousePointerClick, Eye, Users, RefreshCw, Smartphone, Monitor } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
  * טלמטריה — what people are actually doing, and what is actually failing.
@@ -134,9 +135,7 @@ export default function TelemetryAdmin() {
       )}
 
       {loading && !summary.length && !err ? (
-        <div className="flex items-center justify-center min-h-[200px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-        </div>
+        <SkeletonPanelRows />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

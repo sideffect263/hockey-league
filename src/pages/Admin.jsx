@@ -52,6 +52,7 @@ import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
+import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 const tabs = [
   { id: "games", label: "משחקים", icon: Calendar },
@@ -152,13 +153,7 @@ export default function Admin() {
     finally { setLoading(false) }
   }
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand border-t-transparent" />
-      </div>
-    )
-  }
+  if (authLoading) return <AdminSkeleton />
 
   if (!user || !canManage) {
     return <AccessDenied />
@@ -211,9 +206,7 @@ export default function Admin() {
 
         <div className="min-w-0">
           {loading ? (
-            <div className="flex items-center justify-center min-h-[200px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-            </div>
+            <AdminPanelSkeleton />
           ) : (
             <>
               {currentTab === "games" && (
@@ -1802,7 +1795,7 @@ function TournamentRequests({ reload }) {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" /></div>
+        <SkeletonPanelRows />
       ) : requests.length === 0 ? (
         <div className="card p-8 text-center text-sm text-slate-400">לא שלחת בקשות עדיין.</div>
       ) : (

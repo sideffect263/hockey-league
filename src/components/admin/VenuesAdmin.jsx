@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { MapPin, Plus, Trash2, RefreshCw, Check, X, Pencil } from "lucide-react"
 import { getAllVenues, createVenue, updateVenue, deleteVenue } from "@/lib/venues"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 const VENUE_SORT_OPTIONS = [
   { key: "name", label: "שם", dir: "asc" },
@@ -77,7 +78,7 @@ export default function VenuesAdmin() {
 
       {/* List */}
       {venues === null ? (
-        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-7 w-7 border-2 border-brand border-t-transparent" /></div>
+        <SkeletonPanelRows />
       ) : venues.length === 0 ? (
         <p className="text-center text-sm text-slate-400 py-8">אין מגרשים עדיין</p>
       ) : (

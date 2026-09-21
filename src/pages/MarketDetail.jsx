@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowRight, Loader2, MapPin, CalendarDays, Lock, Coins, Droplets } from 'lucide-react'
+import { ArrowRight, MapPin, CalendarDays, Lock, Coins, Droplets } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import {
   getBlockReason, getWallet, listMarkets, getMyPositions, getTrades, getConflicts,
@@ -11,6 +11,7 @@ import { StatusChip, OutcomeFace, closesIn } from '@/components/market/MarketCar
 import TradeTicket from '@/components/market/TradeTicket'
 import PriceChart from '@/components/market/PriceChart'
 import { useMarketTheme } from './Market'
+import { MarketDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function MarketDetail() {
   useMarketTheme()
@@ -54,7 +55,7 @@ export default function MarketDetail() {
   }, [authLoading, user, load])
 
   if (authLoading || reason === undefined) {
-    return <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-brand" /></div>
+    return <MarketDetailSkeleton />
   }
   if (reason) return <MarketGate reason={reason} onUnlocked={load} />
   if (missing) {
@@ -66,7 +67,7 @@ export default function MarketDetail() {
     )
   }
   if (!market) {
-    return <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-brand" /></div>
+    return <MarketDetailSkeleton />
   }
 
   const mine = market.outcomes

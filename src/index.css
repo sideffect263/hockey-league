@@ -379,11 +379,58 @@
       animation: none;
     }
   }
+
+  /* ─── Skeleton loading ───────────────────────────────────────────────────
+     One placeholder block. Everything a page shows while it waits is built out
+     of this class, so the grey and the sweep are defined in exactly one place
+     and re-skin with the tokens (including the market's warm palette).
+
+     `bg-surface-sunken` is the same fill as a tab track — visibly a hole in the
+     page rather than a card, which is what stops a skeleton from being mistaken
+     for real, empty content. The sweep rides on ::after so a call-site can set
+     any size/radius on the element itself without fighting a background-position
+     animation. */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-surface-sunken;
+  }
+
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    background-image: linear-gradient(90deg, transparent, rgb(var(--fg-faint) / 0.35), transparent);
+    transform: translateX(-100%);
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+  }
 }
 
 @keyframes mkt-rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* The sweep must run with the reading direction, and `transform` is NOT mirrored
+   by `dir` — an unflipped sweep travels left-to-right across a Hebrew page and
+   reads backwards. The app is RTL end to end (<html dir="rtl">), so this rule
+   covers every skeleton on the site; the LTR keyframes stay for the few LTR
+   islands (dates, scores) and for safety if a subtree ever flips. */
+[dir="rtl"] .skeleton::after {
+  animation-name: skeleton-sweep-rtl;
+}
+
+@keyframes skeleton-sweep {
+  to { transform: translateX(100%); }
+}
+
+@keyframes skeleton-sweep-rtl {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
+}
+
+/* A skeleton screen is a whole page of things moving at once — the single worst
+   case for anyone who asked the system for less motion. Drop the sweep entirely
+   and leave the static blocks, which still communicate the layout. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; opacity: 0; }
 }
 
 /* The market's own chrome, outside @layer so it reliably wins over component

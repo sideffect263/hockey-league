@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { getAllClusters, resolveCluster, reopenCluster, hideCluster } from "@/lib/media"
 import { Images, Check, Undo2, RefreshCw, HelpCircle, Loader2, Search, X, EyeOff } from "lucide-react"
+import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 const PAGE = 30
 
@@ -141,9 +142,7 @@ export default function ClustersAdmin({ players = [] }) {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-        </div>
+        <SkeletonPanelRows />
       ) : shown.length === 0 ? (
         <div className="card p-10 text-center">
           <HelpCircle className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
