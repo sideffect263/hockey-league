@@ -72,6 +72,14 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
+          # A human pressed the button. The fence exists because an agent pushes here
+          # with nobody reading the diff; a dispatch is somebody reading the diff, and
+          # deploy-public.yml already takes exactly this line about its own button.
+          # So on a dispatch the checks still RUN and still print — they just do not
+          # refuse. The migration allowlist below is NOT affected: it fails closed on
+          # a dispatch too, because "a human approved it" is not a claim about whether
+          # a SQL file is additive.
+          IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           set -euo pipefail
           # A force-push, a new branch, or a squashed history can all leave us
@@ -88,6 +96,10 @@ jobs:
             echo "migrations=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          # error on a push (which stops the run), warning on a dispatch (which does
+          # not) — so the annotation never claims a refusal that did not happen.
+          if [ "${IS_DISPATCH:-false}" = "true" ]; then LEVEL=warning; else LEVEL=error; fi
 
           CHANGED=$(git diff --name-status "$BASE" "$AFTER")
           echo "$CHANGED"
@@ -112,12 +124,12 @@ jobs:
               if printf '%s' "$P" | grep -Eq "$PROTECTED"; then
                 if printf '%s' "$P" | grep -q '^supabase/migrations/'; then
                   if [ "$STATUS" = "A" ]; then
-                    echo "::error::'$P' must be a plain <name>.sql file directly in supabase/migrations/ (letters, digits, . _ - only) — refusing to deploy."
+                    echo "::${LEVEL}::'$P' must be a plain <name>.sql file directly in supabase/migrations/ (letters, digits, . _ - only) — refusing to deploy."
                   else
-                    echo "::error::supabase/migrations/ is append-only — '$P' was '$STATUS', not added. Rewriting a migration that has already run desynchronises the repo from the live database."
+                    echo "::${LEVEL}::supabase/migrations/ is append-only — '$P' was '$STATUS', not added. Rewriting a migration that has already run desynchronises the repo from the live database."
                   fi
                 else
-                  echo "::error::A protected path changed on dev ('$P', status '$STATUS') — refusing to deploy. A human must review this commit."
+                  echo "::${LEVEL}::A protected path changed on dev ('$P', status '$STATUS') — refusing to deploy. A human must review this commit."
                 fi
                 BAD=1
               fi
@@ -127,7 +139,11 @@ jobs:
           EOF
 
           if [ -n "$BAD" ]; then
-            exit 1
+            if [ "${IS_DISPATCH:-false}" = "true" ]; then
+              echo "::warning::Protected paths changed above. Deploying anyway because this run was started by hand — the person who pressed the button owns that call."
+            else
+              exit 1
+            fi
           fi
 
           {
