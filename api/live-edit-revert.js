@@ -188,6 +188,15 @@ const uniq = (list) => [...new Set(list)].sort()
 
 const refuse = (res, reason, extra = {}) => json(res, 409, { ok: false, reason, ...extra })
 
+// A write refused with 403 is a PERMISSION, not an outage. The token here is allowed
+// to read the repo and file issues — writing code is a separate grant — and reporting
+// that as 'github-error' ("GitHub is unavailable") sends whoever reads it to a status
+// page that is perfectly green. Its own reason, with the step that hit it.
+const writeFailed = (res, result, step) =>
+  result.status === 403
+    ? json(res, 403, { ok: false, reason: 'no-write-access', step })
+    : json(res, 502, { ok: false, reason: 'github-error', step })
+
 // --------------------------------------------------------------- the undo plan
 // Every path the commit touched, in both its old and new names, because a rename has
 // to be undone at both ends: delete where it went, restore where it came from.
@@ -333,7 +342,7 @@ async function handlePost(res, user, sha) {
   })
 
   const tree = await ghSend(`/repos/${FORK_REPO}/git/trees`, 'POST', { base_tree: baseTree, tree: entries })
-  if (!tree.ok || !tree.data?.sha) return json(res, 502, { ok: false, reason: 'github-error', step: 'tree' })
+  if (!tree.ok || !tree.data?.sha) return writeFailed(res, tree, 'tree')
 
   // Identical tree = the branch already looks like the undo. Say so rather than
   // committing a no-op that deploys for no reason.
@@ -347,7 +356,7 @@ async function handlePost(res, user, sha) {
     tree: tree.data.sha,
     parents: [devTip],
   })
-  if (!commit.ok || !commit.data?.sha) return json(res, 502, { ok: false, reason: 'github-error', step: 'commit' })
+  if (!commit.ok || !commit.data?.sha) return writeFailed(res, commit, 'commit')
 
   // 6. Move the branch. force stays FALSE: the new commit's parent is the tip we
   //    read, so this is a fast-forward or it is nothing. If someone pushed to dev in
@@ -358,9 +367,7 @@ async function handlePost(res, user, sha) {
     force: false,
   })
   if (!moved.ok) {
-    return moved.status === 422
-      ? refuse(res, 'moved')
-      : json(res, 502, { ok: false, reason: 'github-error', step: 'ref' })
+    return moved.status === 422 ? refuse(res, 'moved') : writeFailed(res, moved, 'ref')
   }
 
   return json(res, 200, {
