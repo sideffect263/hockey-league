@@ -368,6 +368,22 @@
   .mkt-coin {
     @apply mkt-num font-bold text-gold whitespace-nowrap;
   }
+
+  /* Board cards rise in on load so the market feels alive rather than a static
+     table dump. Staggered per-card via an inline animationDelay. */
+  .mkt-rise {
+    animation: mkt-rise 0.35s ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mkt-rise {
+      animation: none;
+    }
+  }
+}
+
+@keyframes mkt-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* The market's own chrome, outside @layer so it reliably wins over component
