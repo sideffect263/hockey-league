@@ -397,3 +397,74 @@ export async function syncGameMarkets() {
   if (error) throw error
   return data || 0
 }
+
+/**
+ * Trade activity per market, keyed by market id:
+ *   { trades, volume, traders, last }
+ *
+ * The whole tape is small enough to count on the client (a season is a few
+ * hundred rows at most) and it is already readable by anyone allowed on the
+ * board, so this is one round trip instead of a new aggregate RPC.
+ */
+export async function getActivity() {
+  const { data, error } = await supabase
+    .from('market_trades').select('market_id, coins, user_id, created_at')
+  if (error) return new Map()
+  const by = new Map()
+  for (const t of data || []) {
+    let a = by.get(t.market_id)
+    if (!a) { a = { trades: 0, volume: 0, traders: new Set(), last: null }; by.set(t.market_id, a) }
+    a.trades += 1
+    a.volume += Number(t.coins || 0)
+    a.traders.add(t.user_id)
+    if (!a.last || t.created_at > a.last) a.last = t.created_at
+  }
+  return new Map([...by].map(([id, a]) => [
+    id, { trades: a.trades, volume: a.volume, traders: a.traders.size, last: a.last },
+  ]))
+}
+
+const DAY = 86400000
+
+/**
+ * The one market the board opens with.
+ *
+ * A featured slot is only worth the space it takes if it lands on the market a
+ * trader would have gone looking for anyway, so it scores the two things that
+ * make a market interesting — that other people are trading it, and that the
+ * window to trade it is closing — and never picks one the viewer is barred
+ * from, which would be a hero card they can only look at.
+ *
+ * Returns null when nothing is open; the board then renders as it always did.
+ */
+export function pickFeatured(markets, activity = new Map(), conflicts = new Map()) {
+  const now = Date.now()
+  let best = null, bestScore = -Infinity
+  for (const m of markets || []) {
+    if (m.status !== 'open') continue
+    if (conflicts.get(m.id)) continue
+    if (!m.outcomes?.length) continue
+
+    const a = activity.get(m.id)
+    let score = 0
+    if (a) {
+      score += Math.min(a.trades, 20) * 3
+      score += Math.min(a.traders, 10) * 2
+      score += Math.min(a.volume / 500, 10)
+      const age = now - new Date(a.last).getTime()
+      if (age < 3 * DAY) score += 12
+      else if (age < 14 * DAY) score += 6
+    }
+    const left = m.closes_at ? new Date(m.closes_at).getTime() - now : null
+    if (left != null && left > 0) {
+      if (left < 2 * DAY) score += 14
+      else if (left < 7 * DAY) score += 8
+      else if (left < 30 * DAY) score += 3
+    }
+    // A tie between two untouched markets should at least be stable rather than
+    // re-ordering on every load.
+    score += m.kind === 'game' ? 2 : 0
+    if (score > bestScore) { best = m; bestScore = score }
+  }
+  return best
+}

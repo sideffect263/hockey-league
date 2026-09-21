@@ -4,10 +4,12 @@ import { Coins, Loader2, LayoutGrid, Wallet, Trophy, Settings, CalendarDays, Sta
 import { useAuth } from '@/lib/AuthContext'
 import {
   getBlockReason, getWallet, listMarkets, getMyPositions, getConflicts,
+  getActivity, getTrades, pickFeatured,
   coins as fmtCoins, pct, START_BALANCE,
 } from '@/lib/market'
 import MarketGate from '@/components/market/MarketGate'
 import MarketCard, { OutcomeFace, StatusChip } from '@/components/market/MarketCard'
+import FeaturedMarket from '@/components/market/FeaturedMarket'
 import Leaderboard from '@/components/market/Leaderboard'
 import MarketAdmin from '@/components/market/MarketAdmin'
 import { useSeasonName } from '@/App'
@@ -35,19 +37,22 @@ export default function Market() {
   const [markets, setMarkets] = useState(null)
   const [positions, setPositions] = useState({})
   const [conflicts, setConflicts] = useState(new Map())
+  const [activity, setActivity] = useState(new Map())
+  const [featuredTrades, setFeaturedTrades] = useState(null)
   const [tab, setTab] = useState('board')
 
   const load = useCallback(async () => {
     const r = await getBlockReason()
     setReason(r)
     if (r) { setMarkets([]); return }
-    const [w, ms, ps, cs] = await Promise.all([
+    const [w, ms, ps, cs, act] = await Promise.all([
       getWallet().catch(() => null),
       listMarkets().catch(() => []),
       getMyPositions().catch(() => ({})),
       getConflicts().catch(() => new Map()),
+      getActivity().catch(() => new Map()),
     ])
-    setWallet(w); setMarkets(ms); setPositions(ps); setConflicts(cs)
+    setWallet(w); setMarkets(ms); setPositions(ps); setConflicts(cs); setActivity(act)
   }, [])
 
   useEffect(() => {
@@ -69,6 +74,22 @@ export default function Market() {
     return v
   }, [markets, positions])
 
+  const featured = useMemo(
+    () => (markets ? pickFeatured(markets, activity, conflicts) : null),
+    [markets, activity, conflicts],
+  )
+
+  // The hero's chart is the only thing on the board that needs a market's tape,
+  // so it is fetched for that one market after the board has already rendered
+  // rather than holding the whole page on a query nothing else reads.
+  useEffect(() => {
+    let alive = true
+    if (!featured) { setFeaturedTrades(null); return }
+    setFeaturedTrades(null)
+    getTrades(featured.id).then(t => { if (alive) setFeaturedTrades(t) }).catch(() => {})
+    return () => { alive = false }
+  }, [featured?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (authLoading || reason === undefined) {
     return <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-brand" /></div>
   }
@@ -78,6 +99,8 @@ export default function Market() {
   // they would otherwise bury the two or three markets that are actually live, so
   // they move to their own capped section instead of sitting on the board.
   const live = (markets || []).filter(m => m.status === 'open' || m.status === 'closed')
+  // The featured market is already on screen, in full, directly above the board.
+  const notFeatured = m => m.id !== featured?.id
   const games = live.filter(m => m.kind === 'game')
   const futures = live.filter(m => m.kind === 'futures')
   const settled = (markets || [])
@@ -149,13 +172,19 @@ export default function Market() {
           <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-brand" /></div>
         ) : (
           <div className="space-y-8">
-            <Section title="משחקים" icon={CalendarDays} empty="אין כרגע משחקים פתוחים למסחר. שווקים נפתחים אוטומטית לכל משחק חדש בלוח.">
-              {games.map(m => (
+            {featured && (
+              <FeaturedMarket market={featured} trades={featuredTrades || []}
+                activity={activity.get(featured.id)} />
+            )}
+            <Section title="משחקים" icon={CalendarDays} total={games.length}
+              empty="אין כרגע משחקים פתוחים למסחר. שווקים נפתחים אוטומטית לכל משחק חדש בלוח.">
+              {games.filter(notFeatured).map(m => (
                 <MarketCard key={m.id} market={m} myShares={positions} conflict={conflicts.get(m.id)} />
               ))}
             </Section>
-            <Section title={seasonName ? `עונת ${seasonName}` : 'שווקי עונה'} icon={Star} empty="אין שווקי עונה פתוחים.">
-              {futures.map(m => (
+            <Section title={seasonName ? `עונת ${seasonName}` : 'שווקי עונה'} icon={Star}
+              total={futures.length} empty="אין שווקי עונה פתוחים.">
+              {futures.filter(notFeatured).map(m => (
                 <MarketCard key={m.id} market={m} myShares={positions} conflict={conflicts.get(m.id)} />
               ))}
             </Section>
@@ -184,9 +213,15 @@ export default function Market() {
   )
 }
 
-function Section({ title, icon: Icon, children, empty }) {
+/**
+ * `total` counts the section's markets BEFORE the featured one is pulled out of
+ * it. Without it a board whose only season market is the hero would render
+ * "אין שווקי עונה פתוחים" directly beneath that very market.
+ */
+function Section({ title, icon: Icon, children, empty, total }) {
   const items = Array.isArray(children) ? children.filter(Boolean) : children
   const has = Array.isArray(items) ? items.length > 0 : !!items
+  if (!has && total > 0) return null
   return (
     <section>
       <h2 className="section-head mb-3"><Icon className="w-4 h-4 text-brand" /> {title}</h2>
