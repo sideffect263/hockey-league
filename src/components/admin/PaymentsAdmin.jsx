@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { getPaymentOverview, getUnmatchedAthletes, getLastSync, runPodiumSync, isCloudflareBlock, CLOUDFLARE_BLOCKED } from "@/lib/podium"
-import { Wallet, RefreshCw, AlertTriangle, Check, X, Link2Off, Search } from "lucide-react"
+import { getPaymentOverview, getUnmatchedAthletes, getLastSync, runPodiumSync, linkPodiumAthlete, isCloudflareBlock, CLOUDFLARE_BLOCKED } from "@/lib/podium"
+import { Wallet, RefreshCw, AlertTriangle, Check, X, Link2Off, Link2, Search } from "lucide-react"
 import { format } from "date-fns"
 
 /**
@@ -24,6 +24,7 @@ export default function PaymentsAdmin() {
   const [denied, setDenied] = useState(false)
   const [q, setQ] = useState("")
   const [filter, setFilter] = useState("unpaid") // unpaid | all | missing
+  const [linking, setLinking] = useState(null)   // podium_id being linked
 
   const load = async () => {
     try {
@@ -44,6 +45,18 @@ export default function PaymentsAdmin() {
     try { await runPodiumSync(); await load() }
     catch (e) { setError(e?.message || "הסנכרון נכשל") }
     finally { setSyncing(false) }
+  }
+
+  /**
+   * Link a Podium athlete to a player card by hand. The auto-matcher only joins on
+   * an exact normalised name (+ birth date), which by design cannot see the cases
+   * that actually occur: a Latin-script name against a Hebrew card, ו vs וו, or a
+   * one-letter surname difference. Those are the rows that land here.
+   */
+  const link = async (podiumId, playerId) => {
+    setLinking(null); setError(null)
+    try { await linkPodiumAthlete(podiumId, playerId); await load() }
+    catch (e) { setError(e?.message || "השיוך נכשל") }
   }
 
   const visible = useMemo(() => {
@@ -149,6 +162,14 @@ export default function PaymentsAdmin() {
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
+                {r.podium_id && (r.matched_by === "name" || r.matched_by === "manual") && (
+                  <button
+                    onClick={() => { if (window.confirm(`לבטל את השיוך של ${r.player_name} לפודיום?`)) link(r.podium_id, null) }}
+                    title={r.matched_by === "manual" ? "שויך ידנית" : "שויך לפי שם בלבד — ייתכן שזה לא אותו אדם"}
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 hover:opacity-80">
+                    {r.matched_by === "manual" ? "שויך ידנית" : "לפי שם בלבד"}
+                  </button>
+                )}
                 {!r.podium_id ? (
                   <Badge tone="amber" Icon={Link2Off} label="לא רשום בפודיום" />
                 ) : r.paid ? (
@@ -171,7 +192,7 @@ export default function PaymentsAdmin() {
             נרשמו לאיגוד אך אין להם כרטיס שחקן באתר — יש ליצור כרטיס או לשייך ידנית.
           </p>
           {unmatched.map(u => (
-            <div key={u.podium_id} className="card p-3 flex items-center gap-3">
+            <div key={u.podium_id} className="card p-3 flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{u.full_name}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
@@ -180,6 +201,18 @@ export default function PaymentsAdmin() {
                   {u.registered_at && <> · נרשם {format(new Date(u.registered_at), "d/M/yyyy")}</>}
                 </p>
               </div>
+              {linking === u.podium_id ? (
+                <PlayerPicker
+                  players={rows}
+                  onCancel={() => setLinking(null)}
+                  onPick={(playerId) => link(u.podium_id, playerId)}
+                />
+              ) : (
+                <button onClick={() => setLinking(u.podium_id)}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity shrink-0">
+                  <Link2 className="w-3.5 h-3.5" /> שיוך לשחקן
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -208,6 +241,52 @@ function Stat({ label, value, tone }) {
     <div className="card p-3 text-center">
       <p className={`text-lg font-black ${TONES[tone].split(" ").filter(c => c.startsWith("text-")).join(" ")}`}>{value}</p>
       <p className="text-[11px] text-slate-500 dark:text-slate-400">{label}</p>
+    </div>
+  )
+}
+
+/**
+ * Pick the player card a Podium athlete belongs to. Cards already carrying a Podium
+ * link are excluded — one athlete per player — so the list only ever offers rows
+ * that are actually free to claim.
+ *
+ * No birth-date hinting here on purpose: podium_payment_overview does not return
+ * players.birth_date and that column is deliberately restricted, so surfacing it
+ * for a sort nicety would widen its exposure for very little. The athlete's own
+ * birth date is shown on the row above instead — the person linking can read it.
+ */
+function PlayerPicker({ players, onPick, onCancel }) {
+  const [q, setQ] = useState("")
+  const options = useMemo(() => {
+    const free = (players || []).filter(p => !p.podium_id)
+    const needle = q.trim()
+    const filtered = needle
+      ? free.filter(p => `${p.player_name} ${p.team_name || ""}`.includes(needle))
+      : free
+    return filtered.slice(0, 40)
+  }, [players, q])
+
+  return (
+    <div className="w-full sm:w-80 shrink-0 space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="חיפוש כרטיס שחקן"
+          className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+        <button onClick={onCancel} title="ביטול"
+          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700/50">
+        {options.length === 0 ? (
+          <p className="p-3 text-[11px] text-center text-slate-400">אין כרטיסים פנויים תואמים</p>
+        ) : options.map(p => (
+          <button key={p.player_id} onClick={() => onPick(p.player_id)}
+            className="w-full text-right px-2.5 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors">
+            <span className="font-semibold text-slate-800 dark:text-slate-100">{p.player_name}</span>
+            <span className="text-slate-400"> · {p.team_name || "ללא קבוצה"}</span>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

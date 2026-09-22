@@ -41,3 +41,30 @@
 -- alter table public.medical_certificates add constraint medical_certificates_status_check
 --   check (status = any (array['pending','approved','rejected']));
 -- (then restore review_medical_certificate + notify_medical_decision from git history)
+
+-- ---------------------------------------------------------------------------
+-- RE-INSPECTION SWEEP, 2026-09-22. Applied as `medical_reinspection_sweep_v2`.
+--
+-- Everyone had been approved once under the old one-stage rule; the league wanted
+-- every one of them re-checked by a league manager under the new one. All 23
+-- currently-valid approved certificates went back to 'pending_manager' with
+-- reinspection = true.
+--
+-- This BLOCKED PLAY for all 23, and only 10 players are registered in Podium so
+-- far, so most cannot be cleared until they finish federation registration. The
+-- numbers were put to Ariel before running it and the hard sweep was chosen over
+-- the two softer options.
+--
+-- Deliberately excluded: the one EXPIRED approved certificate. It already blocks
+-- play, and making it 'open' would trip medical_certificates_one_open and stop
+-- that player uploading the replacement he actually needs.
+--
+-- trg_notify_medical_decision was disabled for the update: it notifies every LM and
+-- admin per row, so 23 rows would have been ~200 bell entries and pushes. One
+-- 'medical_reinspection' summary went to each of the 9 reviewers instead.
+--
+-- ---------- rollback (restores play for everyone swept) ----------
+-- alter table public.medical_certificates disable trigger trg_notify_medical_decision;
+-- update public.medical_certificates set status='approved', reinspection=false
+--  where reinspection and status='pending_manager';
+-- alter table public.medical_certificates enable trigger trg_notify_medical_decision;

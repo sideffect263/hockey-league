@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { getPendingManagerMedical, approveMedicalPodium, revokeMedical, signMedical } from "@/lib/medical"
-import { ShieldCheck, Check, X, Eye, RefreshCw, Clock, BadgeCheck, Link2Off, Wallet } from "lucide-react"
+import { ShieldCheck, Check, X, Eye, RefreshCw, Clock, BadgeCheck, Link2Off, Wallet, RotateCcw } from "lucide-react"
 import { format } from "date-fns"
 
 /**
@@ -66,6 +66,9 @@ export default function MedicalPodiumReview() {
     if (url) window.open(url, "_blank", "noopener,noreferrer")
   }
 
+  const reinspecting = (items || []).filter(i => i.reinspection).length
+  const notInPodium = (items || []).filter(i => !i.in_podium).length
+
   if (denied || items === null) return null
 
   return (
@@ -87,7 +90,20 @@ export default function MedicalPodiumReview() {
       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
         המאמן כבר אישר את הבדיקה הרפואית. נותר לוודא שהשחקן רשום בפודיום — עד לאישור כאן
         השחקן <strong>אינו יכול להירשם למשחקים</strong>.
+        {reinspecting > 0 && <> {" "}
+          <strong>{reinspecting}</strong> מתוכם סומנו לבדיקה חוזרת — שחקנים שאושרו בעבר
+          וממתינים כעת לאישור מחדש.</>}
       </p>
+
+      {/* The ones with no Podium record cannot be cleared by anyone yet, however fast
+          the manager works — say so once, up front, instead of letting her discover
+          it row by row. */}
+      {notInPodium > 0 && (
+        <div className="card p-3 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-300">
+          <strong>{notInPodium}</strong> מהשחקנים ברשימה עדיין לא נרשמו בפודיום, ולכן לא
+          ניתן לאשר אותם כעת — יש להשלים את הרישום לאיגוד תחילה. הם מוצגים בתחתית הרשימה.
+        </div>
+      )}
 
       {error && (
         <div className="card p-3 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-400">{error}</div>
@@ -137,6 +153,11 @@ export default function MedicalPodiumReview() {
                     {item.podium_matched_by === "name" && (
                       <Chip tone="amber" Icon={Clock} label="שויך לפי שם בלבד" />
                     )}
+                    {/* A swept row is not a new player — he was cleared under the old
+                        one-stage rule and is blocked right now by our own sweep. */}
+                    {item.reinspection && (
+                      <Chip tone="blue" Icon={RotateCcw} label="בדיקה חוזרת" />
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -171,6 +192,7 @@ const CHIP_TONES = {
   red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
   amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
   slate: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+  blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
 }
 
 function Chip({ tone, Icon, label }) {

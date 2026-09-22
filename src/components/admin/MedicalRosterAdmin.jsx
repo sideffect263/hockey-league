@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { getMedicalRoster, signMedical, getPlayerMedicalCerts, revokeMedical, setMedicalExamDate } from "@/lib/medical"
-import { HeartPulse, RefreshCw, Search, Eye, Ban, CalendarClock, X, Loader2 } from "lucide-react"
+import { HeartPulse, RefreshCw, Search, Eye, Ban, CalendarClock, X, Loader2, BadgeCheck, Link2Off, Wallet } from "lucide-react"
 import { format } from "date-fns"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
@@ -13,12 +13,18 @@ const MED_SORT_OPTIONS = [
   { key: "name", label: "שם", dir: "asc" },
   { key: "team", label: "קבוצה", dir: "asc" },
   { key: "expiry", label: "תפוגה", dir: "asc" },
+  // Ascending puts "not registered" / "not paid" first — the rows someone has to
+  // chase. A sort that opened on the people who are already fine would be useless.
+  { key: "podium", label: "פודיום", dir: "asc" },
+  { key: "paid", label: "תשלום", dir: "asc" },
 ]
 const MED_ACCESSORS = {
   severity: r => MED_SEVERITY[r.st.key] ?? 9,
   name: r => `${r.first_name} ${r.last_name}`.trim(),
   team: r => r.team_name || "",
   expiry: r => (r.valid_until ? new Date(r.valid_until).getTime() : null),
+  podium: r => (r.in_podium ? 1 : 0),
+  paid: r => (r.podium_paid ? 1 : 0),
 }
 
 /**
@@ -105,12 +111,16 @@ export default function MedicalRosterAdmin() {
     valid: decorated.filter(r => r.st.key === "valid").length,
     expiring: decorated.filter(r => r.st.key === "expiring").length,
     issues: decorated.filter(r => !["valid", "expiring"].includes(r.st.key)).length,
+    noPodium: decorated.filter(r => !r.in_podium).length,
+    unpaid: decorated.filter(r => r.in_podium && !r.podium_paid).length,
     total: decorated.length,
   }), [decorated])
 
   const shown = sortItems(decorated.filter(r => {
     if (filter === "issues" && ["valid", "expiring"].includes(r.st.key)) return false
     if (filter === "expiring" && r.st.key !== "expiring") return false
+    if (filter === "no_podium" && r.in_podium) return false
+    if (filter === "unpaid" && !(r.in_podium && !r.podium_paid)) return false
     if (q.trim()) {
       const hay = `${r.first_name} ${r.last_name} ${r.team_name || ""}`.toLowerCase()
       if (!hay.includes(q.trim().toLowerCase())) return false
@@ -149,6 +159,8 @@ export default function MedicalRosterAdmin() {
       <div className="flex items-center gap-2 flex-wrap">
         <FilterBtn id="issues" label="בעיות" n={counts.issues} />
         <FilterBtn id="expiring" label="פג בקרוב" n={counts.expiring} />
+        <FilterBtn id="no_podium" label="לא בפודיום" n={counts.noPodium} />
+        <FilterBtn id="unpaid" label="לא שילמו" n={counts.unpaid} />
         <FilterBtn id="all" label="הכל" n={counts.total} />
         <div className="relative flex-1 min-w-[160px]">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -172,6 +184,8 @@ export default function MedicalRosterAdmin() {
                   <th className="text-right font-bold px-4 py-2.5">שחקן</th>
                   <th className="text-right font-bold px-3 py-2.5">קבוצה</th>
                   <th className="text-right font-bold px-3 py-2.5">סטטוס רפואי</th>
+                  <th className="text-right font-bold px-3 py-2.5">פודיום</th>
+                  <th className="text-right font-bold px-3 py-2.5">תשלום</th>
                   <th className="text-right font-bold px-3 py-2.5">תאריך בדיקה</th>
                   <th className="text-right font-bold px-3 py-2.5">מסמך</th>
                   <th className="text-right font-bold px-3 py-2.5">פעולות</th>
@@ -183,6 +197,21 @@ export default function MedicalRosterAdmin() {
                     <td className="px-4 py-2.5 font-semibold text-slate-900 dark:text-white whitespace-nowrap">{r.first_name} {r.last_name}</td>
                     <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">{r.team_name || "—"}</td>
                     <td className="px-3 py-2.5"><span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded ${r.st.cls}`}>{r.st.label}</span></td>
+                    {/* Did he do the federation process at all — the question Uri's
+                        stage 2 exists to answer, answered before she opens the row. */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {r.in_podium
+                        ? <PodiumChip tone="emerald" Icon={BadgeCheck} label="רשום" title={r.podium_club || ""} />
+                        : <PodiumChip tone="slate" Icon={Link2Off} label="לא רשום" />}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {!r.in_podium
+                        ? <span className="text-slate-300 dark:text-slate-600">—</span>
+                        : r.podium_paid
+                          ? <PodiumChip tone="emerald" Icon={Wallet} label="שולם"
+                              title={r.podium_paid_at ? format(new Date(r.podium_paid_at), "d/M/yyyy") : ""} />
+                          : <PodiumChip tone="red" Icon={Wallet} label="לא שולם" />}
+                    </td>
                     <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
                       {r.exam_date ? format(new Date(r.exam_date), "d/M/yy") : <span className="text-slate-300 dark:text-slate-600">—</span>}
                     </td>
@@ -279,5 +308,20 @@ export default function MedicalRosterAdmin() {
         </div>
       )}
     </div>
+  )
+}
+
+const PODIUM_TONES = {
+  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  slate: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+}
+
+function PodiumChip({ tone, Icon, label, title }) {
+  return (
+    <span title={title || undefined}
+      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${PODIUM_TONES[tone]}`}>
+      <Icon className="w-3 h-3" /> {label}
+    </span>
   )
 }
