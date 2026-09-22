@@ -19,7 +19,8 @@
 // Needs, in the environment or in a gitignored .env.podium beside this repo:
 //   PODIUM_USER, PODIUM_PASS      — the federation login
 //   SUPABASE_SERVICE_ROLE_KEY     — writes bypass RLS; these tables are admin-only
-// Optional: PODIUM_DISTRICT (defaults to rink hockey), PODIUM_SEASON_ID.
+// Optional: PODIUM_DISTRICT (defaults to rink hockey), PODIUM_SEASON_ID (pins the
+// season; normally resolved automatically).
 // ============================================================================
 import { readFileSync, existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
@@ -103,9 +104,35 @@ async function api(s, path, params = {}) {
   return res.json();
 }
 
+/**
+ * The athlete list REFUSES a filter without staticSeason (400 Bad Request), so the
+ * season id has to be resolved, not omitted. get_chosen_seasons_stock returns both
+ * the season currently selected in the UI and the full id->label list.
+ *
+ * Preference order: the season matching THIS season's label (Israeli seasons flip in
+ * August, e.g. "2026/27"), then whatever the UI has selected, then the newest listed.
+ * Matching on the label means a rollover needs no redeploy — and it does not quietly
+ * follow whoever last changed the season dropdown in Podium.
+ */
+async function resolveSeasonId(s) {
+  if (SEASON_ID) return SEASON_ID;
+  const j = await api(s, "get_chosen_seasons_stock");
+  const seasons = j?.seasons ?? [];
+  const y = new Date().getFullYear();
+  const startYear = new Date().getMonth() >= 7 ? y : y - 1; // month is 0-based; 7 = August
+  const label = `${startYear}/${String(startYear + 1).slice(2)}`;
+  const byLabel = seasons.find((x) => (x.text ?? "").trim() === label);
+  if (byLabel?.id) return byLabel.id;
+  const chosen = j?.chosenSeasons?.[0];
+  if (chosen) return chosen;
+  return seasons[seasons.length - 1]?.id ?? "";
+}
+
 async function fetchAthletes(s) {
-  const filter = { staticDistrict: [DISTRICT] };
-  if (SEASON_ID) filter.staticSeason = [SEASON_ID];
+  const season = await resolveSeasonId(s);
+  if (!season) throw new Error("could not resolve a Podium season id");
+  console.log(`  season ${season}`);
+  const filter = { staticSeason: [season], staticDistrict: [DISTRICT] };
   const q = encodeParam(filter);
   const sort = encodeParam({ field: "name", direction: "asc" });
   const out = [];

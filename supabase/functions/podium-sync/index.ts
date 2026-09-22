@@ -36,8 +36,8 @@ const PODIUM_PASS = Deno.env.get("PODIUM_PASS") ?? "";
 const BASE = "https://podiumcomp.com";
 // The federation runs ten sports in one system; we only want ours.
 const DISTRICT = Deno.env.get("PODIUM_DISTRICT") ?? "ענף הוקי גלגיליות - Rink Hockey";
-// Optional pin. Left empty, the sync takes whatever season Podium reports for the
-// athletes it returns, so a season rollover needs no redeploy.
+// Optional pin. Left empty, the season is resolved from Podium at run time
+// (resolveSeasonId) — the athlete list rejects a filter without one.
 const SEASON_ID = Deno.env.get("PODIUM_SEASON_ID") ?? "";
 
 const admin = createClient(SB_URL, SB_SERVICE_ROLE, {
@@ -109,10 +109,37 @@ async function api(s: Session, path: string, params: Record<string, string> = {}
   return res.json();
 }
 
+/**
+ * The athlete list REFUSES a filter without staticSeason (400 Bad Request), so the
+ * season id has to be resolved, not omitted. get_chosen_seasons_stock returns both
+ * the season currently selected in the UI and the full id->label list.
+ *
+ * Preference order: the season matching THIS season's label (Israeli seasons flip in
+ * August, e.g. "2026/27"), then whatever the UI has selected, then the newest listed.
+ * Matching on the label means a rollover needs no redeploy — and it does not quietly
+ * follow whoever last changed the season dropdown in Podium.
+ */
+async function resolveSeasonId(s: Session): Promise<string> {
+  if (SEASON_ID) return SEASON_ID;
+  const j = await api(s, "get_chosen_seasons_stock");
+  const seasons: { id?: string; text?: string }[] = j?.seasons ?? [];
+  const y = new Date().getFullYear();
+  const startYear = new Date().getMonth() >= 7 ? y : y - 1; // month is 0-based; 7 = August
+  const label = `${startYear}/${String(startYear + 1).slice(2)}`;
+  const byLabel = seasons.find((x) => (x.text ?? "").trim() === label);
+  if (byLabel?.id) return byLabel.id;
+  const chosen = j?.chosenSeasons?.[0];
+  if (chosen) return chosen;
+  return seasons[seasons.length - 1]?.id ?? "";
+}
+
 /** Every athlete in our district, following Podium's pagination. */
 async function fetchAthletes(s: Session) {
-  const filter: Record<string, string[]> = { staticDistrict: [DISTRICT] };
-  if (SEASON_ID) filter.staticSeason = [SEASON_ID];
+  const season = await resolveSeasonId(s);
+  if (!season) throw new Error("could not resolve a Podium season id");
+  const filter: Record<string, string[]> = {
+    staticSeason: [season], staticDistrict: [DISTRICT],
+  };
   const q = encodeParam(filter);
   const sort = encodeParam({ field: "name", direction: "asc" });
 

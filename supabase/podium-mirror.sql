@@ -32,6 +32,15 @@
 --                Auto-linked but flagged in the UI as the softer link.
 --   'manual'   — podium_link_athlete(), for everything else.
 -- ============================================================================
+-- Also applied: podium_match_athletes_fix_uuid_agg (min(uuid) does not exist in
+-- Postgres — the tier-2 update raised and rolled back tier 1 with it, so the first
+-- real sync found 14 athletes and linked 0) and podium_unmatched_allow_service_role.
+--
+-- FIRST REAL SYNC, 2026-09-22: 14 athletes, 39 payment rows, 10 linked (7 name+dob,
+-- 3 name-only). The 4 that did not link are all spelling variants of real player
+-- cards — Latin vs Hebrew script, and ו/וו, and לילייב vs לבייב — which is what the
+-- manual podium_link_athlete() path is for.
+--
 -- See the applied migrations for the full statements. Tables: podium_athletes,
 -- podium_payments, podium_sync_runs. RPCs: podium_match_athletes,
 -- podium_link_athlete, podium_payment_overview, podium_unmatched_athletes,
