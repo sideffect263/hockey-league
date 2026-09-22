@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
-import { getPaymentOverview, getUnmatchedAthletes, getLastSync, runPodiumSync, linkPodiumAthlete, isCloudflareBlock, CLOUDFLARE_BLOCKED } from "@/lib/podium"
-import { Wallet, RefreshCw, AlertTriangle, Check, X, Link2Off, Link2, Search } from "lucide-react"
+import { getPaymentOverview, getUnmatchedAthletes, getLastSync, runPodiumSync, linkPodiumAthlete, createPlayerForAthlete, isCloudflareBlock, CLOUDFLARE_BLOCKED } from "@/lib/podium"
+import { getTeams } from "@/lib/api"
+import { Wallet, RefreshCw, AlertTriangle, Check, X, Link2Off, Link2, Search, UserPlus } from "lucide-react"
 import { format } from "date-fns"
 
 /**
@@ -25,6 +26,8 @@ export default function PaymentsAdmin() {
   const [q, setQ] = useState("")
   const [filter, setFilter] = useState("unpaid") // unpaid | all | missing
   const [linking, setLinking] = useState(null)   // podium_id being linked
+  const [creating, setCreating] = useState(null) // podium_id getting a new card
+  const [teams, setTeams] = useState([])
 
   const load = async () => {
     try {
@@ -33,6 +36,7 @@ export default function PaymentsAdmin() {
         getPaymentOverview(), getUnmatchedAthletes(), getLastSync(),
       ])
       setRows(ov); setUnmatched(un); setSync(s)
+      getTeams("name", true).then(t => setTeams(t || [])).catch(() => {})
     } catch (e) {
       if (e?.message === "not-authorized") { setDenied(true); setRows([]) }
       else { setError("שגיאה בטעינת הנתונים"); setRows([]) }
@@ -57,6 +61,17 @@ export default function PaymentsAdmin() {
     setLinking(null); setError(null)
     try { await linkPodiumAthlete(podiumId, playerId); await load() }
     catch (e) { setError(e?.message || "השיוך נכשל") }
+  }
+
+  /**
+   * Give a Podium athlete a player card. Creates the card and links it — it does NOT
+   * create a medical certificate: his physical lives in Podium, no coach here has
+   * seen it, and the two-stage review exists precisely so somebody does.
+   */
+  const createCard = async (athlete, teamId, position) => {
+    setCreating(null); setError(null)
+    try { await createPlayerForAthlete(athlete, { teamId, position }); await load() }
+    catch (e) { setError(e?.message || "יצירת הכרטיס נכשלה") }
   }
 
   const visible = useMemo(() => {
@@ -189,7 +204,10 @@ export default function PaymentsAdmin() {
             רשומים בפודיום ללא כרטיס שחקן אצלנו ({unmatched.length})
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            נרשמו לאיגוד אך אין להם כרטיס שחקן באתר — יש ליצור כרטיס או לשייך ידנית.
+            נרשמו לאיגוד, שילמו והעלו בדיקה רפואית בפודיום — אך אין להם כרטיס שחקן באתר,
+            ולכן <strong>לא ניתן לאשר אותם כלל</strong>: האישור הרפואי נתלה בכרטיס שחקן.
+            יש לשייך לכרטיס קיים או ליצור כרטיס חדש. לאחר מכן השחקן יעלה בדיקה רפואית
+            כרגיל ויעבור את שני שלבי האישור — הבדיקה שבפודיום לא נבדקה על ידי אף אחד כאן.
           </p>
           {unmatched.map(u => (
             <div key={u.podium_id} className="card p-3 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -207,11 +225,21 @@ export default function PaymentsAdmin() {
                   onCancel={() => setLinking(null)}
                   onPick={(playerId) => link(u.podium_id, playerId)}
                 />
+              ) : creating === u.podium_id ? (
+                <NewCardForm athlete={u} teams={teams}
+                  onCancel={() => setCreating(null)}
+                  onCreate={(teamId, position) => createCard(u, teamId, position)} />
               ) : (
-                <button onClick={() => setLinking(u.podium_id)}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity shrink-0">
-                  <Link2 className="w-3.5 h-3.5" /> שיוך לשחקן
-                </button>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button onClick={() => setLinking(u.podium_id)}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <Link2 className="w-3.5 h-3.5" /> שיוך לכרטיס קיים
+                  </button>
+                  <button onClick={() => setCreating(u.podium_id)}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity">
+                    <UserPlus className="w-3.5 h-3.5" /> יצירת כרטיס
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -286,6 +314,55 @@ function PlayerPicker({ players, onPick, onCancel }) {
             <span className="text-slate-400"> · {p.team_name || "ללא קבוצה"}</span>
           </button>
         ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Create a player card from a Podium athlete. Name and birth date come from Podium;
+ * team and position cannot, because Podium's club is not our team — one club fields
+ * several teams across age groups (בית לחם הגלילית is both בלג בוגרים and בלג נוער),
+ * so guessing would put people on the wrong squad. The club is shown as a hint and
+ * the choice is left to the person creating the card.
+ *
+ * Position is exactly two values league-wide, so it is a two-option control, never
+ * free text.
+ */
+function NewCardForm({ athlete, teams, onCreate, onCancel }) {
+  const [teamId, setTeamId] = useState("")
+  const [position, setPosition] = useState("Field Player")
+
+  return (
+    <div className="w-full sm:w-96 shrink-0 space-y-2 border-t sm:border-t-0 sm:border-r border-slate-100 dark:border-slate-700/50 pt-2 sm:pt-0 sm:pr-3">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+        כרטיס עבור <strong className="text-slate-800 dark:text-slate-100">{athlete.full_name}</strong>
+        {athlete.club && <> · בפודיום: {athlete.club}</>}
+      </p>
+      <select value={teamId} onChange={e => setTeamId(e.target.value)}
+        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/30">
+        <option value="">ללא קבוצה (שחקן חופשי)</option>
+        {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+      </select>
+      <div className="flex items-center gap-1.5">
+        {[["Field Player", "שחקן מגרש"], ["Goalkeeper", "שוער"]].map(([v, label]) => (
+          <button key={v} onClick={() => setPosition(v)}
+            className={`flex-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors ${
+              position === v
+                ? "bg-brand text-white border-brand"
+                : "border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+            }`}>{label}</button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <button onClick={() => onCreate(teamId || null, position)}
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors">
+          <Check className="w-3.5 h-3.5" /> יצירה
+        </button>
+        <button onClick={onCancel}
+          className="p-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   )

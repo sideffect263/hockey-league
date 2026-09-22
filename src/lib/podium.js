@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { createPlayer } from './api'
 
 /**
  * Podium mirror (2026-09-22). Players register and pay for the season in
@@ -78,4 +79,31 @@ export async function runPodiumSync() {
     throw new Error(isCloudflareBlock(data.error) ? CLOUDFLARE_BLOCKED : (data.error || 'הסנכרון נכשל'))
   }
   return data
+}
+
+/**
+ * Create a player card for a Podium athlete who has none, and link it.
+ *
+ * Why this exists: a player who did the whole federation process — registered, paid,
+ * uploaded his physical to Podium — is still invisible here until somebody makes him
+ * a card, and approval hangs off a medical_certificates row, which needs a player_id.
+ * Without this the most diligent people are the ones with no route through.
+ *
+ * It creates the CARD only. It does not invent a medical certificate: the physical
+ * lives in Podium, his coach has not seen it here, and manufacturing an approved
+ * certificate from a mirror would hand a player a clean bill of health that nobody in
+ * this league ever looked at. He uploads it and goes through both stages like anyone.
+ */
+export async function createPlayerForAthlete(athlete, { teamId = null, position = 'Field Player' } = {}) {
+  const parts = (athlete.full_name || '').trim().split(/\s+/)
+  const player = {
+    first_name: parts[0] || athlete.full_name || '',
+    last_name: parts.slice(1).join(' ') || '',
+    position,
+    team_id: teamId,
+    birth_date: athlete.birth_date || null,
+  }
+  const created = await createPlayer(player)
+  await linkPodiumAthlete(athlete.podium_id, created.id)
+  return created
 }

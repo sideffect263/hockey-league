@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getPendingManagerMedical, approveMedicalPodium, revokeMedical, signMedical } from "@/lib/medical"
-import { ShieldCheck, Check, X, Eye, RefreshCw, Clock, BadgeCheck, Link2Off, Wallet, RotateCcw } from "lucide-react"
+import { getUnmatchedAthletes } from "@/lib/podium"
+import { ShieldCheck, Check, X, Eye, RefreshCw, Clock, BadgeCheck, Link2Off, Wallet, RotateCcw, UserPlus } from "lucide-react"
 import { format } from "date-fns"
 
 /**
@@ -31,9 +32,17 @@ export default function MedicalPodiumReview() {
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
   const [denied, setDenied] = useState(false)
+  const [cardless, setCardless] = useState([])
 
   const load = async () => {
-    try { setError(null); setItems(await getPendingManagerMedical()) }
+    try {
+      setError(null)
+      setItems(await getPendingManagerMedical())
+      // Podium athletes with no player card never reach this queue at all — there is
+      // no certificate to queue, because a certificate needs a player_id. They are
+      // the most invisible failure mode here, so they get named rather than omitted.
+      getUnmatchedAthletes().then(setCardless).catch(() => {})
+    }
     catch (e) {
       if (e?.message === "not-authorized") { setDenied(true); setItems([]) }
       else { setError("שגיאה בטעינת הרשימה"); setItems([]) }
@@ -102,6 +111,17 @@ export default function MedicalPodiumReview() {
           <strong>{reinspecting}</strong> מתוכם סומנו לבדיקה חוזרת — שחקנים שאושרו בעבר
           וממתינים כעת לאישור מחדש.</>}
       </p>
+
+      {cardless.length > 0 && (
+        <div className="card p-3 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2">
+          <UserPlus className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            <strong>{cardless.length}</strong> שחקנים השלימו את התהליך בפודיום אך אין להם
+            כרטיס שחקן באתר, ולכן הם <strong>אינם מופיעים ברשימה הזו ולא ניתן לאשר אותם</strong>.
+            יש ליצור להם כרטיס בלשונית <a href="/admin?tab=payments" className="underline font-bold">תשלומים</a>.
+          </span>
+        </div>
+      )}
 
       {/* The ones with no Podium record cannot be cleared by anyone yet, however fast
           the manager works — say so once, up front, instead of letting her discover
