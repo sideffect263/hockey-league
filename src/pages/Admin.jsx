@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useAuth } from "@/lib/AuthContext"
 import { useNavigate, Link, useSearchParams } from "react-router-dom"
 import {
@@ -872,6 +872,10 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
   const [showForm, setShowForm] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState(null)
   const [saving, setSaving] = useState(false)
+  // The editor sits above a list of ~100 players. Clicking the pencil on a row
+  // you scrolled down to changed nothing on screen ("edit doesn't work") — bring
+  // the form to the user instead of making them scroll back up to find it.
+  const formRef = useRef(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [sort, setSort] = useState({ key: 'name', dir: 'asc' })
   const [feedback, setFeedback] = useState(null) // { type: 'ok' | 'err', text } — makes save success/failure impossible to miss
@@ -892,6 +896,11 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
     }).catch(() => {})
     return () => { alive = false }
   }, [editingPlayer])
+
+  useEffect(() => {
+    if (!showForm) return
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [showForm, editingPlayer])
 
   const playerSortOptions = [
     { key: 'name', label: 'שם', dir: 'asc' },
@@ -1058,7 +1067,7 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
       <SortBar options={playerSortOptions} sort={sort} onChange={setSort} />
 
       {showForm && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5 space-y-4">
+        <motion.div ref={formRef} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5 space-y-4 scroll-mt-24">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">
               {editingPlayer ? 'עריכת שחקן' : 'שחקן חדש'}
@@ -1185,7 +1194,7 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
       {/* Players List */}
       <div className="card overflow-hidden">
         <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-          {filtered.sort((a, b) => a.first_name.localeCompare(b.first_name)).map(player => (
+          {filtered.map(player => (
             <div key={player.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               <div className="flex items-center gap-3">
                 <TeamLogo team={teamsMap[player.team_id]} size={7} />
