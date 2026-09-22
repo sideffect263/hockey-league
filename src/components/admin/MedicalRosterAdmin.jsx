@@ -39,7 +39,10 @@ function statusOf(row) {
     }
     return { key: "valid", label: "בתוקף", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" }
   }
-  if (row.latest_status === "pending") return { key: "pending", label: "ממתין לאישור", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" }
+  if (row.latest_status === "pending") return { key: "pending", label: "ממתין לאישור המאמן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" }
+  // Stage 2 — the coach signed off, waiting on the manager's פודיום check. Still not
+  // valid, so it must not read as anything close to approved.
+  if (row.latest_status === "pending_manager") return { key: "pending_manager", label: "ממתין לאישור המנהלת", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" }
   if (row.latest_status === "approved") return { key: "expired", label: "פג תוקף", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" }
   if (row.latest_status === "rejected") return { key: "rejected", label: "נדחה", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" }
   return { key: "missing", label: "חסר", cls: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" }

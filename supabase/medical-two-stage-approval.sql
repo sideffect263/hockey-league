@@ -1,0 +1,43 @@
+-- ============================================================================
+-- Two-stage medical approval (Uri's request, 2026-09-22).
+-- APPLIED as migrations `medical_two_stage_approval`,
+-- `medical_pending_manager_queue_coach_name_fix`,
+-- `medical_queue_shows_podium_state_v2`.
+--
+--   pending -> [the team's coach checks the physical] -> pending_manager
+--           -> [a league manager verifies the player is registered in פודיום]
+--           -> approved
+--
+-- Only 'approved' passes can_register_for_game / set_game_availability /
+-- add_player_to_squad, so a certificate parked in pending_manager keeps the player
+-- off the sheet. That is the point: Uri wants the federation registration checked
+-- before anyone plays, not after.
+--
+-- Deliberate: an "approve" ALWAYS lands in pending_manager, whoever clicks it —
+-- including a manager reviewing a fresh upload. That costs her one extra click in
+-- a rare case and buys "approved means somebody checked פודיום" with no exceptions.
+--
+-- Found on the way: league_manager could not SELECT medical_certificates at all.
+-- She could read the FILES (storage policy) and the statuses (medical_roster RPC),
+-- but not the rows — so stage 2 would have shown her an empty queue forever.
+-- ============================================================================
+-- See the applied migrations for the full statements. Summary:
+--   * status CHECK gains 'pending_manager'
+--   * medical_certificates_one_pending -> medical_certificates_one_open, covering
+--     ('pending','pending_manager') so a new upload cannot shadow a cert that is
+--     waiting on the manager
+--   * new columns: coach_reviewed_at/by, podium_registered,
+--     podium_verified_at/by
+--   * review_medical_certificate: 'approved' now writes 'pending_manager'
+--   * approve_medical_podium(id, registered) — LM/admin, the stage-2 finaliser
+--   * pending_manager_medical() — the queue, joined to the Podium mirror so the
+--     manager sees registration + payment state without leaving the page
+--   * notify_medical_decision: 'medical_pending_manager' to every league_manager +
+--     admin, 'medical_coach_approved' to the player
+--
+-- ---------- rollback ----------
+-- update public.medical_certificates set status = 'approved' where status = 'pending_manager';
+-- alter table public.medical_certificates drop constraint medical_certificates_status_check;
+-- alter table public.medical_certificates add constraint medical_certificates_status_check
+--   check (status = any (array['pending','approved','rejected']));
+-- (then restore review_medical_certificate + notify_medical_decision from git history)

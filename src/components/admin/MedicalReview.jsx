@@ -4,10 +4,16 @@ import { HeartPulse, Check, X, Eye, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 
 /**
- * Coach/admin review of pending medical certificates (#2). "View" opens a short-lived
- * signed URL to the private file; approve/reject go through the review_medical_certificate
- * RPC (self-gated to the player's coach or an admin). RLS already scopes the fetch to the
- * coach's team; coachTeamIds is a matching client-side guard. Hidden when empty.
+ * Coach/admin review of pending medical certificates (#2) — STAGE 1 of two. "View"
+ * opens a short-lived signed URL to the private file; approve/reject go through the
+ * review_medical_certificate RPC (self-gated to the player's coach or an admin). RLS
+ * already scopes the fetch to the coach's team; coachTeamIds is a matching client-side
+ * guard. Hidden when empty.
+ *
+ * Approving here does NOT let the player play: it hands the certificate to a league
+ * manager to verify he is registered in פודיום (MedicalPodiumReview). The button copy
+ * says so, because a coach who thinks he just cleared a player would find out on a
+ * Saturday morning otherwise.
  */
 export default function MedicalReview({ coachTeamIds = null }) {
   const [items, setItems] = useState(null)
@@ -56,6 +62,10 @@ export default function MedicalReview({ coachTeamIds = null }) {
         </button>
       </div>
 
+      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+        לאחר אישורך הבקשה עוברת לאימות רישום בפודיום אצל מנהלת הליגה — רק לאחר מכן השחקן יוכל להירשם למשחקים.
+      </p>
+
       {error && (
         <div className="card p-3 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-400">{error}</div>
       )}
@@ -83,7 +93,7 @@ export default function MedicalReview({ coachTeamIds = null }) {
                 </button>
                 <button onClick={() => act(item, "approved")} disabled={busy}
                   className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50">
-                  <Check className="w-3.5 h-3.5" /> אישור
+                  <Check className="w-3.5 h-3.5" /> אישור והעברה למנהלת
                 </button>
                 <button onClick={() => act(item, "rejected")} disabled={busy}
                   className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">

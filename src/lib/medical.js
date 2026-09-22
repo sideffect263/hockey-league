@@ -6,6 +6,12 @@ import { supabase } from './supabase'
  * pending medical_certificates row is created; the team's coach (or an admin) views
  * it via a short-lived signed URL and approves/rejects. Files are never public —
  * only the player, their coach, and admins can read them (storage RLS).
+ *
+ * Approval is TWO stages (Uri, 2026-09-22):
+ *   pending -> [coach checks the physical] -> pending_manager
+ *           -> [league manager verifies the player is registered in פודיום] -> approved
+ * Only 'approved' lets a player register for a game or be squadded, so a certificate
+ * sitting in pending_manager deliberately keeps him off the sheet.
  */
 
 /** Upload the player's physical to the private bucket + create a pending cert row. */
@@ -90,8 +96,11 @@ export async function getPendingMedical() {
 }
 
 /**
- * Approve/reject via the self-gated RPC (coach-of-team or admin). On approval the
- * coach must pass the exam date (yyyy-mm-dd); the server derives expires_at = +1 year.
+ * Stage 1. Approve/reject via the self-gated RPC (coach-of-team, league manager or
+ * admin). On approval the reviewer must pass the exam date (yyyy-mm-dd); the server
+ * derives expires_at = +1 year and moves the row to 'pending_manager' — NOT to
+ * 'approved'. That holds for a manager reviewing a fresh upload too, so that
+ * "approved" always means somebody checked פודיום.
  */
 export async function reviewMedical(id, status, examDate = null) {
   const { error } = await supabase.rpc('review_medical_certificate', {
@@ -151,5 +160,38 @@ export async function setMedicalExamDate(certId, examDate) {
     if (/required/i.test(m)) throw new Error('יש לבחור תאריך בדיקה')
     if (/not authorized/i.test(m)) throw new Error('אין לך הרשאה לשנות תאריך בדיקה')
     throw new Error('עדכון התאריך נכשל')
+  }
+}
+
+/**
+ * Stage 2 queue — certificates a coach has approved that are waiting on a league
+ * manager to confirm the player is registered in פודיום. LM/admin only; a dedicated
+ * RPC rather than a table read because the join to player+team is server-side.
+ */
+export async function getPendingManagerMedical() {
+  const { data, error } = await supabase.rpc('pending_manager_medical')
+  if (error) {
+    if (/not authorized/i.test(error.message || '')) throw new Error('not-authorized')
+    throw error
+  }
+  return data || []
+}
+
+/**
+ * Stage 2 decision. registered=true finalises the certificate ('approved' — the player
+ * can now be registered for games). registered=false records that a manager looked and
+ * the player is NOT in פודיום yet: the row stays in the queue, it does not get
+ * rejected, because the medical itself is fine and nothing needs re-uploading.
+ * Rejecting outright is revokeMedical(), which carries a reason to the player.
+ */
+export async function approveMedicalPodium(certId, registered = true) {
+  const { error } = await supabase.rpc('approve_medical_podium', {
+    p_id: certId, p_registered: registered,
+  })
+  if (error) {
+    const m = error.message || ''
+    if (/not authorized/i.test(m)) throw new Error('אין לך הרשאה לאשר רישום בפודיום')
+    if (/not awaiting manager/i.test(m)) throw new Error('האישור כבר טופל — רענן את הרשימה')
+    throw new Error('הפעולה נכשלה')
   }
 }
