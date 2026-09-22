@@ -41,6 +41,22 @@
 -- cards — Latin vs Hebrew script, and ו/וו, and לילייב vs לבייב — which is what the
 -- manual podium_link_athlete() path is for.
 --
+-- 2026-09-22, later the same day:
+--  * podium_backfill_birth_dates — the matcher now fills players.birth_date from a
+--    linked athlete wherever we have none. players has no ID column and most cards
+--    had no birth date, which is exactly why tier 1 matched so little; every date
+--    learned makes the NEXT sync match on the stronger rule. Only ever fills a NULL,
+--    so a hand-entered date is never overwritten by a mirror and a bad link cannot
+--    rewrite a real player's record.
+--  * approve_medical_podium_no_manual_flag — dropped the (uuid, boolean) form. The
+--    "טרם בפודיום" button predated this mirror; the sync now answers that for the
+--    whole roster, so approving means one thing and the manager is not asked to
+--    hand-copy what the row already says.
+--  * 3 spelling variants linked by hand (Ariel Biton/אריאל ביטון, גל חליוה/גלי
+--    חליווה, עידן לילייב/עידן לבייב); 13 of 14 athletes are now linked. The one
+--    left, יובל רוזנבלט, genuinely has no player card. Verified that a re-sync
+--    preserves manual links — the upsert payload deliberately omits player_id.
+--
 -- See the applied migrations for the full statements. Tables: podium_athletes,
 -- podium_payments, podium_sync_runs. RPCs: podium_match_athletes,
 -- podium_link_athlete, podium_payment_overview, podium_unmatched_athletes,

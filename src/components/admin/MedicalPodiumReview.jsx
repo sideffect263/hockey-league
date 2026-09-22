@@ -12,11 +12,13 @@ import { format } from "date-fns"
  * is the thing standing between a player and the score sheet — it shows how long
  * each one has been waiting rather than hiding it.
  *
- * Three outcomes:
- *   אישור      -> approved. Done, the player can play.
- *   טרם בפודיום -> stays in the queue, but records that a manager looked (so the next
- *                 manager does not repeat the lookup).
- *   דחייה      -> revoke, with a reason that reaches the player and his coach.
+ * Two outcomes:
+ *   אישור  -> approved. Done, the player can play.
+ *   דחייה  -> revoke, with a reason that reaches the player and his coach.
+ *
+ * There used to be a third, "טרם בפודיום", from before the Podium mirror existed —
+ * a manager pressing a button to record what the sync now tells us about the whole
+ * roster at once. Removed: the row states it, she does not have to.
  *
  * Each row also carries what the Podium mirror already knows (src/lib/podium.js) —
  * whether he is registered there, whether he paid this season, and when his Podium
@@ -39,13 +41,19 @@ export default function MedicalPodiumReview() {
   }
   useEffect(() => { load() }, [])
 
-  const confirm = async (item, registered) => {
+  /**
+   * The mirror is only as fresh as the last sync, so a player who registered this
+   * morning can still read as "not in Podium". The approve button is therefore never
+   * disabled on that basis — it just asks first, so the default is right and the
+   * manager keeps the final say.
+   */
+  const confirm = async (item) => {
+    if (!item.in_podium && !window.confirm(
+      `${item.player_name} לא נמצא בפודיום לפי הסנכרון האחרון.\n\nלאשר בכל זאת?`)) return
     setBusyId(item.id); setError(null)
     try {
-      await approveMedicalPodium(item.id, registered)
-      if (registered) setItems(prev => (prev || []).filter(i => i.id !== item.id))
-      else setItems(prev => (prev || []).map(i => i.id === item.id
-        ? { ...i, podium_verified_at: new Date().toISOString() } : i))
+      await approveMedicalPodium(item.id)
+      setItems(prev => (prev || []).filter(i => i.id !== item.id))
     } catch (e) { setError(e?.message || "הפעולה נכשלה") }
     finally { setBusyId(null) }
   }
@@ -136,7 +144,6 @@ export default function MedicalPodiumReview() {
                     <Clock className="w-3 h-3" />
                     ממתין {days === 0 ? "מהיום" : `${days} ${days === 1 ? "יום" : "ימים"}`}
                     {item.coach_name && <> · אישר {item.coach_name}</>}
-                    {item.podium_verified_at && <> · נבדק ולא נמצא בפודיום</>}
                   </p>
                   {/* What the Podium mirror already knows — a hint, not a decision. */}
                   <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
@@ -165,13 +172,15 @@ export default function MedicalPodiumReview() {
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     <Eye className="w-3.5 h-3.5" /> צפייה בבדיקה
                   </button>
-                  <button onClick={() => confirm(item, true)} disabled={busy}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50">
-                    <Check className="w-3.5 h-3.5" /> רשום בפודיום — אישור
-                  </button>
-                  <button onClick={() => confirm(item, false)} disabled={busy}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors disabled:opacity-50">
-                    <Clock className="w-3.5 h-3.5" /> טרם בפודיום
+                  {/* Emphasis follows the mirror: a confirmed row gets the primary
+                      button, an unconfirmed one a muted "anyway" that asks first. */}
+                  <button onClick={() => confirm(item)} disabled={busy}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+                      item.in_podium
+                        ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                        : "border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    }`}>
+                    <Check className="w-3.5 h-3.5" /> {item.in_podium ? "אישור" : "אישור בכל זאת"}
                   </button>
                   <button onClick={() => reject(item)} disabled={busy}
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">

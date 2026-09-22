@@ -178,16 +178,16 @@ export async function getPendingManagerMedical() {
 }
 
 /**
- * Stage 2 decision. registered=true finalises the certificate ('approved' — the player
- * can now be registered for games). registered=false records that a manager looked and
- * the player is NOT in פודיום yet: the row stays in the queue, it does not get
- * rejected, because the medical itself is fine and nothing needs re-uploading.
- * Rejecting outright is revokeMedical(), which carries a reason to the player.
+ * Stage 2 decision: finalise the certificate. The player can be registered for games
+ * from here.
+ *
+ * There is deliberately no "not in פודיום yet" action any more — the sync answers
+ * that for the whole roster continuously, so asking a manager to re-state it by hand
+ * was asking her to do the mirror's job. Rejecting outright is revokeMedical(),
+ * which carries a reason to the player and his coach.
  */
-export async function approveMedicalPodium(certId, registered = true) {
-  const { error } = await supabase.rpc('approve_medical_podium', {
-    p_id: certId, p_registered: registered,
-  })
+export async function approveMedicalPodium(certId) {
+  const { error } = await supabase.rpc('approve_medical_podium', { p_id: certId })
   if (error) {
     const m = error.message || ''
     if (/not authorized/i.test(m)) throw new Error('אין לך הרשאה לאשר רישום בפודיום')
