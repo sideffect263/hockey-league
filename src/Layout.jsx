@@ -11,7 +11,8 @@ import {
   BookOpen,
   Coins,
   ChevronDown,
-  MoreHorizontal
+  MoreHorizontal,
+  Gamepad2
 } from "lucide-react"
 import { Rink, Standings, Crossed, Teams, Player, Whistle, Stats, Camera, Edit, Clipboard } from "./components/icons/HockeyIcons"
 import { useAuth } from "./lib/AuthContext"
@@ -231,6 +232,10 @@ export default function Layout({ children }) {
     // instead, so "מדיה" is hidden for them unless they are also an admin.
     ...((!isContentEditor || isAdmin) ? [{ title: "מדיה", url: "/media", icon: NavCamera }] : []),
     { title: "מדריך", url: "/guide", icon: BookOpen },
+    // Unlike הוקי מרקט below, the career game is public: it needs no account,
+    // touches no league data, and is the one page here a visitor who has never
+    // heard of the sport might actually stay on.
+    { title: "ליגיונר", url: "/career", icon: Gamepad2 },
     // הוקי מרקט is signed-in only: the page is gated to 18+ league players
     // anyway, and the public site should not advertise a betting board to the
     // youth-team visitors who make up much of its traffic.

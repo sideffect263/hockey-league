@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Lock, CircleCheck, Ban, Clock, TrendingUp } from 'lucide-react'
+import { Lock, CircleCheck, Ban, Clock, TrendingUp, Flame } from 'lucide-react'
 import TeamLogo from '@/components/TeamLogo'
 import { pct, CONFLICT_COPY } from '@/lib/market'
 
@@ -96,21 +96,26 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
       )}
 
       <div className="space-y-1.5">
-        {shown.map(o => (
-          <div key={o.id} className="mkt-bar flex items-center gap-2 px-2.5 py-2">
-            <div className="mkt-bar-fill" style={{ width: `${Math.round(o.price * 100)}%` }} />
-            <div className="relative flex items-center gap-2 min-w-0 flex-1">
-              <OutcomeFace outcome={o} size={6} />
-              <span className="text-[13px] font-semibold text-fg-soft truncate">{o.label}</span>
-              {myShares[o.id]?.shares > 0 && (
-                <span className="stat-pill bg-brand/15 text-brand text-[10px] px-1.5 py-0 shrink-0">שלי</span>
-              )}
+        {shown.map((o, i) => {
+          const leading = i === 0 && shown.length > 1
+          return (
+            <div key={o.id}
+              className={`mkt-bar flex items-center gap-2 px-2.5 py-2 ${leading ? 'ring-1 ring-inset ring-brand/30' : ''}`}>
+              <div className={`mkt-bar-fill ${leading ? 'bg-brand/25' : ''}`} style={{ width: `${Math.round(o.price * 100)}%` }} />
+              <div className="relative flex items-center gap-2 min-w-0 flex-1">
+                <OutcomeFace outcome={o} size={6} />
+                <span className="text-[13px] font-semibold text-fg-soft truncate">{o.label}</span>
+                {leading && <Flame className="w-3 h-3 text-gold shrink-0" />}
+                {myShares[o.id]?.shares > 0 && (
+                  <span className="stat-pill bg-brand/15 text-brand text-[10px] px-1.5 py-0 shrink-0">שלי</span>
+                )}
+              </div>
+              <span className={`relative mkt-num text-sm font-bold shrink-0 ${leading ? 'text-brand' : 'text-fg-strong'}`}>
+                {pct(o.price)}
+              </span>
             </div>
-            <span className="relative mkt-num text-sm font-bold text-fg-strong shrink-0">
-              {pct(o.price)}
-            </span>
-          </div>
-        ))}
+          )
+        })}
         {rest > 0 && (
           <p className="text-[11px] text-fg-subtle px-2.5 pt-0.5">
             {rest === 1 ? 'ועוד אפשרות אחת' : `ועוד ${rest} אפשרויות`}
@@ -138,7 +143,8 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
     return <div className="mkt-card p-4 opacity-60 cursor-not-allowed">{body}</div>
   }
   return (
-    <Link to={`/market/${encodeURIComponent(market.slug || market.id)}`} className="mkt-card-hover p-4 block">
+    <Link to={`/market/${encodeURIComponent(market.slug || market.id)}`}
+      className="mkt-card-hover p-4 block transition-all hover:-translate-y-0.5 hover:shadow-md">
       {body}
     </Link>
   )

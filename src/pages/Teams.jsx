@@ -128,7 +128,7 @@ export default function Teams() {
         {sorted.map((team, index) => {
           const tp = players.filter(p => membersByTeam.get(team.id)?.has(p.id))
           const open = expandedTeam === team.id
-          const topScorer = tp.filter(p => p.position === 'Field Player').sort((a, b) => (b.goals || 0) - (a.goals || 0))[0]
+          const topScorer = tp.filter(p => p.position === 'Field Player' && (p.goals || 0) > 0).sort((a, b) => (b.goals || 0) - (a.goals || 0))[0]
 
           return (
             <motion.div key={team.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>

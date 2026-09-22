@@ -387,6 +387,7 @@ async function handlePost(res, user) {
   //     The branch is kept afterwards — it is the audit trail for this promote.
   const branch = await createUpstreamBranch(headSha)
   if (!branch.ok) {
+    if (branch.status === 403) return json(res, 403, { ok: false, reason: 'no-write-access', step: 'push' })
     return json(res, 502, { ok: false, reason: 'github-error', step: 'push', detail: branch.detail })
   }
 
@@ -405,6 +406,7 @@ async function handlePost(res, user) {
   // seconds we were working). Not an error, but nothing was shipped.
   if (merge.status === 204) return json(res, 409, { ok: false, reason: 'nothing-to-promote' })
   if (merge.status === 409) return json(res, 409, { ok: false, reason: 'conflict', branch: branch.name })
+  if (merge.status === 403) return json(res, 403, { ok: false, reason: 'no-write-access', step: 'merge', branch: branch.name })
   if (!merge.ok || !merge.data?.sha) {
     return json(res, 502, { ok: false, reason: 'github-error', step: 'merge', branch: branch.name })
   }
@@ -442,6 +444,12 @@ async function createUpstreamBranch(headSha) {
 
   const first = await create(base)
   if (first.ok) return { ok: true, name: base }
+
+  // 403 here is not an outage and not a bad request — it is this token being allowed
+  // to READ the repo and not to write code to it. Reported as its own reason so the
+  // panel can say which permission is missing, instead of "GitHub is unavailable"
+  // sending somebody to look at a status page that is green.
+  if (first.status === 403) return { ok: false, status: 403, detail: 'token cannot write code to the repo' }
 
   if (first.status === 422) {
     // Either the ref already exists, or the commit object is not visible upstream.

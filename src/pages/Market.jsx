@@ -172,7 +172,7 @@ export default function Market() {
         !markets ? (
           <MarketBoardSkeleton />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10">
             {featured && (
               <FeaturedMarket market={featured} trades={featuredTrades || []}
                 activity={activity.get(featured.id)} />
@@ -184,13 +184,13 @@ export default function Market() {
               ))}
             </Section>
             <Section title={seasonName ? `עונת ${seasonName}` : 'שווקי עונה'} icon={Star}
-              total={futures.length} empty="אין שווקי עונה פתוחים.">
+              total={futures.length} empty="אין שווקי עונה פתוחים." accent="gold">
               {futures.filter(notFeatured).map(m => (
                 <MarketCard key={m.id} market={m} myShares={positions} conflict={conflicts.get(m.id)} />
               ))}
             </Section>
             {settled.length > 0 && (
-              <Section title="הוכרעו לאחרונה" icon={History} empty="">
+              <Section title="הוכרעו לאחרונה" icon={History} empty="" scroll>
                 {settled.map(m => (
                   <MarketCard key={m.id} market={m} myShares={positions} />
                 ))}
@@ -219,16 +219,49 @@ export default function Market() {
  * it. Without it a board whose only season market is the hero would render
  * "אין שווקי עונה פתוחים" directly beneath that very market.
  */
-function Section({ title, icon: Icon, children, empty, total }) {
+function Section({ title, icon: Icon, children, empty, total, accent = 'brand', scroll = false }) {
   const items = Array.isArray(children) ? children.filter(Boolean) : children
-  const has = Array.isArray(items) ? items.length > 0 : !!items
+  const list = Array.isArray(items) ? items : (items ? [items] : [])
+  const has = list.length > 0
+  const chip = accent === 'gold' ? 'bg-gold/10 text-gold' : 'bg-brand/10 text-brand'
   if (!has && total > 0) return null
+
   return (
     <section>
-      <h2 className="section-head mb-3"><Icon className="w-4 h-4 text-brand" /> {title}</h2>
-      {has
-        ? <div className="grid gap-3 sm:grid-cols-2">{items}</div>
-        : <p className="text-sm text-fg-subtle py-6 text-center mkt-card">{empty}</p>}
+      <div className="flex items-center gap-2.5 mb-4">
+        <span className={`flex items-center justify-center w-8 h-8 rounded-xl shrink-0 ${chip}`}>
+          <Icon className="w-4 h-4" />
+        </span>
+        <h2 className="text-base font-extrabold text-fg-strong">{title}</h2>
+        {has && (
+          <span className="mkt-num text-[11px] font-bold text-fg-muted bg-surface-sunken rounded-full min-w-[1.5rem] text-center px-2 py-0.5">
+            {list.length}
+          </span>
+        )}
+        <span className="flex-1 h-px bg-line-subtle" />
+      </div>
+      {!has ? (
+        <div className="mkt-card border-dashed py-10 px-6 text-center">
+          <Icon className="w-6 h-6 text-fg-faint mx-auto mb-2" />
+          <p className="text-sm text-fg-subtle max-w-sm mx-auto leading-relaxed">{empty}</p>
+        </div>
+      ) : scroll ? (
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory">
+          {list.map((item, i) => (
+            <div key={i} className="mkt-rise shrink-0 w-[260px] snap-start" style={{ animationDelay: `${i * 45}ms` }}>
+              {item}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {list.map((item, i) => (
+            <div key={i} className="mkt-rise" style={{ animationDelay: `${i * 45}ms` }}>
+              {item}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   )
 }

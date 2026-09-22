@@ -472,6 +472,24 @@ export function CreatorsSkeleton() {
   )
 }
 
+/* ─── /career — ליגיונר על גלגלים ───────────────────────────────────────── */
+
+/**
+ * The career game: the player HUD across the top, then the decision card beside
+ * the timeline. Its own shell (`px-4 py-6`, no `lg:p-8`), like the market's.
+ */
+export function CareerSkeleton() {
+  return (
+    <SkeletonPage width="max-w-5xl" pad={false} className="px-4 py-6 !space-y-4">
+      <Skeleton className="h-28 w-full rounded-2xl" />
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <Skeleton className="h-80 w-full rounded-2xl" />
+        <Skeleton className="h-80 w-full rounded-2xl" />
+      </div>
+    </SkeletonPage>
+  )
+}
+
 /* ─── Fallbacks ─────────────────────────────────────────────────────────── */
 
 /**

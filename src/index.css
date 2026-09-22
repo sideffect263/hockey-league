@@ -369,6 +369,17 @@
     @apply mkt-num font-bold text-gold whitespace-nowrap;
   }
 
+  /* Board cards rise in on load so the market feels alive rather than a static
+     table dump. Staggered per-card via an inline animationDelay. */
+  .mkt-rise {
+    animation: mkt-rise 0.35s ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mkt-rise {
+      animation: none;
+    }
+  }
+
   /* ─── Skeleton loading ───────────────────────────────────────────────────
      One placeholder block. Everything a page shows while it waits is built out
      of this class, so the grey and the sweep are defined in exactly one place
@@ -390,6 +401,11 @@
     transform: translateX(-100%);
     animation: skeleton-sweep 1.6s ease-in-out infinite;
   }
+}
+
+@keyframes mkt-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* The sweep must run with the reading direction, and `transform` is NOT mirrored
@@ -421,4 +437,19 @@
    defaults without an !important. */
 .market-theme .card {
   border-radius: 0.75rem; /* squarer than the league's 1rem */
+}
+
+/* Career mode (/career) — the season recap cards enter as they land, so a two-
+   or three-season step reads as a sequence rather than appearing all at once.
+   Transform and opacity only (both compositor-only, no layout or paint), and
+   it yields entirely to prefers-reduced-motion. */
+@keyframes careerEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.career-enter {
+  animation: careerEnter 220ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .career-enter { animation: none; }
 }
