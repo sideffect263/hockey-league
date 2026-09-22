@@ -33,6 +33,8 @@ import TeamJoinRequestsReview from "@/components/admin/TeamJoinRequestsReview"
 import CoachRequestsReview from "@/components/admin/CoachRequestsReview"
 import MedicalReview from "@/components/admin/MedicalReview"
 import MedicalRosterAdmin from "@/components/admin/MedicalRosterAdmin"
+import MedicalPodiumReview from "@/components/admin/MedicalPodiumReview"
+import PaymentsAdmin from "@/components/admin/PaymentsAdmin"
 import ReadinessAdmin from "@/components/admin/ReadinessAdmin"
 import SuspensionsAdmin from "@/components/admin/SuspensionsAdmin"
 import BirthDatesAdmin from "@/components/admin/BirthDatesAdmin"
@@ -50,7 +52,7 @@ import GameChangeRequestsReview from "@/components/admin/GameChangeRequestsRevie
 import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -64,6 +66,7 @@ const tabs = [
   { id: "claims", label: "בקשות", icon: UserPlus },
   { id: "game_requests", label: "בקשות משחקים", icon: CalendarClock },
   { id: "medical", label: "מעקב רפואי", icon: HeartPulse },
+  { id: "payments", label: "תשלומים", icon: Wallet },
   { id: "readiness", label: "מוכנות להתראות", icon: BellRing },
   { id: "suspensions", label: "הרחקות", icon: Ban },
   { id: "unavailability", label: "היעדרויות", icon: CalendarOff },
@@ -101,7 +104,7 @@ export default function Admin() {
     // to approve players, and approve_player_submission already permits him.
     // "calendar" is the league manager's — laying out the season's fixtures,
     // including a season that has not started yet, is their job.
-    ...(isLeagueManager ? ["tournaments", "teams", "claims", "game_requests", "medical", "readiness", "suspensions", "officials", "venues", "calendar", "birthdates", "unavailability"] : []),
+    ...(isLeagueManager ? ["tournaments", "teams", "claims", "game_requests", "medical", "payments", "readiness", "suspensions", "officials", "venues", "calendar", "birthdates", "unavailability"] : []),
   ])
   // Full tournament management (create/edit/delete + approve requests) vs. the
   // coach's request-only view of the same tab.
@@ -223,7 +226,8 @@ export default function Admin() {
               {currentTab === "season" && <SeasonAdmin games={games} teams={teams} players={players} reload={loadData} />}
               {currentTab === "claims" && <><ClaimsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /><PlayerSubmissionsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /><TeamJoinRequestsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} />{(isAdmin || isLeagueManager) && <CoachRequestsReview teamsMap={teamsMap} />}<MedicalReview coachTeamIds={coachScoped ? coachTeamIds : null} />{isAdmin && <SuggestionsReview players={players} />}</>}
               {currentTab === "game_requests" && <GameChangeRequestsReview teamsMap={teamsMap} />}
-              {currentTab === "medical" && <MedicalRosterAdmin />}
+              {currentTab === "medical" && <>{(isAdmin || isLeagueManager) && <div className="mb-8"><MedicalPodiumReview /></div>}<MedicalRosterAdmin /></>}
+              {currentTab === "payments" && <PaymentsAdmin />}
               {currentTab === "readiness" && <ReadinessAdmin />}
               {currentTab === "suspensions" && <SuspensionsAdmin players={players} teamsMap={teamsMap} />}
               {currentTab === "unavailability" && <UnavailabilityAdmin players={players} teamsMap={teamsMap} membersByPlayer={membersByPlayer} coachTeamIds={coachScoped ? coachTeamIds : null} />}

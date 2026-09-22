@@ -14,10 +14,15 @@
 #
 # DATABASE CHANGES: the same argument applies to the database, only harder — there is
 # ONE Supabase project, so dev and rinkhockeyil.com share it and a migration lands on
-# real league data the moment it runs. The agent may ADD files under
-# supabase/migrations/ and nothing else; scripts/check-migration.mjs decides whether
-# what it wrote is additive; and the database URL, like the Vercel token, lives only
-# in GitHub's secret store. See docs/LIVE-EDIT-MIGRATIONS.md.
+# real league data the moment it runs. Under supabase/migrations/ the agent may ADD
+# files and nothing else; scripts/check-migration.mjs decides whether what it wrote is
+# additive; and the database URL, like the Vercel token, lives only in GitHub's secret
+# store. See docs/LIVE-EDIT-MIGRATIONS.md.
+#
+# The rest of supabase/ — functions/, and the .sql records at its root — is NOT fenced
+# (narrowed 2026-09-22). Nothing in this job executes it: an Edge Function only ships
+# when a human runs the CLI, and the root .sql files are write-ups of migrations that
+# have already been applied. See the PROTECTED line for the full reasoning.
 name: deploy dev
 
 on:
@@ -104,7 +109,23 @@ jobs:
           CHANGED=$(git diff --name-status "$BASE" "$AFTER")
           echo "$CHANGED"
 
-          PROTECTED='^(supabase/|api/|\.github/|src/lib/api\.js|src/lib/supabase\.js|vercel\.json|.*\.env)'
+          # Narrowed 2026-09-22: refuse on what CI EXECUTES, not on everything that
+          # happens to sit under supabase/.
+          #
+          # This job runs supabase/migrations/*.sql against SUPABASE_DB_URL — the one
+          # shared project, so that is the live league database. It never runs
+          # supabase/functions/** (deploying an Edge Function needs the CLI and an
+          # access token, by hand) and never runs the .sql records at supabase/ root,
+          # which are documentation of migrations already applied. Those are inert
+          # text here, and refusing on them cost a human button-press for a commit
+          # that could not have done anything.
+          #
+          # Everything still listed below is something an agent could change to reach
+          # either the database or a deploy credential: the migrations CI applies,
+          # the workflows (which hold the secrets, and this fence), api/ (which holds
+          # live-edit-promote, the last thing between an agent and rinkhockeyil.com),
+          # the Supabase client, the Vercel config and any .env file.
+          PROTECTED='^(supabase/migrations/|api/|\.github/|src/lib/api\.js|src/lib/supabase\.js|vercel\.json|.*\.env)'
           NEW_MIGRATIONS=""
           BAD=""
 

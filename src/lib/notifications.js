@@ -153,6 +153,12 @@ export function notificationText(n) {
     // P6 row 30 — a rejection without its reason is a dead end for the submitter
     case 'player_submission_rejected': return `כרטיס השחקן ${d.candidate_name || ''} נדחה${d.reason ? ` — ${d.reason}` : ''}`
     case 'medical_submitted':    return `${d.player_name || actorName(n)} העלה/תה אישור רפואי הממתין לאישור`
+    // Stage 2 — the coach signed off, the league manager still has to verify the player
+    // is registered in פודיום before he may play.
+    case 'medical_pending_manager': return `${d.player_name || 'שחקן'}${d.team_name ? ` (${d.team_name})` : ''} — המאמן אישר את הבדיקה, ממתין לאימות רישום בפודיום`
+    case 'medical_coach_approved':  return `המאמן אישר את הבדיקה הרפואית שלך — ממתין לאישור המנהלת`
+    // The one-off sweep: one summary per reviewer, not one per certificate.
+    case 'medical_reinspection': return `${d.count ?? ''} אישורים רפואיים הוחזרו לבדיקה חוזרת — השחקנים חסומים עד לאישורם`
     case 'medical_approved':     return `האישור הרפואי שלך אושר ✅`
     case 'medical_rejected':     return `האישור הרפואי שלך נדחה — יש להעלות מחדש`
     case 'medical_expiring':     return `האישור הרפואי שלך יפוג בעוד ${d.days_left ?? ''} ימים — מומלץ לחדש`
@@ -228,6 +234,9 @@ export function notificationIcon(n) {
     case 'player_submission_approved': return '✅'
     case 'player_submission_rejected': return '⛔'
     case 'medical_submitted':    return '🩺'
+    case 'medical_pending_manager': return '🩺'
+    case 'medical_coach_approved':  return '⏳'
+    case 'medical_reinspection':    return '🔁'
     case 'medical_approved':     return '🩺'
     case 'medical_rejected':     return '⛔'
     case 'medical_expiring':     return '⏰'
@@ -298,6 +307,8 @@ export function notificationHref(n) {
     case 'team_join_request':
     case 'player_submission_request':
     case 'medical_submitted':      return '/admin?tab=claims'
+    case 'medical_pending_manager':
+    case 'medical_reinspection':   return '/admin?tab=medical'
     // the player / submitter lands where the outcome lives
     case 'team_join_approved':
     case 'team_join_rejected':     return n.entity_id ? `/teams/${n.entity_id}` : '/me'
@@ -307,6 +318,7 @@ export function notificationHref(n) {
     case 'player_submission_rejected':
     case 'medical_approved':
     case 'medical_rejected':
+    case 'medical_coach_approved':
     case 'medical_expiring':       return '/me'
     case 'medical_expiring_player': return '/admin?tab=claims'
     // F1 — the reviewer lands on the player whose absence it is; the player on his own page

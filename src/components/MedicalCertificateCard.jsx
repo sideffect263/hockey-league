@@ -39,6 +39,9 @@ export default function MedicalCertificateCard({ playerId }) {
   // Status line — approved shows validity/expiry; an expired cert reads as "renew".
   let st = null
   if (cert?.status === "pending") st = { label: "ממתין לאישור המאמן", cls: "text-amber-600 dark:text-amber-400", Icon: Clock }
+  // Stage 2 — say who is holding it and that he still cannot play, otherwise this
+  // reads as "approved" and the first blocked game registration is a support call.
+  else if (cert?.status === "pending_manager") st = { label: "המאמן אישר · ממתין לאישור המנהלת", cls: "text-amber-600 dark:text-amber-400", Icon: Clock }
   else if (cert?.status === "approved" && !isExpired) st = { label: cert.expires_at ? `אושר · בתוקף עד ${format(new Date(cert.expires_at), "d/M/yyyy")}` : "אושר", cls: "text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 }
   else if (cert?.status === "approved" && isExpired) st = { label: "פג תוקף — יש לחדש", cls: "text-red-600 dark:text-red-400", Icon: XCircle }
   else if (cert?.status === "rejected") st = { label: "נדחה — יש להעלות מחדש", cls: "text-red-600 dark:text-red-400", Icon: XCircle }

@@ -1,0 +1,72 @@
+-- ============================================================================
+-- Podium mirror (2026-09-22). APPLIED as migrations `podium_mirror_tables`,
+-- `podium_matching_and_views`.
+--
+-- Players register and pay for the season at podiumcomp.com — the Israeli
+-- roller-sports federation's system — and separately in this app. This mirrors the
+-- Podium side so the league manager stops holding two tabs open.
+--
+-- Podium is a Vue SPA over a plain JSON API (no scraping):
+--   POST /api/login {username,password}            -> httpOnly session cookie
+--   GET  /api/athletes?username=<org>&customer_username=<login>&q=<b64>&sort=<b64>
+--   GET  /api/get_athlete_payments?...&athleteStaticId=<תז>
+-- q/sort are base64 of the URL-encoded JSON. <org> comes back as user.username on
+-- login ("rolerisr"); <login> is the login name lowercased ("uriell").
+--
+-- PRIVACY. These tables hold national ID numbers, contact details and payment rows
+-- for adults AND minors. admin + league_manager only — no `authenticated` grant,
+-- deliberately, unlike the players.birth_date grant that leaked in September.
+--
+-- NOT mirrored, on purpose:
+--   * Podium's document URLs. It serves medical files from unauthenticated,
+--     non-expiring Firebase links (verified 2026-09-22 — the ?alt=media URL has no
+--     token and redirects to a fresh signed URL on demand). Our own medical bucket
+--     is private with 120s signed URLs; copying their links in would undo that.
+--     Their exposure stays theirs. We store only WHETHER a document exists.
+--   * card_holder_name / last_four_digits / low_profile_code / dealNumbers.
+--     "Did he pay, when, how much, for what" needs none of it.
+--
+-- MATCHING. players has no ID-number column, so the join is name + birth date:
+--   'name_dob' — same normalised name AND birth date. Auto-linked.
+--   'name'     — unique name on both sides, no birth date to contradict it.
+--                Auto-linked but flagged in the UI as the softer link.
+--   'manual'   — podium_link_athlete(), for everything else.
+-- ============================================================================
+-- Also applied: podium_match_athletes_fix_uuid_agg (min(uuid) does not exist in
+-- Postgres — the tier-2 update raised and rolled back tier 1 with it, so the first
+-- real sync found 14 athletes and linked 0) and podium_unmatched_allow_service_role.
+--
+-- FIRST REAL SYNC, 2026-09-22: 14 athletes, 39 payment rows, 10 linked (7 name+dob,
+-- 3 name-only). The 4 that did not link are all spelling variants of real player
+-- cards — Latin vs Hebrew script, and ו/וו, and לילייב vs לבייב — which is what the
+-- manual podium_link_athlete() path is for.
+--
+-- 2026-09-22, later the same day:
+--  * podium_backfill_birth_dates — the matcher now fills players.birth_date from a
+--    linked athlete wherever we have none. players has no ID column and most cards
+--    had no birth date, which is exactly why tier 1 matched so little; every date
+--    learned makes the NEXT sync match on the stronger rule. Only ever fills a NULL,
+--    so a hand-entered date is never overwritten by a mirror and a bad link cannot
+--    rewrite a real player's record.
+--  * approve_medical_podium_no_manual_flag — dropped the (uuid, boolean) form. The
+--    "טרם בפודיום" button predated this mirror; the sync now answers that for the
+--    whole roster, so approving means one thing and the manager is not asked to
+--    hand-copy what the row already says.
+--  * 3 spelling variants linked by hand (Ariel Biton/אריאל ביטון, גל חליוה/גלי
+--    חליווה, עידן לילייב/עידן לבייב); 13 of 14 athletes are now linked. The one
+--    left, יובל רוזנבלט, genuinely has no player card. Verified that a re-sync
+--    preserves manual links — the upsert payload deliberately omits player_id.
+--
+-- See the applied migrations for the full statements. Tables: podium_athletes,
+-- podium_payments, podium_sync_runs. RPCs: podium_match_athletes,
+-- podium_link_athlete, podium_payment_overview, podium_unmatched_athletes,
+-- podium_current_season_label.
+--
+-- ---------- rollback ----------
+-- drop function if exists public.podium_payment_overview();
+-- drop function if exists public.podium_unmatched_athletes();
+-- drop function if exists public.podium_link_athlete(text, uuid);
+-- drop function if exists public.podium_match_athletes();
+-- drop function if exists public.podium_current_season_label();
+-- drop function if exists public.podium_norm_name(text);
+-- drop table if exists public.podium_payments, public.podium_sync_runs, public.podium_athletes;
