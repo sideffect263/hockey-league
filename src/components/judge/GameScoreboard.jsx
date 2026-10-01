@@ -7,10 +7,12 @@ import { broadcastGameState, setGameStatus } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import { Phase, TeamSide, CardType, GameFormat } from "@/lib/game/rules"
 import { issueSuspension } from "@/lib/suspensions"
+import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
+import LineupEditor, { loadLineup, saveLineup, emptyLineup } from "@/components/judge/LineupEditor"
 import {
   RotateCcw, Pencil, CheckCircle2, Megaphone, Settings as SettingsIcon, Paintbrush,
   Hand, RectangleVertical, SkipForward, Save, Undo2, Plus, Minus, X, Maximize, Minimize,
-  Loader2, Check,
+  Loader2, Check, Users,
 } from "lucide-react"
 import { StickBall } from "@/components/icons/HockeyIcons"
 
@@ -192,17 +194,49 @@ function ControlBtn({ icon: Icon, onClick, tint, label, fill = false }) {
   )
 }
 
-export default function GameScoreboard({ game, home, guest, players }) {
+export default function GameScoreboard({ game, home, guest, players, teams = [] }) {
   const engine = useGameEngine(game, home, guest)
   const [attendingIds, setAttendingIds] = useState(null) // Set of confirmed player_ids; null until loaded
   const [showAllRoster, setShowAllRoster] = useState(false)
+  // Rosters come from player_teams (a player can be on one team per age group), with
+  // each player's primary team_id as a fallback until the memberships load.
+  const [memberRows, setMemberRows] = useState([])
+  useEffect(() => {
+    let alive = true
+    getPlayerTeams().then(rows => { if (alive) setMemberRows(rows) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+  const { byTeam } = buildMemberMaps(memberRows, players)
+  // Game-day lineup: the judge can hide squad players, borrow a player from another
+  // team, or add a free-text guest. Kept per game on this device (like the engine draft).
+  const [lineup, setLineupState] = useState(() => loadLineup(game.id))
+  const setLineup = (next) => { setLineupState(next); saveLineup(game.id, next) }
+  const [lineupSide, setLineupSide] = useState(null) // TeamSide being edited, or null
+  const playersById = new Map(players.map(p => [p.id, p]))
+  const sideKey = (side) => (side === TeamSide.home ? "home" : "guest")
+  const squadFor = (side) => {
+    const teamId = side === TeamSide.home ? game.home_team_id : game.away_team_id
+    return [...(byTeam.get(teamId) || [])].map(id => playersById.get(id)).filter(Boolean)
+  }
   // C4: default the roster to confirmed attendees; the judge can switch to the full
-  // squad. GK clean-sheet detection always uses the FULL roster (see doSave).
-  const fullHomeRoster = players.filter(p => p.team_id === game.home_team_id).sort(byJersey)
-  const fullGuestRoster = players.filter(p => p.team_id === game.away_team_id).sort(byJersey)
+  // squad. Borrowed players and guests are always shown. GK clean-sheet detection
+  // uses the FULL lineup minus free-text guests (see doSave).
   const useAttending = !showAllRoster && attendingIds && attendingIds.size > 0
-  const homeRoster = useAttending ? fullHomeRoster.filter(p => attendingIds.has(p.id)) : fullHomeRoster
-  const guestRoster = useAttending ? fullGuestRoster.filter(p => attendingIds.has(p.id)) : fullGuestRoster
+  const rosterOf = (side, { attendingOnly = false, withGuests = true } = {}) => {
+    const l = lineup[sideKey(side)] || emptyLineup().home
+    const hidden = new Set(l.hidden)
+    const squad = squadFor(side).filter(p => !hidden.has(p.id) && (!attendingOnly || attendingIds.has(p.id)))
+    const squadIds = new Set(squad.map(p => p.id))
+    const borrowed = l.added.map(id => playersById.get(id)).filter(p => p && !squadIds.has(p.id))
+    const guests = !withGuests ? [] : l.guests.map(g => ({
+      id: null, _key: g.key, _guest: true, first_name: g.name, last_name: "", jersey_number: g.number ?? null, position: "Field Player",
+    }))
+    return [...squad, ...borrowed, ...guests].sort(byJersey)
+  }
+  const fullHomeRoster = rosterOf(TeamSide.home, { withGuests: false })
+  const fullGuestRoster = rosterOf(TeamSide.guest, { withGuests: false })
+  const homeRoster = rosterOf(TeamSide.home, { attendingOnly: useAttending })
+  const guestRoster = rosterOf(TeamSide.guest, { attendingOnly: useAttending })
   const homeScore = engine.homeFinalScore
   const awayScore = engine.guestFinalScore
 
@@ -326,9 +360,9 @@ export default function GameScoreboard({ game, home, guest, players }) {
     setSaving(true); setSaveErr(null)
     try {
       const map = new Map(engine.boxScore().map(r => [r.player_id, { clean_sheet: false, ...r }]))
-      for (const p of [...fullHomeRoster, ...fullGuestRoster]) {
-        if (p.position !== "Goalkeeper") continue
-        const conceded = p.team_id === game.home_team_id ? awayScore : homeScore
+      const gks = [...fullHomeRoster.map(p => [p, awayScore]), ...fullGuestRoster.map(p => [p, homeScore])]
+      for (const [p, conceded] of gks) {
+        if (p.position !== "Goalkeeper" || !p.id) continue
         const cs = conceded === 0
         if (!map.has(p.id) && !cs) continue
         const r = map.get(p.id) || { player_id: p.id, goals: 0, blue_cards: 0, red_cards: 0, clean_sheet: false }
@@ -371,6 +405,7 @@ export default function GameScoreboard({ game, home, guest, players }) {
 
       {/* subtle web-only chrome: close (→ list) + kiosk fullscreen (top-left in LTR) */}
       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
+        <button onClick={() => setLineupSide(TeamSide.home)} aria-label="סגל למשחק" title="סגל למשחק" className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: T.panel }}><Users className="w-5 h-5" /></button>
         <button onClick={closeBoard} aria-label="סגור" className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: T.panel }}><X className="w-5 h-5" /></button>
         <button onClick={toggleFs} aria-label="מסך מלא" className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: T.panel }}>{isFs ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}</button>
       </div>
@@ -468,9 +503,11 @@ export default function GameScoreboard({ game, home, guest, players }) {
             </div>
             <div className="p-2 overflow-y-auto">
               {rosterFor(picker.side).map(p => (
-                <button key={p.id} onClick={() => resolvePick(p)} className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-sm text-right hover:bg-white/10 transition-colors ${engine.isEjected(p.id) ? "opacity-40" : ""}`}>
+                <button key={p.id || p._key} onClick={() => resolvePick(p)} className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-sm text-right hover:bg-white/10 transition-colors ${engine.isEjected(p.id) ? "opacity-40" : ""}`}>
                   <span className="w-6 text-center text-[11px] font-mono text-white/40">{p.jersey_number ?? "–"}</span>
                   <span className="flex-1 text-white truncate">{p.first_name} {p.last_name}</span>
+                  {p._guest && <span className="text-[9px] font-bold text-white/40">אורח</span>}
+                  {p.id && playersById.get(p.id) && !squadFor(picker.side).some(s => s.id === p.id) && <span className="text-[9px] font-bold text-white/40">מושאל</span>}
                   {p.position === "Goalkeeper" && <span className="text-[9px] font-bold" style={{ color: T.cardBlue }}>GK</span>}
                   {engine.isEjected(p.id) && <span className="text-[9px] font-bold" style={{ color: T.cardRed }}>הורחק</span>}
                 </button>
@@ -478,6 +515,9 @@ export default function GameScoreboard({ game, home, guest, players }) {
               {picker.kind === "goal" && (
                 <button onClick={() => resolvePick(null)} className="w-full py-2 px-3 rounded-lg text-sm text-white/60 hover:bg-white/10 transition-colors">{HE.noPlayer}</button>
               )}
+              <button onClick={() => setLineupSide(picker.side)} className="w-full mt-1 py-2 px-3 rounded-lg text-xs font-semibold hover:bg-white/10 transition-colors border-t border-white/10 flex items-center justify-center gap-1.5" style={{ color: T.accent }}>
+                <Users className="w-3.5 h-3.5" /> ערוך סגל למשחק
+              </button>
               {attendingIds && attendingIds.size > 0 && (
                 <button onClick={() => setShowAllRoster(v => !v)} className="w-full mt-1 py-2 px-3 rounded-lg text-xs text-white/50 hover:bg-white/10 transition-colors border-t border-white/10">
                   {showAllRoster ? "הצג רק מי שאישר הגעה" : "הצג את כל הסגל"}
@@ -486,6 +526,12 @@ export default function GameScoreboard({ game, home, guest, players }) {
             </div>
           </div>
         </div>
+      )}
+
+      {lineupSide != null && (
+        <LineupEditor T={T} side={lineupSide} setSide={setLineupSide} teams={{ [TeamSide.home]: home, [TeamSide.guest]: guest }} allTeams={teams}
+          squadFor={squadFor} players={players} lineup={lineup} setLineup={setLineup} sideKey={sideKey}
+          onClose={() => setLineupSide(null)} />
       )}
 
       {showSettings && (

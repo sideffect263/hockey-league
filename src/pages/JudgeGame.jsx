@@ -103,7 +103,7 @@ function JudgeGameView() {
       </motion.div>
 
       {/* Live scoring board (full game engine) */}
-      <GameScoreboard game={game} home={home} guest={away} players={players} />
+      <GameScoreboard game={game} home={home} guest={away} players={players} teams={teams} />
     </div>
   )
 }
