@@ -375,16 +375,24 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
   // "not authorized" in the error log. For other roles the flag falls back to referee_id.
   const { isAdmin, isLeagueManager } = useAuth()
   const canSeeOfficials = isAdmin || isLeagueManager
-  const [judgedIds, setJudgedIds] = useState(() => new Set())
+  // game_id → confirmed judge's name, so each row says WHO judges it rather than only
+  // flagging the games that have nobody.
+  const [judgeNames, setJudgeNames] = useState(() => new Map())
   useEffect(() => {
     if (!canSeeOfficials) return
     getOfficialsOverview()
-      .then(rows => setJudgedIds(new Set((rows || [])
+      .then(rows => setJudgeNames(new Map((rows || [])
         .filter(r => r.role === 'judge' && ['assigned', 'approved'].includes(r.status))
-        .map(r => r.game_id))))
+        .map(r => [r.game_id, r.full_name || r.display_name || '—']))))
       .catch(() => {})
   }, [games, canSeeOfficials])
-  const missingJudge = g => !g.referee_id && !judgedIds.has(g.id) && !['cancelled', 'postponed'].includes(g.status)
+  const refereeName = g => {
+    if (judgeNames.has(g.id)) return judgeNames.get(g.id)
+    if (!g.referee_id) return null
+    const p = players.find(x => x.id === g.referee_id)
+    return p ? `${p.first_name} ${p.last_name}` : 'שופט'
+  }
+  const missingJudge = g => !refereeName(g) && !['cancelled', 'postponed'].includes(g.status)
   const [editingGame, setEditingGame] = useState(null)
   const [editingStats, setEditingStats] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -465,6 +473,10 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
         away_score: form.away_score !== '' ? Number(form.away_score) : null,
         series_game: form.series_game !== '' ? Number(form.series_game) : null,
         playoff_round: form.playoff_round || null,
+        // The input holds wall-clock time with no zone; sent raw, Postgres read it as UTC
+        // and every save — even one that only changed the referee — moved the game 3h
+        // later (and told every player it had moved). Convert from the browser's local time.
+        game_date: form.game_date ? new Date(form.game_date).toISOString() : null,
         referee_id: form.referee_id || null,
         referee_type: form.referee_id ? form.referee_type : null,
         tournament_id: form.tournament_id || null,
@@ -696,6 +708,11 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
                   <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                     {game.is_test && (
                       <span title="משחק בדיקה — גלוי למנהלים בלבד" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 whitespace-nowrap">🧪 בדיקה</span>
+                    )}
+                    {!missingJudge(game) && refereeName(game) && (
+                      <span title="שופט" className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap max-w-[110px] truncate">
+                        <Gavel className="w-3 h-3 shrink-0" /><span className="truncate">{refereeName(game)}</span>
+                      </span>
                     )}
                     {missingJudge(game) && (
                       <span title="חסר שופט" className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
