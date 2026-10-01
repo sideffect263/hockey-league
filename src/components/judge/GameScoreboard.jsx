@@ -221,11 +221,15 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   // C4: default the roster to confirmed attendees; the judge can switch to the full
   // squad. Borrowed players and guests are always shown. GK clean-sheet detection
   // uses the FULL lineup minus free-text guests (see doSave).
-  const useAttending = !showAllRoster && attendingIds && attendingIds.size > 0
+  // Decided PER SIDE: a team with no sign-ups shows its full squad. Deciding once for
+  // the whole game blanked the other team whenever only one side had signed up.
+  const sideHasAttendees = (side) => !!attendingIds && squadFor(side).some(p => attendingIds.has(p.id))
+  const useAttending = !showAllRoster && !!attendingIds && attendingIds.size > 0
   const rosterOf = (side, { attendingOnly = false, withGuests = true } = {}) => {
     const l = lineup[sideKey(side)] || emptyLineup().home
     const hidden = new Set(l.hidden)
-    const squad = squadFor(side).filter(p => !hidden.has(p.id) && (!attendingOnly || attendingIds.has(p.id)))
+    const filterSide = attendingOnly && sideHasAttendees(side)
+    const squad = squadFor(side).filter(p => !hidden.has(p.id) && (!filterSide || attendingIds.has(p.id)))
     const squadIds = new Set(squad.map(p => p.id))
     const borrowed = l.added.map(id => playersById.get(id)).filter(p => p && !squadIds.has(p.id))
     const guests = !withGuests ? [] : l.guests.map(g => ({
@@ -518,6 +522,9 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
               <button onClick={() => setLineupSide(picker.side)} className="w-full mt-1 py-2 px-3 rounded-lg text-xs font-semibold hover:bg-white/10 transition-colors border-t border-white/10 flex items-center justify-center gap-1.5" style={{ color: T.accent }}>
                 <Users className="w-3.5 h-3.5" /> ערוך סגל למשחק
               </button>
+              {useAttending && !sideHasAttendees(picker.side) && (
+                <p className="w-full mt-1 py-1.5 px-3 text-[11px] text-center text-white/40">אף שחקן בקבוצה לא אישר הגעה — מוצג כל הסגל</p>
+              )}
               {attendingIds && attendingIds.size > 0 && (
                 <button onClick={() => setShowAllRoster(v => !v)} className="w-full mt-1 py-2 px-3 rounded-lg text-xs text-white/50 hover:bg-white/10 transition-colors border-t border-white/10">
                   {showAllRoster ? "הצג רק מי שאישר הגעה" : "הצג את כל הסגל"}
