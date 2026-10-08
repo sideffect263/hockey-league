@@ -95,7 +95,9 @@ export default function Admin() {
   // Branch on isAdmin FIRST — an admin has coachTeamIds === [] but full access.
   const isCoach = coachTeamIds.length > 0
   const canManage = isAdmin || isCoach || isJudgeRole || isLeagueManager
-  const coachScoped = !isAdmin && isCoach          // team-scope the players/claims tabs
+  // A league manager is GLOBAL even if he also coaches a team (Itai: coach of רמת ישי
+  // + manager) — his coach role must not shrink the manager's view to one team.
+  const coachScoped = !isAdmin && !isLeagueManager && isCoach  // team-scope the players/claims tabs
   const scopedTabIds = new Set([
     // A coach gets "birthdates" because he is the person who actually KNOWS his
     // squad's dates of birth — 73 of 97 cards have none, and until they arrive every
@@ -235,7 +237,7 @@ export default function Admin() {
           ) : (
             <>
               {currentTab === "games" && (
-                (!isAdmin && !isJudgeRole && isCoach)
+                (!isAdmin && !isJudgeRole && !isLeagueManager && isCoach)
                   ? <CoachGamesView games={games} teamsMap={teamsMap} coachTeamIds={coachTeamIds} />
                   : <GamesAdmin games={games} teams={teams} players={players} teamsMap={teamsMap} gameStats={gameStats} tournaments={tournaments} membersByTeam={membersByTeam} reload={loadData} />
               )}
@@ -934,6 +936,9 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
   // belong to ONE team per age group (senior league + each youth tournament).
   const coachScoped = Array.isArray(coachTeamIds) && coachTeamIds.length > 0
   const multiAge = !coachScoped
+  // Deleting a card CASCADES its game_stats, so it stays admin-only (RLS agrees); a
+  // league manager removes a player by clearing their teams instead.
+  const { isAdmin: canDelete } = useAuth()
   const teamOptions = coachScoped ? teams.filter(t => coachTeamIds.includes(t.id)) : teams
   const lockedTeamId = coachScoped && teamOptions.length === 1 ? teamOptions[0].id : ''
 
@@ -1334,7 +1339,7 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
                     className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 transition-colors">
                     <UserMinus className="w-3.5 h-3.5" />
                   </button>
-                ) : (
+                ) : canDelete && (
                   <button onClick={() => handleDelete(player.id)} title="מחק שחקן" aria-label="מחק שחקן"
                     className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
