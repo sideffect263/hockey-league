@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { getMedicalRoster, signMedical, getPlayerMedicalCerts, revokeMedical, setMedicalExamDate } from "@/lib/medical"
-import { HeartPulse, RefreshCw, Search, Eye, Ban, CalendarClock, X, Loader2, BadgeCheck, Link2Off, Wallet } from "lucide-react"
+import { getMedicalRoster, signMedical, getPlayerMedicalCerts, revokeMedical, setMedicalExamDate, uploadMedical, reviewMedical } from "@/lib/medical"
+import { HeartPulse, RefreshCw, Search, Eye, Ban, CalendarClock, X, Loader2, BadgeCheck, Link2Off, Wallet, Upload } from "lucide-react"
 import { format } from "date-fns"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
@@ -70,6 +70,11 @@ export default function MedicalRosterAdmin({ canManage = true }) {
   const [reason, setReason] = useState("")
   const [examDate, setExamDate] = useState("")
   const [busy, setBusy] = useState(false)
+  // Upload on the player's behalf (Itai, 2026-10-04: "the players get confused").
+  const [upload, setUpload] = useState(null)   // { row }
+  const [upFile, setUpFile] = useState(null)
+  const [upDate, setUpDate] = useState("")
+  const [upMsg, setUpMsg] = useState(null)
 
   const openFor = async (row, mode) => {
     setError(null); setReason(""); setBusy(true)
@@ -93,6 +98,31 @@ export default function MedicalRosterAdmin({ canManage = true }) {
       setModal(null)
       await load()
     } catch (e) { setError(e.message) } finally { setBusy(false) }
+  }
+
+  // Missing / expired / rejected / expiring → someone has to bring a new physical. A
+  // file already waiting for review is not replaced from here.
+  const canUploadFor = (r) => !["pending", "pending_manager", "valid"].includes(r.st.key)
+
+  const confirmUpload = async () => {
+    if (!upload || !upFile) return
+    setBusy(true); setError(null)
+    const name = `${upload.row.first_name} ${upload.row.last_name}`.trim()
+    try {
+      const id = await uploadMedical(upload.row.player_id, upFile)
+      // The uploader has the paper in hand: his sign-off with the exam date is the
+      // coach stage, so the row goes straight to the manager's פודיום check.
+      if (id && upDate) await reviewMedical(id, "approved", upDate)
+      setUpload(null)
+      setUpMsg(upDate
+        ? `✓ האישור של ${name} הועלה ועבר לאישור המנהלת (בדיקת פודיום)`
+        : `✓ האישור של ${name} הועלה וממתין לאישור המאמן`)
+      await load()
+    } catch (e) {
+      setError(e.message === "medical-already-pending"
+        ? "לשחקן כבר יש אישור שממתין לבדיקה"
+        : `ההעלאה נכשלה: ${e.message}`)
+    } finally { setBusy(false) }
   }
 
   const load = async () => {
@@ -150,6 +180,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
         </button>
       </div>
 
+      {upMsg && <div className="card p-3 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-sm text-emerald-700 dark:text-emerald-400">{upMsg}</div>}
       {error && <div className="card p-3 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-400">{error}</div>}
 
       {/* Summary tiles */}
@@ -192,6 +223,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
                   {canManage && <th className="text-right font-bold px-3 py-2.5">תשלום</th>}
                   <th className="text-right font-bold px-3 py-2.5">תאריך בדיקה</th>
                   <th className="text-right font-bold px-3 py-2.5">מסמך</th>
+                  <th className="text-right font-bold px-3 py-2.5">העלאה</th>
                   {canManage && <th className="text-right font-bold px-3 py-2.5">פעולות</th>}
                 </tr>
               </thead>
@@ -232,6 +264,14 @@ export default function MedicalRosterAdmin({ canManage = true }) {
                         <span className="text-slate-300 dark:text-slate-600">—</span>
                       )}
                     </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {canUploadFor(r) ? (
+                        <button onClick={() => { setUpload({ row: r }); setUpFile(null); setUpDate(""); setUpMsg(null); setError(null) }}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-brand/40 text-brand hover:bg-brand/5 transition-colors">
+                          <Upload className="w-3.5 h-3.5" /> העלאה
+                        </button>
+                      ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    </td>
                     {/* The manager reviews these himself: correct a wrong exam date, or
                         revoke a file he judges inadequate. Only meaningful while the
                         player actually holds a valid certificate. */}
@@ -257,6 +297,46 @@ export default function MedicalRosterAdmin({ canManage = true }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {upload && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" dir="rtl"
+          onClick={() => !busy && setUpload(null)}>
+          <div className="w-full max-w-sm card p-4 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                העלאת אישור רפואי · {upload.row.first_name} {upload.row.last_name}
+              </h3>
+              <button onClick={() => setUpload(null)} disabled={busy} aria-label="סגירה"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X className="w-4 h-4" /></button>
+            </div>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">צילום או PDF של הבדיקה</span>
+              <input type="file" accept="image/*,application/pdf" onChange={e => setUpFile(e.target.files?.[0] || null)}
+                className="mt-1 block w-full text-xs text-slate-600 dark:text-slate-300" />
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">תאריך הבדיקה (מהטופס)</span>
+              <input type="date" value={upDate} max={new Date().toLocaleDateString("en-CA")}
+                onChange={e => setUpDate(e.target.value)} aria-label="תאריך הבדיקה"
+                className="mt-1 w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            </label>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              עם תאריך — ההעלאה נחשבת לאישור המאמן והאישור עובר ישר לבדיקת הפודיום של המנהלת.
+              בלי תאריך — האישור ממתין לאישור המאמן כרגיל.
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={confirmUpload} disabled={busy || !upFile}
+                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg text-white bg-brand hover:bg-brand-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} העלאה
+              </button>
+              <button onClick={() => setUpload(null)} disabled={busy}
+                className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                ביטול
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -15,7 +15,9 @@ import { sessionUser } from './sessionUser'
  * sitting in pending_manager deliberately keeps him off the sheet.
  */
 
-/** Upload the player's physical to the private bucket + create a pending cert row. */
+/** Upload a physical to the private bucket + create a pending cert row; returns its id.
+ *  The player himself, or — on his behalf — his coach, a league manager or an admin
+ *  (supabase/medical-upload-on-behalf.sql). */
 export async function uploadMedical(playerId, file) {
   const user = await sessionUser()
   if (!user) throw new Error('not-authenticated')
@@ -25,15 +27,17 @@ export async function uploadMedical(playerId, file) {
     .from('medical')
     .upload(path, file, { upsert: false, contentType: file.type || undefined })
   if (upErr) throw upErr
-  const { error: insErr } = await supabase
+  const { data: row, error: insErr } = await supabase
     .from('medical_certificates')
     .insert({ player_id: playerId, file_path: path, uploaded_by: user.id })
+    .select('id').single()
   if (insErr) {
     // roll back the orphaned upload; surface the "already pending" unique clash cleanly
     await supabase.storage.from('medical').remove([path]).catch(() => {})
     if (insErr.code === '23505') throw new Error('medical-already-pending')
     throw insErr
   }
+  return row?.id
 }
 
 /** The player's latest certificate (any status), or null. */
