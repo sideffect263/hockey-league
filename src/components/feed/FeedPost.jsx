@@ -560,6 +560,19 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   const [savingPost, setSavingPost] = useState(false)
   const [removed, setRemoved] = useState(false)   // optimistic delete → hide the whole card
   const [rowError, setRowError] = useState(null)
+  // "עוד" only when the clamp actually hides something. A character-count guess showed
+  // it under news cards whose summary fitted in the 5 lines, so tapping it did nothing.
+  const bodyRef = useRef(null)
+  const [clipped, setClipped] = useState(false)
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el || expanded) { setClipped(false); return }
+    const measure = () => setClipped(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null
+    ro?.observe(el)
+    return () => ro?.disconnect()
+  }, [postBody, expanded, editingPost])
 
   // ---- Moderation for comments ----
   const [editingCommentId, setEditingCommentId] = useState(null)
@@ -662,7 +675,6 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   // undone with -mx-4 — and stays a card in the desktop column.
   const fullBleed = !bday
   const textBody = ext ? (postBody || "").split("\n\n")[0] : (postBody || "")
-  const longText = textBody.length > 220 || textBody.split("\n").length > 3
 
   return (
     <motion.div {...fade} className={fullBleed
@@ -733,12 +745,12 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
       ) : (
         <div className="px-4 sm:px-0">
           {/* News: the headline is the first line, the summary (ingest, 2026-10-08) the rest. */}
-          <p className={`text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed ${longText && !expanded ? (ext ? "line-clamp-5" : "line-clamp-3") : ""}`}>
+          <p ref={bodyRef} className={`text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed ${!expanded ? (ext ? "line-clamp-5" : "line-clamp-3") : ""}`}>
             {ext && textBody.includes("\n") ? (
               <><span className="font-bold text-slate-900 dark:text-white">{textBody.split("\n")[0]}</span>{"\n" + textBody.split("\n").slice(1).join("\n")}</>
             ) : textBody}
           </p>
-          {longText && !expanded && (
+          {clipped && !expanded && (
             <button onClick={() => setExpanded(true)} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-brand">עוד</button>
           )}
         </div>
