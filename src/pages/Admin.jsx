@@ -6,7 +6,7 @@ import {
   createGame, updateGame, deleteGame,
   createPlayer, updatePlayer, deletePlayer, releasePlayerFromTeam,
   updateTeam, createTeam, deleteTeam, getPendingTeams, reviewTeam,
-  createGameStat, deleteGameStatsByGameId,
+  saveGameStats,
   addAdminUser, removeAdminUser,
   getGameStatsByGameId,
   recalculateTeamStats, recalculatePlayerStats,
@@ -814,25 +814,19 @@ function GameStatsEditor({ game, players, teamsMap, membersByTeam, existingStats
   const handleSaveStats = async () => {
     setSaving(true)
     try {
-      // Delete all existing stats for this game
-      await deleteGameStatsByGameId(game.id)
-      // Insert new ones
-      for (const stat of stats) {
-        if (!stat.player_id && !stat.is_guest_player) continue
-        const isGuest = !!stat.is_guest_player
-        await createGameStat({
-          game_id: game.id,
-          player_id: isGuest ? null : (stat.player_id || null),
-          goals: Number(stat.goals) || 0,
-          blue_cards: Number(stat.blue_cards) || 0,
-          red_cards: Number(stat.red_cards) || 0,
-          clean_sheet: !!stat.clean_sheet,
-          is_guest_player: isGuest,
-          guest_player_name: isGuest ? String(stat.guest_player_name || '') : '',
-          guest_player_original_team: isGuest ? String(stat.guest_player_original_team || '') : '',
-          guest_player_type: isGuest && stat.guest_player_type ? String(stat.guest_player_type) : null,
-        })
-      }
+      // One transaction (save_game_stats): the old delete-then-insert loop could fail
+      // halfway and leave the game with no stats at all.
+      await saveGameStats(game.id, stats.map(stat => ({
+        player_id: stat.player_id || null,
+        goals: Number(stat.goals) || 0,
+        blue_cards: Number(stat.blue_cards) || 0,
+        red_cards: Number(stat.red_cards) || 0,
+        clean_sheet: !!stat.clean_sheet,
+        is_guest_player: !!stat.is_guest_player,
+        guest_player_name: String(stat.guest_player_name || ''),
+        guest_player_original_team: String(stat.guest_player_original_team || ''),
+        guest_player_type: stat.guest_player_type ? String(stat.guest_player_type) : null,
+      })))
       // player-stat recalculation is disabled until the historical game_stats backfill is complete (Package 2)
       await reload()
     } catch (err) { alert('שגיאה: ' + err.message) }

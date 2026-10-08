@@ -484,6 +484,13 @@ export async function deleteGameStat(id) {
   if (error) throw error
 }
 
+/** Replace a game's whole box score atomically (admin / league manager / judge). */
+export async function saveGameStats(gameId, stats) {
+  const { data, error } = await supabase.rpc('save_game_stats', { p_game_id: gameId, p_stats: stats })
+  if (error) throw error
+  return data
+}
+
 export async function deleteGameStatsByGameId(gameId) {
   const { error } = await supabase.from('game_stats').delete().eq('game_id', gameId)
   if (error) throw error
