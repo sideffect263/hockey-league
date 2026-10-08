@@ -46,7 +46,7 @@ begin
   end if;
   return query
     select go.role, go.status, go.user_id,
-           coalesce(nullif(btrim(uc.full_name), ''), pr.display_name) as full_name,
+           coalesce(case when uc.full_name ~ '[[:alpha:]א-ת]' then btrim(uc.full_name) end, pr.display_name) as full_name, -- no-letter names (".") fall back
            uc.phone
     from public.game_officials go
     left join public.user_contact uc on uc.user_id = go.user_id

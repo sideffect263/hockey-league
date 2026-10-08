@@ -9,7 +9,7 @@
 -- This sweep reverts such games and clears their live rows. It is scheduled with
 -- pg_cron every 5 minutes; it is also safe to call by hand.
 
-create or replace function public.expire_stale_live_games(p_minutes int default 20)
+create or replace function public.expire_stale_live_games(p_minutes int default 60)
 returns int
 language plpgsql
 security definer
@@ -19,7 +19,7 @@ declare
   v_cutoff timestamptz := now() - make_interval(mins => greatest(p_minutes, 1));
   -- The judge board heartbeats (updated_at refreshed ~every 10s while the clock runs).
   -- A running row whose heartbeat has been dead this long is a disconnected zombie.
-  v_hb_cutoff timestamptz := now() - interval '15 minutes';
+  v_hb_cutoff timestamptz := now() - interval '60 minutes'; -- 60 not 15: native judge apps send no running-clock heartbeat
   v_count  int;
 begin
   -- "Stale" = the board stopped being driven:
