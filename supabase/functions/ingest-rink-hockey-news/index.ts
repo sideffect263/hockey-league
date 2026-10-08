@@ -36,6 +36,12 @@ const MAX_NEW_PER_RUN = 8;      // ...and never floods a single day's feed
 // (ניתוח פיד, 2026-10-08: 16s vs 8s median), and with one shared budget the written
 // sources listed first used it up before any video source was reached.
 const MAX_VIDEOS_PER_RUN = 6;
+// Daily caps for WRITTEN articles (2026-10-08). Per-run caps alone let ~25 articles a
+// day through three runs, and two Italian/Chilean sites made up half the feed. "A day"
+// = items in the feed dated within the last 24h (created_at is the source's publish
+// time), so a backlog can't sneak past by arriving late.
+const MAX_ARTICLES_PER_DAY = 8;
+const MAX_ARTICLES_PER_SOURCE_PER_DAY = 2;
 
 const BOT_EMAIL = "news-bot@rinkhockeyil.com";
 const BOT_NAME = "חדשות הוקי גלגיליות";
@@ -616,13 +622,32 @@ Deno.serve(async (req) => {
 
     const authorId = dryRun ? "dry-run" : await ensureBotAuthor();
     const report = [];
-    const budget = { youtube: MAX_VIDEOS_PER_RUN, rss: MAX_NEW_PER_RUN };
+    // Articles already in the feed from the last 24h, per source.
+    const { data: recent, error: recentErr } = await admin.from("posts")
+      .select("source_name").not("external_guid", "is", null).is("deleted_at", null)
+      .gte("created_at", new Date(Date.now() - 86_400_000).toISOString());
+    if (recentErr) throw recentErr;
+    const today = new Map<string, number>();
+    for (const r of recent ?? []) today.set(r.source_name, (today.get(r.source_name) ?? 0) + 1);
+    const rssToday = SOURCES.filter((x) => x.kind === "rss").reduce((n, x) => n + (today.get(x.name) ?? 0), 0);
 
-    for (const src of SOURCES) {
+    const budget = { youtube: MAX_VIDEOS_PER_RUN, rss: Math.max(0, Math.min(MAX_NEW_PER_RUN, MAX_ARTICLES_PER_DAY - rssToday)) };
+
+    // Quietest article sources first, so the daily budget isn't always spent by
+    // whichever busy site happens to be listed first. Videos keep list order.
+    const ordered = [
+      ...SOURCES.filter((x) => x.kind === "youtube"),
+      ...SOURCES.filter((x) => x.kind === "rss").sort((a, b) => (today.get(a.name) ?? 0) - (today.get(b.name) ?? 0)),
+    ];
+
+    for (const src of ordered) {
       if (only && !only.includes(src.key)) continue;
-      if (budget[src.kind] <= 0) { report.push({ source: src.key, skipped: "run budget spent" }); continue; }
+      const left = src.kind === "rss"
+        ? Math.min(budget.rss, MAX_ARTICLES_PER_SOURCE_PER_DAY - (today.get(src.name) ?? 0))
+        : budget.youtube;
+      if (left <= 0) { report.push({ source: src.key, skipped: budget[src.kind] <= 0 ? "budget spent" : "daily source cap" }); continue; }
       try {
-        const r = await ingestSource(src, authorId, budget[src.kind], dryRun, maxAgeDays);
+        const r = await ingestSource(src, authorId, left, dryRun, maxAgeDays);
         budget[src.kind] -= (dryRun ? r.preview.length : r.posted.length);
         report.push(r);
       } catch (err) {
