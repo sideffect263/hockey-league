@@ -19,6 +19,7 @@ import { TeamLink } from "@/components/EntityLinks"
 import { getApprovedMedicalPlayerIds } from "@/lib/medical"
 import { getTeamSubmissions } from "@/lib/playerSubmissions"
 import FollowButton from "@/components/FollowButton"
+import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function TeamDetail() {
@@ -138,6 +139,8 @@ export default function TeamDetail() {
         <ArrowRight className="w-4 h-4" /> חזרה לקבוצות
       </Link>
 
+      <FollowInvite targetType="team" targetId={team.id} name={team.name} />
+
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-5 sm:p-6">
         <div className="flex items-center gap-4">
@@ -151,8 +154,9 @@ export default function TeamDetail() {
             </div>
             {/* P5 — follow this team: ranks it up in the feed, and (separately) opts
                 into notifications about its games. */}
-            <div className="mt-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               <FollowButton targetType="team" targetId={team.id} size="sm" />
+              <ShareFollowButton targetType="team" name={team.name} />
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               {team.city}{team.founded_year ? ` • נוסדה ${team.founded_year}` : ''}

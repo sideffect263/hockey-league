@@ -18,6 +18,7 @@ import { BRAND_ORANGE } from '@/lib/brand'
 import { useSeo } from '@/lib/seo'
 import { useSlugId, entityPath } from '@/lib/slugs'
 import FollowButton from "@/components/FollowButton"
+import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { PlayerDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export default function PlayerDetail() {
@@ -225,6 +226,8 @@ export default function PlayerDetail() {
         <ArrowRight className="w-4 h-4" /> חזרה לשחקנים
       </Link>
 
+      <FollowInvite targetType="player" targetId={player.id} name={`${player.first_name} ${player.last_name}`.trim()} />
+
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-5 sm:p-6">
         <div className="flex items-center gap-4">
@@ -234,6 +237,7 @@ export default function PlayerDetail() {
               <h1 className="page-title truncate">{player.first_name} {player.last_name}</h1>
               {/* P5 — follow this player (feed ranking); the bell is a separate opt-in */}
               <FollowButton targetType="player" targetId={player.id} size="sm" />
+              <ShareFollowButton targetType="player" name={`${player.first_name} ${player.last_name}`.trim()} />
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
               {myTeams.length ? myTeams.map(({ team: tm, age }) => (
