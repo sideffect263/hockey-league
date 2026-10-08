@@ -1,7 +1,9 @@
-import { LayoutGrid, Trophy, Flame, MessageSquare, Globe } from "lucide-react"
+import { LayoutGrid, Trophy, Flame, MessageSquare, Globe, PlayCircle } from "lucide-react"
+import { parseYouTubeId } from "@/lib/video"
 
 export const FEED_FILTERS = [
   { key: "all", label: "הכל", icon: LayoutGrid },
+  { key: "video", label: "וידאו", icon: PlayCircle },
   { key: "posts", label: "פוסטים", icon: MessageSquare },
   { key: "results", label: "תוצאות", icon: Trophy },
   { key: "highlights", label: "שיאים", icon: Flame },
@@ -15,6 +17,7 @@ export function matchesFilter(post, key) {
   if (key === "results") return post.type === "game_result"
   if (key === "highlights") return ["milestone", "champion", "top_scorer"].includes(post.type)
   if (key === "world") return post.type === "external"
+  if (key === "video") return post.type === "external" && !!parseYouTubeId(post.data?.post?.link_url)
   return true
 }
 

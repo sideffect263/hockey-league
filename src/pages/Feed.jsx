@@ -21,6 +21,7 @@ import LiveGameBanner from "@/components/LiveGameBanner"
 import { useLiveGames } from "@/lib/useLiveGames"
 import FeedFilters, { matchesFilter } from "@/components/feed/FeedFilters"
 import QuickActions from "@/components/feed/QuickActions"
+import VideoRail from "@/components/feed/VideoRail"
 import { StandingsWidget, NextGameWidget, LeadersWidget } from "@/components/feed/Widgets"
 import OnlinePresence from "@/components/OnlinePresence"
 import { FeedSkeleton, SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
@@ -161,6 +162,7 @@ export default function Feed() {
     results: feed.filter(p => matchesFilter(p, "results")).length,
     highlights: feed.filter(p => matchesFilter(p, "highlights")).length,
     world: feed.filter(p => matchesFilter(p, "world")).length,
+    video: feed.filter(p => matchesFilter(p, "video")).length,
   }), [feed])
 
   const handlePosted = (newPost) => {
@@ -255,6 +257,9 @@ export default function Feed() {
             <StandingsWidget teams={teams} />
             <NextGameWidget games={games} teams={teams} />
           </div>
+
+          {/* Newest videos first — they hold attention ~2x articles (ניתוח פיד). */}
+          {filter === "all" && <VideoRail feed={feed} onShowAll={() => { setFilter("video"); window.scrollTo({ top: 0, behavior: "smooth" }) }} />}
 
           {/* Feed list */}
           {filtered.length === 0 ? (

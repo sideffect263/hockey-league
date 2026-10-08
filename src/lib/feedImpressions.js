@@ -169,6 +169,16 @@ export function observeFeedItem(el, key, tags) {
   }
 }
 
+/**
+ * Count an "open" for a feed item tapped OUTSIDE its card — the videos row at the top
+ * of the feed plays items that also sit further down the stream.
+ */
+export function noteFeedOpen(key, tags) {
+  if (!enabled || !key) return
+  bucket(key, tags).opens += 1
+  schedule()
+}
+
 /** The viewer's ranking inputs, or null for a guest / on any failure. */
 export async function getFeedPersonalization() {
   try {
