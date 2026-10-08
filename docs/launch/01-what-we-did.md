@@ -13,6 +13,9 @@ This is the *record of what was executed*. The *pre-launch plan* lives in `../..
 
 ## 1. Supabase — elevated access confirmed
 
+> **2026-10-08:** the project was transferred to our own org, **sideffect263's Org**
+> (`qiahwaoxjhqygweofpmq`). The `IdanLichter` org below is history. Same ref/URL/keys.
+
 - Verified the old **403 wall is gone**: `arielbiton03@gmail.com` is now an **Owner** of the
   `IdanLichter` Supabase org (`liomguecuaczpzxvxyoj`). Same token (`sbp_458d…`, already in
   `hockey-league/.env` + the Supabase MCP) — a real role promotion, not a temporary PAT.

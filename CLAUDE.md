@@ -50,6 +50,13 @@ diff genuinely does touch those paths. Deploy it by hand from the Actions tab in
 There is ONE Supabase project. `dev` and rinkhockeyil.com share it, so a migration hits real
 league data the moment it runs — including minors' records. See `docs/LIVE-EDIT-MIGRATIONS.md`.
 
+The project ("Senior Hockey League", ref `slpwwoupbbxcgjivcspv`, region ap-northeast-1, Free plan)
+lives in **our own org, `sideffect263's Org`** (`qiahwaoxjhqygweofpmq`, owner arielxx263@gmail.com /
+GitHub sideffect263). It was transferred out of Idan's `IdanLichter` org on 2026-10-08 — do not use
+that org any more. Ref, URL and API keys were unchanged by the transfer. The `SUPABASE_ACCESS_TOKEN`
+in `.env` (and the Supabase MCP) belongs to arielbiton03@gmail.com, which must be **Owner** in the
+new org for auth-config writes (`PATCH /config/auth`); it is (verified 2026-10-08).
+
 ## עריכה חיה (live-edit) is dev-only
 
 The in-app panel that edits the frontend and redeploys is gated to dev hosts in

@@ -41,11 +41,19 @@ needs an Apple **Services ID** plus a **client secret** (a JWT signed with a Sig
 6. **Test**: on dev, sign in with an Apple account that already signed in on the iPhone. It must land
    on the SAME account (same card) the app shows. Then /me → "חיבור Apple" from a Google account.
 
-## ⚠ The secret expires every 6 months
+## The secret expires every 6 months — renewed automatically
 
-Apple caps the JWT at 6 months. When it expires, web Apple sign-in fails with no alert anywhere
-(the app keeps working, since it doesn't use the secret). Re-run step 3, re-paste it in step 4,
-and set a calendar reminder for the date the script prints.
+Apple caps the JWT at 6 months, and there is no non-expiring option. When it expires, web Apple
+sign-in fails with no alert anywhere (the app keeps working, since it doesn't use the secret).
+
+Since 2026-10-08 a launchd agent on Ariel's Mac renews it: on the 1st of every month
+`scripts/apple-secret-renew.mjs` re-signs the JWT and PATCHes `external_apple_secret` via the
+Management API, so it never gets within 5 months of expiry. Install/refresh it with
+`scripts/install-apple-secret-agent.sh` (runs a copy from `~/.rinkhockey/apple-secret`, since
+launchd can't read `~/Documents`). Log: `~/Library/Logs/apple-secret.log`; a failed run pops a
+macOS notification. Re-run the installer after rotating the Supabase token in `.env`.
+
+If that Mac is retired, move the agent somewhere else or fall back to the manual steps 3–4.
 
 ## "Hide My Email" users
 
