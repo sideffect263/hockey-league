@@ -158,6 +158,70 @@ const asTs = (v) => {
 };
 const hasFile = (v) => !!(v && typeof v === "object" && v.url);
 
+// --- medical import ----------------------------------------------------------
+/**
+ * Copy the Podium physical into our private `medical` bucket for every linked
+ * player who has no open and no currently-valid certificate here, as
+ * 'pending_manager' — the league manager's queue, no coach stage (Ariel,
+ * 2026-10-08). Never approved: a human in this league still looks at it.
+ *
+ * podium_source (the Podium storage object, token stripped) makes it idempotent and
+ * stops a REJECTED import from coming back next run; a new file on Podium does.
+ * `--dry-run` lists what it would import and writes nothing.
+ */
+const DRY_RUN = process.argv.includes("--dry-run");
+const sourceOf = (url) => url.split("?")[0];
+const EXT_BY_TYPE = { "image/jpeg": "jpg", "image/png": "png", "image/heic": "heic", "image/webp": "webp", "application/pdf": "pdf" };
+
+async function importMedicals(athletes) {
+  const candidates = athletes.filter((a) => a.staticMedicalApprove?.url);
+  if (!candidates.length) return;
+  const { data: links } = await admin.from("podium_athletes")
+    .select("podium_id,player_id").not("player_id", "is", null);
+  const playerOf = new Map((links ?? []).map((l) => [l.podium_id, l.player_id]));
+  const { data: certs, error } = await admin.from("medical_certificates")
+    .select("player_id,status,expires_at,podium_source");
+  if (error) throw error;
+  const today = new Date().toISOString().slice(0, 10);
+  const covered = new Set((certs ?? []).filter((c) =>
+    ["pending", "pending_manager"].includes(c.status) ||
+    (c.status === "approved" && (!c.expires_at || c.expires_at >= today))).map((c) => c.player_id));
+  const seen = new Set((certs ?? []).map((c) => c.podium_source).filter(Boolean));
+
+  let imported = 0;
+  for (const a of candidates) {
+    const playerId = playerOf.get(String(a._id));
+    const source = sourceOf(a.staticMedicalApprove.url);
+    if (!playerId || covered.has(playerId) || seen.has(source)) continue;
+    if (DRY_RUN) { console.log(`  would import medical: ${a.name}`); imported++; continue; }
+    try {
+      const res = await fetch(a.staticMedicalApprove.url);
+      if (!res.ok) throw new Error(`download ${res.status}`);
+      const type = (res.headers.get("content-type") || "").split(";")[0];
+      const ext = EXT_BY_TYPE[type] ||
+        (a.staticMedicalApprove.fileName?.split(".").pop() || "jpg").toLowerCase();
+      const path = `${playerId}/podium-${Date.now()}.${ext}`;
+      const body = Buffer.from(await res.arrayBuffer());
+      const { error: upErr } = await admin.storage.from("medical")
+        .upload(path, body, { contentType: type || undefined, upsert: false });
+      if (upErr) throw upErr;
+      const { error: insErr } = await admin.from("medical_certificates").insert({
+        player_id: playerId, file_path: path, status: "pending_manager",
+        podium_source: source, note: "יובא אוטומטית מפודיום",
+      });
+      if (insErr) {
+        await admin.storage.from("medical").remove([path]).catch(() => {});
+        throw insErr;
+      }
+      covered.add(playerId); seen.add(source); imported++;
+      console.log(`  ✓ imported medical: ${a.name}`);
+    } catch (e) {
+      console.warn(`  ! medical import for ${a.name}: ${e.message}`); // one athlete must not fail the run
+    }
+  }
+  console.log(`✓ ${imported} medical file(s) ${DRY_RUN ? "to import (dry run)" : "imported from Podium"}`);
+}
+
 // --- run -------------------------------------------------------------------
 const started = new Date().toISOString();
 const { data: run } = await admin
@@ -241,6 +305,8 @@ try {
     athletes: athleteRows.length, payments: paymentCount,
     matched: typeof matched === "number" ? matched : null,
   }).eq("id", runId);
+
+  await importMedicals(athletes);
 
   const { data: unmatched } = await admin.rpc("podium_unmatched_athletes");
   if (unmatched?.length) {
