@@ -54,6 +54,24 @@ export async function getGameAvailability(gameId) {
   return data || []
 }
 
+/** Any signed-in user: who is coming / not coming on BOTH teams (status only — no
+ *  notes or absence reasons). Ziv 2026-10-04: "as a player and as a viewer". */
+export async function getPublicAttendance(gameId) {
+  if (!gameId) return []
+  const { data, error } = await supabase.rpc('game_attendance', { p_game_id: gameId })
+  if (error) return []
+  return data || []
+}
+
+/** Coach / admin / league manager: push a reminder to this team's players who have the
+ *  app, can register, and haven't answered. Capped server-side at one per player per day.
+ *  Returns how many were reminded. */
+export async function nudgeNonResponders(gameId, teamId) {
+  const { data, error } = await supabase.rpc('coach_nudge_game', { p_game_id: gameId, p_team_id: teamId })
+  if (error) throw error
+  return data ?? 0
+}
+
 /** Officials (judge/admin): availability for a game via a definer RPC (judges can't
  *  read the table via RLS). Used to default the scoreboard roster to attendees. */
 export async function getGameAvailabilityForOfficial(gameId) {

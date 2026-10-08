@@ -166,7 +166,10 @@ export default function GameDetail() {
   const myAvailPlayerId = (myPlayer && inThisGame(myPlayer.team_id)) ? myPlayer.id : null
   const officialTeamIds = isAdmin ? [game.home_team_id, game.away_team_id] : (coachTeamIds || []).filter(inThisGame)
   const playerTeamId = (myPlayer && inThisGame(myPlayer.team_id) && !officialTeamIds.includes(myPlayer.team_id)) ? myPlayer.team_id : null
-  const showAvailability = game.status === "scheduled" && (myAvailPlayerId || officialTeamIds.length > 0 || playerTeamId)
+  // Any signed-in viewer sees both squads' answers (status only); a coach — or an admin /
+  // league manager, for either side — can also push a reminder to the silent ones.
+  const nudgeTeamIds = (isAdmin || isLeagueManager) ? [game.home_team_id, game.away_team_id] : (coachTeamIds || []).filter(inThisGame)
+  const showAvailability = game.status === "scheduled" && (!!user || myAvailPlayerId || officialTeamIds.length > 0 || playerTeamId)
   const played = done && game.home_score != null && game.away_score != null
   const homeWin = played && game.home_score > game.away_score
   const awayWin = played && game.away_score > game.home_score
@@ -402,7 +405,7 @@ export default function GameDetail() {
           lands on a way in rather than on nothing. */}
       {showAvailability ? (
         <div id="availability" className="scroll-mt-20">
-          <GameAvailability game={game} myPlayerId={myAvailPlayerId} officialTeamIds={officialTeamIds} playerTeamId={playerTeamId} teamsMap={teamsMap} playersMap={playersMap} />
+          <GameAvailability game={game} myPlayerId={myAvailPlayerId} officialTeamIds={officialTeamIds} playerTeamId={playerTeamId} publicView={!!user} nudgeTeamIds={nudgeTeamIds} teamsMap={teamsMap} playersMap={playersMap} />
         </div>
       ) : game.status === "scheduled" && (!user || hash === "#availability") && (
         <div id="availability" className="card p-4 scroll-mt-20 flex items-center gap-3 flex-wrap">

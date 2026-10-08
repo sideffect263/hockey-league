@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { getMyAvailability, setMyAvailability, getGameAvailability } from "@/lib/availability"
+import { getMyAvailability, setMyAvailability, getGameAvailability, getPublicAttendance, nudgeNonResponders } from "@/lib/availability"
 import { getApprovedMedicalPlayerIds } from "@/lib/medical"
 import { getActiveSuspension, getActiveSuspensionsFor, removePlayerFromSquad } from "@/lib/squad"
 import {
@@ -8,7 +8,7 @@ import {
   getUnavailabilityFor, reportUnavailability, decideUnavailability, clearUnavailability,
 } from "@/lib/unavailability"
 import AddSquadPlayer from "@/components/AddSquadPlayer"
-import { Check, X, Loader2, CalendarCheck, CalendarX, AlertTriangle, Ban, UserMinus, Share2, Link2 } from "lucide-react"
+import { Check, X, Loader2, CalendarCheck, CalendarX, AlertTriangle, Ban, UserMinus, Share2, Link2, BellRing } from "lucide-react"
 
 /**
  * Sheet row 11 — the coach posts the squad to WhatsApp. Plain text, because that is
@@ -64,10 +64,12 @@ const MIN_PLAYERS = 4 // a team wants at least this many outfield + a goalkeeper
  *  - Officials (a coach of a team, or an admin) get the full per-team picture:
  *    מגיעים / לא מגיעים / חסומים / לא הגיבו + indicators (count, <4 warning, no-GK
  *    warning), and rule on their players' pending absence reports.
- *  - A plain player sees only who's coming/not from their OWN team.
+ *  - Any other signed-in viewer (a player, a fan) sees who's coming / not / hasn't
+ *    answered on BOTH teams — status only, via game_attendance (no reasons, no notes).
+ *  - nudgeTeamIds: teams this viewer may push a "you haven't answered" reminder to.
  * Team visibility is enforced by RLS; this renders only what the caller may read.
  */
-export default function GameAvailability({ game, myPlayerId, officialTeamIds = [], playerTeamId = null, teamsMap = {}, playersMap = {} }) {
+export default function GameAvailability({ game, myPlayerId, officialTeamIds = [], playerTeamId = null, publicView = false, nudgeTeamIds = [], teamsMap = {}, playersMap = {} }) {
   const [myStatus, setMyStatus] = useState(null)
   const [rows, setRows] = useState([])
   const [saving, setSaving] = useState(false)
@@ -95,8 +97,12 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
   const [decisionNotes, setDecisionNotes] = useState({})
   const [actionErr, setActionErr] = useState(null)
   const [copied, setCopied] = useState(false)
+  // Status-only answers for both teams, for the squads this viewer is not an official of.
+  const [publicRows, setPublicRows] = useState([])
+  const [nudging, setNudging] = useState(null)
+  const [nudgeMsg, setNudgeMsg] = useState({})
 
-  const canSeeAny = officialTeamIds.length > 0 || !!playerTeamId
+  const canSeeAny = officialTeamIds.length > 0 || !!playerTeamId || publicView
   // Every gate here is evaluated on the GAME's date, exactly like the server: an absence
   // that ends on Thursday does not block Saturday's fixture.
   const day = gameDayOf(game)
@@ -105,6 +111,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
   const refreshRows = () => {
     if (!canSeeAny) return
     getGameAvailability(game.id).then(setRows).catch(() => {})
+    if (publicView) getPublicAttendance(game.id).then(setPublicRows).catch(() => {})
   }
 
   useEffect(() => {
@@ -114,10 +121,12 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
       canSeeAny ? getGameAvailability(game.id) : Promise.resolve([]),
       myPlayerId ? getApprovedMedicalPlayerIds([myPlayerId]) : Promise.resolve(new Set()),
       myPlayerId ? getActiveSuspension(myPlayerId) : Promise.resolve(null),
-    ]).then(([mine, all, med, susp]) => {
+      publicView ? getPublicAttendance(game.id) : Promise.resolve([]),
+    ]).then(([mine, all, med, susp, pub]) => {
       if (!alive) return
       setMyStatus(mine)
       setRows(all)
+      setPublicRows(pub)
       setMedOk(myPlayerId ? med.has(myPlayerId) : null)
       setSuspension(susp)
       setLoading(false)
@@ -129,7 +138,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
       setLoading(false)
     })
     return () => { alive = false }
-  }, [game.id, myPlayerId, canSeeAny])
+  }, [game.id, myPlayerId, canSeeAny, publicView])
 
   const choose = async (status) => {
     setErr(null)
@@ -141,7 +150,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
       await setMyAvailability(game.id, status)
       setMyStatus(status)
       if (status === "available") setMedOk(true)
-      if (canSeeAny) setRows(await getGameAvailability(game.id))
+      if (canSeeAny) refreshRows()
     } catch (e) {
       const code = e?.message
       setErr(
@@ -198,8 +207,10 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const rowByPlayer = Object.fromEntries(rows.map(r => [r.player_id, r]))
-  const statusByPlayer = Object.fromEntries(rows.map(r => [r.player_id, r.status]))
+  // The official (RLS) rows win: they carry the manual-add note and side. The public rows
+  // fill in everyone else's status — and their manual side, so a loan lands on the right team.
+  const rowByPlayer = Object.fromEntries([...publicRows, ...rows].map(r => [r.player_id, r]))
+  const statusByPlayer = Object.fromEntries([...publicRows, ...rows].map(r => [r.player_id, r.status]))
   const nameOf = (p) => `${p?.first_name || ""} ${p?.last_name || ""}`.trim() || "שחקן"
 
   // A team's squad is its roster PLUS anyone manually added for it — a loaned
@@ -210,11 +221,11 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
     const base = Object.values(playersMap).filter(p => {
       if (p.team_id !== teamId) return false
       const row = rowByPlayer[p.id]
-      return !(row?.added_by && row.team_id && row.team_id !== teamId)
+      return !(row?.team_id && row.team_id !== teamId)
     })
     const seen = new Set(base.map(p => p.id))
     const manual = rows
-      .filter(r => r.added_by && r.team_id === teamId && !seen.has(r.player_id))
+      .filter(r => r.team_id && r.team_id === teamId && !seen.has(r.player_id))
       .map(r => playersMap[r.player_id])
       .filter(Boolean)
     return [...base, ...manual]
@@ -224,6 +235,22 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
     ...officialTeamIds.map(tid => ({ tid, full: true })),
     ...(playerTeamId && !officialTeamIds.includes(playerTeamId) ? [{ tid: playerTeamId, full: false }] : []),
   ]
+  // A signed-in viewer sees both sides; his own team first.
+  if (publicView) for (const tid of [game.home_team_id, game.away_team_id]) {
+    if (tid && !teamsToShow.some(t => t.tid === tid)) teamsToShow.push({ tid, full: false })
+  }
+
+  const nudge = async (tid) => {
+    setNudging(tid)
+    try {
+      const n = await nudgeNonResponders(game.id, tid)
+      setNudgeMsg(m => ({ ...m, [tid]: n > 0
+        ? `✓ נשלחה תזכורת ל-${n} שחקנים`
+        : "אין למי לשלוח — כל מי שיש לו אפליקציה ויכול להירשם כבר ענה (או קיבל תזכורת היום)" }))
+    } catch (e) {
+      setNudgeMsg(m => ({ ...m, [tid]: `השליחה נכשלה: ${e.message}` }))
+    } finally { setNudging(null) }
+  }
 
   // Whose blocks to ask about: every player in a squad this viewer manages, plus himself.
   // A plain player is deliberately left out of the squad-wide half — the RLS policies on
@@ -471,11 +498,22 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
                 </div>
               )}
             </div>
-            <div className={`grid gap-3 ${full ? "grid-cols-3" : "grid-cols-2"}`}>
+            <div className="grid gap-3 grid-cols-3">
               <Col label="מגיעים" cls="text-emerald-600 dark:text-emerald-400" list={coming} canEdit={full} />
               <Col label="לא מגיעים" cls="text-red-600 dark:text-red-400" list={notComing} canEdit={full} />
-              {full && <Col label="לא הגיבו" cls="text-slate-500 dark:text-slate-400" list={noReply} />}
+              <Col label="לא הגיבו" cls="text-slate-500 dark:text-slate-400" list={noReply} />
             </div>
+
+            {nudgeTeamIds.includes(tid) && noReply.length > 0 && (
+              <div className="mt-2">
+                <button onClick={() => nudge(tid)} disabled={nudging === tid}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-dashed border-brand/40 text-brand hover:bg-brand/5 transition-colors disabled:opacity-50">
+                  {nudging === tid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-3.5 h-3.5" />}
+                  תזכורת למי שלא ענה
+                </button>
+                {nudgeMsg[tid] && <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{nudgeMsg[tid]}</p>}
+              </div>
+            )}
 
             {/* Its own block rather than a fourth column: each line has to carry a reason
                 and a date range, which does not fit in a third of a phone screen. */}
