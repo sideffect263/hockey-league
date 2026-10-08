@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { getMedicalRoster, signMedical, getPlayerMedicalCerts, revokeMedical, setMedicalExamDate, uploadMedical, reviewMedical } from "@/lib/medical"
+import { getMedicalRoster, openMedical, getPlayerMedicalCerts, revokeMedical, setMedicalExamDate, uploadMedical, reviewMedical } from "@/lib/medical"
 import { HeartPulse, RefreshCw, Search, Eye, Ban, CalendarClock, X, Loader2, BadgeCheck, Link2Off, Wallet, Upload } from "lucide-react"
 import { format } from "date-fns"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
@@ -135,9 +135,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
   // admins + league managers read the private file).
   const view = async (path) => {
     if (!path) return
-    const url = await signMedical(path)
-    if (url) window.open(url, "_blank", "noopener,noreferrer")
-    else setError("לא ניתן לפתוח את המסמך")
+    if (!(await openMedical(path))) setError("לא ניתן לפתוח את המסמך")
   }
 
   const decorated = useMemo(() => (rows || []).map(r => ({ ...r, st: statusOf(r) })), [rows])

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { getPendingMedical, reviewMedical, signMedical } from "@/lib/medical"
+import { getPendingMedical, reviewMedical, openMedical } from "@/lib/medical"
 import { HeartPulse, Check, X, Eye, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 
@@ -42,8 +42,7 @@ export default function MedicalReview({ coachTeamIds = null }) {
     } finally { setBusyId(null) }
   }
   const view = async (item) => {
-    const url = await signMedical(item.file_path)
-    if (url) window.open(url, "_blank", "noopener,noreferrer")
+    await openMedical(item.file_path)
   }
 
   const coachScoped = Array.isArray(coachTeamIds) && coachTeamIds.length > 0

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { getPendingManagerMedical, approveMedicalPodium, revokeMedical, signMedical } from "@/lib/medical"
+import { getPendingManagerMedical, approveMedicalPodium, revokeMedical, openMedical } from "@/lib/medical"
 import { getUnmatchedAthletes } from "@/lib/podium"
 import PodiumSyncNote from "@/components/admin/PodiumSyncNote"
 import { ShieldCheck, Check, X, Eye, RefreshCw, Clock, BadgeCheck, Link2Off, Wallet, RotateCcw, UserPlus } from "lucide-react"
@@ -34,6 +34,10 @@ export default function MedicalPodiumReview() {
   const [error, setError] = useState(null)
   const [denied, setDenied] = useState(false)
   const [cardless, setCardless] = useState([])
+  // Exam date per row, editable before approving. Prefilled from the certificate
+  // (coach's date, or Podium's for an imported file); approval refuses without one.
+  const [dates, setDates] = useState({})
+  const dateOf = (item) => dates[item.id] ?? item.exam_date ?? ""
 
   const load = async () => {
     try {
@@ -60,9 +64,11 @@ export default function MedicalPodiumReview() {
   const confirm = async (item) => {
     if (!item.in_podium && !window.confirm(
       `${item.player_name} לא נמצא בפודיום לפי הסנכרון האחרון.\n\nלאשר בכל זאת?`)) return
+    const exam = dateOf(item)
+    if (!exam) { setError(`יש להזין תאריך בדיקה עבור ${item.player_name || "השחקן"}`); return }
     setBusyId(item.id); setError(null)
     try {
-      await approveMedicalPodium(item.id)
+      await approveMedicalPodium(item.id, exam)
       setItems(prev => (prev || []).filter(i => i.id !== item.id))
     } catch (e) { setError(e?.message || "הפעולה נכשלה") }
     finally { setBusyId(null) }
@@ -80,8 +86,7 @@ export default function MedicalPodiumReview() {
   }
 
   const view = async (item) => {
-    const url = await signMedical(item.file_path)
-    if (url) window.open(url, "_blank", "noopener,noreferrer")
+    if (!(await openMedical(item.file_path))) setError("לא ניתן לפתוח את המסמך")
   }
 
   const reinspecting = (items || []).filter(i => i.reinspection).length
@@ -192,6 +197,14 @@ export default function MedicalPodiumReview() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <label className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    תאריך בדיקה
+                    <input type="date" value={dateOf(item)} max={new Date().toLocaleDateString("en-CA")}
+                      onChange={e => setDates(d => ({ ...d, [item.id]: e.target.value }))}
+                      aria-label={`תאריך בדיקה · ${item.player_name || ""}`}
+                      className={`bg-slate-50 dark:bg-slate-800 border rounded-lg px-2 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/30 ${
+                        dateOf(item) ? "border-slate-200 dark:border-slate-700" : "border-red-300 dark:border-red-700"}`} />
+                  </label>
                   <button onClick={() => view(item)}
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     <Eye className="w-3.5 h-3.5" /> צפייה בבדיקה

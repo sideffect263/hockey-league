@@ -118,6 +118,21 @@ export async function reviewMedical(id, status, examDate = null) {
   }
 }
 
+/**
+ * Open a private medical file in a new tab. The tab is opened SYNCHRONOUSLY inside the
+ * click, then pointed at the signed URL: window.open after an await is no longer a
+ * user gesture, and Safari / mobile browsers silently block it ("view does nothing").
+ * Returns false when the file can't be signed.
+ */
+export async function openMedical(filePath) {
+  const tab = window.open("", "_blank")
+  const url = await signMedical(filePath)
+  if (!url) { tab?.close(); return false }
+  if (tab) { tab.opener = null; tab.location.href = url }
+  else window.location.href = url
+  return true
+}
+
 /** A short-lived signed URL to view a private medical file (120s). */
 export async function signMedical(filePath) {
   const { data, error } = await supabase.storage.from('medical').createSignedUrl(filePath, 120)
@@ -191,12 +206,16 @@ export async function getPendingManagerMedical() {
  * was asking her to do the mirror's job. Rejecting outright is revokeMedical(),
  * which carries a reason to the player and his coach.
  */
-export async function approveMedicalPodium(certId) {
-  const { error } = await supabase.rpc('approve_medical_podium', { p_id: certId })
+export async function approveMedicalPodium(certId, examDate = null) {
+  const { error } = await supabase.rpc('approve_medical_podium', {
+    p_id: certId, ...(examDate ? { p_exam_date: examDate } : {}),
+  })
   if (error) {
     const m = error.message || ''
     if (/not authorized/i.test(m)) throw new Error('אין לך הרשאה לאשר רישום בפודיום')
     if (/not awaiting manager/i.test(m)) throw new Error('האישור כבר טופל — רענן את הרשימה')
+    if (/exam date required/i.test(m)) throw new Error('יש להזין תאריך בדיקה לפני האישור')
+    if (/in future/i.test(m)) throw new Error('תאריך הבדיקה לא יכול להיות עתידי')
     throw new Error('הפעולה נכשלה')
   }
 }

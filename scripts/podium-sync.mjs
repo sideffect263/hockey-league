@@ -205,9 +205,14 @@ async function importMedicals(athletes) {
       const { error: upErr } = await admin.storage.from("medical")
         .upload(path, body, { contentType: type || undefined, upsert: false });
       if (upErr) throw upErr;
+      // Podium's exam date, so the LM approves a dated certificate (expiry = +1 year,
+      // same as set_medical_exam_date). She can still correct it in the queue.
+      const exam = asDate(a.staticMedicalApproveCreated);
+      const expires = exam ? `${Number(exam.slice(0, 4)) + 1}${exam.slice(4)}` : null;
       const { error: insErr } = await admin.from("medical_certificates").insert({
         player_id: playerId, file_path: path, status: "pending_manager",
         podium_source: source, note: "יובא אוטומטית מפודיום",
+        exam_date: exam, expires_at: expires,
       });
       if (insErr) {
         await admin.storage.from("medical").remove([path]).catch(() => {});
