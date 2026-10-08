@@ -264,7 +264,7 @@ export default function Feed() {
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">נסו סינון אחר</p>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-2 sm:space-y-5">
               {visible.map(post => (
                 // Anchor for deep links: a like/comment notification points at
                 // /#post-<id>, and buildFeed already ids human posts as `post-<uuid>`,

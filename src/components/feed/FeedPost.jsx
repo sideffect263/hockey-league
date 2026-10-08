@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
-import { Crown, Flame, Trophy, MapPin, FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake } from "lucide-react"
+import { Crown, Flame, Trophy, MapPin, FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2 } from "lucide-react"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment } from "@/lib/api"
@@ -544,6 +544,11 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   const bday = bdayId ? (playersMap?.[bdayId] || { id: bdayId }) : null
   const ext = p.source_name && !bday ? { source: p.source_name, link: p.link_url, image: p.image_url } : null
   const [extImgError, setExtImgError] = useState(false)
+  // Full-width redesign (2026-10-08): the photo keeps its own shape, clamped between
+  // 4:5 portrait and 1.91:1 landscape (Instagram's bounds) — 16:9 until it loads.
+  const [mediaRatio, setMediaRatio] = useState(16 / 9)
+  const [expanded, setExpanded] = useState(false)
+  const [heartPop, setHeartPop] = useState(false)
   // Two of the three sources are YouTube channels, so most news items are videos.
   // They play HERE (muted, while on screen) rather than sending the reader to
   // youtube.com — see FeedVideo.
@@ -637,12 +642,34 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
     finally { setPosting(false) }
   }
 
+  // Double-tap the photo to like (never un-likes, like Instagram).
+  const likeFromMedia = () => {
+    setHeartPop(true); setTimeout(() => setHeartPop(false), 700)
+    if (!liked) toggleLike()
+  }
+  const sharePost = async () => {
+    const url = ext?.link || window.location.origin
+    const text = (postBody || "").split("\n")[0].slice(0, 140)
+    try { if (navigator.share) { await navigator.share({ title: name, text, url }); return } }
+    catch (e) { if (e?.name === "AbortError") return }
+    try { await navigator.clipboard.writeText(url) } catch { /* nothing else to do */ }
+  }
+
   if (removed) return null
 
+  // Automatic posts (birthdays here; results / milestones above) stay inset cards. A post
+  // by a person or the news bot runs edge to edge on a phone — the page's p-4 gutter is
+  // undone with -mx-4 — and stays a card in the desktop column.
+  const fullBleed = !bday
+  const textBody = ext ? (postBody || "").split("\n\n")[0] : (postBody || "")
+  const longText = textBody.length > 220 || textBody.split("\n").length > 3
+
   return (
-    <motion.div {...fade} className="card p-4">
+    <motion.div {...fade} className={fullBleed
+      ? "card -mx-4 sm:mx-0 py-3 sm:p-4 rounded-none sm:rounded-2xl border-x-0 sm:border-x shadow-none sm:shadow-sm"
+      : "card p-4"}>
       {/* Author header */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className={`flex items-center gap-3 mb-3 ${fullBleed ? "px-4 sm:px-0" : ""}`}>
         <PlayerLink playerId={linkedPlayerId} className="shrink-0">
           <Avatar url={author?.avatar_url} name={name} className="w-9 h-9" />
         </PlayerLink>
@@ -659,17 +686,14 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
               <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">
                 <Cake className="w-3 h-3" /> יום הולדת
               </span>
-            ) : ext ? (
-              <span title={`מקור חיצוני · ${ext.source}`} className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-900/30 px-1.5 py-0.5 rounded-full">
-                <Globe className="w-3 h-3" /> {ext.source}
-              </span>
-            ) : (
+            ) : ext ? null : (
               <span title="חשבון שאינו מקושר לשחקן" className="shrink-0 text-[10px] font-medium text-slate-500 dark:text-slate-400">אורח/ת</span>
             )}
             <OgBadge number={linkedPlayerId && playersMap?.[linkedPlayerId]?.og_number} size="sm" />
             {authorRoleItems.map(it => <RoleBadge key={it.role} role={it.role} size="sm" />)}
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            {ext && <><span className="inline-flex items-center gap-0.5"><Globe className="w-3 h-3" />{ext.source}</span>·</>}
             <span>{fmtDate(post.date)}</span>
             {team && <>·<TeamLink team={team} className="hover:text-brand transition-colors">{team.name}</TeamLink></>}
           </p>
@@ -707,49 +731,75 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
       ) : bday ? (
         <BirthdayBanner player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} fallbackPhoto={p.image_url} body={postBody} />
       ) : (
-        <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed">{ext ? postBody.split("\n\n")[0] : postBody}</p>
+        <div className="px-4 sm:px-0">
+          <p className={`text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed ${longText && !expanded ? "line-clamp-3" : ""}`}>{textBody}</p>
+          {longText && !expanded && (
+            <button onClick={() => setExpanded(true)} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-brand">עוד</button>
+          )}
+        </div>
       )}
-      {rowError && <p className="text-xs text-red-500 mt-2">{rowError}</p>}
+      {rowError && <p className="text-xs text-red-500 mt-2 px-4 sm:px-0">{rowError}</p>}
 
-      {/* External news: thumbnail + link out. onError collapses the image rather
-          than leaving a broken-image box when a CDN thumbnail expires. */}
-      {ext && (
+      {/* External news media, edge to edge on a phone. The photo is no longer a link —
+          a tap would fight the double-tap like; "צפייה במקור" sits in the counts line.
+          onError collapses the image rather than leaving a broken-image box. */}
+      {ext && (extVideoId || (ext.image && !extImgError)) && (
         <div className="mt-3">
           {extVideoId ? (
             <FeedVideo videoId={extVideoId} poster={ext.image}
                        title={postBody.split("\n")[0] || ext.source} />
-          ) : ext.image && !extImgError ? (
-            <a href={ext.link} target="_blank" rel="noopener noreferrer" className="group block relative rounded-xl overflow-hidden bg-slate-900">
-              <img src={ext.image} alt="" loading="lazy" onError={() => setExtImgError(true)}
-                   style={{ aspectRatio: "16 / 9" }}
-                   className="w-full max-h-80 object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
-            </a>
-          ) : null}
-          {ext.link && (
-            <a href={ext.link} target="_blank" rel="noopener noreferrer"
-               className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-hover transition-colors">
-              <ExternalLink className="w-3.5 h-3.5" /> {extVideoId ? "פתיחה ביוטיוב" : "צפייה במקור"}
-            </a>
+          ) : (
+            <div className="relative bg-slate-900 sm:rounded-xl overflow-hidden select-none" onDoubleClick={likeFromMedia}
+                 style={{ aspectRatio: String(mediaRatio) }}>
+              <img src={ext.image} alt="" loading="lazy" draggable={false} onError={() => setExtImgError(true)}
+                   onLoad={e => {
+                     const { naturalWidth: w, naturalHeight: h } = e.currentTarget
+                     if (w && h) setMediaRatio(Math.min(1.91, Math.max(0.8, w / h)))
+                   }}
+                   className="absolute inset-0 w-full h-full object-cover" />
+              <AnimatePresence>
+                {heartPop && (
+                  <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.3, opacity: 0 }}
+                    transition={{ duration: 0.25 }} className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Heart className="w-20 h-20 text-white fill-white drop-shadow-lg" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
       )}
 
-      {/* Actions */}
-      <div data-reactions className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-5 text-xs">
-        <button onClick={toggleLike} className={`flex items-center gap-1.5 font-semibold transition-colors ${liked ? "text-red-500" : "text-slate-500 dark:text-slate-400 hover:text-red-500"}`}>
-          <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
-          {likeCount > 0 ? <span>{likeCount}</span> : <span>אהבתי</span>}
-        </button>
-        <button onClick={toggleComments} className="flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
-          <MessageCircle className="w-4 h-4" />
-          {commentCount > 0 ? <span>{commentCount}</span> : <span>תגובה</span>}
-        </button>
+      {/* Actions: icons, then the counts on their own line (and the link out). */}
+      <div data-reactions className={`mt-2 ${fullBleed ? "px-4 sm:px-0" : ""}`}>
+        <div className="flex items-center gap-4 py-1">
+          <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
+            className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
+            <Heart className={`w-6 h-6 ${liked ? "fill-current" : ""}`} />
+          </button>
+          <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+            <MessageCircle className="w-6 h-6" />
+          </button>
+          <button onClick={sharePost} aria-label="שיתוף" className="ms-auto text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+            <Share2 className="w-5 h-5" />
+          </button>
+        </div>
+        {(likeCount > 0 || commentCount > 0 || ext?.link) && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-1.5">
+            {likeCount > 0 && <span className="font-bold text-slate-900 dark:text-white">{likeCount} אהבו</span>}
+            {commentCount > 0 && <>{likeCount > 0 && <span>·</span>}<button onClick={toggleComments} className="hover:text-brand">{commentCount} תגובות</button></>}
+            {ext?.link && <>{(likeCount > 0 || commentCount > 0) && <span>·</span>}
+              <a href={ext.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand hover:text-brand-hover">
+                <ExternalLink className="w-3 h-3" /> {extVideoId ? "פתיחה ביוטיוב" : "צפייה במקור"}
+              </a></>}
+          </p>
+        )}
       </div>
 
       {/* Comments */}
       <AnimatePresence>
         {showComments && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} data-reactions className="overflow-hidden">
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} data-reactions className={`overflow-hidden ${fullBleed ? "px-4 sm:px-0" : ""}`}>
             <div className="mt-3 space-y-3">
               {loadingComments ? (
                 <div className="flex justify-center py-2"><Loader2 className="w-4 h-4 animate-spin text-slate-400" /></div>
