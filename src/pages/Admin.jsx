@@ -47,6 +47,7 @@ import VenuesAdmin from "@/components/admin/VenuesAdmin"
 import SeasonCalendar from "@/components/admin/SeasonCalendar"
 import TelemetryAdmin from "@/components/admin/TelemetryAdmin"
 import UserAnalyticsAdmin from "@/components/admin/UserAnalyticsAdmin"
+import FeedAnalyticsAdmin from "@/components/admin/FeedAnalyticsAdmin"
 import AppUsersAdmin from "@/components/admin/AppUsersAdmin"
 import SuggestionsReview from "@/components/admin/SuggestionsReview"
 import RolesAdmin from "@/components/admin/RolesAdmin"
@@ -56,7 +57,7 @@ import GameChangeRequestsReview from "@/components/admin/GameChangeRequestsRevie
 import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, LineChart as LineChartIcon } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, LineChart as LineChartIcon } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -81,6 +82,7 @@ const tabs = [
   { id: "reports", label: "דיווחים", icon: Flag },
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
   { id: "analytics", label: "ניתוח משתמשים", icon: LineChartIcon },
+  { id: "feed_analytics", label: "ניתוח פיד", icon: Newspaper },
   { id: "telemetry", label: "טלמטריה", icon: Activity },
   { id: "app_users", label: "משתמשי אפליקציה", icon: Smartphone },
   { id: "roles", label: "תפקידים", icon: Award },
@@ -261,6 +263,7 @@ export default function Admin() {
               {currentTab === "reports" && <ReportsReview />}
               {currentTab === "clusters" && <ClustersAdmin players={players} />}
               {currentTab === "analytics" && <UserAnalyticsAdmin />}
+              {currentTab === "feed_analytics" && <FeedAnalyticsAdmin />}
               {currentTab === "telemetry" && <TelemetryAdmin />}
               {currentTab === "app_users" && <AppUsersAdmin />}
               {currentTab === "coaches" && <CoachesAdmin teamsMap={teamsMap} players={players} />}
