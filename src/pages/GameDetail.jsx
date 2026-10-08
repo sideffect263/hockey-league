@@ -20,6 +20,7 @@ import GameChangeOpponentCard from "@/components/GameChangeOpponentCard"
 import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
 import AddToCalendar from "@/components/games/AddToCalendar"
 import GameFormExport from "@/components/GameFormExport"
+import GameMvp from "@/components/GameMvp"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
@@ -443,6 +444,13 @@ export default function GameDetail() {
             ))}
           </div>
         </motion.div>
+      )}
+
+      {/* MVP — picked by an official, shown to everyone once picked. */}
+      {done && (
+        <GameMvp game={game} stats={stats} playersMap={playersMap} teamsMap={teamsMap}
+          canPick={isAdmin || isLeagueManager || isJudgeRole}
+          onChanged={(pid) => setGame(g => ({ ...g, mvp_player_id: pid }))} />
       )}
 
       {/* ============ BOX SCORE ============ */}

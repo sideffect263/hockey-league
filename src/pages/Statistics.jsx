@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames, getReferees, getGameStats } from "@/lib/api"
-import { BarChart3, Shield, Crown, ChevronDown, ChevronUp, RefreshCw, Trophy, TrendingUp, Flame, Zap, Target } from "lucide-react"
+import { BarChart3, Shield, Crown, ChevronDown, ChevronUp, RefreshCw, Trophy, TrendingUp, Flame, Zap, Target, Star } from "lucide-react"
 import { Player, Glove, Cards, Whistle, StickBall, BlueCard, RedCard, Goal, Crossed, Stats } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
@@ -170,6 +170,12 @@ export default function Statistics() {
   const awardBrace = achievements.players.filter(p => p.braces > 0).sort((a, b) => b.braces - a.braces)
   const awardClean = cleanSheetLeaders
   const awardBlue = bluePlayers
+  // MVP picks by the officials, counted over the same competitive games as everything else.
+  const awardMvp = useMemo(() => {
+    const n = {}
+    for (const g of statGames) if (g.mvp_player_id) n[g.mvp_player_id] = (n[g.mvp_player_id] || 0) + 1
+    return players.filter(p => n[p.id]).map(p => ({ ...p, mvps: n[p.id] })).sort((a, b) => b.mvps - a.mvps)
+  }, [statGames, players])
 
   // Entity colour follows the fixed team→slot map (same hues as the goal race).
   const teamColor = useMemo(() => {
@@ -532,6 +538,7 @@ export default function Statistics() {
           <Trophy className="w-5 h-5 text-amber-500" /> הישגים ותארים
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <AwardCard title="MVP של המשחק" icon={<Star className="w-4 h-4 text-amber-500" />} data={awardMvp} valueOf={p => p.mvps} badge="bg-amber-500" empty="טרם נבחרו MVP העונה" />
           <AwardCard title="מלכי השלישיות" icon={<StickBall className="w-4 h-4 text-brand" />} data={awardHat} valueOf={p => p.hatTricks} badge="bg-brand" empty="אין שלישיות" note={STATS_NOTE} />
           <AwardCard title="משחקי-על (5+ שערים)" icon={<Zap className="w-4 h-4 text-amber-500" />} data={awardBig} valueOf={p => p.bigGames} badge="bg-amber-500" empty="אין" note={STATS_NOTE} />
           <AwardCard title="דאבלים (2 שערים)" icon={<Target className="w-4 h-4 text-slate-500" />} data={awardBrace} valueOf={p => p.braces} badge="bg-slate-700 dark:bg-slate-500" empty="אין" note={STATS_NOTE} />
