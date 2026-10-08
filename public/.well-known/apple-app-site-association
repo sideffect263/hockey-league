@@ -2,13 +2,35 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["AR3LCY2JB4.com.arielbiton.rinkhockeyil"],
+        "appIDs": [
+          "AR3LCY2JB4.com.arielbiton.rinkhockeyil"
+        ],
         "components": [
-          { "/": "/games/*/tv", "exclude": true, "comment": "the TV board is a browser-only fullscreen page" },
-          { "/": "/games/*", "comment": "game pages, incl. /games/next (sign up for your next game)" }
+          {
+            "/": "/games/*/tv",
+            "exclude": true,
+            "comment": "the TV board is a browser-only fullscreen page"
+          },
+          {
+            "/": "/games/*",
+            "comment": "game pages, incl. /games/next (sign up for your next game)"
+          },
+          {
+            "/": "/teams/*",
+            "comment": "team pages (share-to-follow, ?follow=1) — iOS 1.4.9+ only"
+          },
+          {
+            "/": "/players/*",
+            "comment": "player pages (share-to-follow, ?follow=1) — iOS 1.4.9+ only"
+          }
         ],
         "appID": "AR3LCY2JB4.com.arielbiton.rinkhockeyil",
-        "paths": ["NOT /games/*/tv", "/games/*"]
+        "paths": [
+          "NOT /games/*/tv",
+          "/games/*",
+          "/teams/*",
+          "/players/*"
+        ]
       }
     ]
   }
