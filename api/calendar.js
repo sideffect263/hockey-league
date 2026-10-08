@@ -24,6 +24,23 @@ async function sb(pathAndQuery) {
   return r.json()
 }
 
+// Count subscribers (supabase/calendar-subscribers.sql). The RPC hashes ip+user-agent
+// with a server-side salt, so the raw IP never leaves this function. Best-effort: a
+// failed log must never cost anyone their calendar.
+function logFetch(req, team) {
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || String(req.headers['x-real-ip'] || '')
+  return fetch(`${SUPABASE_URL}/rest/v1/rpc/log_calendar_fetch`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_ip: ip, p_ua: String(req.headers['user-agent'] || ''), p_team: team }),
+    signal: AbortSignal.timeout(1500),
+  }).catch(() => {})
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default async function handler(req, res) {
@@ -60,16 +77,16 @@ export default async function handler(req, res) {
       + '&tournament_id=is.null&order=game_date.asc'
     if (season) q += `&season_id=eq.${season.id}`
     if (team) q += `&or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})`
-    const games = await sb(q)
+    const [games] = await Promise.all([sb(q), logFetch(req, team?.slug || '')])
 
     const name = [CAL_NAME, team?.name, season?.name].filter(Boolean).join(' · ')
     const body = buildIcs(games, teamsById, { name, site })
 
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
     res.setHeader('Content-Disposition', `inline; filename="rinkhockeyil${team ? '-team' : ''}.ics"`)
-    // Calendar clients poll on their own schedule; the edge cache just keeps a burst of
-    // them off Supabase. 15 minutes is well inside how fast anyone needs a change.
-    res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600')
+    // No edge cache (no s-maxage): every poll has to reach logFetch() or the subscriber
+    // count undercounts. Calendar apps poll every few hours, so the load is tiny.
+    res.setHeader('Cache-Control', 'private, max-age=900')
     return res.status(200).send(body)
   } catch (e) {
     console.error('calendar feed', e)
