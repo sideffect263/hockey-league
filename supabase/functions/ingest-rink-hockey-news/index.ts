@@ -355,6 +355,13 @@ function parseFeed(xml: string, src: Source): Item[] {
 // 429 "Sorry..." bot page on every call (verified 2026-09-26). This one answers
 // the same egress with 200. Both are unofficial, so Google can throttle or change
 // either without notice — any surprise returns null and the source title is used.
+// Google renders "hockey pista / patines / em patins" as track, rink-floor or roller
+// hockey. The league's name for the sport is הוקי גלגיליות — use it everywhere.
+const SPORT_MISNAMES = /הוקי (על )?(מסלול|משטח|רולר|גלגלים|החלקה|סקייטים|פטינים|בפטינים|על גלגיליות)/g;
+function fixSportName(he: string): string {
+  return he.replace(SPORT_MISNAMES, "הוקי גלגיליות");
+}
+
 async function translateToHebrew(title: string): Promise<string | null> {
   try {
     const url = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=iw&q=" +
@@ -366,7 +373,7 @@ async function translateToHebrew(title: string): Promise<string | null> {
     // source language it is ["<hebrew>"]. Take the text from either shape.
     const first = Array.isArray(data) ? data[0] : null;
     const text = (Array.isArray(first) ? first[0] : first);
-    return typeof text === "string" && text.trim() ? text.trim() : null;
+    return typeof text === "string" && text.trim() ? fixSportName(text.trim()) : null;
   } catch (err) {
     console.error("translate failed, falling back to source title:", err);
     return null;
