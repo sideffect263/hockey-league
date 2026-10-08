@@ -229,7 +229,67 @@ function parseCategories(xml: string): string[] {
   return [...xml.matchAll(/<category>([\s\S]*?)<\/category>/gi)].map((m) => decodeEntities(m[1]));
 }
 
-type Item = { guid: string; title: string; link: string; published: Date; image: string | null; categories: string[] };
+type Item = {
+  guid: string; title: string; link: string; published: Date; image: string | null; categories: string[];
+  summary: string | null;  // source-language lead, cleaned (cleanSummary) — translated at post time
+};
+
+// ---- Summaries --------------------------------------------------------------
+// A headline alone told people too little (Ariel, 2026-10-08), so each item gets a
+// one-to-three-sentence lead from the feed's own description — no extra request.
+// It goes in the FIRST paragraph, on the line under the headline, because every
+// client (web card, iOS displayBody, Android displayBody) shows only the first
+// paragraph of a news post: the summary reaches the released apps with no release.
+const SUMMARY_MAX = 280;
+const STRIP_TAIL = /\s*(\[(…|\.\.\.)\]|…|\.\.\.)?\s*(leer m[aá]s|ler mais|leggi( tutto| anche)?|continua a leggere|read more|lire la suite)\b[\s\S]*$/i;
+function normalize(s: string): string {
+  return s.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+function cleanSummary(raw: string | null, title: string): string | null {
+  if (!raw) return null;
+  let s = decodeEntities(decodeEntities(raw))
+    .replace(/<[^>]+>/g, " ")
+    // WordPress's "The post X appeared first on Y" footer, in the sources' languages.
+    .replace(/\s(The post|L['’]articolo|La entrada|O post|Le post|L['’]entrada) [\s\S]*? (appeared first on|proviene da|aparece primero en|apareceu primeiro em|est apparu en premier sur|apareix primer a) [\s\S]*$/i, "")
+    .replace(/\s+/g, " ").trim()
+    .replace(STRIP_TAIL, "")
+    .replace(/\s*\[?\s*(…|\.\.\.)\s*\]?\s*$/, "…")
+    .trim();
+  // A feed excerpt cut off mid-sentence: drop the half sentence when there is a
+  // whole one before it ("…alla COP Arena di […" → ends at the previous full stop).
+  if (s.endsWith("…")) {
+    const lastStop = Math.max(s.lastIndexOf(". "), s.lastIndexOf("! "), s.lastIndexOf("? "));
+    if (lastStop > 40) s = s.slice(0, lastStop + 1);
+  }
+  // Several outlets open the description with the headline itself.
+  const t = normalize(title);
+  if (t && normalize(s).startsWith(t)) {
+    const words = title.trim().split(/\s+/).length;
+    s = s.split(/\s+/).slice(words).join(" ").replace(/^[\s:.,–-]+/, "");
+  }
+  if (s.length < 40 || normalize(s) === t) return null;
+  // Whole sentences up to the cap; a single over-long sentence is cut at a word.
+  const sentences = s.match(/[^.!?…]+[.!?…]+["'”»)]?\s*|[^.!?…]+$/g) ?? [s];
+  let out = "";
+  for (const sen of sentences) {
+    if ((out + sen).trim().length > SUMMARY_MAX) break;
+    out += sen;
+  }
+  out = out.trim();
+  if (!out) out = s.slice(0, SUMMARY_MAX).replace(/\s+\S*$/, "") + "…";
+  return out.length >= 40 ? out : null;
+}
+
+// YouTube descriptions are mostly credits, hashtags and "subscribe" links. Keep the
+// first block of real prose (Azul Directa writes some); otherwise no summary.
+function youTubeSummary(raw: string | null, title: string): string | null {
+  if (!raw) return null;
+  const para = decodeEntities(raw).split(/\n\s*\n/)[0]
+    .split("\n")
+    .filter((l) => !/https?:|#|@|subscri|suscr|follow|s[ií]guenos|📌|📆|🎥|📷|📍|🏆/i.test(l))
+    .join(" ");
+  return cleanSummary(para, title);
+}
 
 function parseFeed(xml: string, src: Source): Item[] {
   // Each block MUST be cut at its own closing tag. Splitting alone leaves every
@@ -269,7 +329,13 @@ function parseFeed(xml: string, src: Source): Item[] {
     const categories = src.kind === "rss" ? parseCategories(b) : [];
     if (src.excludeCategories?.some((c) => categories.includes(c))) continue;
 
-    out.push({ guid: `${src.key}:${guid}`, title, link, published, image, categories });
+    // Highlight clips: the matchup in the headline is the whole story, and their
+    // descriptions are credits and links.
+    const summary = src.highlights ? null
+      : src.kind === "youtube" ? youTubeSummary(tag(b, "media:description"), title)
+      : cleanSummary(tag(b, "description") || tag(b, "content:encoded"), title);
+
+    out.push({ guid: `${src.key}:${guid}`, title, link, published, image, categories, summary });
   }
   return out.sort((a, b) => b.published.getTime() - a.published.getTime());
 }
@@ -403,6 +469,36 @@ async function fetchOgImage(url: string): Promise<string | null> {
   }
 }
 
+/**
+ * One-off: add a summary to posts already in the feed that were ingested before
+ * summaries existed (their first paragraph is the headline alone). Rewrites only
+ * the first paragraph — the headline and the trailing source/link lines are kept.
+ */
+async function backfillSummaries(src: Source, dryRun: boolean, maxAgeDays: number) {
+  const items = parseFeed(await fetchFeed(src), src)
+    .filter((i) => i.summary && i.published.getTime() >= Date.now() - maxAgeDays * 86_400_000);
+  if (!items.length) return { source: src.key, updated: [] as string[], preview: [] as unknown[] };
+  const { data: rows, error } = await admin
+    .from("posts").select("id, body, external_guid")
+    .in("external_guid", items.map((i) => i.guid)).is("deleted_at", null);
+  if (error) throw error;
+  const updated: string[] = [];
+  const preview: unknown[] = [];
+  for (const row of rows ?? []) {
+    const [first, ...rest] = String(row.body).split("\n\n");
+    if (first.includes("\n")) continue;              // already has a summary
+    const item = items.find((i) => i.guid === row.external_guid)!;
+    const summary = await translateToHebrew(item.summary!);
+    if (!summary) continue;
+    const body = [`${first}\n${summary}`, ...rest].join("\n\n").slice(0, 2000);
+    if (dryRun) { preview.push({ guid: row.external_guid, body }); continue; }
+    const { error: upErr } = await admin.from("posts").update({ body }).eq("id", row.id);
+    if (upErr) { console.error(`${src.key}: summary update failed`, upErr); continue; }
+    updated.push(row.external_guid);
+  }
+  return { source: src.key, updated, preview };
+}
+
 async function ingestSource(src: Source, authorId: string, budget: number, dryRun: boolean, maxAgeDays: number) {
   const items = parseFeed(await fetchFeed(src), src);
   const cutoff = Date.now() - maxAgeDays * 86_400_000;
@@ -444,7 +540,11 @@ async function ingestSource(src: Source, authorId: string, budget: number, dryRu
     // for the native apps, which render body text only and would otherwise have no
     // source and no way to open the item; the web card hides everything after the
     // first paragraph.
-    const body = `${headline}\n\n${src.name}\n${item.link}`;
+    // Summary only when it translated — a Spanish paragraph under a Hebrew headline
+    // reads worse than none.
+    const summary = item.summary ? await translateToHebrew(item.summary) : null;
+    const lead = summary ? `${headline}\n${summary}` : headline;
+    const body = `${lead}\n\n${src.name}\n${item.link}`;
 
     if (dryRun) {
       preview.push({ guid: item.guid, published: item.published.toISOString(), body, image: item.image });
@@ -484,6 +584,7 @@ Deno.serve(async (req) => {
     let dryRun = false;
     let maxAgeDays = MAX_AGE_DAYS;
     let only: string[] | null = null;
+    let backfill = false;
     try {
       const body = await req.json();
       dryRun = !!body?.dry_run;
@@ -492,7 +593,19 @@ Deno.serve(async (req) => {
       // it; it exists so one source can be seeded or debugged without the shared
       // per-run budget being spent by whichever source is listed first.
       if (Array.isArray(body?.only) && body.only.length) only = body.only.map(String);
+      // `backfill_summaries: true` adds summaries to existing posts instead of ingesting.
+      backfill = !!body?.backfill_summaries;
     } catch { /* no body → a normal cron run */ }
+
+    if (backfill) {
+      const report = [];
+      for (const src of SOURCES) {
+        if (only && !only.includes(src.key)) continue;
+        try { report.push(await backfillSummaries(src, dryRun, maxAgeDays)); }
+        catch (err) { report.push({ source: src.key, error: String(err) }); }
+      }
+      return Response.json({ ok: true, dry_run: dryRun, backfill: true, report });
+    }
 
     const authorId = dryRun ? "dry-run" : await ensureBotAuthor();
     const report = [];

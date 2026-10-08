@@ -732,7 +732,12 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
         <BirthdayBanner player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} fallbackPhoto={p.image_url} body={postBody} />
       ) : (
         <div className="px-4 sm:px-0">
-          <p className={`text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed ${longText && !expanded ? "line-clamp-3" : ""}`}>{textBody}</p>
+          {/* News: the headline is the first line, the summary (ingest, 2026-10-08) the rest. */}
+          <p className={`text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed ${longText && !expanded ? (ext ? "line-clamp-5" : "line-clamp-3") : ""}`}>
+            {ext && textBody.includes("\n") ? (
+              <><span className="font-bold text-slate-900 dark:text-white">{textBody.split("\n")[0]}</span>{"\n" + textBody.split("\n").slice(1).join("\n")}</>
+            ) : textBody}
+          </p>
           {longText && !expanded && (
             <button onClick={() => setExpanded(true)} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-brand">עוד</button>
           )}
