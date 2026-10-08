@@ -32,6 +32,10 @@ const admin = createClient(SB_URL, SB_SERVICE_ROLE, {
 const MAX_AGE_DAYS = 14;        // older than this is not news
 const MAX_NEW_PER_SOURCE = 3;   // a tournament burst trickles in over days
 const MAX_NEW_PER_RUN = 8;      // ...and never floods a single day's feed
+// Videos get their own budget. They hold attention about twice as long as articles
+// (ניתוח פיד, 2026-10-08: 16s vs 8s median), and with one shared budget the written
+// sources listed first used it up before any video source was reached.
+const MAX_VIDEOS_PER_RUN = 6;
 
 const BOT_EMAIL = "news-bot@rinkhockeyil.com";
 const BOT_NAME = "חדשות הוקי גלגיליות";
@@ -44,6 +48,13 @@ type Source = {
   // RSS only: drop an item carrying any of these <category> tags. Some rink-hockey
   // outlets also cover the other roller sports under the same feed.
   excludeCategories?: string[];
+  // Keep only items whose title matches. For channels that mix highlights with
+  // interviews or full 2-hour games (Skate Italia).
+  includeTitle?: RegExp;
+  // Overrides MAX_NEW_PER_SOURCE for a high-volume channel.
+  maxPerRun?: number;
+  // Match-highlight clips: headline built by highlightHeadline(), not translated whole.
+  highlights?: boolean;
 };
 
 const SOURCES: Source[] = [
@@ -130,6 +141,56 @@ const SOURCES: Source[] = [
     name: "Mundo Deportivo",
     url: "https://www.mundodeportivo.com/rss/hockey-patines",
   },
+  // ---- Added 2026-10-08: highlights + tactics video. Ariel wants more game
+  // highlights and analysis; every feed below was checked (200 + embeddable).
+  {
+    // Highlights re-uploads: World Championship, OK Liga, Portugal, Italy, Champions
+    // League, Argentina. Posts ~5 a day, so it is capped. Fan channel re-uploading
+    // broadcasts — a video can be taken down later and leave a dead embed.
+    key: "somdhoquei",
+    kind: "youtube",
+    name: "Som D'hoquei",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCpzv8BikWPwHoQugAWE8Ikg",
+    includeTitle: /highlights/i,
+    highlights: true,
+    maxPerRun: 2,
+  },
+  {
+    // Italian federation. Serie A1 highlights (~7 per matchday) mixed with
+    // interviews and full games — the title filter keeps the highlights only.
+    key: "skate-italia",
+    kind: "youtube",
+    name: "Skate Italia Hockey Pista",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCFcx30ZnLm7eDDLCrFxX3JA",
+    includeTitle: /^\s*highlights/i,
+    highlights: true,
+  },
+  {
+    // Swiss federation, "Rollhockey Saison 2026/27" playlist — the channel itself
+    // also carries inline hockey. NEW PLAYLIST EVERY SEASON: swap the id in Sept.
+    key: "swiss-skate",
+    kind: "youtube",
+    name: "swiss skate",
+    url: "https://www.youtube.com/feeds/videos.xml?playlist_id=PLJa3l3C1Bsbo",
+    includeTitle: /highlights/i,
+    highlights: true,
+  },
+  {
+    // Tactics and referee analysis (Spanish), 4–7 min. Follows the season.
+    key: "azul-directa",
+    kind: "youtube",
+    name: "Azul Directa",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCjQeZ1gzxoHwqtpaSxohPbw",
+  },
+  {
+    // French N1 Élite highlights, ~2 a month.
+    key: "actus-rink",
+    kind: "youtube",
+    name: "Actus Rink",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCZFrYqqNt1BI6xFXRZ8JKXw",
+    includeTitle: /highlights/i,
+    highlights: true,
+  },
 ];
 
 // ---- Minimal feed parsing --------------------------------------------------
@@ -182,6 +243,7 @@ function parseFeed(xml: string, src: Source): Item[] {
   for (const b of blocks) {
     const title = tag(b, "title");
     if (!title) continue;
+    if (src.includeTitle && !src.includeTitle.test(title)) continue;
 
     let guid: string | null, link: string | null, dateStr: string | null, image: string | null;
     if (src.kind === "youtube") {
@@ -243,6 +305,27 @@ async function translateToHebrew(title: string): Promise<string | null> {
     console.error("translate failed, falling back to source title:", err);
     return null;
   }
+}
+
+// Machine translation wrecks match-highlight titles: "Highlights" came back as
+// "הבהרה" / "דגשים", and team names get "translated" (Lloret → "יורט"). So: a fixed
+// Hebrew label, the matchup kept as written (vs → נגד), and only the competition
+// segments translated. "Lloret vs Barça (1-6) | HIGHLIGHTS LLIGA CATALANA" →
+// "תקציר · Lloret נגד Barça (1-6) · <ליגה קטלאנית>".
+const MATCHUP = /\s(vs\.?|x)\s/i;
+async function highlightHeadline(title: string): Promise<string> {
+  const cleaned = title
+    .replace(/\bhighlights?\b\s*[:|\-–]?/gi, " ")
+    .replace(/\b(roll(er)?hockey|hockey su pista|rink hockey)\b\s*,?/gi, " ")
+    .replace(/\s{2,}/g, " ").trim();
+  const segments = cleaned.split(/\s[|–]\s|\s-\s(?=[^-]*\s(?:vs\.?|x)\s)|\s\|\s?/)
+    .map((x) => x.replace(/^[\s|:\-–]+|[\s|:\-–]+$/g, "")).filter(Boolean);
+  const out: string[] = [];
+  for (const seg of segments) {
+    if (MATCHUP.test(seg)) out.push(seg.replace(/\s(vs\.?|x)\s/i, " נגד "));
+    else out.push((await translateToHebrew(seg)) ?? seg);
+  }
+  return ["תקציר", ...out].join(" · ");
 }
 
 // ---- Bot author ------------------------------------------------------------
@@ -333,7 +416,7 @@ async function ingestSource(src: Source, authorId: string, budget: number, dryRu
   const seenSet = new Set((seen ?? []).map((r) => r.external_guid));
 
   const unseen = fresh.filter((i) => !seenSet.has(i.guid));
-  const cap = Math.min(MAX_NEW_PER_SOURCE, budget);
+  const cap = Math.min(src.maxPerRun ?? MAX_NEW_PER_SOURCE, budget);
 
   // A news card without media is not shown (product call, 2026-09-28). Items the
   // feed ships without an image get one try at the article's og:image; anything
@@ -350,8 +433,9 @@ async function ingestSource(src: Source, authorId: string, budget: number, dryRu
   const posted: string[] = [];
   const preview: unknown[] = [];
   for (const item of todo) {
-    const hebrew = await translateToHebrew(item.title);
-    const headline = hebrew ?? item.title;
+    const headline = src.highlights
+      ? await highlightHeadline(item.title)
+      : (await translateToHebrew(item.title)) ?? item.title;
     // The link is in the body as well as link_url on purpose: the native apps
     // render body text only, so without it an item would be unopenable there.
     // Headline first. It used to open with a per-source lead sentence ("🎥 סרטון
@@ -412,14 +496,14 @@ Deno.serve(async (req) => {
 
     const authorId = dryRun ? "dry-run" : await ensureBotAuthor();
     const report = [];
-    let budget = MAX_NEW_PER_RUN;
+    const budget = { youtube: MAX_VIDEOS_PER_RUN, rss: MAX_NEW_PER_RUN };
 
     for (const src of SOURCES) {
       if (only && !only.includes(src.key)) continue;
-      if (budget <= 0) { report.push({ source: src.key, skipped: "run budget spent" }); continue; }
+      if (budget[src.kind] <= 0) { report.push({ source: src.key, skipped: "run budget spent" }); continue; }
       try {
-        const r = await ingestSource(src, authorId, budget, dryRun, maxAgeDays);
-        budget -= (dryRun ? r.preview.length : r.posted.length);
+        const r = await ingestSource(src, authorId, budget[src.kind], dryRun, maxAgeDays);
+        budget[src.kind] -= (dryRun ? r.preview.length : r.posted.length);
         report.push(r);
       } catch (err) {
         // One dead feed must not stop the others.
