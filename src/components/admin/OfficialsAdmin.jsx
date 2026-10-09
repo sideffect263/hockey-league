@@ -45,8 +45,10 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
     .filter(g => UPCOMING.includes(g.status))
     .sort((a, b) => new Date(a.game_date) - new Date(b.game_date)), [games])
 
+  // Every confirmed official, not just the first — a game can have two judges, and the
+  // second one used to be invisible here (and impossible to remove).
   const confirmedFor = (gameId, role) =>
-    overview.find(o => o.game_id === gameId && o.role === role && (o.status === "assigned" || o.status === "approved"))
+    overview.filter(o => o.game_id === gameId && o.role === role && (o.status === "assigned" || o.status === "approved"))
   const applications = overview.filter(o => o.status === "applied")
   const assignableByRole = {
     judge: assignable.filter(a => a.role === "judge"),
@@ -56,10 +58,12 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
   const doAssign = async (gameId, userId, role) => {
     if (!userId) return
     setBusy(`${gameId}:${role}`)
-    try { await assignOfficial(gameId, userId, role); await load() } catch { /* ignore */ } finally { setBusy(null) }
+    try { await assignOfficial(gameId, userId, role); await load() } catch (e) { fail(e) } finally { setBusy(null) }
   }
-  const doRemove = async (id) => { setBusy(id); try { await removeOfficial(id); await load() } catch { /* ignore */ } finally { setBusy(null) } }
-  const doReview = async (id, approve) => { setBusy(id); try { await reviewOfficialApplication(id, approve); await load() } catch { /* ignore */ } finally { setBusy(null) } }
+  // A failed write used to vanish and the row just stayed as it was — looked like it worked.
+  const fail = (e) => alert('שגיאה: ' + (e?.message || e))
+  const doRemove = async (id) => { setBusy(id); try { await removeOfficial(id); await load() } catch (e) { fail(e) } finally { setBusy(null) } }
+  const doReview = async (id, approve) => { setBusy(id); try { await reviewOfficialApplication(id, approve); await load() } catch (e) { fail(e) } finally { setBusy(null) } }
   const saveRate = async (role, val) => { try { await setOfficialRate(role, val); setRates(r => ({ ...r, [role]: Number(val) || 0 })) } catch { /* ignore */ } }
 
   // ---- pay dashboard: CSV + copy-paste template ----
@@ -82,10 +86,12 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
 
   const RoleSlot = ({ game, role }) => {
     const RIcon = roleIcon[role]
-    const cur = confirmedFor(game.id, role)
-    if (cur) {
+    const confirmed = confirmedFor(game.id, role)
+    if (confirmed.length) {
       return (
-        <div className="flex items-center gap-1.5 text-xs min-w-0">
+        <div className="flex flex-col gap-1 min-w-0">
+        {confirmed.map(cur => (
+        <div key={cur.id} className="flex items-center gap-1.5 text-xs min-w-0">
           <RIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           {/* The full name is the one that goes on the game sheet; display_name is only
               a fallback for officials who signed up before P3 required it. */}
@@ -100,6 +106,8 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
             </a>
           )}
           <button onClick={() => doRemove(cur.id)} disabled={busy === cur.id} className="text-slate-300 hover:text-red-500 transition-colors shrink-0"><X className="w-3.5 h-3.5" /></button>
+        </div>
+        ))}
         </div>
       )
     }

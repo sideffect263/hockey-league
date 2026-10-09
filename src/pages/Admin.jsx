@@ -42,7 +42,7 @@ import UnavailabilityAdmin from "@/components/admin/UnavailabilityAdmin"
 import { getVenues } from "@/lib/venues"
 import { entityPath } from "@/lib/slugs"
 import OfficialsAdmin from "@/components/admin/OfficialsAdmin"
-import { getOfficialsOverview } from "@/lib/officials"
+import { getGameJudges, getGameJudgeOptions, setGameJudge } from "@/lib/officials"
 import VenuesAdmin from "@/components/admin/VenuesAdmin"
 import SeasonCalendar from "@/components/admin/SeasonCalendar"
 import TelemetryAdmin from "@/components/admin/TelemetryAdmin"
@@ -376,24 +376,17 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
   useEffect(() => {
     getVenues().then(v => setVenueNames((v || []).map(x => x.name))).catch(() => {})
   }, [])
-  // Games with a judge assigned in שיבוץ שופטים (game_officials). referee_id is only
-  // filled when a game is recorded, so on its own it said "no judge" about nothing but
-  // finished games — 0 at the start of a season, when every fixture still needs one.
-  // Admin/LM-only RPC, so it is only called for them; a judge asking just earned a 400
-  // "not authorized" in the error log. For other roles the flag falls back to referee_id.
+  // Who judges each game comes from game_officials — the one record; referee_id is a
+  // mirror the DB keeps. game_judges is public, so every role sees the same names.
+  // Assigning a judge (set_game_judge) is admin/LM only; a judge editing a game sees no picker.
   const { isAdmin, isLeagueManager } = useAuth()
-  const canSeeOfficials = isAdmin || isLeagueManager
-  // game_id → confirmed judge's name, so each row says WHO judges it rather than only
-  // flagging the games that have nobody.
+  const canAssignJudge = isAdmin || isLeagueManager
   const [judgeNames, setJudgeNames] = useState(() => new Map())
   useEffect(() => {
-    if (!canSeeOfficials) return
-    getOfficialsOverview()
-      .then(rows => setJudgeNames(new Map((rows || [])
-        .filter(r => r.role === 'judge' && ['assigned', 'approved'].includes(r.status))
-        .map(r => [r.game_id, r.full_name || r.display_name || '—']))))
+    getGameJudges(games.map(g => g.id))
+      .then(m => setJudgeNames(new Map([...m].map(([id, rows]) => [id, rows.map(r => r.name || '—').join(', ')]))))
       .catch(() => {})
-  }, [games, canSeeOfficials])
+  }, [games])
   const refereeName = g => {
     if (judgeNames.has(g.id)) return judgeNames.get(g.id)
     if (!g.referee_id) return null
@@ -409,14 +402,28 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
     home_team_id: '', away_team_id: '', game_date: '', venue: '',
     home_score: '', away_score: '', status: 'scheduled',
     game_type: 'ליגה', playoff_round: '', series_game: '', notes: '',
-    referee_id: '', referee_type: 'player', tournament_id: '', kiosk_open: ''
+    judge_user_id: '', tournament_id: '', kiosk_open: ''
   })
+  // The judge as loaded, so save only calls set_game_judge when the picker changed.
+  const [judgeLoaded, setJudgeLoaded] = useState('')
+  const [judgeOptions, setJudgeOptions] = useState([])
+  const loadJudgePicker = async (gameId) => {
+    if (!canAssignJudge) return null
+    const [opts, cur] = await Promise.all([
+      getGameJudgeOptions(gameId).catch(() => []),
+      gameId ? getGameJudges([gameId]).catch(() => null) : Promise.resolve(new Map()),
+    ])
+    setJudgeOptions(opts)
+    // cur === null: the read failed — don't pretend the game has no judge.
+    if (cur === null) return null
+    const uid = cur.get(gameId)?.[0]?.user_id || ''
+    setJudgeLoaded(uid)
+    setForm(f => ({ ...f, judge_user_id: uid }))
+    return uid
+  }
   const [refFilter, setRefFilter] = useState('all')
   const [sort, setSort] = useState({ key: 'date', dir: 'desc' })
 
-  // `is_referee` is a derived mirror of the judge role (DB trigger), so this is exactly
-  // the people appointed in the תפקידים tab — not a second, hand-kept list.
-  const refereeOptions = players.filter(p => p.is_referee)
 
   const gameSortOptions = [
     { key: 'date', label: 'תאריך', dir: 'desc' },
@@ -443,8 +450,9 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
       home_team_id: '', away_team_id: '', game_date: '', venue: '',
       home_score: '', away_score: '', status: 'scheduled',
       game_type: 'ליגה', playoff_round: '', series_game: '', notes: '',
-      referee_id: '', referee_type: 'player', tournament_id: '', kiosk_open: ''
+      judge_user_id: '', tournament_id: '', kiosk_open: ''
     })
+    setJudgeLoaded('')
     setEditingGame(null)
     setShowForm(false)
   }
@@ -462,12 +470,13 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
       playoff_round: game.playoff_round || '',
       series_game: game.series_game ?? '',
       notes: game.notes || '',
-      referee_id: game.referee_id || '',
-      referee_type: game.referee_type || 'player',
+      judge_user_id: '',
       tournament_id: game.tournament_id || '',
       // Tri-state: '' is "nobody has said", which is NOT the same as "closed".
       kiosk_open: game.kiosk_open == null ? '' : String(game.kiosk_open),
     })
+    setJudgeLoaded('')
+    loadJudgePicker(game.id)
     setEditingGame(game.id)
     setShowForm(true)
   }
@@ -475,8 +484,9 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
   const handleSave = async () => {
     setSaving(true)
     try {
+      const { judge_user_id, ...rest } = form
       const payload = {
-        ...form,
+        ...rest,
         home_score: form.home_score !== '' ? Number(form.home_score) : null,
         away_score: form.away_score !== '' ? Number(form.away_score) : null,
         series_game: form.series_game !== '' ? Number(form.series_game) : null,
@@ -485,15 +495,13 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
         // and every save — even one that only changed the referee — moved the game 3h
         // later (and told every player it had moved). Convert from the browser's local time.
         game_date: form.game_date ? new Date(form.game_date).toISOString() : null,
-        referee_id: form.referee_id || null,
-        referee_type: form.referee_id ? form.referee_type : null,
         tournament_id: form.tournament_id || null,
         kiosk_open: form.kiosk_open === '' ? null : form.kiosk_open === 'true',
       }
-      if (editingGame) {
-        await updateGame(editingGame, payload)
-      } else {
-        await createGame(payload)
+      const saved = editingGame ? await updateGame(editingGame, payload) : await createGame(payload)
+      // The judge is a game_officials row, not a games column — set it after the game exists.
+      if ((judge_user_id || '') !== (judgeLoaded || '')) {
+        await setGameJudge(saved?.id || editingGame, judge_user_id || null)
       }
       // Recalculate team standings after game change
       await recalculateTeamStats()
@@ -524,7 +532,7 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
             className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white text-sm font-semibold rounded-xl hover:bg-purple-600 transition-colors">
             <Image className="w-4 h-4" /> פוסטר
           </button>
-          <button onClick={() => { resetForm(); setShowForm(true) }}
+          <button onClick={() => { resetForm(); loadJudgePicker(null); setShowForm(true) }}
             className="flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-hover transition-colors">
             <Plus className="w-4 h-4" /> משחק חדש
           </button>
@@ -633,13 +641,17 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+            {canAssignJudge && <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">שופט</label>
-              <select value={form.referee_id} onChange={e => setForm({ ...form, referee_id: e.target.value })} className="filter-select w-full">
+              <select value={form.judge_user_id} onChange={e => setForm({ ...form, judge_user_id: e.target.value })} className="filter-select w-full">
                 <option value="">ללא שופט</option>
-                {refereeOptions.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
+                {judgeOptions.map(o => (
+                  <option key={o.user_id} value={o.user_id}>
+                    {o.display_name || '—'}{o.plays_in_game ? ' (הקבוצה שלו משחקת)' : ''}
+                  </option>
+                ))}
               </select>
-            </div>
+            </div>}
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">הערות</label>
               <input type="text" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="filter-input w-full" placeholder="הערות..." />

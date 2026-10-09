@@ -18,6 +18,7 @@ import { countsForStats, FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import GameChangeRequestModal from "@/components/GameChangeRequestModal"
 import GameChangeOpponentCard from "@/components/GameChangeOpponentCard"
 import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
+import { getGameJudges } from "@/lib/officials"
 import AddToCalendar from "@/components/games/AddToCalendar"
 import GameFormExport from "@/components/GameFormExport"
 import GameMvp from "@/components/GameMvp"
@@ -62,6 +63,7 @@ export default function GameDetail() {
   const [referees, setReferees] = useState([])
   const [games, setGames] = useState([])
   const [live, setLive] = useState(null)
+  const [judges, setJudges] = useState([])   // approved judges (game_officials) — the real record
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [myRequest, setMyRequest] = useState(null)   // this coach's latest change request for the game
@@ -98,6 +100,13 @@ export default function GameDetail() {
     else setMyRequest(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.id, (coachTeamIds || []).join(',')])
+
+  // Judges come from game_officials (public names via game_judges). A failed read leaves
+  // the list empty and the referee_id fallback below still shows the mirror.
+  useEffect(() => {
+    if (!id) return
+    getGameJudges([id]).then(m => setJudges(m.get(id) || [])).catch(() => {})
+  }, [id])
 
   const cancelMyRequest = async () => {
     if (!myRequest) return
@@ -180,6 +189,7 @@ export default function GameDetail() {
   const isFriendly = game.game_type === FRIENDLY_GAME_TYPE
 
   const refName = (() => {
+    if (judges.length) return judges.map(j => j.name).filter(Boolean).join(', ') || null
     if (!game.referee_id) return null
     const pool = game.referee_type === 'player' ? players : referees
     const r = pool.find(x => x.id === game.referee_id)

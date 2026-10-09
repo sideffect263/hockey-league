@@ -47,6 +47,37 @@ export async function removeOfficial(id) {
   if (error) throw error
 }
 
+// ---- the game's judge ----
+// game_officials is the ONE record of who judges a game; games.referee_id is a mirror the
+// DB keeps (trg_mirror_referee). Never write referee_id from a client.
+
+/** "The judge of this game is userId" (null = nobody). Replaces any other approved judge. */
+export async function setGameJudge(gameId, userId) {
+  const { error } = await supabase.rpc('set_game_judge', { p_game_id: gameId, p_user_id: userId || null })
+  if (error) throw error
+}
+
+/** Edit-form picker (admin/LM): every judge account; plays_in_game = his own team plays. */
+export async function getGameJudgeOptions(gameId) {
+  const { data, error } = await supabase.rpc('game_judge_options', { p_game_id: gameId || null })
+  if (error) throw error
+  return data || []
+}
+
+/** Public: approved judges' names for these games → Map(game_id → [{user_id,name,player_slug}]). */
+export async function getGameJudges(gameIds) {
+  const ids = [...new Set((gameIds || []).filter(Boolean))]
+  if (!ids.length) return new Map()
+  const { data, error } = await supabase.rpc('game_judges', { p_game_ids: ids })
+  if (error) throw error
+  const out = new Map()
+  for (const r of data || []) {
+    if (!out.has(r.game_id)) out.set(r.game_id, [])
+    out.get(r.game_id).push(r)
+  }
+  return out
+}
+
 export async function setOfficialRate(role, rate) {
   const { error } = await supabase.rpc('set_official_rate', { p_role: role, p_rate: Number(rate) || 0 })
   if (error) throw error
