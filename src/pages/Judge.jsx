@@ -41,7 +41,7 @@ function JudgePicker() {
       const upcomingIds = g.filter(x => OFFICIABLE.includes(x.status)).map(x => x.id)
       const rows = await getAvailabilityForOfficialBatch(upcomingIds)
       const map = {}
-      rows.forEach(r => { (map[r.game_id] ||= {})[r.player_id] = r.status })
+      rows.forEach(r => { (map[r.game_id] ||= {})[r.player_id] = { status: r.status, side: r.team_id } })
       setAvailByGame(map)
     } catch (e) { console.error(e); setError("שגיאה בטעינת הנתונים") }
     finally { setLoading(false) }
@@ -74,7 +74,11 @@ function JudgePicker() {
   // C3: attendance readiness per team, for the referee's upcoming games.
   const teamAtt = (game, tid) => {
     const avail = availByGame[game.id] || {}
-    const coming = players.filter(p => p.team_id === tid && avail[p.id] === "available")
+    // A player counts for the side he was MANUALLY added for (a loan / youth call-up —
+    // availability.team_id), else for his own team. By players.team_id alone a בלג נוער
+    // junior added to בלג אריות was counted for the wrong side (7/5 instead of 6/6).
+    const sideOf = p => avail[p.id]?.side || p.team_id
+    const coming = players.filter(p => sideOf(p) === tid && avail[p.id]?.status === "available")
     return { count: coming.length, gk: coming.some(p => p.position === "Goalkeeper"), tooFew: coming.length < 4 }
   }
   const AttChip = ({ att }) => (

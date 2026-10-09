@@ -3,7 +3,7 @@ import { useParams, Link, useLocation } from "react-router-dom"
 import { getGameById, getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
-import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, Utensils, CalendarCheck, LogIn, UserPlus } from "lucide-react"
+import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -18,7 +18,7 @@ import { countsForStats, FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import GameChangeRequestModal from "@/components/GameChangeRequestModal"
 import GameChangeOpponentCard from "@/components/GameChangeOpponentCard"
 import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
-import { getGameJudges } from "@/lib/officials"
+import { getGameOfficialsPublic } from "@/lib/officials"
 import AddToCalendar from "@/components/games/AddToCalendar"
 import GameFormExport from "@/components/GameFormExport"
 import GameMvp from "@/components/GameMvp"
@@ -63,7 +63,7 @@ export default function GameDetail() {
   const [referees, setReferees] = useState([])
   const [games, setGames] = useState([])
   const [live, setLive] = useState(null)
-  const [judges, setJudges] = useState([])   // approved judges (game_officials) — the real record
+  const [officials, setOfficials] = useState([])   // confirmed judge(s) + medic (game_officials)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [myRequest, setMyRequest] = useState(null)   // this coach's latest change request for the game
@@ -101,12 +101,14 @@ export default function GameDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.id, (coachTeamIds || []).join(',')])
 
-  // Judges come from game_officials (public names via game_judges). A failed read leaves
-  // the list empty and the referee_id fallback below still shows the mirror.
+  // Officials come from game_officials (public names via game_officials_public). A failed
+  // read leaves the list empty and the referee_id fallback below still shows the judge.
   useEffect(() => {
     if (!id) return
-    getGameJudges([id]).then(m => setJudges(m.get(id) || [])).catch(() => {})
+    getGameOfficialsPublic(id).then(setOfficials).catch(() => {})
   }, [id])
+  const judges = officials.filter(o => o.role === 'judge')
+  const medics = officials.filter(o => o.role === 'medic')
 
   const cancelMyRequest = async () => {
     if (!myRequest) return
@@ -327,7 +329,9 @@ export default function GameDetail() {
           <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "d/M/yyyy")}</span>
           <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
-          {refName && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{refName}</span>}
+          {/* Labelled: a bare name after the venue read as nothing (nobody saw it was the judge). */}
+          {refName && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
+          {medics.length > 0 && <span className="flex items-center gap-1"><HeartPulse className="w-3.5 h-3.5" />חובש: {medics.map(m => m.name).filter(Boolean).join(', ')}</span>}
         </div>
 
         {/* Food kiosk (דוכן נקניקיות). Tri-state: null renders NOTHING — silence here

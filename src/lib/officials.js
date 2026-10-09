@@ -78,6 +78,14 @@ export async function getGameJudges(gameIds) {
   return out
 }
 
+/** Public: a game's confirmed officials (judge + medic) → [{role,name,player_slug}]. Names only. */
+export async function getGameOfficialsPublic(gameId) {
+  if (!gameId) return []
+  const { data, error } = await supabase.rpc('game_officials_public', { p_game_ids: [gameId] })
+  if (error) throw error
+  return data || []
+}
+
 export async function setOfficialRate(role, rate) {
   const { error } = await supabase.rpc('set_official_rate', { p_role: role, p_rate: Number(rate) || 0 })
   if (error) throw error
