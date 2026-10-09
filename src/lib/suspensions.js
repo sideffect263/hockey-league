@@ -36,3 +36,16 @@ export async function getActiveSuspensions() {
   if (error) throw error
   return data || []
 }
+
+/**
+ * Who may play in this game (admin / league manager / judge): one row per player on
+ * either roster (players.team_id, player_teams, or signed up for the game) —
+ * {player_id, team_id, suspended, suspension_games_remaining, medical_valid,
+ * medical_expires_at}. A card issued IN this game doesn't count against it.
+ * Pure rules for reading the rows live in ./eligibility.js.
+ */
+export async function getGamePlayerEligibility(gameId) {
+  const { data, error } = await supabase.rpc('game_player_eligibility', { p_game_id: gameId })
+  if (error) throw error
+  return data || []
+}

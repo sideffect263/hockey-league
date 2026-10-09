@@ -6,9 +6,12 @@ import { getGameAvailabilityForOfficial } from "@/lib/availability"
 import { broadcastGameState, setGameStatus } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import { Phase, TeamSide, CardType, GameFormat } from "@/lib/game/rules"
-import { issueSuspension } from "@/lib/suspensions"
+import { issueSuspension, getGamePlayerEligibility } from "@/lib/suspensions"
+import { eligibilityMap, ineligibleReasons, isBlocked } from "@/lib/eligibility"
+import { useAuth } from "@/lib/AuthContext"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
 import LineupEditor, { loadLineup, saveLineup, emptyLineup } from "@/components/judge/LineupEditor"
+import { EligibilityChips, OverrideButton, EligibilityWarning } from "@/components/judge/Eligibility"
 import {
   RotateCcw, Pencil, CheckCircle2, Megaphone, Settings as SettingsIcon, Paintbrush,
   Hand, RectangleVertical, SkipForward, Save, Undo2, Plus, Minus, X, Maximize, Minimize,
@@ -196,6 +199,18 @@ function ControlBtn({ icon: Icon, onClick, tint, label, fill = false }) {
 
 export default function GameScoreboard({ game, home, guest, players, teams = [] }) {
   const engine = useGameEngine(game, home, guest)
+  const { isAdmin, isLeagueManager } = useAuth()
+  const canOverride = isAdmin || isLeagueManager
+  // Who may play (suspension / valid medical). undefined = loading, null = failed →
+  // block nobody but say so; Map = loaded. See src/lib/eligibility.js.
+  const [elig, setElig] = useState(undefined)
+  useEffect(() => {
+    let alive = true
+    getGamePlayerEligibility(game.id)
+      .then(rows => { if (alive) setElig(eligibilityMap(rows)) })
+      .catch(e => { console.warn("eligibility unavailable", e); if (alive) setElig(null) })
+    return () => { alive = false }
+  }, [game.id])
   const [attendingIds, setAttendingIds] = useState(null) // Set of confirmed player_ids; null until loaded
   const [showAllRoster, setShowAllRoster] = useState(false)
   // Rosters come from player_teams (a player can be on one team per age group), with
@@ -214,6 +229,14 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   const [lineupSide, setLineupSide] = useState(null) // TeamSide being edited, or null
   const playersById = new Map(players.map(p => [p.id, p]))
   const sideKey = (side) => (side === TeamSide.home ? "home" : "guest")
+  // Ids an admin / league manager let play despite a block — per side, kept in the lineup.
+  const allowedFor = (side) => lineup[sideKey(side)]?.allowed || []
+  const blockedOn = (side, id) => isBlocked(elig, id, allowedFor(side))
+  const allowPlayer = (side, id) => {
+    if (!canOverride || !id) return
+    const k = sideKey(side), l = lineup[k]
+    setLineup({ ...lineup, [k]: { ...l, allowed: [...(l.allowed || []).filter(x => x !== id), id] } })
+  }
   const squadFor = (side) => {
     const teamId = side === TeamSide.home ? game.home_team_id : game.away_team_id
     return [...(byTeam.get(teamId) || [])].map(id => playersById.get(id)).filter(Boolean)
@@ -237,8 +260,9 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
     }))
     return [...squad, ...borrowed, ...guests].sort(byJersey)
   }
-  const fullHomeRoster = rosterOf(TeamSide.home, { withGuests: false })
-  const fullGuestRoster = rosterOf(TeamSide.guest, { withGuests: false })
+  // Blocked players can't have played → no clean sheet for an ineligible GK.
+  const fullHomeRoster = rosterOf(TeamSide.home, { withGuests: false }).filter(p => !blockedOn(TeamSide.home, p.id))
+  const fullGuestRoster = rosterOf(TeamSide.guest, { withGuests: false }).filter(p => !blockedOn(TeamSide.guest, p.id))
   const homeRoster = rosterOf(TeamSide.home, { attendingOnly: useAttending })
   const guestRoster = rosterOf(TeamSide.guest, { attendingOnly: useAttending })
   const homeScore = engine.homeFinalScore
@@ -338,6 +362,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   const rosterFor = (side) => (side === TeamSide.home ? homeRoster : guestRoster)
   const resolvePick = (p) => {
     if (!picker) return
+    if (p?.id && blockedOn(picker.side, p.id)) return // ineligible — needs an admin override first
     const ref = p ? toRef(p) : null
     if (picker.kind === "goal") engine.addGoal(picker.side, ref)
     else {
@@ -506,16 +531,25 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
               <button onClick={() => setPicker(null)} className="p-1 text-white/60 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-2 overflow-y-auto">
-              {rosterFor(picker.side).map(p => (
-                <button key={p.id || p._key} onClick={() => resolvePick(p)} className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-sm text-right hover:bg-white/10 transition-colors ${engine.isEjected(p.id) ? "opacity-40" : ""}`}>
-                  <span className="w-6 text-center text-[11px] font-mono text-white/40">{p.jersey_number ?? "–"}</span>
-                  <span className="flex-1 text-white truncate">{p.first_name} {p.last_name}</span>
+              {elig === null && <div className="mb-1"><EligibilityWarning T={T} /></div>}
+              {rosterFor(picker.side).map(p => {
+                const reasons = ineligibleReasons(elig, p.id)
+                const blocked = blockedOn(picker.side, p.id)
+                return (
+                <div key={p.id || p._key} role="button" tabIndex={blocked ? -1 : 0} aria-disabled={blocked || undefined}
+                  onClick={() => resolvePick(p)} onKeyDown={e => { if (!blocked && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); resolvePick(p) } }}
+                  className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-sm text-right transition-colors ${blocked ? "cursor-not-allowed" : "cursor-pointer hover:bg-white/10"} ${engine.isEjected(p.id) ? "opacity-40" : ""}`}>
+                  <span className={`w-6 text-center text-[11px] font-mono text-white/40 ${blocked ? "opacity-50" : ""}`}>{p.jersey_number ?? "–"}</span>
+                  <span className={`flex-1 truncate ${blocked ? "text-white/40" : "text-white"}`}>{p.first_name} {p.last_name}</span>
+                  <EligibilityChips reasons={reasons} T={T} overridden={!blocked} />
+                  {blocked && canOverride && <OverrideButton T={T} name={p.first_name} onConfirm={() => allowPlayer(picker.side, p.id)} />}
                   {p._guest && <span className="text-[9px] font-bold text-white/40">אורח</span>}
                   {p.id && playersById.get(p.id) && !squadFor(picker.side).some(s => s.id === p.id) && <span className="text-[9px] font-bold text-white/40">מושאל</span>}
                   {p.position === "Goalkeeper" && <span className="text-[9px] font-bold" style={{ color: T.cardBlue }}>GK</span>}
                   {engine.isEjected(p.id) && <span className="text-[9px] font-bold" style={{ color: T.cardRed }}>הורחק</span>}
-                </button>
-              ))}
+                </div>
+                )
+              })}
               {picker.kind === "goal" && (
                 <button onClick={() => resolvePick(null)} className="w-full py-2 px-3 rounded-lg text-sm text-white/60 hover:bg-white/10 transition-colors">{HE.noPlayer}</button>
               )}
@@ -538,6 +572,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
       {lineupSide != null && (
         <LineupEditor T={T} side={lineupSide} setSide={setLineupSide} teams={{ [TeamSide.home]: home, [TeamSide.guest]: guest }} allTeams={teams}
           squadFor={squadFor} players={players} lineup={lineup} setLineup={setLineup} sideKey={sideKey}
+          elig={elig} canOverride={canOverride}
           onClose={() => setLineupSide(null)} />
       )}
 

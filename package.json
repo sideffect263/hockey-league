@@ -10,7 +10,8 @@
     "build:prerender": "PRERENDER=1 npm run build",
     "preview": "vite preview",
     "check:career": "node scripts/check-career.mjs",
-    "check:playoffs": "node scripts/check-playoffs.mjs"
+    "check:playoffs": "node scripts/check-playoffs.mjs",
+    "check:eligibility": "node scripts/check-eligibility.mjs"
   },
   "engines": {
     "node": ">=18"
