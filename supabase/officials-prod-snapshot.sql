@@ -65,7 +65,9 @@ begin
   if not (public.is_admin() or public.is_league_manager()) then raise exception 'not authorized'; end if;
   return query
     select go.id, go.game_id, go.user_id, pr.display_name,
-           nullif(btrim(uc.full_name), '') as full_name,
+           -- a "full name" with no letters (Itay typed ".") is no name: callers fall back
+           -- to display_name (migration officials_overview_ignore_no_letter_names).
+           case when uc.full_name ~ '[[:alpha:]א-ת]' then btrim(uc.full_name) end as full_name,
            uc.phone,
            go.role, go.status
     from public.game_officials go
