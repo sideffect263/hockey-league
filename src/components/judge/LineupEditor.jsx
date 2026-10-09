@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { X, Search, UserPlus, Eye, EyeOff } from "lucide-react"
 import { TeamSide } from "@/lib/game/rules"
+import { ineligibleReasons, isBlocked, isChecked } from "@/lib/eligibility"
+import { EligibilityChips, OverrideButton, EligibilityWarning } from "@/components/judge/Eligibility"
 
 /* ============================================================================
  * Game-day lineup editor for the judge board.
@@ -8,14 +10,16 @@ import { TeamSide } from "@/lib/game/rules"
  *   • Borrow a registered player from any other team — their stats count.
  *   • Add a free-text guest (name + number) — shows on the board, but has no
  *     player card, so nothing is saved to stats for them.
+ *   • Suspended / no-valid-medical players are flagged and can't be picked; only an
+ *     admin or league manager can let one through ("אפשר בכל זאת" → `allowed`).
  * Stored per game in localStorage, next to the engine draft; nothing is written
  * to the DB, so the team's real roster is never touched.
  * ==========================================================================*/
 
 const LS = (gameId) => `judge-lineup:${gameId}`
 export const emptyLineup = () => ({
-  home: { hidden: [], added: [], guests: [] },
-  guest: { hidden: [], added: [], guests: [] },
+  home: { hidden: [], added: [], guests: [], allowed: [] },
+  guest: { hidden: [], added: [], guests: [], allowed: [] },
 })
 
 export function loadLineup(gameId) {
@@ -23,7 +27,7 @@ export function loadLineup(gameId) {
     const raw = localStorage.getItem(LS(gameId))
     if (!raw) return emptyLineup()
     const v = JSON.parse(raw)
-    const side = (x) => ({ hidden: x?.hidden || [], added: x?.added || [], guests: x?.guests || [] })
+    const side = (x) => ({ hidden: x?.hidden || [], added: x?.added || [], guests: x?.guests || [], allowed: x?.allowed || [] })
     return { home: side(v.home), guest: side(v.guest) }
   } catch { return emptyLineup() }
 }
@@ -35,7 +39,7 @@ export function saveLineup(gameId, lineup) {
 const fullName = (p) => `${p.first_name || ""} ${p.last_name || ""}`.trim()
 const byJersey = (a, b) => (a.jersey_number ?? 999) - (b.jersey_number ?? 999)
 
-export default function LineupEditor({ T, side, setSide, teams, allTeams = [], squadFor, players, lineup, setLineup, sideKey, onClose }) {
+export default function LineupEditor({ T, side, setSide, teams, allTeams = [], squadFor, players, lineup, setLineup, sideKey, onClose, elig, canOverride = false }) {
   const [query, setQuery] = useState("")
   const [guestName, setGuestName] = useState("")
   const [guestNum, setGuestNum] = useState("")
@@ -50,8 +54,26 @@ export default function LineupEditor({ T, side, setSide, teams, allTeams = [], s
   const borrowed = l.added.map(id => players.find(p => p.id === id)).filter(p => p && !squadIds.has(p.id))
   const inLineup = new Set([...squadIds, ...borrowed.map(p => p.id)])
 
+  const allowed = l.allowed || []
+  const blocked = (id) => isBlocked(elig, id, allowed)
+  const allow = (id, patch = {}) => update({ allowed: [...allowed.filter(x => x !== id), id], ...patch })
+  // Chips + (admin/LM) override for one registered player. "לא נבדק" = no row from the
+  // RPC (e.g. borrowed from a third team): not blocked, but the judge should check.
+  const eligTag = (p, onAllow) => {
+    const reasons = ineligibleReasons(elig, p.id)
+    const isB = blocked(p.id)
+    return (
+      <>
+        {elig && !isChecked(elig, p.id) && <span className="text-[9px] font-semibold text-white/35 whitespace-nowrap">לא נבדק</span>}
+        <EligibilityChips reasons={reasons} T={T} overridden={!isB} />
+        {isB && canOverride && <OverrideButton T={T} name={p.first_name} onConfirm={onAllow || (() => allow(p.id))} />}
+      </>
+    )
+  }
+
   const toggleHidden = (id) => update({ hidden: hidden.has(id) ? l.hidden.filter(x => x !== id) : [...l.hidden, id] })
-  const addPlayer = (id) => { update({ added: [...l.added.filter(x => x !== id), id] }); setQuery("") }
+  const addPlayer = (id) => { if (blocked(id)) return; update({ added: [...l.added.filter(x => x !== id), id] }); setQuery("") }
+  const allowAndAdd = (id) => { allow(id, { added: [...l.added.filter(x => x !== id), id] }); setQuery("") }
   const removeBorrowed = (id) => update({ added: l.added.filter(x => x !== id) })
   const addGuest = () => {
     const name = guestName.trim()
@@ -73,7 +95,8 @@ export default function LineupEditor({ T, side, setSide, teams, allTeams = [], s
   const Row = ({ p, children, dim }) => (
     <div className={`flex items-center gap-2 py-1.5 px-3 rounded-lg text-sm ${dim ? "opacity-40" : ""}`}>
       <span className="w-6 text-center text-[11px] font-mono text-white/40">{p.jersey_number ?? "–"}</span>
-      <span className="flex-1 text-white truncate">{fullName(p)}</span>
+      <span className={`flex-1 truncate ${blocked(p.id) ? "text-white/40" : "text-white"}`}>{fullName(p)}</span>
+      {eligTag(p)}
       {p.position === "Goalkeeper" && <span className="text-[9px] font-bold" style={{ color: T.cardBlue }}>GK</span>}
       {children}
     </div>
@@ -99,6 +122,7 @@ export default function LineupEditor({ T, side, setSide, teams, allTeams = [], s
         </div>
 
         <div className="p-2 overflow-y-auto space-y-3">
+          {elig === null && <EligibilityWarning T={T} />}
           {/* squad */}
           <section>
             <p className="px-3 pt-1 pb-1 text-[11px] font-semibold text-white/45">סגל הקבוצה · הסתר מי שלא משחק היום</p>
@@ -133,14 +157,20 @@ export default function LineupEditor({ T, side, setSide, teams, allTeams = [], s
               <input value={query} onChange={e => setQuery(e.target.value)} placeholder="חפש לפי שם או מספר"
                 className={`${inputCls} w-full pr-9`} style={inputStyle} />
             </div>
-            {results.map(p => (
-              <button key={p.id} onClick={() => addPlayer(p.id)} className="w-full flex items-center gap-2 py-1.5 px-2 rounded-lg text-sm text-right hover:bg-white/10">
-                <span className="w-6 text-center text-[11px] font-mono text-white/40">{p.jersey_number ?? "–"}</span>
-                <span className="flex-1 text-white truncate">{fullName(p)}</span>
-                <span className="text-[10px] text-white/35 truncate max-w-[7rem]">{teamsById[p.team_id]?.name || "שחקן חופשי"}</span>
-                <UserPlus className="w-4 h-4" style={{ color: T.accent }} />
-              </button>
-            ))}
+            {results.map(p => {
+              const isB = blocked(p.id)
+              return (
+                <div key={p.id} role="button" tabIndex={isB ? -1 : 0} aria-disabled={isB || undefined}
+                  onClick={() => addPlayer(p.id)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); addPlayer(p.id) } }}
+                  className={`w-full flex items-center gap-2 py-1.5 px-2 rounded-lg text-sm text-right ${isB ? "cursor-not-allowed" : "cursor-pointer hover:bg-white/10"}`}>
+                  <span className="w-6 text-center text-[11px] font-mono text-white/40">{p.jersey_number ?? "–"}</span>
+                  <span className={`flex-1 truncate ${isB ? "text-white/40" : "text-white"}`}>{fullName(p)}</span>
+                  <span className="text-[10px] text-white/35 truncate max-w-[7rem]">{teamsById[p.team_id]?.name || "שחקן חופשי"}</span>
+                  {eligTag(p, () => allowAndAdd(p.id))}
+                  {!isB && <UserPlus className="w-4 h-4 shrink-0" style={{ color: T.accent }} />}
+                </div>
+              )
+            })}
             {q && results.length === 0 && <p className="text-xs text-white/40 py-1">לא נמצא שחקן</p>}
           </section>
 
