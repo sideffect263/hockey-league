@@ -2,6 +2,26 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Volume2, VolumeX, Play } from "lucide-react"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 
+// Cloudflare Stream's player SDK: wraps the Stream iframe in a media-element-like object
+// (play() / pause() / muted), so our own uploads get the same on-screen autoplay rules.
+let streamSdk = null
+function loadStreamSdk() {
+  if (streamSdk) return streamSdk
+  streamSdk = new Promise((resolve, reject) => {
+    if (window.Stream) return resolve(window.Stream)
+    const s = document.createElement("script")
+    s.src = "https://embed.cloudflarestream.com/embed/sdk.latest.js"
+    s.async = true
+    s.onload = () => (window.Stream ? resolve(window.Stream) : reject(new Error("no Stream")))
+    s.onerror = () => { streamSdk = null; reject(new Error("stream sdk failed")) }
+    document.head.appendChild(s)
+  })
+  return streamSdk
+}
+
+export const streamPoster = (cfCode, uid) =>
+  `https://customer-${cfCode}.cloudflarestream.com/${uid}/thumbnails/thumbnail.jpg?time=2s&height=720`
+
 /**
  * Feed video card — autoplays muted while it is on screen, pauses when it isn't.
  *
@@ -41,7 +61,13 @@ function prefersNoAutoplay() {
   return !!(reduced || saveData)
 }
 
-export default function FeedVideo({ videoId, poster, title }) {
+/**
+ * provider "youtube" (default): videoId = YouTube id.
+ * provider "cloudflare": videoId = Stream uid, cfCode = account subdomain code, ratio =
+ * width/height of the clip (a 9:16 clip shows in a 4:5 box, letterboxed, like Instagram).
+ */
+export default function FeedVideo({ videoId, poster, title, provider = "youtube", cfCode, ratio }) {
+  const isStream = provider === "cloudflare"
   const hostRef = useRef(null)      // stable wrapper; YT replaces the child node
   const playerRef = useRef(null)
   const wrapRef = useRef(null)      // observed for visibility
@@ -54,23 +80,49 @@ export default function FeedVideo({ videoId, poster, title }) {
   const cardRef = useRef(null)
   if (!cardRef.current) {
     cardRef.current = {
-      yield: () => { try { playerRef.current?.pauseVideo?.() } catch { /* ignore */ } },
+      yield: () => { try { const p = playerRef.current; p?.pauseVideo ? p.pauseVideo() : p?.pause?.() } catch { /* ignore */ } },
     }
   }
 
   const play = useCallback(() => {
     claimPlayback(cardRef.current)
-    try { playerRef.current?.playVideo?.() } catch { /* ignore */ }
-  }, [])
+    try { const p = playerRef.current; isStream ? p?.play?.()?.catch?.(() => {}) : p?.playVideo?.() } catch { /* ignore */ }
+  }, [isStream])
 
   const pause = useCallback(() => {
     releasePlayback(cardRef.current)
-    try { playerRef.current?.pauseVideo?.() } catch { /* ignore */ }
-  }, [])
+    try { const p = playerRef.current; isStream ? p?.pause?.() : p?.pauseVideo?.() } catch { /* ignore */ }
+  }, [isStream])
+
+  // Our own uploads: the Stream iframe, driven through the SDK.
+  useEffect(() => {
+    if (!started || !isStream) return
+    let cancelled = false
+    const iframe = document.createElement("iframe")
+    iframe.src = `https://customer-${cfCode}.cloudflarestream.com/${videoId}/iframe?muted=true&autoplay=true&preload=auto&controls=true`
+    iframe.allow = "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+    iframe.allowFullscreen = true
+    iframe.title = title || "וידאו"
+    iframe.className = "absolute inset-0 w-full h-full border-0"
+    hostRef.current?.appendChild(iframe)
+    loadStreamSdk().then((Stream) => {
+      if (cancelled) return
+      const p = Stream(iframe)
+      playerRef.current = p
+      p.muted = true
+      if (activeCard === cardRef.current) p.play()?.catch?.(() => {})
+    }).catch(() => {})
+    return () => {
+      cancelled = true
+      releasePlayback(cardRef.current)
+      playerRef.current = null
+      if (hostRef.current) hostRef.current.innerHTML = ""
+    }
+  }, [started, isStream, videoId, cfCode, title])
 
   // Build the player the first time we're asked to start.
   useEffect(() => {
-    if (!started) return
+    if (!started || isStream) return
     let cancelled = false
     loadYouTubeApi().then((YT) => {
       if (cancelled || !hostRef.current) return
@@ -99,7 +151,7 @@ export default function FeedVideo({ videoId, poster, title }) {
       playerRef.current = null
       if (hostRef.current) hostRef.current.innerHTML = ""
     }
-  }, [started, videoId])
+  }, [started, videoId, isStream])
 
   // Visibility → play/pause. 60% keeps a card that's half off the bottom quiet.
   useEffect(() => {
@@ -132,13 +184,15 @@ export default function FeedVideo({ videoId, poster, title }) {
     const p = playerRef.current
     if (!p) return
     try {
-      if (muted) { p.unMute(); p.setVolume?.(100) } else { p.mute() }
+      if (isStream) p.muted = !muted
+      else if (muted) { p.unMute(); p.setVolume?.(100) } else { p.mute() }
       setMuted(!muted)
     } catch { /* ignore */ }
   }
 
   return (
-    <div ref={wrapRef} className="relative rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16 / 9" }}>
+    <div ref={wrapRef} className="relative rounded-xl overflow-hidden bg-black"
+         style={{ aspectRatio: isStream && ratio ? String(Math.min(1.91, Math.max(0.8, ratio))) : "16 / 9" }}>
       {started ? (
         <>
           <div ref={hostRef} className="absolute inset-0" />
@@ -156,7 +210,7 @@ export default function FeedVideo({ videoId, poster, title }) {
                 aria-label="נגן את הסרטון" className="group absolute inset-0 w-full h-full">
           {poster && !posterError ? (
             <img src={poster} alt="" loading="lazy" onError={() => setPosterError(true)}
-                 className="w-full h-full object-cover" />
+                 className={`w-full h-full ${isStream ? "object-contain" : "object-cover"}`} />
           ) : (
             <div className="w-full h-full bg-slate-800" />
           )}

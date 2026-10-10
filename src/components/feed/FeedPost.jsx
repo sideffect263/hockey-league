@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment } from "@/lib/api"
 import { setPhotoOverride } from "@/lib/photoOverrides"
 import { parseYouTubeId } from "@/lib/video"
-import FeedVideo from "@/components/feed/FeedVideo"
+import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import ReactionBar from "@/components/feed/ReactionBar"
 import MarketFeedCard from "@/components/feed/MarketFeedCard"
 import ModerationMenu from "@/components/feed/ModerationMenu"
@@ -796,6 +796,19 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
                 )}
               </AnimatePresence>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* A clip uploaded straight to the feed (our Cloudflare Stream, feed-video-posts.sql). */}
+      {p.video_uid && p.video_cf_code && (
+        <div className="mt-3">
+          <FeedVideo provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
+                     poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} />
+          {p.game_id && (
+            <Link to={`/games/${p.game_id}`} className="mt-2 inline-flex items-center gap-1 px-4 sm:px-0 text-xs font-semibold text-brand dark:text-brand-light hover:text-brand-hover">
+              למשחק המלא <ArrowLeft className="w-3 h-3" />
+            </Link>
           )}
         </div>
       )}

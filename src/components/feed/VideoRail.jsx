@@ -17,22 +17,40 @@ import { noteFeedOpen } from "@/lib/feedImpressions"
 
 const MAX = 12
 
-/** Feed items (from buildFeed) that are playable YouTube videos, newest first. */
+/** Feed items (from buildFeed) that are playable videos — our own uploads (Cloudflare
+ *  Stream, feed-video-posts.sql) and YouTube news items — newest first. */
 export function videoItems(feed) {
   return feed
     .map(item => {
       const p = item.data?.post
+      if (p?.video_uid && p.video_cf_code) {
+        const base = `https://customer-${p.video_cf_code}.cloudflarestream.com/${p.video_uid}`
+        return {
+          key: item.id,
+          tags: item.tags,
+          videoId: p.video_uid,
+          embed: `${base}/iframe?autoplay=true&preload=auto`,
+          title: (p.body || "").split("\n")[0],
+          source: "ליגת הוקי גלגיליות",
+          date: item.date,
+          poster: `${base}/thumbnails/thumbnail.jpg?time=2s&height=360`,
+          link: p.game_id ? `/games/${p.game_id}` : null,
+          linkLabel: "למשחק",
+        }
+      }
       const id = item.type === "external" ? parseYouTubeId(p?.link_url) : null
       if (!id) return null
       return {
         key: item.id,
         tags: item.tags,
         videoId: id,
+        embed: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
         title: (p.body || "").split("\n")[0] || p.source_name,
         source: p.source_name,
         date: item.date,
         poster: p.image_url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
         link: p.link_url,
+        linkLabel: "יוטיוב",
       }
     })
     .filter(Boolean)
@@ -131,7 +149,7 @@ function PlayerSheet({ videos, index, onIndex, onClose }) {
 
         <div className="relative aspect-video bg-black sm:rounded-xl overflow-hidden">
           <iframe key={v.videoId}
-            src={`https://www.youtube-nocookie.com/embed/${v.videoId}?autoplay=1&rel=0&playsinline=1&modestbranding=1`}
+            src={v.embed}
             title={v.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
             className="absolute inset-0 w-full h-full" />
@@ -141,9 +159,12 @@ function PlayerSheet({ videos, index, onIndex, onClose }) {
           <p className="font-bold leading-snug">{v.title}</p>
           <p className="text-xs text-white/60 mt-0.5 flex items-center gap-1.5">
             <span>{v.source}</span>·<span>{ago(v.date)}</span>·
-            <a href={v.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 hover:text-white">
-              יוטיוב <ExternalLink className="w-3 h-3" />
-            </a>
+            {v.link && (
+              <a href={v.link} {...(v.link.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+                 className="inline-flex items-center gap-0.5 hover:text-white">
+                {v.linkLabel} <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
           </p>
           <div className="flex items-center justify-between mt-4">
             <button onClick={() => onIndex(index - 1)} disabled={!hasPrev}

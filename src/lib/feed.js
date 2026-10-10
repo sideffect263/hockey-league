@@ -95,6 +95,7 @@ export function feedItemTags(post) {
       break
     case 'post':
       team(d.post?.team_id); player(d.author?.player_id); player(birthdayPlayerId(d.post))
+      if (d.post?.video_uid) tags.add('media:video')
       break
     case 'market':
       for (const g of d.games || []) { team(g.home_team_id); team(g.away_team_id) }

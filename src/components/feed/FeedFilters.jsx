@@ -17,7 +17,8 @@ export function matchesFilter(post, key) {
   if (key === "results") return post.type === "game_result"
   if (key === "highlights") return ["milestone", "champion", "top_scorer"].includes(post.type)
   if (key === "world") return post.type === "external"
-  if (key === "video") return post.type === "external" && !!parseYouTubeId(post.data?.post?.link_url)
+  if (key === "video") return !!post.data?.post?.video_uid
+    || (post.type === "external" && !!parseYouTubeId(post.data?.post?.link_url))
   return true
 }
 
