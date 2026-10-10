@@ -333,19 +333,22 @@ function LocalBroadcast({ previewRef, starting, onStop, quality, onQualityChange
 }
 
 // חלק 1 / חלק 2 … — one pill per video of the game, in recording order. The part on air
-// right now is marked live.
+// right now is marked live. A titled video (e.g. a second camera's full-game YouTube
+// upload) shows its title and doesn't take a part number.
 function PartTabs({ videos, selected, onSelect }) {
+  let part = 0
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="חלקי הווידאו">
-      {videos.map((v, i) => {
+      {videos.map((v) => {
         const on = v.id === selected?.id
+        const label = v.title || `חלק ${++part}`
         return (
           <button key={v.id} role="tab" aria-selected={on} onClick={() => onSelect(v)}
             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${on
               ? "bg-brand text-white"
               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
             {isLiveRow(v) && <Radio className={`w-3.5 h-3.5 ${on ? "" : "text-red-500"} animate-pulse`} />}
-            חלק {i + 1}
+            {label}
           </button>
         )
       })}
@@ -371,9 +374,10 @@ export default function GameVideo({ game, home, away, players = [] }) {
 
   const gameId = game?.id
   const isLive = game?.status === "in_progress"
-  // Default view: whatever is on air right now, else part 1.
+  // Default view: whatever is on air right now, else a full-game YouTube upload, else part 1.
   const liveRow = [...videos].reverse().find(isLiveRow)
-  const video = videos.find(v => v.id === selectedId) || liveRow || videos[0] || null
+  const fullGame = videos.find(v => v.provider === "youtube" && v.kind === "full")
+  const video = videos.find(v => v.id === selectedId) || liveRow || fullGame || videos[0] || null
   // Video is managed by content creators (content_editor) + admin only — mirrors
   // the can_stream_game() backend gate. (Was admin/editor/judge/coach.)
   const canStream = isContentEditor || isAdmin
