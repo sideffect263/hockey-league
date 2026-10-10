@@ -8,6 +8,8 @@
 // the posts_guard_video trigger re-checks the role at insert time.
 //
 // Body: { name?: string }   ->   { uid, uploadURL, cfCode }
+// A service-role caller (server-side tooling, e.g. the video pipeline preparing feed
+// drafts) is also allowed; it never reaches a browser.
 // Secrets: CF_ACCOUNT_ID / CF_STREAM_TOKEN (same as stream-golive).
 // ============================================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -15,6 +17,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CF_ACCOUNT_ID = Deno.env.get("CF_ACCOUNT_ID")!;
 const CF_TOKEN = Deno.env.get("CF_STREAM_TOKEN")!;
 const CF_API = "https://api.cloudflare.com/client/v4";
@@ -38,17 +41,27 @@ Deno.serve(async (req) => {
   let name = "feed video";
   try { name = String((await req.json())?.name ?? name).slice(0, 120) || name; } catch { /* default */ }
 
+  // verify_jwt is ON for this function, so the gateway has already checked the token's
+  // signature; a verified token whose role claim is service_role is server-side tooling.
+  const jwtRole = (() => {
+    try { return JSON.parse(atob(authHeader.slice(7).split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).role; }
+    catch { return null; }
+  })();
+  const isService = jwtRole === "service_role" || (!!SB_SERVICE && authHeader === `Bearer ${SB_SERVICE}`);
   const asUser = createClient(SB_URL, SB_ANON, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: { user } } = await asUser.auth.getUser();
-  if (!user) return json({ error: "unauthorized" }, 401);
-
-  const [{ data: isAdmin }, { data: isEditor }] = await Promise.all([
-    asUser.rpc("is_admin"), asUser.rpc("is_content_editor"),
-  ]);
-  if (!isAdmin && !isEditor) return json({ error: "forbidden" }, 403);
+  let uploader = "service";
+  if (!isService) {
+    const { data: { user } } = await asUser.auth.getUser();
+    if (!user) return json({ error: "unauthorized" }, 401);
+    const [{ data: isAdmin }, { data: isEditor }] = await Promise.all([
+      asUser.rpc("is_admin"), asUser.rpc("is_content_editor"),
+    ]);
+    if (!isAdmin && !isEditor) return json({ error: "forbidden" }, 403);
+    uploader = user.id;
+  }
 
   const r = await fetch(`${CF_API}/accounts/${CF_ACCOUNT_ID}/stream/direct_upload`, {
     method: "POST",
@@ -56,7 +69,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       maxDurationSeconds: MAX_SECONDS,
       requireSignedURLs: false,
-      meta: { name, source: "feed", uploadedBy: user.id },
+      meta: { name, source: "feed", uploadedBy: uploader },
     }),
   });
   const cf = await r.json().catch(() => null);

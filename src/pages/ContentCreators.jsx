@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import {
   Images, Camera, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban
+  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard
 } from "lucide-react"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import { getPlayers } from "@/lib/api"
@@ -12,8 +12,10 @@ import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
 import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
+import FeedDrafts from "@/components/creators/FeedDrafts"
 
 const tabs = [
+  { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
   { id: "media", label: "מדיה", icon: Camera },
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
   { id: "reports", label: "דיווחים", icon: Flag },
@@ -29,7 +31,12 @@ const tabs = [
  */
 export default function ContentCreators() {
   const { user, isAdmin, isContentEditor, loading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState("media")
+  // ?tab=drafts deep-links straight to the review queue.
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get("tab")
+    return tabs.some(x => x.id === t) ? t : "drafts"
+  })
+  const [draftCount, setDraftCount] = useState(null)
   const [players, setPlayers] = useState([])
 
   const canAccess = isContentEditor || isAdmin
@@ -52,7 +59,7 @@ export default function ContentCreators() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">טיוטות לפיד, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -70,6 +77,9 @@ export default function ContentCreators() {
                   }`}>
                   <tab.icon className="w-4 h-4 shrink-0" />
                   <span>{tab.label}</span>
+                  {tab.id === "drafts" && draftCount > 0 && (
+                    <span className={`ms-auto text-[11px] font-bold px-1.5 rounded-full ${active ? "bg-white/25" : "bg-brand/10 text-brand"}`}>{draftCount}</span>
+                  )}
                 </button>
               )
             })}
@@ -77,6 +87,7 @@ export default function ContentCreators() {
         </aside>
 
         <div className="min-w-0">
+          {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
           {activeTab === "media" && <MediaClusters />}
           {activeTab === "clusters" && <ClustersAdmin players={players} />}
           {activeTab === "reports" && <ReportsReview />}
