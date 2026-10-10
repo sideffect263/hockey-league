@@ -33,7 +33,11 @@ export default function LiveHlsPlayer({ src }) {
     }
     const jumpToLive = () => {
       const edge = liveEdge()
-      if (edge != null && Number.isFinite(edge)) video.currentTime = edge
+      // iPhone native HLS reports its seekable end BEHIND the playhead, so "seek to the
+      // edge" would seek backwards into the stall. Reload instead (what a refresh did).
+      if (edge == null || !Number.isFinite(edge) || edge <= video.currentTime) {
+        if (!hls) video.src = src
+      } else video.currentTime = edge
       video.play?.().catch(() => {})
     }
 
