@@ -1,24 +1,22 @@
 // ============================================================================
-// stream-golive -- mint a Cloudflare Stream live input for a game and hand the
-// browser WHIP ingest URL (+ ICE servers) to an authorized streamer.
+// stream-golive -- mint a Cloudflare Stream live input for a game and hand its RTMPS
+// ingest (URL + stream key) to an authorized streamer's app.
 //
-// User-facing (called from the browser), so it: handles CORS preflight, verifies
-// the caller's Supabase JWT, and enforces can_stream_game() (content-editor +
-// admin) BEFORE creating a billable live input, inserts the public game_videos row
-// (uid in video_id), and returns what the caller needs to publish.
+// User-facing, so it: handles CORS preflight, verifies the caller's Supabase JWT, and
+// enforces can_stream_game() BEFORE creating a billable live input, inserts the public
+// game_videos row (live input uid in video_id), and returns what the app publishes to.
 //
-// Two ingests (body `ingest`):
-//   "webrtc" (default) -- the web page / old app builds publish over WHIP. Cloudflare
-//                          does NOT record WebRTC input, so these leave no replay.
-//   "rtmp"             -- the native apps publish over RTMPS (like Larix). Cloudflare
-//                          records it; viewers watch HLS (the Stream iframe), which works
-//                          on any network. When the broadcast ends, `stream-replay`
-//                          swaps the row from the live input to the recording.
+// RTMP only (body `ingest: "rtmp"`). The native apps publish over RTMPS; Cloudflare
+// records it and viewers watch HLS on any network; when the broadcast ends,
+// `stream-replay` swaps the row from the live input to the recording. Browser (WebRTC/
+// WHIP) streaming was retired 2026-10-11 -- it was never recorded, and Cloudflare began
+// billing WebRTC delivery on 2026-10-15 -- so anything else gets 410 before a cent is spent.
 //
-// Secrets (Supabase -> Edge Functions -> Secrets):
-//   CF_ACCOUNT_ID / CF_STREAM_TOKEN   -- Cloudflare Stream (required)
-//   CF_TURN_KEY_ID / CF_TURN_API_TOKEN -- Cloudflare Realtime TURN (optional)
-// SUPABASE_URL / SUPABASE_ANON_KEY are auto-injected.
+// Cameras (multi-angle, 2026-10-11): every streamer in a game gets a camera_no. The same
+// person going live again keeps theirs (a restart is a new PART of the same camera), a
+// new person gets the next number. Optional body `camera` = a label ("מאחורי השער").
+//
+// Secrets: CF_ACCOUNT_ID / CF_STREAM_TOKEN. SUPABASE_URL / SUPABASE_ANON_KEY auto-injected.
 // ============================================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -28,41 +26,7 @@ const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const CF_ACCOUNT_ID = Deno.env.get("CF_ACCOUNT_ID")!;
 const CF_TOKEN = Deno.env.get("CF_STREAM_TOKEN")!;
 
-// TURN relay (Cloudflare Realtime) -- OPTIONAL. Publishing over WebRTC from a
-// strict/mobile NAT needs a relay; STUN alone can't traverse it. When these are
-// set we mint short-lived TURN credentials for the browser; without them the
-// stream still works on permissive networks (STUN only). Optional like the FCM
-// branch in send-push.
-const CF_TURN_KEY_ID = Deno.env.get("CF_TURN_KEY_ID") ?? "";
-const CF_TURN_API_TOKEN = Deno.env.get("CF_TURN_API_TOKEN") ?? "";
-
 const CF_API = "https://api.cloudflare.com/client/v4";
-
-// Cloudflare STUN always; short-lived Cloudflare TURN when configured. The TURN
-// set includes turns:5349 (TURN-over-TLS/443) so it works even where UDP is
-// blocked. Best-effort: a mint failure degrades to STUN-only, never blocks going
-// live.
-async function buildIceServers(): Promise<unknown[]> {
-  const ice: unknown[] = [{ urls: "stun:stun.cloudflare.com:3478" }];
-  if (CF_TURN_KEY_ID && CF_TURN_API_TOKEN) {
-    try {
-      const r = await fetch(
-        `https://rtc.live.cloudflare.com/v1/turn/keys/${CF_TURN_KEY_ID}/credentials/generate`,
-        {
-          method: "POST",
-          headers: { authorization: `Bearer ${CF_TURN_API_TOKEN}`, "content-type": "application/json" },
-          body: JSON.stringify({ ttl: 86400 }),
-        },
-      );
-      const j = await r.json();
-      if (j?.iceServers) ice.push(j.iceServers);
-      else console.log("turn generate: no iceServers", r.status, JSON.stringify(j));
-    } catch (e) {
-      console.log("turn generate threw", String(e));
-    }
-  }
-  return ice;
-}
 
 // The function self-authorizes on the JWT, so "*" is safe (Bearer-token API, not
 // cookie-based). supabase-js functions.invoke() adds x-client-info (+ apikey /
@@ -87,13 +51,17 @@ Deno.serve(async (req) => {
   if (!authHeader.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
 
   let gameId: string | null = null;
-  let ingest: "webrtc" | "rtmp" = "webrtc";
+  let ingest = "";
+  let cameraLabel: string | null = null;
   try {
     const b = await req.json();
     gameId = (b?.gameId ?? b?.game_id ?? "").toString() || null;
-    if (b?.ingest === "rtmp") ingest = "rtmp";
+    ingest = String(b?.ingest ?? "");
+    cameraLabel = String(b?.camera ?? "").trim().slice(0, 40) || null;
   } catch { /* fallthrough to 400 */ }
   if (!gameId) return json({ error: "missing gameId" }, 400);
+  // Browser (WHIP) streaming is retired: refuse before any Cloudflare cost.
+  if (ingest !== "rtmp") return json({ error: "web streaming retired -- use the app" }, 410);
 
   // User-scoped client: getUser() and the RPC both run AS the caller, so the gate
   // is byte-for-byte the RLS policy (auth.uid() resolves from this JWT).
@@ -124,7 +92,7 @@ Deno.serve(async (req) => {
       headers: { authorization: `Bearer ${CF_TOKEN}`, "content-type": "application/json" },
       body: JSON.stringify({
         meta: { name: `game:${gameId}` },
-        recording: { mode: "automatic", requireSignedURLs: false, timeoutSeconds: ingest === "rtmp" ? 60 : 10 },
+        recording: { mode: "automatic", requireSignedURLs: false, timeoutSeconds: 60 },
         preferLowLatency: true,
       }),
     });
@@ -139,7 +107,6 @@ Deno.serve(async (req) => {
   }
 
   const uid: string = cf.result.uid;
-  const whipUrl: string = cf.result.webRTC?.url ?? "";
   const whepUrl: string = cf.result.webRTCPlayback?.url ?? "";
 
   // The account's playback host is customer-<CODE>.cloudflarestream.com -- parse
@@ -149,6 +116,18 @@ Deno.serve(async (req) => {
   try {
     cfCode = new URL(whepUrl).hostname.split(".")[0].replace(/^customer-/, "") || null;
   } catch { /* leave null -> frontend falls back to the generic host */ }
+
+  // ---- Camera: this streamer's number in this game, else the next free one.
+  const { data: camRows } = await asUser
+    .from("game_videos")
+    .select("camera_no, camera_label, created_by")
+    .eq("game_id", gameId)
+    .not("camera_no", "is", null);
+  const mine = (camRows ?? []).find((r: any) => r.created_by === user.id);
+  const cameraNo: number = mine?.camera_no ??
+    (Math.max(0, ...(camRows ?? []).map((r: any) => r.camera_no as number)) + 1);
+  // A new label wins; otherwise a returning streamer keeps the label they had.
+  const label: string | null = cameraLabel ?? mine?.camera_label ?? null;
 
   // ---- Insert the public row so every spectator sees the embed immediately.
   // Inserted AS the user -> the can_stream_game RLS write policy is the final gate
@@ -163,9 +142,11 @@ Deno.serve(async (req) => {
       kind: "live",
       is_primary: true,
       cf_customer_code: cfCode,
-      ingest,
+      ingest: "rtmp",
       cf_live_input: uid,
       created_by: user.id,
+      camera_no: cameraNo,
+      camera_label: label,
     })
     .select("id")
     .single();
@@ -179,35 +160,22 @@ Deno.serve(async (req) => {
     return json({ error: "insert failed" }, 500);
   }
 
-  if (ingest === "rtmp") {
-    // rtmpsUrl + streamKey -> the app's encoder publishes here (the key is the secret;
-    // only an authorized streamer ever receives it). No ICE: RTMPS is plain TLS/TCP 443.
-    const rtmpsUrl: string = cf.result.rtmps?.url ?? "";
-    const streamKey: string = cf.result.rtmps?.streamKey ?? "";
-    if (!rtmpsUrl || !streamKey) {
-      console.log("cloudflare live_input has no rtmps", JSON.stringify(cf.result));
-      return json({ error: "cloudflare error" }, 502);
-    }
-    return json({
-      uid,
-      ingest,
-      rtmpsUrl,
-      streamKey,
-      cfCustomerCode: cfCode,
-      videoRowId: row.id,
-      playerUrl: cfCode ? `https://customer-${cfCode}.cloudflarestream.com/${uid}/iframe` : null,
-    });
+  // rtmpsUrl + streamKey -> the app's encoder publishes here (the key is the secret;
+  // only an authorized streamer ever receives it). No ICE: RTMPS is plain TLS/TCP 443.
+  const rtmpsUrl: string = cf.result.rtmps?.url ?? "";
+  const streamKey: string = cf.result.rtmps?.streamKey ?? "";
+  if (!rtmpsUrl || !streamKey) {
+    console.log("cloudflare live_input has no rtmps", JSON.stringify(cf.result));
+    return json({ error: "cloudflare error" }, 502);
   }
-
-  // whipUrl    -> the browser publishes its camera here (WHIP).
-  // iceServers -> STUN + (when configured) TURN relay for strict-NAT traversal.
-  // uid        -> spectators build the Stream player from this (stored in the row).
   return json({
     uid,
-    whipUrl,
-    whepUrl,
+    ingest: "rtmp",
+    rtmpsUrl,
+    streamKey,
     cfCustomerCode: cfCode,
     videoRowId: row.id,
-    iceServers: await buildIceServers(),
+    cameraNo,
+    playerUrl: cfCode ? `https://customer-${cfCode}.cloudflarestream.com/${uid}/iframe` : null,
   });
 });

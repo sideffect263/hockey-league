@@ -32,7 +32,7 @@ export function fmtClock(totalSeconds) {
   return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`
 }
 
-const VIDEO_COLS = 'id, provider, video_id, cf_customer_code, ingest, cf_live_input, title, kind, clock_offset_seconds, is_primary, created_at'
+const VIDEO_COLS = 'id, provider, video_id, cf_customer_code, ingest, cf_live_input, title, kind, clock_offset_seconds, is_primary, created_at, camera_no, camera_label'
 
 // Every video of a game, oldest first, each with its markers. A game can have several:
 // the streamer stopped and restarted, or the connection dropped long enough for
@@ -61,6 +61,31 @@ export async function getGameVideos(gameId) {
 // while their kind says so.
 export const isLiveRow = (v) =>
   v?.kind === 'live' || (!!v?.cf_live_input && v.video_id === v.cf_live_input)
+
+// A game's videos grouped into CAMERAS (angles), each holding its parts in recording
+// order. A camera = one streamer's broadcasts in this game: stream-golive gives every
+// streamer a camera_no per game, and the same person restarting keeps it (so a dropped
+// and restarted phone is חלק 2 of the same camera, not a new angle). A video without a
+// camera_no (an uploaded full game) is a camera of its own, labelled by its title.
+// Order: numbered cameras first, then by first recording. Mirrored in both apps.
+export function groupCameras(videos) {
+  const byKey = new Map()
+  for (const v of videos || []) {
+    const key = v.camera_no != null ? `n${v.camera_no}` : `v${v.id}`
+    if (!byKey.has(key)) byKey.set(key, { key, no: v.camera_no ?? null, label: null, parts: [] })
+    const cam = byKey.get(key)
+    cam.parts.push(v)
+    cam.label = cam.label || v.camera_label || null
+  }
+  const cams = [...byKey.values()].sort((a, b) =>
+    (a.no ?? Infinity) - (b.no ?? Infinity) ||
+    String(a.parts[0].created_at).localeCompare(String(b.parts[0].created_at)))
+  cams.forEach((c, i) => {
+    c.live = c.parts.some(isLiveRow)
+    if (!c.label) c.label = (c.no == null && c.parts[0].title) || `מצלמה ${c.no ?? i + 1}`
+  })
+  return cams
+}
 
 // A game's primary video (the newest) + its markers, or null. Kept for callers that
 // only ever show one video.
@@ -158,22 +183,6 @@ export async function cfInputIsLive(customerCode, inputId) {
 
 export async function getViewerIceServers() {
   return (await getViewerIceServersDetailed()).iceServers
-}
-
-// Streamer: start a Cloudflare Stream live broadcast from the browser camera.
-// The edge function enforces can_stream_game(), creates the live input, inserts
-// the public game_videos row (spectators' realtime shows the embed at once), and
-// returns { uid, whipUrl, whepUrl, cfCustomerCode }. The caller then publishes
-// the camera to whipUrl via publishWHIP(). Throws a Hebrew message on refusal.
-export async function goLiveCloudflare(gameId) {
-  const { data, error } = await supabase.functions.invoke('stream-golive', { body: { gameId } })
-  if (error) {
-    let reason = ''
-    try { reason = (await error.context?.json())?.error } catch { /* ignore */ }
-    if (reason === 'forbidden') throw new Error('אין לך הרשאה לשדר במשחק זה')
-    throw new Error('שגיאה בהתחלת השידור')
-  }
-  return data
 }
 
 // Editor/streamer: remove a video (and its markers, via FK cascade). Selects the

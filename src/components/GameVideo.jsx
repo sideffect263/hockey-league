@@ -2,22 +2,16 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Square, Eye, Stethoscope } from "lucide-react"
+import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, Stethoscope } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
   getGameVideos, isLiveRow, detachVideo, addMarker, deleteMarker,
-  subscribeGameVideo, fmtClock, goLiveCloudflare, getViewerIceServersDetailed, requestReplay, cfInputIsLive,
+  subscribeGameVideo, fmtClock, getViewerIceServersDetailed, requestReplay, cfInputIsLive, groupCameras,
 } from "@/lib/video"
 import LiveHlsPlayer from "@/components/LiveHlsPlayer"
 import ScoreOverlay from "@/components/ScoreOverlay"
-import { publishWHIP, confirmBroadcastLive } from "@/lib/whip"
 import { playWHEP, hasTurn } from "@/lib/whep"
-import StreamQualityPanel from "@/components/StreamQualityPanel"
-import {
-  loadQuality, saveQuality, videoConstraints, applyQualityToTrack,
-  applyQualityToSender, readSettings,
-} from "@/lib/cameraConfig"
 
 // Marker kinds → Hebrew label + emoji + pill colour (reuses the StatPills palette).
 const KINDS = {
@@ -308,33 +302,31 @@ function StreamDiag({ diag, mode, isLive }) {
   )
 }
 
-// The streamer's own view while broadcasting: the local camera preview (instant,
-// no round-trip) with a live pill and a stop control. Spectators meanwhile watch
-// the CloudflarePlayer embed.
-function LocalBroadcast({ previewRef, starting, onStop, quality, onQualityChange, actual }) {
+// מצלמה 1 / מצלמה 2 … — one pill per camera (angle) of the game; a camera on air right
+// now is marked live. Fans pick their angle here; parts of that camera sit below.
+function CameraTabs({ cameras, selected, onSelect }) {
   return (
-    <div className="space-y-3">
-      <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
-        <video ref={previewRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-semibold">
-          <Radio className="w-3.5 h-3.5 animate-pulse text-red-500" />
-          {starting ? "מתחבר…" : "משדר"}
-        </div>
-      </div>
-      {/* Adjustable mid-broadcast: applyConstraints + setParameters need no
-          renegotiation, so the streamer can dial quality down if it looks rough. */}
-      <StreamQualityPanel quality={quality} onChange={onQualityChange} actual={actual} live disabled={starting} />
-      <button onClick={onStop}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white bg-slate-800 hover:bg-slate-900 transition-colors">
-        <Square className="w-4 h-4 fill-current" /> הפסק שידור
-      </button>
+    <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="מצלמות">
+      {cameras.map((c) => {
+        const on = c.key === selected?.key
+        return (
+          <button key={c.key} role="tab" aria-selected={on} onClick={() => onSelect(c)}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${on
+              ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
+            <Camera className="w-3.5 h-3.5" />
+            {c.label}
+            {c.live && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-label="בשידור חי" />}
+          </button>
+        )
+      })}
     </div>
   )
 }
 
-// חלק 1 / חלק 2 … — one pill per video of the game, in recording order. The part on air
-// right now is marked live. A titled video (e.g. a second camera's full-game YouTube
-// upload) shows its title and doesn't take a part number.
+// חלק 1 / חלק 2 … — one pill per part of the selected camera, in recording order (the
+// streamer restarted, or a long drop split the recording). The part on air right now is
+// marked live. A titled video shows its title and doesn't take a part number.
 function PartTabs({ videos, selected, onSelect }) {
   let part = 0
   return (
@@ -358,43 +350,44 @@ function PartTabs({ videos, selected, onSelect }) {
 
 export default function GameVideo({ game, home, away, players = [] }) {
   const { isAdmin, isContentEditor } = useAuth()
-  // All of the game's videos, oldest first. More than one = parts (חלק 1, חלק 2…): the
-  // streamer restarted, or a long connection drop split the recording.
+  // All of the game's videos, oldest first, grouped into cameras (angles) → parts.
   const [videos, setVideos] = useState([])
+  const [cameraKey, setCameraKey] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [player, setPlayer] = useState(null)
   const [duration, setDuration] = useState(0)
-  const [broadcast, setBroadcast] = useState(null) // null | 'starting' | { stop }
-  // Capture/encoder settings, remembered across games so a streamer picks once.
-  const [quality, setQuality] = useState(loadQuality)
-  const [actualSettings, setActualSettings] = useState(null) // what the camera really gave
-  const previewRef = useRef(null)
-  const sessionRef = useRef(null)
 
   const gameId = game?.id
   const isLive = game?.status === "in_progress"
-  // Default view: whatever is on air right now, else a full-game YouTube upload, else part 1.
-  const liveRow = [...videos].reverse().find(isLiveRow)
-  const fullGame = videos.find(v => v.provider === "youtube" && v.kind === "full")
-  const video = videos.find(v => v.id === selectedId) || liveRow || fullGame || videos[0] || null
-  // Video is managed by content creators (content_editor) + admin only — mirrors
-  // the can_stream_game() backend gate. (Was admin/editor/judge/coach.)
+  // Default camera: one on air right now, else a full-game YouTube upload, else the first.
+  // Default part of a camera: its live part, else part 1.
+  const cameras = groupCameras(videos)
+  const camera = cameras.find(c => c.key === cameraKey)
+    || [...cameras].reverse().find(c => c.live)
+    || cameras.find(c => c.parts.some(v => v.provider === "youtube" && v.kind === "full"))
+    || cameras[0] || null
+  const parts = camera?.parts || []
+  const video = parts.find(v => v.id === selectedId) || [...parts].reverse().find(isLiveRow) || parts[0] || null
+  // Removing a video is for content creators (content_editor) + admin — mirrors the
+  // can_stream_game() backend gate. Going live is the apps' job now (RTMP); the web
+  // camera broadcast was retired before Cloudflare began billing WebRTC (2026-10-15).
   const canStream = isContentEditor || isAdmin
   const canMark = isAdmin || isContentEditor
 
   // Live viewer count via Realtime Presence — active while a Cloudflare live
-  // stream is on this page. The broadcaster sees the count but isn't counted.
-  const streamActive = video?.provider === "cloudflare" && (isLive || !!broadcast)
-  const viewers = useStreamViewers(gameId, streamActive, !broadcast)
+  // stream is on this page.
+  const streamActive = video?.provider === "cloudflare" && isLive
+  const viewers = useStreamViewers(gameId, streamActive, true)
 
   const load = useCallback(async () => {
     if (!gameId) return
     try {
       const all = await getGameVideos(gameId)
       setVideos(all)
-      // Keep the viewer on the part they picked; drop a selection that no longer exists.
+      // Keep the viewer on the camera/part they picked; drop a pick that no longer exists.
       setSelectedId(id => (all.some(v => v.id === id) ? id : null))
+      setCameraKey(k => (groupCameras(all).some(c => c.key === k) ? k : null))
     }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -418,104 +411,14 @@ export default function GameVideo({ game, home, away, players = [] }) {
     try { player.seekTo(sec, true); player.playVideo?.() } catch { /* ignore */ }
   }
 
-  // ---- Cloudflare browser broadcast (streamer side) ------------------------
-  // getUserMedia → mint a live input (edge fn gates + inserts the row) → publish
-  // the camera via WHIP. The row insert is what spectators see; this component
-  // keeps the session so the local preview survives the row refresh.
-  const startBroadcast = async () => {
-    setBroadcast("starting")
-    let stream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraints(quality), audio: true,
-      })
-      // Report what the camera actually produced, not what we asked for — phones
-      // routinely accept a 60fps request and hand back 30.
-      setActualSettings(readSettings(stream.getVideoTracks()[0]))
-    } catch {
-      alert("לא ניתן לגשת למצלמה/מיקרופון")
-      setBroadcast(null)
-      return
-    }
-    if (previewRef.current) {
-      previewRef.current.srcObject = stream
-      previewRef.current.muted = true
-      previewRef.current.play?.().catch(() => {})
-    }
-    let data
-    let session
-    try {
-      data = await goLiveCloudflare(gameId)
-      if (!data?.whipUrl) throw new Error("no whip url")
-      session = await publishWHIP(data.whipUrl, stream, data.iceServers)
-      // Honest check: confirm Cloudflare is actually SERVING the broadcast (a
-      // viewer could connect) before we claim "live". Catches the case where the
-      // browser connected but the media never reached Cloudflare — e.g. a cellular
-      // hotspot — which would otherwise show a fake "משדר" nobody can watch.
-      const reallyLive = await confirmBroadcastLive(data.cfCustomerCode, data.uid)
-      if (!reallyLive) throw new Error("not-reaching-server")
-      // Cap the encoder now that there's a sender. Capture settings alone don't
-      // bound what goes on the wire — and with no simulcast, that bitrate is what
-      // every viewer must sustain and what bills against the TURN allowance.
-      await applyQualityToSender(session.pc, quality)
-      sessionRef.current = session
-      setBroadcast(session)
-      load() // refresh the row (badge/kind); spectators already got the realtime insert
-    } catch (e) {
-      try { session?.stop?.() } catch { /* ignore */ }
-      try { stream.getTracks().forEach((t) => t.stop()) } catch { /* ignore */ }
-      if (previewRef.current) previewRef.current.srcObject = null
-      // The edge fn already inserted the game_videos row; if the broadcast never
-      // reached Cloudflare, remove it so spectators don't see a dead "live" embed.
-      if (data?.videoRowId) { try { await detachVideo(data.videoRowId) } catch { /* ignore */ } }
-      const msg = String(e?.message || "")
-      const networkFail = msg.startsWith("ice-failed") || msg === "not-reaching-server"
-      alert(networkFail
-        ? "השידור לא הצליח להגיע לשרת. נסו רשת אחרת — לא נקודת גישה סלולרית (הוטספוט) מהטלפון, שחוסמת שידור."
-        : (msg || "שגיאה בהתחלת השידור"))
-      setBroadcast(null)
-      load()
-    }
-  }
-
-  // Quality change. Before going live it's just a stored preference; mid-broadcast we
-  // re-aim the camera and the encoder in place — neither needs renegotiation, so the
-  // stream never drops while the streamer experiments.
-  const changeQuality = async (next) => {
-    setQuality(next)
-    saveQuality(next)
-    const track = previewRef.current?.srcObject?.getVideoTracks?.()[0]
-    if (track) setActualSettings(await applyQualityToTrack(track, next))
-    if (sessionRef.current?.pc) await applyQualityToSender(sessionRef.current.pc, next)
-  }
-
-  const stopBroadcast = async () => {
-    const session = sessionRef.current
-    sessionRef.current = null
-    setBroadcast(null)
-    setActualSettings(null)
-    const s = previewRef.current?.srcObject
-    if (s) { s.getTracks().forEach((t) => t.stop()); previewRef.current.srcObject = null }
-    try { await session?.stop?.() } catch { /* ignore */ }
-    load()
-  }
-
-  // Tear a live broadcast down if the streamer navigates away mid-stream.
-  useEffect(() => () => {
-    sessionRef.current?.stop?.()
-    const s = previewRef.current?.srcObject
-    if (s) s.getTracks?.().forEach((t) => t.stop())
-  }, [])
-
   if (loading) return null
-  // Render nothing unless there's a video, or a live game this user can stream to.
-  if (!video && !(isLive && canStream)) return null
+  if (!video) return null
 
   return (
     <motion.div id="video" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden scroll-mt-20">
       <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-          {(isLive && video) || broadcast
+          {isLive && camera?.live
             ? <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400"><Radio className="w-4 h-4 animate-pulse" /> שידור חי</span>
             : <><Video className="w-4 h-4 text-orange-500" /> וידאו מהמשחק</>}
           {streamActive && (
@@ -533,13 +436,13 @@ export default function GameVideo({ game, home, away, players = [] }) {
       </div>
 
       <div className="p-4 sm:p-5 space-y-4">
-        {broadcast ? (
-          <LocalBroadcast previewRef={previewRef} starting={broadcast === "starting"} onStop={stopBroadcast}
-            quality={quality} onQualityChange={changeQuality} actual={actualSettings} />
-        ) : video ? (
-          <>
-            {videos.length > 1 && (
-              <PartTabs videos={videos} selected={video} onSelect={(v) => { setSelectedId(v.id); setPlayer(null); setDuration(0) }} />
+        <>
+            {cameras.length > 1 && (
+              <CameraTabs cameras={cameras} selected={camera}
+                onSelect={(c) => { setCameraKey(c.key); setSelectedId(null); setPlayer(null); setDuration(0) }} />
+            )}
+            {parts.length > 1 && (
+              <PartTabs videos={parts} selected={video} onSelect={(v) => { setSelectedId(v.id); setPlayer(null); setDuration(0) }} />
             )}
             {video.provider === "cloudflare"
               ? (video.ingest === "rtmp"
@@ -591,20 +494,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
                 <ExternalLink className="w-3 h-3" /> פתח ב-YouTube
               </a>
             )}
-          </>
-        ) : (
-          isLive && canStream ? (
-            <div className="space-y-3">
-              {/* Chosen BEFORE the camera opens: the resolution/fps go into the very
-                  first getUserMedia, so there's no restart to apply them. */}
-              <StreamQualityPanel quality={quality} onChange={changeQuality} />
-              <button onClick={startBroadcast}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors">
-                <Camera className="w-4 h-4" /> שדר עכשיו מהמצלמה
-              </button>
-            </div>
-          ) : null
-        )}
+        </>
       </div>
     </motion.div>
   )

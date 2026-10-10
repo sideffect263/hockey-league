@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
   if (swapped?.length && rest.length) {
     const { data: base } = await admin
       .from("game_videos")
-      .select("game_id, provider, cf_customer_code, created_by")
+      .select("game_id, provider, cf_customer_code, created_by, camera_no, camera_label")
       .eq("id", row.id)
       .single();
     const { error: insErr } = await admin.from("game_videos").insert(rest.map((v) => ({
@@ -116,6 +116,9 @@ Deno.serve(async (req) => {
       is_primary: true,
       cf_customer_code: base!.cf_customer_code,
       created_by: base!.created_by,
+      // Extra parts belong to the same camera (angle) as the row they split from.
+      camera_no: base!.camera_no,
+      camera_label: base!.camera_label,
       ingest: "rtmp",
       cf_live_input: row.cf_live_input,
       created_at: v.created,
