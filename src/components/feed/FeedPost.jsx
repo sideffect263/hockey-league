@@ -10,6 +10,7 @@ import { setPhotoOverride } from "@/lib/photoOverrides"
 import { parseYouTubeId } from "@/lib/video"
 import FeedVideo from "@/components/feed/FeedVideo"
 import ReactionBar from "@/components/feed/ReactionBar"
+import MarketFeedCard from "@/components/feed/MarketFeedCard"
 import ModerationMenu from "@/components/feed/ModerationMenu"
 import { RoleBadge, OgBadge, deriveRoleItems } from "@/components/RoleBadges"
 import { TARGET_POST, TARGET_COMMENT } from "@/lib/moderation"
@@ -903,6 +904,8 @@ export default function FeedPost({ post, playersMap, teamsMap, roleBadges, liked
       return <GameResultPost post={post} playersMap={playersMap} teamsMap={teamsMap} {...rx} />
     case 'milestone':
       return <MilestonePost post={post} {...rx} />
+    case 'market':
+      return <MarketFeedCard post={post} teamsMap={teamsMap} />
     case 'post':
     case 'external':
       return <PostCard post={post} likedPostIds={likedPostIds} blockedIds={blockedIds} roleBadges={roleBadges} playersMap={playersMap} teamsMap={teamsMap} />

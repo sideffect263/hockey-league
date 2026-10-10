@@ -241,6 +241,17 @@ export async function getTradedMarketIds() {
   return new Set((data || []).map(r => r.market_id))
 }
 
+/**
+ * Market cards for the feed. The RPC returns [] unless the viewer is
+ * market_eligible (18+) — the age rule lives on the server, so a failed or
+ * skipped call just means no market cards, never cards for the wrong person.
+ */
+export async function getMarketFeed() {
+  const { data, error } = await supabase.rpc('market_feed')
+  if (error) return []
+  return Array.isArray(data) ? data : []
+}
+
 export async function getLeaderboard() {
   const { data, error } = await supabase.rpc('market_leaderboard')
   if (error) throw error

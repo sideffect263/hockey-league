@@ -96,6 +96,10 @@ export function feedItemTags(post) {
     case 'post':
       team(d.post?.team_id); player(d.author?.player_id); player(birthdayPlayerId(d.post))
       break
+    case 'market':
+      for (const g of d.games || []) { team(g.home_team_id); team(g.away_team_id) }
+      team(d.home_team_id); team(d.away_team_id)
+      break
     case 'external':
       if (d.post?.source_name) tags.add(`source:${d.post.source_name}`)
       if (/youtu\.?be/.test(d.post?.link_url || '')) tags.add('media:video')
@@ -188,6 +192,7 @@ export function buildFeed({
   followedTeams = new Set(),
   followedPlayers = new Set(),
   personalization = null,
+  marketItems = [],
 } = {}) {
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const playersMap = Object.fromEntries(players.map(p => [p.id, p]))
@@ -318,6 +323,12 @@ export function buildFeed({
         team: p.team_id ? teamsMap[p.team_id] : null,
       },
     })
+  }
+
+  // ---- הוקי מרקט cards (market_feed RPC — empty for anyone under 18) ----
+  for (const m of marketItems) {
+    if (!m?.kind || !m?.key) continue
+    posts.push({ id: `market-${m.key}`, type: 'market', date: m.date, rank: 55, data: m })
   }
 
   // ---- Rank: recency, plus time-denominated nudges (see scoreItem) ----

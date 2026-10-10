@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 import { useSeasonMode, useSeasonName } from "@/App"
 import { buildFeed } from "@/lib/feed"
 import { getMyFollowSets } from "@/lib/follows"
+import { getMarketFeed } from "@/lib/market"
 import { setFeedTracking, observeFeedItem, getFeedPersonalization } from "@/lib/feedImpressions"
 import { attachEventPhotos } from "@/lib/eventPhotos"
 import { getPhotoIndex } from "@/lib/media"
@@ -60,6 +61,7 @@ export default function Feed() {
   const [blockedIds, setBlockedIds] = useState(() => new Set())
   const [follows, setFollows] = useState(EMPTY_FOLLOWS)
   const [personalization, setPersonalization] = useState(null)
+  const [marketItems, setMarketItems] = useState([])
   const [championId, setChampionId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -94,6 +96,15 @@ export default function Feed() {
     if (!user) { setPersonalization(null); return }
     let alive = true
     getFeedPersonalization().then(p => { if (alive) setPersonalization(p) })
+    return () => { alive = false }
+  }, [user])
+
+  // הוקי מרקט cards. The RPC answers [] for anyone who isn't 18+ (server-side
+  // market_eligible), so guests skip the call and minors simply get no cards.
+  useEffect(() => {
+    if (!user) { setMarketItems([]); return }
+    let alive = true
+    getMarketFeed().then(items => { if (alive) setMarketItems(items) })
     return () => { alive = false }
   }, [user])
 
@@ -150,11 +161,11 @@ export default function Feed() {
       humanPosts: posts.filter(p => !blockedIds.has(p.author_id)),
       championId, seasonName, seasonMode,
       followedTeams: follows.teams, followedPlayers: follows.players,
-      personalization,
+      personalization, marketItems,
     }),
     { photos: photoIndex.photos, photoPlayers: photoIndex.photoPlayers, players },
     photoOverrides
-  ), [games, teams, players, gameStats, posts, championId, seasonName, seasonMode, photoIndex, blockedIds, photoOverrides, follows, personalization])
+  ), [games, teams, players, gameStats, posts, championId, seasonName, seasonMode, photoIndex, blockedIds, photoOverrides, follows, personalization, marketItems])
 
   const counts = useMemo(() => ({
     all: feed.length,
