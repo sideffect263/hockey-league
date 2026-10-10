@@ -76,33 +76,10 @@ const SOURCES: Source[] = [
     name: "OKLIGA.TV",
     url: "https://www.youtube.com/feeds/videos.xml?channel_id=UC6RLLzXQJWy1yCAEysy1Wgw",
   },
-  {
-    key: "wse-news",
-    kind: "rss",
-    name: "World Skate Europe",
-    url: "https://europe.worldskate.org/category/rink-hockey/feed/",
-  },
-  {
-    // Coaching and tactics — the one source of its kind that publishes a feed at
-    // all (see docs/rink-hockey-sources.md). Sporadic: months can pass silently.
-    key: "colaianni",
-    kind: "youtube",
-    name: "Andi Colaianni",
-    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCh-040jKgwZpAMuMxww_V3g",
-  },
-  {
-    // Chilean/LatAm rink hockey, the most prolific source here (near-daily).
-    // Its feed also carries speed skating, artistic skating and skateboarding,
-    // which is what excludeCategories is for.
-    key: "patinesychuecas",
-    kind: "rss",
-    name: "Patines y Chuecas",
-    url: "https://patinesychuecas.com/feed/",
-    excludeCategories: ["Patinaje Artístico", "Patín Carrera", "Skate", "skateboarding"],
-  },
-  // ---- Added 2026-09-28: the five above left only two sources active off-season
-  // (OK Liga is idle Jul–Oct, WSE Europe silent since the Euros). These cover the
-  // Italian, Portuguese and Argentine leagues, which are in pre-season now.
+  // ---- Removed 2026-10-10 (≈ zero opens over 30 days, see ניתוח פיד): World Skate
+  // Europe news, Andi Colaianni, Patines y Chuecas, HoqueiPatins.pt, Federação de
+  // Patinagem de Portugal, swiss skate, Actus Rink. Their old posts were soft-deleted.
+  // ---- Added 2026-09-28: the Italian and Argentine leagues, in pre-season then.
   {
     // Italian hockey su pista (Serie A1/A2, Coppa Italia) — several items a day
     // in season. The category feed is pista only; the site's inline is separate.
@@ -117,20 +94,6 @@ const SOURCES: Source[] = [
     kind: "rss",
     name: "OA Sport",
     url: "https://www.oasport.it/category/hockey-pista/feed/",
-  },
-  {
-    // Portuguese rink-hockey site (national + international) — a few a week.
-    key: "hoqueipatins-pt",
-    kind: "rss",
-    name: "HoqueiPatins.pt",
-    url: "https://www.hoqueipatins.pt/feed/",
-  },
-  {
-    // Portuguese federation, hóquei em patins category — no images in the feed.
-    key: "fpp",
-    kind: "rss",
-    name: "Federação de Patinagem de Portugal",
-    url: "https://fpp.pt/category/hp/feed/",
   },
   {
     // Argentina's national rink-hockey committee (CNTHsP) — sporadic, no images.
@@ -172,30 +135,11 @@ const SOURCES: Source[] = [
     highlights: true,
   },
   {
-    // Swiss federation, "Rollhockey Saison 2026/27" playlist — the channel itself
-    // also carries inline hockey. NEW PLAYLIST EVERY SEASON: swap the id in Sept.
-    key: "swiss-skate",
-    kind: "youtube",
-    name: "swiss skate",
-    url: "https://www.youtube.com/feeds/videos.xml?playlist_id=PLJa3l3C1Bsbo",
-    includeTitle: /highlights/i,
-    highlights: true,
-  },
-  {
     // Tactics and referee analysis (Spanish), 4–7 min. Follows the season.
     key: "azul-directa",
     kind: "youtube",
     name: "Azul Directa",
     url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCjQeZ1gzxoHwqtpaSxohPbw",
-  },
-  {
-    // French N1 Élite highlights, ~2 a month.
-    key: "actus-rink",
-    kind: "youtube",
-    name: "Actus Rink",
-    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCZFrYqqNt1BI6xFXRZ8JKXw",
-    includeTitle: /highlights/i,
-    highlights: true,
   },
 ];
 
@@ -602,7 +546,7 @@ Deno.serve(async (req) => {
       const body = await req.json();
       dryRun = !!body?.dry_run;
       if (Number.isFinite(body?.max_age_days)) maxAgeDays = Math.min(Number(body.max_age_days), 400);
-      // `only: ["colaianni"]` restricts the run to named sources. Cron never sends
+      // `only: ["oasport"]` restricts the run to named sources. Cron never sends
       // it; it exists so one source can be seeded or debugged without the shared
       // per-run budget being spent by whichever source is listed first.
       if (Array.isArray(body?.only) && body.only.length) only = body.only.map(String);
