@@ -144,6 +144,18 @@ export async function requestReplay(videoRowId) {
   }
 }
 
+// Is a Cloudflare live input on air right now? Cloudflare's public, CORS-open lifecycle
+// endpoint — no edge-function hop. true / false, or null when it couldn't be asked.
+export async function cfInputIsLive(customerCode, inputId) {
+  try {
+    const r = await fetch(`https://customer-${customerCode}.cloudflarestream.com/${inputId}/lifecycle`, { cache: 'no-store' })
+    if (!r.ok) return null
+    return !!(await r.json())?.live
+  } catch {
+    return null
+  }
+}
+
 export async function getViewerIceServers() {
   return (await getViewerIceServersDetailed()).iceServers
 }

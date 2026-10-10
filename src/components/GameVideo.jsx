@@ -7,8 +7,9 @@ import { useAuth } from "@/lib/AuthContext"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
   getGameVideos, isLiveRow, detachVideo, addMarker, deleteMarker,
-  subscribeGameVideo, fmtClock, goLiveCloudflare, getViewerIceServersDetailed, requestReplay,
+  subscribeGameVideo, fmtClock, goLiveCloudflare, getViewerIceServersDetailed, requestReplay, cfInputIsLive,
 } from "@/lib/video"
+import LiveHlsPlayer from "@/components/LiveHlsPlayer"
 import { publishWHIP, confirmBroadcastLive } from "@/lib/whip"
 import { playWHEP, hasTurn } from "@/lib/whep"
 import StreamQualityPanel from "@/components/StreamQualityPanel"
@@ -58,40 +59,53 @@ function YouTubePlayer({ videoId, onReady }) {
   )
 }
 
-// Player for an app (RTMP) broadcast. Cloudflare records these and serves HLS, so the
-// standard Stream iframe plays both the live broadcast and the replay on any network —
-// none of the WHEP/TURN machinery below is needed. While the row still points at the
-// live input and nothing is on air, ask the server to swap it to the recording (the
-// realtime subscription then reloads the row), polling while it's still processing.
+// Player for an app (RTMP) broadcast. Cloudflare records these and serves HLS on any
+// network — none of the WHEP/TURN machinery below is needed.
+//
+// A row still pointing at its live input is either on air or a finished broadcast whose
+// recording isn't swapped in yet. Cloudflare's lifecycle endpoint tells which:
+//  - on air  → LiveHlsPlayer (our own player, so a stall jumps back to live by itself)
+//  - off air → never embed the input: Cloudflare's player shows "Stream has not started"
+//    for an idle input, which read as "part 1 was never recorded" on 2026-10-10. Show
+//    our own message and keep asking the server to swap in the recording.
+// A swapped row is a plain recording → Cloudflare's iframe.
 function RtmpPlayer({ video }) {
-  const [state, setState] = useState(null) // null | live | processing | ready | none | error
+  const [onAir, setOnAir] = useState(null) // null = not known yet
   const onInput = !!video.cf_live_input && video.video_id === video.cf_live_input
+  const code = video.cf_customer_code
 
   useEffect(() => {
-    if (!onInput) return
-    let cancelled = false, timer = null
+    if (!onInput || !code) return
+    let cancelled = false, timer = null, offCount = 0
     const check = async () => {
-      const r = await requestReplay(video.id)
+      const live = await cfInputIsLive(code, video.cf_live_input)
       if (cancelled) return
-      setState(r.state)
-      // live: re-check in a minute (catches the end of the broadcast);
-      // processing: Cloudflare is still encoding — usually well under a minute.
-      if (r.state === "live" || r.state === "processing") timer = setTimeout(check, r.state === "live" ? 60000 : 15000)
+      if (live) { offCount = 0; setOnAir(true) }
+      else {
+        // Two misses in a row before leaving the live player — a short reconnect on the
+        // streamer's side shouldn't tear down every viewer's player.
+        offCount += 1
+        if (live === false && offCount >= 2) setOnAir(false)
+        else if (live === false) setOnAir((v) => (v === null ? false : v))
+        // Off air: ask for the swap. The realtime subscription reloads the row once done.
+        if (live === false) await requestReplay(video.id)
+      }
+      if (!cancelled) timer = setTimeout(check, 10000)
     }
     check()
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [video.id, video.video_id, onInput])
+  }, [video.id, video.video_id, video.cf_live_input, onInput, code])
 
-  const code = video.cf_customer_code
   if (!code) return null
-  if (onInput && state === "processing") {
+  if (onInput) {
+    if (onAir) return <LiveHlsPlayer src={`https://customer-${code}.cloudflarestream.com/${video.cf_live_input}/manifest/video.m3u8`} />
     return (
       <div className="w-full aspect-video bg-black rounded-xl grid place-items-center text-slate-300 text-sm text-center px-4">
-        השידור הסתיים — ההקלטה בעיבוד ותופיע כאן בעוד כמה דקות
+        {onAir === null ? "טוען שידור…" : "השידור לא פעיל כרגע. אם הוא הסתיים, ההקלטה תופיע כאן בעוד כמה דקות."}
       </div>
     )
   }
-  const src = `https://customer-${code}.cloudflarestream.com/${video.video_id}/iframe?preload=auto${onInput ? "&autoplay=true&muted=true" : ""}`
+  const src = `https://customer-${code}.cloudflarestream.com/${video.video_id}/iframe?preload=auto`
   return (
     <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
       <iframe src={src} className="absolute inset-0 w-full h-full border-0" title="וידאו מהמשחק"
