@@ -10,6 +10,7 @@ import {
   subscribeGameVideo, fmtClock, goLiveCloudflare, getViewerIceServersDetailed, requestReplay, cfInputIsLive,
 } from "@/lib/video"
 import LiveHlsPlayer from "@/components/LiveHlsPlayer"
+import ScoreOverlay from "@/components/ScoreOverlay"
 import { publishWHIP, confirmBroadcastLive } from "@/lib/whip"
 import { playWHEP, hasTurn } from "@/lib/whep"
 import StreamQualityPanel from "@/components/StreamQualityPanel"
@@ -69,7 +70,9 @@ function YouTubePlayer({ videoId, onReady }) {
 //    for an idle input, which read as "part 1 was never recorded" on 2026-10-10. Show
 //    our own message and keep asking the server to swap in the recording.
 // A swapped row is a plain recording → Cloudflare's iframe.
-function RtmpPlayer({ video }) {
+function RtmpPlayer({ video, gameId, home, away }) {
+  const { isAdmin } = useAuth()
+  const [latency, setLatency] = useState(null) // { ms, source } from the live player
   const [onAir, setOnAir] = useState(null) // null = not known yet
   const onInput = !!video.cf_live_input && video.video_id === video.cf_live_input
   const code = video.cf_customer_code
@@ -98,7 +101,20 @@ function RtmpPlayer({ video }) {
 
   if (!code) return null
   if (onInput) {
-    if (onAir) return <LiveHlsPlayer src={`https://customer-${code}.cloudflarestream.com/${video.cf_live_input}/manifest/video.m3u8`} />
+    if (onAir) {
+      return (
+        <div className="space-y-1">
+          <LiveHlsPlayer src={`https://customer-${code}.cloudflarestream.com/${video.cf_live_input}/manifest/video.m3u8`} onLatency={setLatency}>
+            <ScoreOverlay gameId={gameId} home={home} away={away} latencyMs={latency?.ms ?? 0} />
+          </LiveHlsPlayer>
+          {/* Admin calibration readout: how far the overlay is held back, and whether the
+              stream's own timestamps measured it ("pdt") or it's estimated ("edge"). */}
+          {isAdmin && latency && (
+            <p className="text-[11px] text-slate-400" dir="ltr">overlay delay {(latency.ms / 1000).toFixed(1)}s · {latency.source}</p>
+          )}
+        </div>
+      )
+    }
     return (
       <div className="w-full aspect-video bg-black rounded-xl grid place-items-center text-slate-300 text-sm text-center px-4">
         {onAir === null ? "טוען שידור…" : "השידור לא פעיל כרגע. אם הוא הסתיים, ההקלטה תופיע כאן בעוד כמה דקות."}
@@ -523,7 +539,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
             )}
             {video.provider === "cloudflare"
               ? (video.ingest === "rtmp"
-                  ? <RtmpPlayer key={video.id} video={video} />
+                  ? <RtmpPlayer key={video.id} video={video} gameId={gameId} home={home} away={away} />
                   : <CloudflarePlayer key={video.id} video={video} isLive={isLive} />)
               : <YouTubePlayer key={video.id} videoId={video.video_id} onReady={onPlayerReady} />}
 

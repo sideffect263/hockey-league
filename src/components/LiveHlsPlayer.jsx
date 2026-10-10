@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Radio } from "lucide-react"
+import { Radio, Maximize } from "lucide-react"
 
 // Live player for an app (RTMP) broadcast. Replaces Cloudflare's iframe for the LIVE
 // part only: when that player stalled (streamer's uplink hiccup, viewer's weak network)
@@ -14,10 +14,44 @@ import { Radio } from "lucide-react"
 const STALL_MS = 6000     // picture frozen this long while "playing" → jump to live
 const MAX_BEHIND_S = 20   // further than this behind the live edge → jump to live
 const EDGE_OFFSET_S = 4   // where "live" is, behind the newest segment (2s segments)
+// Glass-to-glass lag the playlist can't see (phone encode + upload + Cloudflare packaging).
+// Only used when the stream carries no wall-clock timestamps (EXT-X-PROGRAM-DATE-TIME).
+const INGEST_LAG_MS = 4000
 
-export default function LiveHlsPlayer({ src }) {
+// How far behind real time the picture is, and how we know. With wall-clock timestamps
+// in the stream it's measured; without them it's distance-to-edge + INGEST_LAG_MS.
+function measureLatency(video, hls) {
+  const pdt = hls?.playingDate ?? (() => {
+    const start = video.getStartDate?.()
+    const t = start?.getTime?.()
+    return Number.isFinite(t) && t > 0 ? new Date(t + video.currentTime * 1000) : null
+  })()
+  if (pdt && Number.isFinite(pdt.getTime())) return { ms: Date.now() - pdt.getTime(), source: "pdt" }
+  let behindS = null
+  if (hls && Number.isFinite(hls.latency)) behindS = hls.latency
+  else {
+    const s = video.seekable
+    if (s?.length) behindS = Math.max(0, s.end(s.length - 1) - video.currentTime)
+  }
+  return behindS == null ? null : { ms: behindS * 1000 + INGEST_LAG_MS, source: "edge" }
+}
+
+// `children` = overlays drawn over the picture (the score bug). `onLatency({ ms, source })`
+// reports the picture's lag every 2s so an overlay can show state as of the same moment.
+export default function LiveHlsPlayer({ src, children, onLatency }) {
   const videoRef = useRef(null)
+  const boxRef = useRef(null)
   const [waiting, setWaiting] = useState(true)
+  const latencyCb = useRef(onLatency)
+  latencyCb.current = onLatency
+  // Fullscreen the whole box, not the <video>: the browser's own video fullscreen shows
+  // the bare element and drops the overlay. iPhone has no element fullscreen → keep the
+  // native control there.
+  const canBoxFullscreen = typeof document !== "undefined" && !!document.fullscreenEnabled
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+    else boxRef.current?.requestFullscreen?.().catch(() => {})
+  }
 
   useEffect(() => {
     const video = videoRef.current
@@ -94,6 +128,16 @@ export default function LiveHlsPlayer({ src }) {
       if (edge != null && edge - video.currentTime > MAX_BEHIND_S) jumpToLive()
     }, 5000)
 
+    // Smoothed, so the overlay doesn't jitter between neighbouring estimates.
+    let smooth = null
+    const lag = setInterval(() => {
+      if (video.paused || video.readyState < 2) return
+      const m = measureLatency(video, hls)
+      if (!m || m.ms < 0 || m.ms > 120000) return
+      smooth = smooth == null ? m.ms : smooth * 0.7 + m.ms * 0.3
+      latencyCb.current?.({ ms: Math.round(smooth), source: m.source })
+    }, 2000)
+
     const onPlaying = () => setWaiting(false)
     const onWaiting = () => setWaiting(true)
     video.addEventListener("playing", onPlaying)
@@ -101,7 +145,7 @@ export default function LiveHlsPlayer({ src }) {
 
     return () => {
       cancelled = true
-      clearInterval(tick); clearInterval(behind); clearTimeout(restartTimer)
+      clearInterval(tick); clearInterval(behind); clearInterval(lag); clearTimeout(restartTimer)
       video.removeEventListener("playing", onPlaying)
       video.removeEventListener("waiting", onWaiting)
       try { hls?.destroy() } catch { /* ignore */ }
@@ -110,9 +154,17 @@ export default function LiveHlsPlayer({ src }) {
   }, [src])
 
   return (
-    <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
+    <div ref={boxRef} className="relative w-full aspect-video bg-black rounded-xl overflow-hidden [container-type:inline-size]">
       <video ref={videoRef} autoPlay playsInline muted controls
+        controlsList={canBoxFullscreen ? "nofullscreen" : undefined}
         className="absolute inset-0 w-full h-full object-contain bg-black" />
+      {children}
+      {canBoxFullscreen && (
+        <button onClick={toggleFullscreen} aria-label="מסך מלא"
+          className="absolute top-[3cqw] left-[3cqw] p-1.5 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors">
+          <Maximize className="w-4 h-4" />
+        </button>
+      )}
       {waiting && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/40 text-white text-sm">
           <span className="flex items-center gap-2"><Radio className="w-4 h-4 animate-pulse text-red-500" /> מתחבר לשידור…</span>
