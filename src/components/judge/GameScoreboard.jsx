@@ -15,7 +15,7 @@ import { EligibilityChips, OverrideButton, EligibilityWarning } from "@/componen
 import {
   RotateCcw, Pencil, CheckCircle2, Megaphone, Settings as SettingsIcon, Paintbrush,
   Hand, RectangleVertical, SkipForward, Save, Undo2, Plus, Minus, X, Maximize, Minimize,
-  Loader2, Check, Users,
+  Loader2, Check, Users, Flag,
 } from "lucide-react"
 import { StickBall } from "@/components/icons/HockeyIcons"
 
@@ -66,6 +66,8 @@ const HE = {
   resetGame: "אפס משחק", done: "סיום", cancel: "ביטול", noPlayer: "ללא שיוך לשחקן",
   saveResult: "שמור תוצאה", abandon: "החזר למצב 'טרם החל'",
   abandonConfirm: "להחזיר את המשחק למצב 'טרם החל'?", abandonYes: "כן, החזר",
+  endGame: "סיום משחק", endGameTitle: "לסיים את המשחק עכשיו?", endGameYes: "סיים משחק",
+  endGameBodyPre: "התוצאה תישמר כפי שהיא כעת:", endGameBodyPost: "אפשר עדיין לתקן לפני השמירה.",
 }
 
 /* LED jumbotron + Modern — ported 1:1 from iOS Theme.swift presets. */
@@ -274,6 +276,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   const [resetArmed, setResetArmed] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
+  const [confirmEnd, setConfirmEnd] = useState(false)
   const [abandoning, setAbandoning] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -492,6 +495,15 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
             <ControlBtn icon={Paintbrush} onClick={() => setThemeKind(k => (k === "led" ? "modern" : "led"))} tint={T.controlTint} label={HE.theme} fill />
           </div>
 
+          {/* judge: end the game now (stopped early / entered after the fact) → over → save */}
+          {game && engine.canEndNow() && (
+            <button onClick={() => { setSaveErr(null); setConfirmEnd(true) }}
+              className="flex items-center gap-2 px-4 py-2 rounded-full font-bold border"
+              style={{ background: T.panel, color: T.primaryText, borderColor: "rgba(255,255,255,0.18)", fontSize: SB.minor }}>
+              <Flag className="w-[1.1em] h-[1.1em]" style={{ color: T.accent }} /> {HE.endGame}
+            </button>
+          )}
+
           {/* judge: save when over + return-to-not-started */}
           {game && over && (
             <div className="flex flex-col items-center gap-1 pt-1">
@@ -564,6 +576,32 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
                   {showAllRoster ? "הצג רק מי שאישר הגעה" : "הצג את כל הסגל"}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* confirm "end game now" */}
+      {confirmEnd && (
+        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" dir="rtl" onClick={() => setConfirmEnd(false)}>
+          <div role="alertdialog" aria-modal="true" aria-labelledby="end-game-title"
+            className="w-full max-w-sm rounded-2xl border p-5 flex flex-col gap-3 text-right"
+            style={{ background: T.panel, borderColor: "rgba(255,255,255,0.12)" }} onClick={e => e.stopPropagation()}>
+            <h4 id="end-game-title" className="font-extrabold text-lg text-white">{HE.endGameTitle}</h4>
+            <p className="text-sm leading-relaxed" style={{ color: T.secondaryText }}>
+              {HE.endGameBodyPre}{" "}
+              <span className="font-bold text-white whitespace-nowrap">
+                <bdi>{home?.name || engine.home.name}</bdi> <span className="tabular-nums">{engine.homeFinalScore}</span>
+                {" – "}
+                <span className="tabular-nums">{engine.guestFinalScore}</span> <bdi>{guest?.name || engine.guest.name}</bdi>
+              </span>.{" "}
+              {HE.endGameBodyPost}
+            </p>
+            <div className="flex gap-2 pt-1">
+              <button autoFocus onClick={() => { engine.endGameNow(); setConfirmEnd(false) }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white" style={{ background: T.cardRed }}>{HE.endGameYes}</button>
+              <button onClick={() => setConfirmEnd(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-bold" style={{ background: "rgba(255,255,255,0.08)", color: T.primaryText }}>{HE.cancel}</button>
             </div>
           </div>
         </div>

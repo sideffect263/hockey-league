@@ -28,6 +28,7 @@ import { format } from "date-fns"
 import { useSeasonMode } from "@/App"
 import PosterGenerator from "@/components/PosterGenerator"
 import ClaimsReview from "@/components/admin/ClaimsReview"
+import SeasonModeControl from "@/components/admin/SeasonModeControl"
 import PlayerSubmissionsReview from "@/components/admin/PlayerSubmissionsReview"
 import TeamJoinRequestsReview from "@/components/admin/TeamJoinRequestsReview"
 import CoachRequestsReview from "@/components/admin/CoachRequestsReview"
@@ -2076,6 +2077,9 @@ function SeasonAdmin({ games, teams, players, reload }) {
 
   return (
     <div className="space-y-4">
+      {/* season_mode + champion_team_id (league_settings) — read site-wide, set here. */}
+      <SeasonModeControl teams={teams} onModeSaved={setSeasonMode} />
+
       {/* Entry to the public archive page — moved here from the main navbar. */}
       <a href="/archive"
         className="card p-4 flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-600 transition-colors group">
