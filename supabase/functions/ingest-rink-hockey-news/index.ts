@@ -79,15 +79,8 @@ const SOURCES: Source[] = [
   // ---- Removed 2026-10-10 (≈ zero opens over 30 days, see ניתוח פיד): World Skate
   // Europe news, Andi Colaianni, Patines y Chuecas, HoqueiPatins.pt, Federação de
   // Patinagem de Portugal, swiss skate, Actus Rink. Their old posts were soft-deleted.
+  // 2026-10-11: Hockey Italia 21 removed too (Ariel's call), old posts soft-deleted.
   // ---- Added 2026-09-28: the Italian and Argentine leagues, in pre-season then.
-  {
-    // Italian hockey su pista (Serie A1/A2, Coppa Italia) — several items a day
-    // in season. The category feed is pista only; the site's inline is separate.
-    key: "hockeyitalia21",
-    kind: "rss",
-    name: "Hockey Italia 21",
-    url: "https://hockeyitalia21.com/category/hockey-su-pista/feed/",
-  },
   {
     // Italian national sports outlet, hockey-pista category — ~weekly.
     key: "oasport",
