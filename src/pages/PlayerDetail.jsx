@@ -163,8 +163,9 @@ export default function PlayerDetail() {
   const topScorer = allPlayers
     .filter(pl => pl.position === 'Field Player' && (pl.goals || 0) > 0)
     .reduce((best, pl) => ((pl.goals || 0) > (best?.goals || 0) ? pl : best), null)
-  const isTopScorer = !!topScorer && topScorer.id === player.id
-  const isChampion = seasonMode === 'final_four' && !!championId && championId === player.team_id
+  const seasonOver = seasonMode === 'final_four' && !!championId
+  const isTopScorer = seasonOver && !!topScorer && topScorer.id === player.id
+  const isChampion = seasonOver && championId === player.team_id
 
   // Per-game scoring milestones from recorded box scores (3-4 = hat-trick, 5+ =
   // big game). Friendlies never count toward achievements/honors.

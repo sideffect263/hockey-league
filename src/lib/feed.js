@@ -277,7 +277,10 @@ export function buildFeed({
   }
 
   // ---- TOP SCORER post (authoritative season total from players.goals) ----
-  const topScorer = players
+  // Season-summary card: like the champion, only once the season is decided — mid-season
+  // the current leader isn't "מלך השערים של העונה" yet.
+  const seasonOver = seasonMode === 'final_four' && !!championId
+  const topScorer = !seasonOver ? null : players
     .filter(p => p.position === 'Field Player' && (p.goals || 0) > 0)
     .reduce((best, p) => ((p.goals || 0) > (best?.goals || 0) ? p : best), null)
   if (topScorer) {
