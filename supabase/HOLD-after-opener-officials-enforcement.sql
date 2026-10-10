@@ -1,5 +1,7 @@
 -- ============================================================================================
 -- HOLD — DO NOT APPLY BEFORE THE 2026-10-10 SEASON OPENER IS OVER (Ariel, 2026-10-09).
+-- 2026-10-11: parts B and C APPLIED via supabase/opener-followups.sql (B with a re-save fix).
+--             Part A (judge assignment enforcement) still NOT applied — awaiting Ariel.
 -- Written + dry-run tested in a rolled-back transaction on 2026-10-09. Apply as one migration.
 -- Three behaviour changes:
 --   A) A plain judge may only act on games he is ASSIGNED to (approved/assigned game_officials
