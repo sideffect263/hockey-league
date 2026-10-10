@@ -40,6 +40,9 @@ export function AuthProvider({ children }) {
         return
       }
       if (loadedFor.current === next.id && event !== 'USER_UPDATED') return
+      // A different account: drop the previous one's permissions BEFORE loading, because a
+      // failed load now keeps what is there (see loadRoles) — it must never be someone else's.
+      if (loadedFor.current !== next.id) { setIsAdmin(false); setRoles([]) }
       loadedFor.current = next.id
       loadAccount(next)
     }
@@ -110,29 +113,38 @@ export function AuthProvider({ children }) {
     else setProfile(null)
   }
 
-  const checkAdmin = async (email) => {
-    try {
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('email', email)
-        .maybeSingle()
-      setIsAdmin(!!data && !error)
-    } catch {
-      setIsAdmin(false)
+  // A failed permission read must not be read as "no permissions". Right after a token
+  // refresh the API can briefly reject the new token ("JWT issued at future", PGRST303 —
+  // the auth server's clock runs ahead), and treating that as an answer stripped admins,
+  // coaches and judges of every role until the next page load (27 hits / 14 users, Oct).
+  // So: retry once after 1.5s, and if it still fails keep what we had. A switch to a
+  // different account clears the state first (see apply), so nothing carries over.
+  const readWithRetry = async (query) => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { data, error } = await query()
+        if (!error) return { ok: true, data }
+      } catch { /* network — retry below */ }
+      if (attempt === 0) await new Promise(r => setTimeout(r, 1500))
     }
+    return { ok: false }
+  }
+
+  const checkAdmin = async (email) => {
+    const res = await readWithRetry(() => supabase
+      .from('admin_users')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle())
+    if (res.ok) setIsAdmin(!!res.data)
   }
 
   const loadRoles = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role, team_id')
-        .eq('user_id', userId)
-      setRoles(error ? [] : (data || []))
-    } catch {
-      setRoles([])
-    }
+    const res = await readWithRetry(() => supabase
+      .from('user_roles')
+      .select('role, team_id')
+      .eq('user_id', userId))
+    if (res.ok) setRoles(res.data || [])
   }
 
   // Does the signed-in user hold a given role? Admins implicitly pass every gate.

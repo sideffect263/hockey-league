@@ -1,5 +1,6 @@
 import React from 'react'
 import { trackError, flush } from '@/lib/telemetry'
+import { isStaleChunkError, reloadForStaleChunk } from '@/lib/staleChunkReload'
 
 /**
  * Catches a render-time crash, reports it, and shows something human instead of the
@@ -28,6 +29,10 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
+    // An old tab asking for a page file the latest deploy replaced: not a bug, just stale.
+    // Reload once (guarded) instead of showing the crash page.
+    if (isStaleChunkError(error) && reloadForStaleChunk()) return
+
     // The component stack names the screen that broke, which is the single most
     // useful field when reading this back. The message is a developer string, never
     // user content, so it is safe to carry.

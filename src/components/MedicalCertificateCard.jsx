@@ -63,7 +63,7 @@ export default function MedicalCertificateCard({ playerId }) {
 
       {canUpload && (
         <div>
-          <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={onFile} className="hidden" id="medical-file" />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={onFile} className="hidden" id="medical-file" />
           <label htmlFor="medical-file"
             className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors cursor-pointer">
             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}

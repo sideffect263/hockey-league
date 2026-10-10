@@ -312,7 +312,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
             </div>
             <label className="block">
               <span className="text-[11px] text-slate-500 dark:text-slate-400">צילום או PDF של הבדיקה</span>
-              <input type="file" accept="image/*,application/pdf" onChange={e => setUpFile(e.target.files?.[0] || null)}
+              <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setUpFile(e.target.files?.[0] || null)}
                 className="mt-1 block w-full text-xs text-slate-600 dark:text-slate-300" />
             </label>
             <label className="block">
