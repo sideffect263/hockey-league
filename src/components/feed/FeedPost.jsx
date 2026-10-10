@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
 import { Crown, Flame, Trophy, MapPin, FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2 } from "lucide-react"
@@ -243,11 +243,13 @@ function ScoreBlock({ away, home, awayWin, homeWin }) {
 }
 
 /* One team on the result row. side="home" flows normally (right in RTL);
-   side="away" mirrors to the left. Winner is emerald + trophy, loser muted. */
+   side="away" mirrors to the left. Winner is emerald + trophy, loser muted.
+   Not a team link: the whole result card opens the game, and a team name that
+   went somewhere else was the thing people tapped and landed on the wrong page. */
 function ResultTeam({ team, side, isWin, isLoss, label }) {
   const reverse = side === "away"
   return (
-    <TeamLink team={team} className={`group flex items-center gap-2.5 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${reverse ? "flex-row-reverse" : ""} ${isWin ? "bg-emerald-50 dark:bg-emerald-900/20" : ""}`}>
+    <div className={`group flex items-center gap-2.5 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${reverse ? "flex-row-reverse" : ""} ${isWin ? "bg-emerald-50 dark:bg-emerald-900/20" : ""}`}>
       <TeamLogo team={team} size={12} />
       <div className={`min-w-0 ${reverse ? "text-left" : ""}`}>
         <p className={`text-sm sm:text-[15px] truncate flex items-center gap-1 group-hover:text-brand transition-colors ${reverse ? "flex-row-reverse" : ""} ${isWin ? "font-extrabold text-emerald-700 dark:text-emerald-300" : isLoss ? "font-semibold text-slate-500 dark:text-slate-400" : "font-bold text-slate-900 dark:text-white"}`}>
@@ -256,7 +258,7 @@ function ResultTeam({ team, side, isWin, isLoss, label }) {
         </p>
         <p className={`text-[11px] ${isWin ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-slate-500 dark:text-slate-400"}`}>{label}</p>
       </div>
-    </TeamLink>
+    </div>
   )
 }
 
@@ -329,9 +331,19 @@ function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts
   const homeWin = game.home_score > game.away_score
   const awayWin = game.away_score > game.home_score
   const tie = game.home_score === game.away_score
+  const navigate = useNavigate()
+  const gamePath = entityPath('games', game)
+  // Tap anywhere on the card → the game page. Its own controls (details, likes,
+  // comments, player links, photo tools) keep their behaviour, and a text
+  // selection isn't a tap. The "לעמוד המשחק" link stays as the keyboard path.
+  const openGame = (e) => {
+    if (e.target.closest('a, button, input, textarea, select, label, [role="button"], [data-no-card-nav]')) return
+    if (window.getSelection?.()?.toString()) return
+    navigate(gamePath)
+  }
 
   return (
-    <motion.div {...fade} layout className="card-hover overflow-hidden">
+    <motion.div {...fade} layout onClick={openGame} className="card-hover overflow-hidden cursor-pointer">
       <div className="p-4 sm:p-5">
         {/* Header — label + trophy on the right; type tags + date on the left */}
         <div className="flex items-center gap-2 mb-4">
@@ -361,7 +373,7 @@ function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts
         <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
           <div className="mr-auto flex items-center gap-2">
-            <Link to={entityPath('games', game)} className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold text-brand dark:text-brand-light hover:bg-brand/[0.06] dark:hover:bg-brand/10 transition-colors">
+            <Link to={gamePath} className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold text-brand dark:text-brand-light hover:bg-brand/[0.06] dark:hover:bg-brand/10 transition-colors">
               לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" />
             </Link>
             {stats.length > 0 && (
@@ -384,7 +396,7 @@ function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts
       <AnimatePresence>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="px-5 pb-5">
+            <div className="px-5 pb-5 cursor-auto" data-no-card-nav>
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3">סטטיסטיקות שחקנים</h4>
                 {stats.length === 0 ? (
@@ -441,7 +453,7 @@ function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts
         )}
       </AnimatePresence>
 
-      <div className="px-4 sm:px-5 pb-4">
+      <div className="px-4 sm:px-5 pb-4 cursor-auto" data-no-card-nav>
         <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} />
       </div>
     </motion.div>
