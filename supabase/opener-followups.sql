@@ -204,3 +204,19 @@ create trigger trg_sync_red_card_suspension
 
 -- apply_game_form_result keeps its own p_suspend_red switch: it now sets app.no_auto_suspend
 -- around its box-score rewrite (patched in place from the live definition; see HOLD file part B).
+
+-- ---------- 4) error-sweep fixes (2026-10-11, live migration podium_fns_service_role_only_and_face_clusters_fk)
+-- podium_match_athletes / podium_unmatched_athletes admitted `auth.uid() is null` to let the
+-- service-role Mac sync in — but the public ANON key has a null uid too, so anyone could read
+-- unmatched athletes' name / DOB / club / medical expiry and trigger the matcher. Both now admit
+-- `auth.role() = 'service_role'` instead (patched in place from the live definitions), and anon
+-- has no EXECUTE. Verified: the sync's call after the change returned 200.
+revoke execute on function public.podium_match_athletes() from anon, public;
+revoke execute on function public.podium_unmatched_athletes() from anon, public;
+grant execute on function public.podium_match_athletes() to authenticated, service_role;
+grant execute on function public.podium_unmatched_athletes() to authenticated, service_role;
+
+-- Deleting a player 409'd on face_clusters (the only FK to players with no ON DELETE rule).
+alter table public.face_clusters drop constraint if exists face_clusters_player_id_fkey;
+alter table public.face_clusters add constraint face_clusters_player_id_fkey
+  foreign key (player_id) references public.players(id) on delete set null;
