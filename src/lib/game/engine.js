@@ -194,6 +194,50 @@ export class GameEngine {
       this.cardLog.length === 0 && this.breaks.length === 0
   }
 
+  // Something has happened on this board: an event was recorded, or the clock has been
+  // started at least once (any phase past the opening ready — or a later period).
+  // Gates the judge's "end game now" control, which a pristine board must not offer.
+  hasActivity() {
+    if (this.goals.length || this.strikes.length || this.cardLog.length || this.breaks.length) return true
+    if (this.currentHalf !== Half.first) return true
+    return this.phase === Phase.running || this.phase === Phase.paused ||
+      this.phase === Phase.breakTime || this.phase === Phase.readyOvertime || this.phase === Phase.over
+  }
+  canEndNow() { return this.phase !== Phase.over && this.phase !== Phase.editing && this.hasActivity() }
+
+  // Judge ends the match early ("סיום משחק"): game stopped, played on paper and keyed in
+  // afterwards, or a clock nobody ran. Stops the clock and goes through the SAME
+  // end-of-game path as the final period running out, so result + save are unchanged.
+  // Idempotent: a second call on an over board does nothing.
+  endGameNow() {
+    if (this.phase === Phase.over) return
+    if (this.phase === Phase.breakTime) {
+      // Leave the break without firing its end (that would start the next period).
+      // A timeout interrupted a period still in play → restore its clock; a halftime
+      // break sits between periods whose time ran out.
+      const timeout = this.breakKind === BreakKind.homeTimeout || this.breakKind === BreakKind.guestTimeout
+      this.clock.set(timeout ? this._preBreakRemainingMS : 0)
+      // Three-thirds: a halftime break's period was already credited by _periodDidEnd.
+      if (timeout) this._creditCurrentThird()
+    } else {
+      // pause() (not refresh) — refresh would fire onExpire at zero and re-enter the
+      // period machine. A clock that never ran is already stopped.
+      this.clock.pause()
+      this._creditCurrentThird()
+    }
+    this._pendingHalf = null
+    this._endGame()
+  }
+  // Three-thirds: the period in progress counts as played, exactly as _periodDidEnd
+  // would credit it — otherwise ending early during a period would drop its winner.
+  _creditCurrentThird() {
+    if (this.settings.format !== GameFormat.threeThirds) return
+    this._recomputeDerived()
+    const w = this._winnerOfPeriod()
+    if (w === TeamSide.home) this.home.thirds += 1
+    else if (w === TeamSide.guest) this.guest.thirds += 1
+  }
+
   // ---- scoring (event-based) ----
   addGoal(side, player = null) {
     this.goals.push({ id: uid(), side, player, timeMS: this.clock.remainingMS, half: this.currentHalf })
