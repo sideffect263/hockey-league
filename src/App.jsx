@@ -13,6 +13,7 @@ const Games = lazy(() => import('./pages/Games'))
 const GameDetail = lazy(() => import('./pages/GameDetail'))
 const NextGame = lazy(() => import('./pages/NextGame'))
 const GameTv = lazy(() => import('./pages/GameTv'))
+const GameControl = lazy(() => import('./pages/GameControl'))
 const Notifications = lazy(() => import('./pages/Notifications'))
 const Statistics = lazy(() => import('./pages/Statistics'))
 const Teams = lazy(() => import('./pages/Teams'))
@@ -167,6 +168,8 @@ function App() {
             <Route path="/games/:id" element={<GameDetail />} />
             {/* Row 21 — fullscreen board for an HDMI-connected TV (fixed inset-0 covers the shell) */}
             <Route path="/games/:id/tv" element={<GameTv />} />
+            {/* חדר שידור — the director's multi-camera control room (admin only) */}
+            <Route path="/games/:id/control" element={<GameControl />} />
             <Route path="/games/:id/result" element={<GameResultEntry />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/statistics" element={<Statistics />} />

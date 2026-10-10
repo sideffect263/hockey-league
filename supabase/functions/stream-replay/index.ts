@@ -116,7 +116,8 @@ Deno.serve(async (req) => {
       is_primary: true,
       cf_customer_code: base!.cf_customer_code,
       created_by: base!.created_by,
-      // Extra parts belong to the same camera (angle) as the row they split from.
+      // Extra parts belong to the same camera (angle) as the row they split from; their
+      // `hidden` follows that camera's approval (trigger game_videos_guard_hidden).
       camera_no: base!.camera_no,
       camera_label: base!.camera_label,
       ingest: "rtmp",

@@ -12,7 +12,7 @@ import { getLiveGame, subscribeLiveGame } from "@/lib/live"
 
 const KEEP_MS = 120_000 // history kept for the delay; far beyond any real latency
 
-export default function ScoreOverlay({ gameId, home, away, latencyMs = 0 }) {
+export default function ScoreOverlay({ gameId, home, away, latencyMs = 0, position = "top-right" }) {
   const history = useRef([]) // [{ at, row }] oldest first
   const [, setTick] = useState(0)
   const [now, setNow] = useState(() => Date.now())
@@ -49,7 +49,7 @@ export default function ScoreOverlay({ gameId, home, away, latencyMs = 0 }) {
   const shownAt = now - Math.max(0, latencyMs)
   const live = stateAt(history.current, shownAt)
   if (!live) return null
-  return <ScoreBug live={live} remainingMS={clockMsAt(live, shownAt)} home={home} away={away} />
+  return <ScoreBug live={live} remainingMS={clockMsAt(live, shownAt)} home={home} away={away} position={position} />
 }
 
 // The row that was current at `at` (history oldest first). Before the first arrival,
@@ -67,13 +67,13 @@ export function clockMsAt(live, at) {
     : Math.max(0, live.clock_remaining_ms ?? 0)
 }
 
-export function ScoreBug({ live, remainingMS, home, away }) {
+export function ScoreBug({ live, remainingMS, home, away, position = "top-right" }) {
   const mm = String(Math.floor(remainingMS / 60000)).padStart(2, "0")
   const ss = String(Math.floor((remainingMS % 60000) / 1000)).padStart(2, "0")
   return (
     // Sized in container units so it scales with the player (and stays proportionate in
     // fullscreen). The wrapper sets `container-type: inline-size`.
-    <div className="pointer-events-none absolute top-[3cqw] right-[3cqw] flex items-stretch rounded-[0.6em] overflow-hidden shadow-lg select-none"
+    <div className={`pointer-events-none absolute top-[3cqw] ${position === "top-left" ? "left-[3cqw]" : "right-[3cqw]"} flex items-stretch rounded-[0.6em] overflow-hidden shadow-lg select-none`}
       style={{ fontSize: "clamp(10px, 2.3cqw, 30px)" }} aria-label="תוצאה">
       {/* RTL row: the first child is rightmost, so home sits on the right (house rule). */}
       <Side team={home} score={live.home_score ?? 0} />

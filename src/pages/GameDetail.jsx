@@ -3,7 +3,7 @@ import { useParams, Link, useLocation } from "react-router-dom"
 import { getGameById, getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
-import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
+import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, MonitorPlay, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -262,6 +262,12 @@ export default function GameDetail() {
         {canOfficiate && !done && (
           <Link to={`/judge/${id}`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
             <Radio className="w-3.5 h-3.5" /> {game.status === 'in_progress' ? 'נהל שידור חי' : 'שפוט / שדר משחק'}
+          </Link>
+        )}
+        {/* Admin: the multi-camera control room — reachable before any camera exists */}
+        {isAdmin && !done && (
+          <Link to={`/games/${id}/control`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-surface-sunken transition-colors">
+            <MonitorPlay className="w-3.5 h-3.5" /> חדר שידור
           </Link>
         )}
         {canEnterFromForm && (

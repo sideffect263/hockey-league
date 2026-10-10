@@ -15,14 +15,20 @@
 // Cameras (multi-angle, 2026-10-11): every streamer in a game gets a camera_no. The same
 // person going live again keeps theirs (a restart is a new PART of the same camera), a
 // new person gets the next number. Optional body `camera` = a label ("מאחורי השער").
+// The director (game_broadcast) can lock new streams (423) and cap simultaneous cameras
+// (409); the admin is exempt from both. A camera starts hidden until the admin approves
+// it (trigger game_videos_guard_hidden) -- the response's `hidden` tells the app.
 //
-// Secrets: CF_ACCOUNT_ID / CF_STREAM_TOKEN. SUPABASE_URL / SUPABASE_ANON_KEY auto-injected.
+// Secrets: CF_ACCOUNT_ID / CF_STREAM_TOKEN. SUPABASE_URL / SUPABASE_ANON_KEY /
+// SUPABASE_SERVICE_ROLE_KEY auto-injected (service role: counting cameras the caller
+// can't see -- hidden ones -- for the cap).
 // ============================================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SB_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CF_ACCOUNT_ID = Deno.env.get("CF_ACCOUNT_ID")!;
 const CF_TOKEN = Deno.env.get("CF_STREAM_TOKEN")!;
 
@@ -82,6 +88,27 @@ Deno.serve(async (req) => {
   }
   if (canStream !== true) return json({ error: "forbidden" }, 403);
 
+  // ---- Director rules (game_broadcast): lock + cap, before any Cloudflare cost.
+  const svc = createClient(SB_URL, SB_SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: isAdmin } = await asUser.rpc("is_admin");
+  const { data: bc } = await svc.from("game_broadcast")
+    .select("max_cameras, streaming_locked").eq("game_id", gameId).maybeSingle();
+  const { data: allCams } = await svc.from("game_videos")
+    .select("camera_no, camera_label, created_by, video_id, cf_live_input, created_at, hidden")
+    .eq("game_id", gameId).not("camera_no", "is", null);
+  const mine = (allCams ?? []).find((r: any) => r.created_by === user.id);
+  if (isAdmin !== true) {
+    if (bc?.streaming_locked) return json({ error: "locked" }, 423);
+    // Cameras on air now = rows still on their live input from the last 4h (older ones
+    // are ended broadcasts nobody has swapped yet), other than the caller's own camera.
+    const since = Date.now() - 4 * 3600_000;
+    const onAir = new Set((allCams ?? [])
+      .filter((r: any) => r.video_id === r.cf_live_input && Date.parse(r.created_at) > since &&
+        r.camera_no !== mine?.camera_no)
+      .map((r: any) => r.camera_no));
+    if (onAir.size >= (bc?.max_cameras ?? 4)) return json({ error: "camera limit", max: bc?.max_cameras ?? 4 }, 409);
+  }
+
   // ---- Cloudflare: create the live input. Recording is only honoured for RTMP/SRT;
   // for RTMP, a 60s timeout lets a phone that drops and reconnects keep ONE recording.
   let cf: any = null;
@@ -117,15 +144,10 @@ Deno.serve(async (req) => {
     cfCode = new URL(whepUrl).hostname.split(".")[0].replace(/^customer-/, "") || null;
   } catch { /* leave null -> frontend falls back to the generic host */ }
 
-  // ---- Camera: this streamer's number in this game, else the next free one.
-  const { data: camRows } = await asUser
-    .from("game_videos")
-    .select("camera_no, camera_label, created_by")
-    .eq("game_id", gameId)
-    .not("camera_no", "is", null);
-  const mine = (camRows ?? []).find((r: any) => r.created_by === user.id);
+  // ---- Camera: this streamer's number in this game, else the next free one (counting
+  // hidden cameras too, so a pending fan's number is never handed out twice).
   const cameraNo: number = mine?.camera_no ??
-    (Math.max(0, ...(camRows ?? []).map((r: any) => r.camera_no as number)) + 1);
+    (Math.max(0, ...(allCams ?? []).map((r: any) => r.camera_no as number)) + 1);
   // A new label wins; otherwise a returning streamer keeps the label they had.
   const label: string | null = cameraLabel ?? mine?.camera_label ?? null;
 
@@ -148,7 +170,7 @@ Deno.serve(async (req) => {
       camera_no: cameraNo,
       camera_label: label,
     })
-    .select("id")
+    .select("id, hidden")
     .single();
 
   if (insErr) {
@@ -176,6 +198,8 @@ Deno.serve(async (req) => {
     cfCustomerCode: cfCode,
     videoRowId: row.id,
     cameraNo,
+    // true = waiting for the admin's approval: only the admin and this streamer see it.
+    hidden: row.hidden === true,
     playerUrl: cfCode ? `https://customer-${cfCode}.cloudflarestream.com/${uid}/iframe` : null,
   });
 });

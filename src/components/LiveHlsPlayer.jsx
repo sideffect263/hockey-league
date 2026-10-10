@@ -38,7 +38,10 @@ function measureLatency(video, hls) {
 
 // `children` = overlays drawn over the picture (the score bug). `onLatency({ ms, source })`
 // reports the picture's lag every 2s so an overlay can show state as of the same moment.
-export default function LiveHlsPlayer({ src, children, onLatency }) {
+// `preview` = a small muted tile for the director's multiview: lowest rendition that fits
+// the tile (saves the rink's bandwidth when several cameras are on screen), no controls.
+// `fsSide` = which top corner the fullscreen button sits in (away from the score bug).
+export default function LiveHlsPlayer({ src, children, onLatency, preview = false, fsSide = "left" }) {
   const videoRef = useRef(null)
   const boxRef = useRef(null)
   const [waiting, setWaiting] = useState(true)
@@ -47,7 +50,7 @@ export default function LiveHlsPlayer({ src, children, onLatency }) {
   // Fullscreen the whole box, not the <video>: the browser's own video fullscreen shows
   // the bare element and drops the overlay. iPhone has no element fullscreen → keep the
   // native control there.
-  const canBoxFullscreen = typeof document !== "undefined" && !!document.fullscreenEnabled
+  const canBoxFullscreen = !preview && typeof document !== "undefined" && !!document.fullscreenEnabled
   const toggleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
     else boxRef.current?.requestFullscreen?.().catch(() => {})
@@ -85,6 +88,7 @@ export default function LiveHlsPlayer({ src, children, onLatency }) {
           liveMaxLatencyDurationCount: 6,  // drifted past ~12s → hls.js seeks back itself
           maxLiveSyncPlaybackRate: 1.3,    // …or speeds up slightly to close a small gap
           backBufferLength: 30,
+          ...(preview ? { capLevelToPlayerSize: true, startLevel: 0 } : {}),
           manifestLoadingMaxRetry: 6,
           levelLoadingMaxRetry: 6,
           fragLoadingMaxRetry: 6,
@@ -155,13 +159,13 @@ export default function LiveHlsPlayer({ src, children, onLatency }) {
 
   return (
     <div ref={boxRef} className="relative w-full aspect-video bg-black rounded-xl overflow-hidden [container-type:inline-size]">
-      <video ref={videoRef} autoPlay playsInline muted controls
+      <video ref={videoRef} autoPlay playsInline muted controls={!preview}
         controlsList={canBoxFullscreen ? "nofullscreen" : undefined}
         className="absolute inset-0 w-full h-full object-contain bg-black" />
       {children}
       {canBoxFullscreen && (
         <button onClick={toggleFullscreen} aria-label="מסך מלא"
-          className="absolute top-[3cqw] left-[3cqw] p-1.5 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors">
+          className={`absolute top-[3cqw] ${fsSide === "right" ? "right-[3cqw]" : "left-[3cqw]"} p-1.5 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors`}>
           <Maximize className="w-4 h-4" />
         </button>
       )}

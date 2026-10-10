@@ -32,7 +32,7 @@ export function fmtClock(totalSeconds) {
   return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`
 }
 
-const VIDEO_COLS = 'id, provider, video_id, cf_customer_code, ingest, cf_live_input, title, kind, clock_offset_seconds, is_primary, created_at, camera_no, camera_label'
+const VIDEO_COLS = 'id, provider, video_id, cf_customer_code, ingest, cf_live_input, title, kind, clock_offset_seconds, is_primary, created_at, camera_no, camera_label, hidden'
 
 // Every video of a game, oldest first, each with its markers. A game can have several:
 // the streamer stopped and restarted, or the connection dropped long enough for
@@ -82,6 +82,8 @@ export function groupCameras(videos) {
     String(a.parts[0].created_at).localeCompare(String(b.parts[0].created_at)))
   cams.forEach((c, i) => {
     c.live = c.parts.some(isLiveRow)
+    // Waiting for the admin's approval — only the admin and its streamer can see it.
+    c.hidden = c.parts.some(v => v.hidden)
     if (!c.label) c.label = (c.no == null && c.parts[0].title) || `מצלמה ${c.no ?? i + 1}`
   })
   return cams

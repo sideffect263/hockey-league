@@ -2,15 +2,17 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, Stethoscope } from "lucide-react"
+import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, EyeOff, Stethoscope, MonitorPlay } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
   getGameVideos, isLiveRow, detachVideo, addMarker, deleteMarker,
-  subscribeGameVideo, fmtClock, getViewerIceServersDetailed, requestReplay, cfInputIsLive, groupCameras,
+  subscribeGameVideo, fmtClock, getViewerIceServersDetailed, groupCameras,
 } from "@/lib/video"
 import LiveHlsPlayer from "@/components/LiveHlsPlayer"
 import ScoreOverlay from "@/components/ScoreOverlay"
+import { getBroadcast, subscribeBroadcast, BROADCAST_DEFAULTS } from "@/lib/streamControl"
+import { useCameraOnAir } from "@/lib/useCameraOnAir"
 import { playWHEP, hasTurn } from "@/lib/whep"
 
 // Marker kinds → Hebrew label + emoji + pill colour (reuses the StatPills palette).
@@ -64,42 +66,23 @@ function YouTubePlayer({ videoId, onReady }) {
 //    for an idle input, which read as "part 1 was never recorded" on 2026-10-10. Show
 //    our own message and keep asking the server to swap in the recording.
 // A swapped row is a plain recording → Cloudflare's iframe.
-function RtmpPlayer({ video, gameId, home, away }) {
+function RtmpPlayer({ video, gameId, home, away, overlay = BROADCAST_DEFAULTS }) {
   const { isAdmin } = useAuth()
   const [latency, setLatency] = useState(null) // { ms, source } from the live player
-  const [onAir, setOnAir] = useState(null) // null = not known yet
+  const onAir = useCameraOnAir(video)
   const onInput = !!video.cf_live_input && video.video_id === video.cf_live_input
   const code = video.cf_customer_code
-
-  useEffect(() => {
-    if (!onInput || !code) return
-    let cancelled = false, timer = null, offCount = 0
-    const check = async () => {
-      const live = await cfInputIsLive(code, video.cf_live_input)
-      if (cancelled) return
-      if (live) { offCount = 0; setOnAir(true) }
-      else {
-        // Two misses in a row before leaving the live player — a short reconnect on the
-        // streamer's side shouldn't tear down every viewer's player.
-        offCount += 1
-        if (live === false && offCount >= 2) setOnAir(false)
-        else if (live === false) setOnAir((v) => (v === null ? false : v))
-        // Off air: ask for the swap. The realtime subscription reloads the row once done.
-        if (live === false) await requestReplay(video.id)
-      }
-      if (!cancelled) timer = setTimeout(check, 10000)
-    }
-    check()
-    return () => { cancelled = true; clearTimeout(timer) }
-  }, [video.id, video.video_id, video.cf_live_input, onInput, code])
 
   if (!code) return null
   if (onInput) {
     if (onAir) {
       return (
         <div className="space-y-1">
-          <LiveHlsPlayer src={`https://customer-${code}.cloudflarestream.com/${video.cf_live_input}/manifest/video.m3u8`} onLatency={setLatency}>
-            <ScoreOverlay gameId={gameId} home={home} away={away} latencyMs={latency?.ms ?? 0} />
+          <LiveHlsPlayer src={`https://customer-${code}.cloudflarestream.com/${video.cf_live_input}/manifest/video.m3u8`}
+            onLatency={setLatency} fsSide={overlay.overlay_position === "top-left" ? "right" : "left"}>
+            {overlay.overlay_score && (
+              <ScoreOverlay gameId={gameId} home={home} away={away} latencyMs={latency?.ms ?? 0} position={overlay.overlay_position} />
+            )}
           </LiveHlsPlayer>
           {/* Admin calibration readout: how far the overlay is held back, and whether the
               stream's own timestamps measured it ("pdt") or it's estimated ("edge"). */}
@@ -316,6 +299,7 @@ function CameraTabs({ cameras, selected, onSelect }) {
               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
             <Camera className="w-3.5 h-3.5" />
             {c.label}
+            {c.hidden && <EyeOff className="w-3.5 h-3.5 opacity-70" aria-label="ממתין לאישור — מוסתר מהצופים" />}
             {c.live && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-label="בשידור חי" />}
           </button>
         )
@@ -353,6 +337,9 @@ export default function GameVideo({ game, home, away, players = [] }) {
   // All of the game's videos, oldest first, grouped into cameras (angles) → parts.
   const [videos, setVideos] = useState([])
   const [cameraKey, setCameraKey] = useState(null)
+  // The director's settings: the camera on air (followed unless the viewer picked one) and
+  // the score overlay. Public read, live via realtime.
+  const [broadcast, setBroadcast] = useState(BROADCAST_DEFAULTS)
   const [selectedId, setSelectedId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [player, setPlayer] = useState(null)
@@ -360,10 +347,13 @@ export default function GameVideo({ game, home, away, players = [] }) {
 
   const gameId = game?.id
   const isLive = game?.status === "in_progress"
-  // Default camera: one on air right now, else a full-game YouTube upload, else the first.
-  // Default part of a camera: its live part, else part 1.
+  // Camera shown: the viewer's own pick, else the one the director put on air, else one on
+  // air right now, else a full-game YouTube upload, else the first. Default part of a
+  // camera: its live part, else part 1.
   const cameras = groupCameras(videos)
+  const program = broadcast.program_camera_no
   const camera = cameras.find(c => c.key === cameraKey)
+    || (program != null && cameras.find(c => c.no === program))
     || [...cameras].reverse().find(c => c.live)
     || cameras.find(c => c.parts.some(v => v.provider === "youtube" && v.kind === "full"))
     || cameras[0] || null
@@ -394,6 +384,14 @@ export default function GameVideo({ game, home, away, players = [] }) {
   }, [gameId])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!gameId) return
+    let alive = true
+    getBroadcast(gameId).then((b) => { if (alive) setBroadcast(b) }).catch(() => {})
+    const unsub = subscribeBroadcast(gameId, setBroadcast)
+    return () => { alive = false; unsub() }
+  }, [gameId])
 
   // Live auto-appear: when the streamer attaches a video, spectators already on
   // the page see it without reloading.
@@ -427,6 +425,12 @@ export default function GameVideo({ game, home, away, players = [] }) {
             </span>
           )}
         </h2>
+        {isAdmin && (
+          <Link to={`/games/${gameId}/control`}
+            className="flex items-center gap-1 text-xs font-semibold text-brand hover:underline">
+            <MonitorPlay className="w-3.5 h-3.5" /> חדר שידור
+          </Link>
+        )}
         {video && canStream && (
           <button onClick={onDetach(video, load)}
             className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition-colors">
@@ -446,7 +450,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
             )}
             {video.provider === "cloudflare"
               ? (video.ingest === "rtmp"
-                  ? <RtmpPlayer key={video.id} video={video} gameId={gameId} home={home} away={away} />
+                  ? <RtmpPlayer key={video.id} video={video} gameId={gameId} home={home} away={away} overlay={broadcast} />
                   : <CloudflarePlayer key={video.id} video={video} isLive={isLive} />)
               : <YouTubePlayer key={video.id} videoId={video.video_id} onReady={onPlayerReady} />}
 
