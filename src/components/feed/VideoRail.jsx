@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { PlayCircle, Play, X, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react"
-import { parseYouTubeId } from "@/lib/video"
+import { parseYouTubeId, youTubeInText, withoutUrl } from "@/lib/video"
 import { noteFeedOpen } from "@/lib/feedImpressions"
 
 /**
@@ -38,18 +38,20 @@ export function videoItems(feed) {
           linkLabel: "למשחק",
         }
       }
-      const id = item.type === "external" ? parseYouTubeId(p?.link_url) : null
+      // A staff post with a pasted YouTube link counts too (FeedPost plays it inline).
+      const bodyYt = item.type === "post" ? youTubeInText(p?.body) : null
+      const id = item.type === "external" ? parseYouTubeId(p?.link_url) : bodyYt?.id
       if (!id) return null
       return {
         key: item.id,
         tags: item.tags,
         videoId: id,
         embed: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
-        title: (p.body || "").split("\n")[0] || p.source_name,
-        source: p.source_name,
+        title: withoutUrl(p.body || "", bodyYt?.url).split("\n")[0] || p.source_name || "וידאו",
+        source: p.source_name || "ליגת הוקי גלגיליות",
         date: item.date,
         poster: p.image_url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-        link: p.link_url,
+        link: p.link_url || bodyYt?.url,
         linkLabel: "יוטיוב",
       }
     })

@@ -5,6 +5,7 @@ import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import { getFeedDrafts, createFeedDraft, updateFeedDraft, deleteFeedDraft, publishFeedDraft } from "@/lib/feedDrafts"
 import { uploadFeedVideo, MAX_FEED_VIDEO_MB } from "@/lib/feedVideo"
 import { getGames, getTeams } from "@/lib/api"
+import { youTubeInText } from "@/lib/video"
 
 /**
  * /creators → "טיוטות לפיד": posts prepared for review (e.g. the game clips cut by the
@@ -109,7 +110,9 @@ function DraftCard({ draft, index, teamName, game, onPublished, onDeleted }) {
         {game && <Link to={`/games/${draft.game_id}`} className="inline-flex items-center gap-1 hover:text-brand">{game.label} <ExternalLink className="w-3 h-3" /></Link>}
       </div>
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
-        {draft.video_uid && draft.video_cf_code ? (
+        {!draft.video_uid && youTubeInText(body) ? (
+          <FeedVideo videoId={youTubeInText(body).id} poster={`https://i.ytimg.com/vi/${youTubeInText(body).id}/hqdefault.jpg`} title={saved.split("\n")[0]} />
+        ) : draft.video_uid && draft.video_cf_code ? (
           <FeedVideo provider="cloudflare" videoId={draft.video_uid} cfCode={draft.video_cf_code} ratio={draft.video_ratio}
             poster={streamPoster(draft.video_cf_code, draft.video_uid)} title={saved.split("\n")[0]} />
         ) : <div className="rounded-xl bg-slate-100 dark:bg-slate-800 aspect-video flex items-center justify-center text-sm text-slate-400">ללא וידאו</div>}

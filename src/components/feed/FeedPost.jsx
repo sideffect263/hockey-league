@@ -7,7 +7,7 @@ import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment } from "@/lib/api"
 import { setPhotoOverride } from "@/lib/photoOverrides"
-import { parseYouTubeId } from "@/lib/video"
+import { parseYouTubeId, youTubeInText, withoutUrl } from "@/lib/video"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import ReactionBar from "@/components/feed/ReactionBar"
 import MarketFeedCard from "@/components/feed/MarketFeedCard"
@@ -687,7 +687,10 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   // by a person or the news bot runs edge to edge on a phone — the page's p-4 gutter is
   // undone with -mx-4 — and stays a card in the desktop column.
   const fullBleed = !bday
-  const textBody = ext ? (postBody || "").split("\n\n")[0] : (postBody || "")
+  // A staff post that just pastes a YouTube link plays it like a news video (the link
+  // itself is hidden — the card IS the video). An uploaded clip takes precedence.
+  const bodyYt = !ext && !bday && !p.video_uid ? youTubeInText(postBody) : null
+  const textBody = ext ? (postBody || "").split("\n\n")[0] : withoutUrl(postBody || "", bodyYt?.url)
 
   return (
     <motion.div {...fade} className={fullBleed
@@ -800,11 +803,16 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
         </div>
       )}
 
-      {/* A clip uploaded straight to the feed (our Cloudflare Stream, feed-video-posts.sql). */}
-      {p.video_uid && p.video_cf_code && (
+      {/* A clip uploaded straight to the feed (our Cloudflare Stream, feed-video-posts.sql),
+          or a YouTube link pasted into the post. */}
+      {((p.video_uid && p.video_cf_code) || bodyYt) && (
         <div className="mt-3">
-          <FeedVideo provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
-                     poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} />
+          {bodyYt ? (
+            <FeedVideo videoId={bodyYt.id} poster={`https://i.ytimg.com/vi/${bodyYt.id}/hqdefault.jpg`} title={textBody.split("\n")[0]} />
+          ) : (
+            <FeedVideo provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
+                       poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} />
+          )}
           {p.game_id && (
             <Link to={`/games/${p.game_id}`} className="mt-2 inline-flex items-center gap-1 px-4 sm:px-0 text-xs font-semibold text-brand dark:text-brand-light hover:text-brand-hover">
               למשחק המלא <ArrowLeft className="w-3 h-3" />

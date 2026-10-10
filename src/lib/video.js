@@ -22,6 +22,19 @@ export function parseYouTubeId(input) {
   return m ? m[1] : null
 }
 
+// The first YouTube link inside free text (a post or draft body) → { id, url }, else null.
+// Host-anchored on purpose: parseYouTubeId's bare `v=` match also fires on `?rev=` etc.
+export function youTubeInText(text) {
+  const m = (text || '').match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?\S*?\bv=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{6,32})\S*/)
+  return m ? { id: m[1], url: m[0] } : null
+}
+
+// Body text with that link removed (the card shows the video instead).
+export function withoutUrl(text, url) {
+  if (!url) return text
+  return (text || '').replace(url, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
 // Seconds → "m:ss" / "h:mm:ss" for marker labels (renders LTR in the RTL UI).
 export function fmtClock(totalSeconds) {
   const s = Math.max(0, Math.round(totalSeconds || 0))
