@@ -21,11 +21,16 @@ export default function ScoreOverlay({ gameId, home, away, latencyMs = 0 }) {
     if (!gameId) return
     let alive = true
     const push = (row) => {
-      const t = Date.now()
+      // Stamp with WHEN it happened — updated_at is set by the server (broadcast_game_state
+      // writes now()) — not when it reached us, so a late delivery still lines up with the
+      // video. A delete (game over) has no row: stamp it on arrival.
+      const t = Date.parse(row?.updated_at) || Date.now()
       const h = history.current
+      if (h.length && h[h.length - 1].row?.updated_at && h[h.length - 1].row.updated_at === row?.updated_at) return
       h.push({ at: t, row })
+      h.sort((a, b) => a.at - b.at)
       // Drop what can no longer be shown, keeping the newest entry older than the window.
-      while (h.length > 1 && h[1].at < t - KEEP_MS) h.shift()
+      while (h.length > 1 && h[1].at < Date.now() - KEEP_MS) h.shift()
       setTick((n) => n + 1)
     }
     getLiveGame(gameId).then((row) => {
