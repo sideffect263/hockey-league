@@ -64,3 +64,19 @@ export async function renameCamera(gameId, cameraNo, label) {
   if (error) throw error
   if (!data?.length) throw new Error('העדכון נחסם — אין הרשאה')
 }
+
+// Admin: who streams each camera of a game — { [camera_no]: display name } — so the
+// director knows whose camera they're approving (phase 3: any signed-in fan can stream).
+export async function getCameraStreamers(gameId) {
+  const { data: rows, error } = await supabase
+    .from('game_videos').select('camera_no, created_by').eq('game_id', gameId).not('camera_no', 'is', null)
+  if (error) throw error
+  const ids = [...new Set((rows || []).map(r => r.created_by).filter(Boolean))]
+  if (!ids.length) return {}
+  const { data: profiles, error: e2 } = await supabase.from('profiles').select('id, display_name').in('id', ids)
+  if (e2) throw e2
+  const nameOf = Object.fromEntries((profiles || []).map(p => [p.id, p.display_name]))
+  const out = {}
+  for (const r of rows || []) if (r.created_by && out[r.camera_no] == null) out[r.camera_no] = nameOf[r.created_by] || null
+  return out
+}

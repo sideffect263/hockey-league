@@ -6,7 +6,7 @@ import { useSlugId } from "@/lib/slugs"
 import { getGameById, getTeams } from "@/lib/api"
 import { getGameVideos, subscribeGameVideo, groupCameras } from "@/lib/video"
 import {
-  getBroadcast, subscribeBroadcast, saveBroadcast, setCameraHidden, renameCamera, BROADCAST_DEFAULTS,
+  getBroadcast, subscribeBroadcast, saveBroadcast, setCameraHidden, renameCamera, getCameraStreamers, BROADCAST_DEFAULTS,
 } from "@/lib/streamControl"
 import { useCameraOnAir } from "@/lib/useCameraOnAir"
 import { useStreamViewers } from "@/lib/useStreamViewers"
@@ -34,13 +34,17 @@ export default function GameControl() {
   const [teams, setTeams] = useState([])
   const [videos, setVideos] = useState([])
   const [bc, setBc] = useState(BROADCAST_DEFAULTS)
+  const [streamers, setStreamers] = useState({}) // camera_no -> who streams it
   const [error, setError] = useState(null)
   // The director watches the viewer count without being counted.
   const viewers = useStreamViewers(gameId, !!gameId, false)
 
   const loadVideos = useCallback(async () => {
     if (!gameId) return
-    try { setVideos(await getGameVideos(gameId)) } catch (e) { setError(e?.message || "טעינת המצלמות נכשלה") }
+    try {
+      setVideos(await getGameVideos(gameId))
+      setStreamers(await getCameraStreamers(gameId).catch(() => ({})))
+    } catch (e) { setError(e?.message || "טעינת המצלמות נכשלה") }
   }, [gameId])
 
   useEffect(() => {
@@ -125,7 +129,7 @@ export default function GameControl() {
           <h2 className="font-bold text-sm text-amber-700 dark:text-amber-400">ממתינות לאישור ({pending.length}) — מוסתרות מהצופים</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {pending.map((c) => (
-              <CameraCard key={c.key} camera={c} gameId={gameId} onAir={bc.program_camera_no === c.no}
+              <CameraCard key={c.key} camera={c} gameId={gameId} onAir={bc.program_camera_no === c.no} streamer={streamers[c.no]}
                 onApprove={() => act(() => setCameraHidden(gameId, c.no, false))}
                 onRename={(l) => act(() => renameCamera(gameId, c.no, l))} />
             ))}
@@ -137,7 +141,7 @@ export default function GameControl() {
         {approved.length === 0 && <p className="text-sm text-slate-500">אין עדיין מצלמות מאושרות. כשמישהו מתחיל לשדר מהאפליקציה, המצלמה תופיע כאן.</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           {approved.map((c) => (
-            <CameraCard key={c.key} camera={c} gameId={gameId} onAir={bc.program_camera_no === c.no}
+            <CameraCard key={c.key} camera={c} gameId={gameId} onAir={bc.program_camera_no === c.no} streamer={streamers[c.no]}
               onPutOnAir={() => save({ program_camera_no: c.no })}
               onHide={() => act(async () => {
                 await setCameraHidden(gameId, c.no, true)
@@ -197,7 +201,7 @@ function ProgramView({ camera, gameId, home, away, bc }) {
   )
 }
 
-function CameraCard({ camera, onAir, onApprove, onHide, onPutOnAir, onRename }) {
+function CameraCard({ camera, onAir, streamer, onApprove, onHide, onPutOnAir, onRename }) {
   const part = camera.parts[camera.parts.length - 1]
   const live = useCameraOnAir(part)
   const code = part?.cf_customer_code
@@ -226,6 +230,7 @@ function CameraCard({ camera, onAir, onApprove, onHide, onPutOnAir, onRename }) 
           </>
         )}
       </div>
+      {streamer && <p className="text-xs text-slate-500 -mt-1">משדר: {streamer}</p>}
       <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
         {live && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">● משדר</span>}
         {onAir && <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">באוויר</span>}

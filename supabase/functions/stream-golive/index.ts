@@ -3,8 +3,15 @@
 // ingest (URL + stream key) to an authorized streamer's app.
 //
 // User-facing, so it: handles CORS preflight, verifies the caller's Supabase JWT, and
-// enforces can_stream_game() BEFORE creating a billable live input, inserts the public
+// enforces can_broadcast_game() BEFORE creating a billable live input, inserts the public
 // game_videos row (live input uid in video_id), and returns what the app publishes to.
+//
+// Who may go live (phase 3, 2026-10-11): staff (can_stream_game = content editor +
+// admin) on any game, and ANY signed-in user around a game that isn't over
+// (can_broadcast_game, supabase/fan-streaming.sql). Staff rows are inserted as the user
+// (RLS write policy); a fan has no write policy, so their row is inserted with the
+// service role on their behalf — the hidden-until-approved trigger applies either way.
+// Non-admins get at most 10 go-live attempts per game per hour (429).
 //
 // RTMP only (body `ingest: "rtmp"`). The native apps publish over RTMPS; Cloudflare
 // records it and viewers watch HLS on any network; when the broadcast ends,
@@ -79,14 +86,15 @@ Deno.serve(async (req) => {
   const { data: { user } } = await asUser.auth.getUser();
   if (!user) return json({ error: "unauthorized" }, 401);
 
-  const { data: canStream, error: gateErr } = await asUser.rpc("can_stream_game", {
+  const { data: canBroadcast, error: gateErr } = await asUser.rpc("can_broadcast_game", {
     p_game_id: gameId,
   });
   if (gateErr) {
-    console.log("can_stream_game failed", gateErr.message);
+    console.log("can_broadcast_game failed", gateErr.message);
     return json({ error: "gate check failed" }, 500);
   }
-  if (canStream !== true) return json({ error: "forbidden" }, 403);
+  if (canBroadcast !== true) return json({ error: "forbidden" }, 403);
+  const { data: isStaff } = await asUser.rpc("can_stream_game", { p_game_id: gameId });
 
   // ---- Director rules (game_broadcast): lock + cap, before any Cloudflare cost.
   const svc = createClient(SB_URL, SB_SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -99,6 +107,11 @@ Deno.serve(async (req) => {
   const mine = (allCams ?? []).find((r: any) => r.created_by === user.id);
   if (isAdmin !== true) {
     if (bc?.streaming_locked) return json({ error: "locked" }, 423);
+    // Abuse guard: each attempt mints a Cloudflare live input.
+    const hourAgo = Date.now() - 3600_000;
+    const recent = (allCams ?? []).filter((r: any) =>
+      r.created_by === user.id && Date.parse(r.created_at) > hourAgo).length;
+    if (recent >= 10) return json({ error: "too many attempts" }, 429);
     // Cameras on air now = rows still on their live input from the last 4h (older ones
     // are ended broadcasts nobody has swapped yet), other than the caller's own camera.
     const since = Date.now() - 4 * 3600_000;
@@ -152,10 +165,11 @@ Deno.serve(async (req) => {
   const label: string | null = cameraLabel ?? mine?.camera_label ?? null;
 
   // ---- Insert the public row so every spectator sees the embed immediately.
-  // Inserted AS the user -> the can_stream_game RLS write policy is the final gate
-  // and created_by is the streamer. If it fails, roll back the CF input so we
-  // don't leak a billable orphan.
-  const { data: row, error: insErr } = await asUser
+  // Staff: AS the user -> the can_stream_game RLS write policy is the final gate. A fan
+  // has no write policy: the service role inserts it, created_by = the fan, and the
+  // trigger keeps the camera hidden until the admin approves it. If the insert fails,
+  // roll back the CF input so we don't leak a billable orphan.
+  const { data: row, error: insErr } = await (isStaff === true ? asUser : svc)
     .from("game_videos")
     .insert({
       game_id: gameId,
