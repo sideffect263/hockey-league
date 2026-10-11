@@ -427,16 +427,26 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
     return uid
   }
   const [refFilter, setRefFilter] = useState('all')
-  const [sort, setSort] = useState({ key: 'date', dir: 'desc' })
+  const [sort, setSort] = useState({ key: 'upcoming', dir: 'asc' })
 
 
   const gameSortOptions = [
+    { key: 'upcoming', label: 'הבא בתור', dir: 'asc' },
     { key: 'date', label: 'תאריך', dir: 'desc' },
     { key: 'home', label: 'קבוצת בית', dir: 'asc' },
     { key: 'type', label: 'סוג', dir: 'asc' },
     { key: 'status', label: 'סטטוס', dir: 'asc' },
   ]
+  // "Next up" order: live games, then upcoming soonest-first, then played games
+  // most-recent-first (past keys are offset past every future timestamp).
+  const PAST_OFFSET = 1e14
   const gameAccessors = {
+    upcoming: g => {
+      const t = new Date(g.game_date).getTime()
+      if (g.status === 'live') return -1
+      const over = ['completed', 'cancelled', 'postponed'].includes(g.status) || t < Date.now() - 3 * 3600e3
+      return over ? PAST_OFFSET - t : t
+    },
     date: g => new Date(g.game_date).getTime(),
     home: g => teamsMap[g.home_team_id]?.name || '',
     type: g => g.game_type || '',
