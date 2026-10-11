@@ -146,6 +146,18 @@ export default function Games() {
   const upcoming = filtered.filter(g => ['scheduled', 'in_progress', 'waiting_result'].includes(g.status))
     .sort((a, b) => new Date(a.game_date) - new Date(b.game_date))
 
+  // The last round = every completed game played on the same day as the most recent
+  // result (rounds are one matchday; there's no round column). Pinned above the
+  // schedule so last weekend's scores are the first thing you see; pulled out of
+  // תוצאות so they don't render twice. Skipped when a date is picked — that list is
+  // already just one day.
+  const sortedCompleted = [...completed].sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
+  const lastRoundDay = !dateFilter && sortedCompleted.length
+    ? format(new Date(sortedCompleted[0].game_date), 'yyyy-MM-dd') : null
+  const inLastRound = (g) => lastRoundDay && format(new Date(g.game_date), 'yyyy-MM-dd') === lastRoundDay
+  const lastRound = sortedCompleted.filter(inLastRound)
+  const olderResults = sortedCompleted.filter(g => !inLastRound(g))
+
   if (loading) return <GamesSkeleton />
 
   if (error) {
@@ -431,6 +443,15 @@ export default function Games() {
             <LiveGameBanner liveGames={liveGames} gamesById={gamesById} teamsMap={teamsMap} />
           </div>
         )}
+        {lastRound.length > 0 && (
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
+              <Trophy className="w-4 h-4 text-amber-500" /> המחזור האחרון
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(new Date(lastRound[0].game_date), "d/M/yyyy")}</span>
+            </h2>
+            <div className="grid gap-3">{lastRound.map(g => GameCard({ game: g }))}</div>
+          </div>
+        )}
         {upcoming.length > 0 && (
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
@@ -439,12 +460,12 @@ export default function Games() {
             <div className="grid gap-3">{upcoming.map(g => GameCard({ game: g }))}</div>
           </div>
         )}
-        {completed.length > 0 && (
+        {olderResults.length > 0 && (
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
               <Trophy className="w-4 h-4 text-emerald-500" /> תוצאות
             </h2>
-            <div className="grid gap-3">{completed.map(g => GameCard({ game: g }))}</div>
+            <div className="grid gap-3">{olderResults.map(g => GameCard({ game: g }))}</div>
           </div>
         )}
         {filtered.length === 0 && (
