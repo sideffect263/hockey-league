@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+vi.mock('../supabase', () => ({ supabase: {} }))
 import { GameEngine } from './engine'
+import { buildLiveEvents } from '../live'
+import { summarizeReport } from '../gameFormData'
 import { Phase, TeamSide, GameFormat, BreakKind, defaultSettings, Half } from './rules'
 
 // Fake monotonic clock (seconds) so the engine runs without real waits.
@@ -408,5 +411,83 @@ describe('red card removal', () => {
     expect(removed.type).toBe('red')
     expect(e.isEjected('p9')).toBe(false)
     expect(e.hasRedCard('p9')).toBe(false)
+  })
+})
+
+describe('GameEngine own goals', () => {
+  const scorer = { id: 'p1', name: 'יואב' }
+
+  it('adds an own goal to the credited side with no scorer, flagged', () => {
+    const { e } = make()
+    e.addGoal(TeamSide.home, scorer, { ownGoal: true })
+    expect(e.homeFinalScore).toBe(1)
+    expect(e.guestFinalScore).toBe(0)
+    const g = e.goals[0]
+    expect(g.side).toBe(TeamSide.home)
+    expect(g.player).toBeNull()
+    expect(g.ownGoal).toBe(true)
+    // A normal goal carries no flag at all.
+    e.addGoal(TeamSide.home, scorer)
+    expect(e.goals[1].ownGoal).toBeUndefined()
+  })
+
+  it('long-press undo removes the last goal even when it is an own goal', () => {
+    const { e } = make()
+    e.addGoal(TeamSide.guest, scorer)
+    e.addGoal(TeamSide.guest, null, { ownGoal: true })
+    e.removeGoal(TeamSide.guest)
+    expect(e.guestFinalScore).toBe(1)
+    expect(e.goals.some(g => g.ownGoal)).toBe(false)
+    expect(e.ownGoals()).toEqual({ home: 0, away: 0 })
+  })
+
+  it('serialize/restore keeps the flag; old drafts without it load fine', () => {
+    const { e } = make()
+    e.addGoal(TeamSide.guest, null, { ownGoal: true })
+    e.addGoal(TeamSide.home, scorer)
+    const draft = JSON.parse(JSON.stringify(e.serialize()))
+    const { e: r } = make()
+    r.restore(draft)
+    expect(r.goals[0].ownGoal).toBe(true)
+    expect(r.ownGoals()).toEqual({ home: 0, away: 1 })
+    expect(r.guestFinalScore).toBe(1)
+
+    for (const g of draft.goals) delete g.ownGoal
+    const { e: old } = make()
+    old.restore(draft)
+    expect(old.ownGoals()).toEqual({ home: 0, away: 0 })
+    expect(old.homeFinalScore + old.guestFinalScore).toBe(2)
+  })
+
+  it('ownGoals counts per credited side and the box score never attributes them', () => {
+    const { e } = make()
+    e.addGoal(TeamSide.home, null, { ownGoal: true })
+    e.addGoal(TeamSide.home, null, { ownGoal: true })
+    e.addGoal(TeamSide.guest, null, { ownGoal: true })
+    e.addGoal(TeamSide.home, scorer)
+    e.addGoal(TeamSide.home, null)   // unknown scorer — not an own goal
+    expect(e.ownGoals()).toEqual({ home: 2, away: 1 })
+    expect(e.boxScore()).toEqual([{ player_id: 'p1', goals: 1, blue_cards: 0, red_cards: 0 }])
+  })
+
+  it('play-by-play: own goal is a goal on the credited side, no player, ownGoal: true', () => {
+    const { e } = make()
+    e.addGoal(TeamSide.guest, scorer, { ownGoal: true })
+    e.addGoal(TeamSide.home, scorer)
+    const [og, normal] = buildLiveEvents(e)
+    expect(og).toMatchObject({ type: 'goal', side: 'away', player: null, ownGoal: true })
+    expect(normal.ownGoal).toBeUndefined()
+    expect(normal.player).toBe('יואב')
+  })
+
+  it('half-time score counts own goals for the credited side', () => {
+    const { e } = make()
+    e.addGoal(TeamSide.guest, null, { ownGoal: true })
+    e.addGoal(TeamSide.home, scorer)
+    const fromSnapshot = summarizeReport({ final_state: e.serialize() })
+    expect(fromSnapshot.goals).toEqual({ home: 1, away: 1 })
+    expect(fromSnapshot.halftime).toEqual({ home: 1, away: 1 })
+    const fromEvents = summarizeReport({ events: buildLiveEvents(e) })
+    expect(fromEvents.goals).toEqual({ home: 1, away: 1 })
   })
 })

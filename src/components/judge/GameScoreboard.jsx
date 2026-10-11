@@ -65,7 +65,8 @@ const HE = {
   settings: "הגדרות", format: "פורמט משחק", formatHalves: "שתי מחציות", formatThirds: "שלישים",
   periodLength: "אורך מחצית", overtime: "הארכה בתיקו", overtimeLength: "אורך הארכה", breakLength: "אורך מנוחה",
   passivePlay: "שעון משחק פסיבי", theme: "ערכת נושא", themeLed: "LED / זירה", themeModern: "מודרני",
-  resetGame: "אפס משחק", done: "סיום", cancel: "ביטול", noPlayer: "ללא שיוך לשחקן",
+  resetGame: "אפס משחק", done: "סיום", cancel: "ביטול", noPlayer: "ללא שיוך לשחקן", ownGoal: "שער עצמי",
+  ownGoalHint: "שחקן היריבה הבקיע לשער של קבוצתו",
   saveResult: "שמור תוצאה", abandon: "החזר למצב 'טרם החל'",
   abandonConfirm: "להחזיר את המשחק למצב 'טרם החל'?", abandonYes: "כן, החזר",
   endGame: "סיום משחק", endGameTitle: "לסיים את המשחק עכשיו?", endGameYes: "סיים משחק",
@@ -384,6 +385,12 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   }
 
   const rosterFor = (side) => (side === TeamSide.home ? homeRoster : guestRoster)
+  // Own goal: counts for the TAPPED side (the one that benefits), no scorer.
+  const resolveOwnGoal = () => {
+    if (!picker || picker.kind !== "goal") return
+    engine.addGoal(picker.side, null, { ownGoal: true })
+    setPicker(null)
+  }
   const resolvePick = (p) => {
     if (!picker) return
     if (p?.id && blockedOn(picker.side, p.id)) return // ineligible — needs an admin override first
@@ -448,7 +455,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
       // play-by-play, the engine snapshot and the half length → game_reports. The final
       // broadcast below just refreshes spectators; it is best-effort and capped at 3s so
       // a bad connection can't hold the save hostage.
-      const report = { events: buildLiveEvents(engine, { max: Infinity }), snapshot: engine.serialize(), periodMS: engine.settings.periodMS }
+      const report = { events: buildLiveEvents(engine, { max: Infinity }), snapshot: engine.serialize(), periodMS: engine.settings.periodMS, ownGoals: engine.ownGoals() }
       await Promise.race([broadcastGameState(engine, game.id), new Promise(r => setTimeout(r, 3000))])
       await saveGameResultReliably(game.id, homeScore, awayScore, [...map.values()], report)
       clearEngineDraft(game.id)
@@ -624,7 +631,13 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
                 )
               })}
               {picker.kind === "goal" && (
-                <button onClick={() => resolvePick(null)} className="w-full py-2 px-3 rounded-lg text-sm text-white/60 hover:bg-white/10 transition-colors">{HE.noPlayer}</button>
+                <>
+                  <button onClick={() => resolvePick(null)} className="w-full py-2 px-3 rounded-lg text-sm text-white/60 hover:bg-white/10 transition-colors">{HE.noPlayer}</button>
+                  <button onClick={resolveOwnGoal} className="w-full py-2 px-3 rounded-lg text-sm text-white/80 hover:bg-white/10 transition-colors border-t border-white/10 flex flex-col items-center">
+                    <span className="font-semibold">{HE.ownGoal}</span>
+                    <span className="text-[10px] text-white/40">{HE.ownGoalHint}</span>
+                  </button>
+                </>
               )}
               <button onClick={() => setLineupSide(picker.side)} className="w-full mt-1 py-2 px-3 rounded-lg text-xs font-semibold hover:bg-white/10 transition-colors border-t border-white/10 flex items-center justify-center gap-1.5" style={{ color: T.accent }}>
                 <Users className="w-3.5 h-3.5" /> ערוך סגל למשחק

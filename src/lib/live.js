@@ -50,8 +50,10 @@ const eventSide = (side) => (side === TeamSide.home ? 'home' : 'away')
 export function buildLiveEvents(engine, { max = MAX_LIVE_EVENTS } = {}) {
   if (!engine) return []
   const evs = []
+  // An own goal stays type 'goal' on the side it is CREDITED to, with no player and
+  // ownGoal: true — older readers still count it for the right team.
   for (const g of engine.goals || [])
-    evs.push({ id: g.id, seq: eventSeq(g.id), type: 'goal', side: eventSide(g.side), player: eventPlayerName(g.player), timeMS: g.timeMS ?? null, period: eventPeriod(g.half) })
+    evs.push({ id: g.id, seq: eventSeq(g.id), type: 'goal', side: eventSide(g.side), player: g.ownGoal ? null : eventPlayerName(g.player), timeMS: g.timeMS ?? null, period: eventPeriod(g.half), ...(g.ownGoal ? { ownGoal: true } : {}) })
   for (const c of engine.cardLog || [])
     evs.push({ id: c.id, seq: eventSeq(c.id), type: c.type === CardType.red ? 'red' : 'blue', side: eventSide(c.side), player: eventPlayerName(c.player), timeMS: c.timeMS ?? null, period: eventPeriod(c.half) })
   for (const s of engine.strikes || [])

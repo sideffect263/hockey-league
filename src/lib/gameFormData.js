@@ -31,7 +31,8 @@ function eventsFrom(row) {
   const snap = row?.final_state
   if (snap && Array.isArray(snap.strikes)) {
     const ev = []
-    for (const g of snap.goals || []) ev.push({ type: 'goal', side: sideOf(g.side), period: PERIOD_OF_HALF[g.half] || '', timeMS: g.timeMS })
+    // An own goal's side is already the side it is credited to — it counts there.
+    for (const g of snap.goals || []) ev.push({ type: 'goal', side: sideOf(g.side), period: PERIOD_OF_HALF[g.half] || '', timeMS: g.timeMS, ...(g.ownGoal ? { ownGoal: true } : {}) })
     for (const s of snap.strikes || []) ev.push({ type: 'foul', side: sideOf(s.side), period: PERIOD_OF_HALF[s.half] || '', timeMS: s.timeMS })
     for (const b of snap.breaks || []) {
       if (b.kind === 'homeTimeout' || b.kind === 'guestTimeout')
@@ -39,7 +40,7 @@ function eventsFrom(row) {
     }
     return { events: ev, periodMS: snap.settings?.periodMS || null, exact: true }
   }
-  const ev = (row?.events || []).map(e => ({ type: e.type, side: sideOf(e.side), period: e.period || '', timeMS: e.timeMS }))
+  const ev = (row?.events || []).map(e => ({ type: e.type, side: sideOf(e.side), period: e.period || '', timeMS: e.timeMS, ...(e.ownGoal ? { ownGoal: true } : {}) }))
   // Native boards report their half length on the save / broadcast (game_reports.period_ms).
   return { events: ev, periodMS: row?.period_ms || null, exact: false }
 }

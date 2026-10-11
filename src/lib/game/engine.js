@@ -275,8 +275,13 @@ export class GameEngine {
   }
 
   // ---- scoring (event-based) ----
-  addGoal(side, player = null) {
-    this.goals.push({ id: uid(), side, player, timeMS: this._eventTimeMS(), half: this.currentHalf })
+  // `side` is always the side the goal COUNTS for. An own goal (`{ ownGoal: true }`) is
+  // credited to the side that benefits — an away player putting it in his own net is
+  // addGoal(home, null, { ownGoal: true }) — and never names a scorer.
+  addGoal(side, player = null, { ownGoal = false } = {}) {
+    const g = { id: uid(), side, player: ownGoal ? null : player, timeMS: this._eventTimeMS(), half: this.currentHalf }
+    if (ownGoal) g.ownGoal = true
+    this.goals.push(g)
     this._recomputeDerived()
     if (this.phase === Phase.running) this.buzz(BuzzKind.goal)
     this._changed()
@@ -541,13 +546,20 @@ export class GameEngine {
       if (!r) { r = { player_id: pid, goals: 0, blue_cards: 0, red_cards: 0 }; per.set(pid, r) }
       return r
     }
-    for (const g of this.goals) if (g.player?.id != null) row(g.player.id).goals += 1
+    for (const g of this.goals) if (!g.ownGoal && g.player?.id != null) row(g.player.id).goals += 1
     for (const c of this.cardLog) {
       if (c.player?.id == null) continue
       if (c.type === CardType.blue) row(c.player.id).blue_cards += 1
       else row(c.player.id).red_cards += 1
     }
     return [...per.values()]
+  }
+
+  // Own goals CREDITED to each side (engine 'guest' = away), for the save's
+  // p_report.ownGoals → games.home_own_goals / away_own_goals.
+  ownGoals() {
+    const n = (side) => this.goals.filter(g => g.ownGoal && g.side === side).length
+    return { home: n(TeamSide.home), away: n(TeamSide.guest) }
   }
 
   // ---- mid-game persistence (localStorage) ----

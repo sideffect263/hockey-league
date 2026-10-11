@@ -64,6 +64,7 @@ function TeamPanel({ team, score, fallbackName, timeouts }) {
 
 const EVENT_META = {
   goal:    { icon: "⚽", label: "שער", accent: "text-emerald-600 dark:text-emerald-400" },
+  ownGoal: { icon: "⚽", label: "שער עצמי", accent: "text-emerald-600 dark:text-emerald-400" },
   blue:    { icon: "🟦", label: "כרטיס כחול", accent: "text-blue-600 dark:text-blue-400" },
   red:     { icon: "🟥", label: "כרטיס אדום", accent: "text-red-600 dark:text-red-400" },
   foul:    { icon: "🚩", label: "עבירה", accent: "text-slate-500 dark:text-slate-400" },
@@ -76,7 +77,8 @@ const EVENT_META = {
 // Events are aligned to their team's side of the scoreboard: home → right, away →
 // left. Period breaks (no team) render as a centered divider.
 function LiveEventRow({ ev, homeName, awayName }) {
-  const meta = EVENT_META[ev.type] || EVENT_META.foul
+  // An own goal is a 'goal' on the side it counts for, flagged ownGoal (no scorer).
+  const meta = (ev.type === "goal" && ev.ownGoal ? EVENT_META.ownGoal : EVENT_META[ev.type]) || EVENT_META.foul
   const time = ev.timeMS != null ? clockString(ev.timeMS) : null
   const when = [ev.period, time].filter(Boolean).join(" · ")
 
