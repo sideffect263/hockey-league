@@ -228,6 +228,25 @@ export async function getPosts() {
   }))
 }
 
+// One post for its permalink page (/posts/:id). Same shape as a getPosts() row; null
+// when it does not exist or was deleted (soft delete — the page says "not found").
+export async function getPost(id) {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, author:profiles!posts_author_id_fkey(display_name, avatar_url, player_id), like_count:post_likes(count), comment_count:comments(count)')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .is('comments.deleted_at', null)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return {
+    ...data,
+    like_count: data.like_count?.[0]?.count ?? 0,
+    comment_count: data.comment_count?.[0]?.count ?? 0,
+  }
+}
+
 // Public role badges for a set of user ids (post authors, a player's linked
 // account). Uses the public_role_badges RPC so viewers can see others' league
 // roles despite the "read own roles" RLS on user_roles.

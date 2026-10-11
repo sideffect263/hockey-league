@@ -6,7 +6,7 @@ import { he } from 'date-fns/locale'
 import { useAuth } from '../lib/AuthContext'
 import {
   getNotifications, getUnreadCount, markAllRead,
-  subscribeToNotifications, notificationText, notificationIcon, notificationHref,
+  subscribeToNotifications, notificationText, notificationIcon, notificationHref, notificationPreview,
 } from '../lib/notifications'
 import { pushSupported, pushStatus, enablePush } from '../lib/push'
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
@@ -149,6 +149,7 @@ export default function NotificationBell() {
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-slate-700 dark:text-slate-200 leading-snug">{notificationText(n)}</p>
+                      {notificationPreview(n) && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">“{notificationPreview(n)}”</p>}
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
                     </div>
                     {!n.read_at && <span className="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5" />}

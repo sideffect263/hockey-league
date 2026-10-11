@@ -26,6 +26,8 @@ const DEFAULT_DESC = 'ליגת הוקי הגלגיליות הישראלית — 
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
+import { postOg, POST_SELECT } from './og.js'
+
 class UpstreamError extends Error {}
 
 async function sb(pathAndQuery) {
@@ -243,6 +245,20 @@ const BUILDERS = {
     }
   },
 
+  // A post permalink (/posts/<uuid>). UUID-only, never a deleted post; same words as
+  // the SPA card and the og.js unfurl.
+  async post(key) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) return null
+    const [p] = await sb(`posts?id=eq.${key}&deleted_at=is.null&select=${POST_SELECT}`)
+    if (!p) return null
+    const og = postOg(p)
+    const paras = String(p.body || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
+    return {
+      title: og.title, desc: og.desc, image: og.image, canonicalPath: `/posts/${p.id}`,
+      body: `<article><h1>${esc(og.title)}</h1>${paras.map(t => `<p>${esc(t)}</p>`).join('')}</article>`,
+    }
+  },
+
   async tournament(key, match) {
     const [t] = await sb(`tournaments?${match}&select=id,slug,name,age_group,start_date,end_date,status`)
     if (!t) return null
@@ -259,7 +275,7 @@ const PAGE_BUILDERS = {
   home: 'home', standings: 'standings', teams: 'teams', players: 'players', games: 'gamesList',
   statistics: 'statistics', tournaments: 'tournamentsList', archive: 'archive', guide: 'guide', app: 'app', privacy: 'privacy',
 }
-const DETAIL_BUILDERS = { players: 'player', teams: 'team', games: 'game', tournaments: 'tournament' }
+const DETAIL_BUILDERS = { players: 'player', teams: 'team', games: 'game', tournaments: 'tournament', posts: 'post' }
 
 const NAV = `<nav>${[['/', 'ראשי'], ['/standings', 'טבלה'], ['/games', 'משחקים'], ['/teams', 'קבוצות'],
   ['/players', 'שחקנים'], ['/statistics', 'סטטיסטיקות'], ['/tournaments', 'טורנירים']]

@@ -134,6 +134,8 @@ export function notificationText(n) {
   switch (n.type) {
     case 'post_like':      return `${actorName(n)} אהב/ה את הפוסט שלך`
     case 'post_comment':   return `${actorName(n)} הגיב/ה על הפוסט שלך`
+    // @-tag (supabase/player-mentions.sql). The quoted text is notificationPreview.
+    case 'tagged':         return `${actorName(n)} תייג/ה אותך ${d.where === 'comment' ? 'בתגובה' : 'בפוסט'}`
     case 'claim_approved': return `הבקשה שלך להתחבר לשחקן ${d.player_name || ''} אושרה 🎉`
     case 'claim_rejected': return `הבקשה שלך להתחבר לשחקן ${d.player_name || ''} נדחתה`
     case 'role_granted':   return `קיבלת תפקיד: ${ROLE_LABEL[d.role] || d.role || ''}`
@@ -216,6 +218,7 @@ export function notificationIcon(n) {
   switch (n.type) {
     case 'post_like':      return '❤️'
     case 'post_comment':   return '💬'
+    case 'tagged':         return '🏷️'
     case 'claim_approved': return '✅'
     case 'claim_rejected': return '⛔'
     case 'role_granted':   return '🎖️'
@@ -269,6 +272,16 @@ export function notificationIcon(n) {
     case 'market_coins':    return '🪙'
     default:               return '🔔'
   }
+}
+
+// A server-written in-app path, or the feed. Never an absolute / protocol-relative URL.
+const safeHref = (h) => (typeof h === 'string' && h.startsWith('/') && !h.startsWith('//') ? h : '/')
+
+// A second, quoted line under the notification text — the words you were tagged in.
+export function notificationPreview(n) {
+  if (n?.type !== 'tagged') return null
+  const p = typeof n.data?.preview === 'string' ? n.data.preview.trim() : ''
+  return p || null
 }
 
 // Where clicking the notification takes you.
@@ -341,11 +354,11 @@ export function notificationHref(n) {
     case 'official_application':   return '/admin?tab=officials'
     case 'market_resolved':        return n.entity_id ? `/market/${n.entity_id}` : '/market'
     case 'market_coins':           return '/market'
-    // Land on the post itself. The feed paginates, so an old post may not be mounted —
-    // the anchor simply does nothing then and you get the feed, which is no worse than
-    // today's behaviour.
+    // The post's permalink page (entity_id = the post's uuid).
     case 'post_like':
-    case 'post_comment':   return n.entity_id ? `/#post-${n.entity_id}` : '/'
+    case 'post_comment':   return n.entity_id ? `/posts/${n.entity_id}` : '/'
+    // set_mentions writes the destination itself: /posts/<id>, /games/<id> or /#<feed item>.
+    case 'tagged':         return safeHref(n.data?.href)
     default:               return '/'
   }
 }

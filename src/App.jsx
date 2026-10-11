@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation, useNavigationType } from 'react-router-dom'
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react'
 import Layout from './Layout'
 import RouteSeo from './components/RouteSeo'
@@ -15,6 +15,7 @@ const NextGame = lazy(() => import('./pages/NextGame'))
 const GameTv = lazy(() => import('./pages/GameTv'))
 const GameControl = lazy(() => import('./pages/GameControl'))
 const Notifications = lazy(() => import('./pages/Notifications'))
+const PostDetail = lazy(() => import('./pages/PostDetail'))
 const Statistics = lazy(() => import('./pages/Statistics'))
 const Teams = lazy(() => import('./pages/Teams'))
 const TeamDetail = lazy(() => import('./pages/TeamDetail'))
@@ -125,6 +126,22 @@ function ScrollToTop() {
   return null
 }
 
+/**
+ * Before the permalink existed, a post was linked as /#post-<uuid> (the bell, WhatsApp
+ * shares). Those keep working: they now land on /posts/<uuid>. Other feed anchors
+ * (/#game-…, /#ms-…) are left to ScrollToTop.
+ */
+const LEGACY_POST_HASH = /^#post-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+function LegacyPostRedirect() {
+  const { pathname, hash } = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    const m = pathname === '/' && LEGACY_POST_HASH.exec(hash || '')
+    if (m) navigate(`/posts/${m[1].toLowerCase()}`, { replace: true })
+  }, [pathname, hash, navigate])
+  return null
+}
+
 function App() {
   const [seasonMode, setSeasonMode] = useState(null) // 'regular' or 'final_four'
   const [seasonName, setSeasonName] = useState('')
@@ -155,6 +172,7 @@ function App() {
     <SeasonModeContext.Provider value={{ seasonMode, setSeasonMode, seasonName, setSeasonName }}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RouteSeo />
+        <LegacyPostRedirect />
         <ScrollToTop />
         <Layout>
           {loading ? <RouteSkeleton /> : (
@@ -172,6 +190,7 @@ function App() {
             <Route path="/games/:id/control" element={<GameControl />} />
             <Route path="/games/:id/result" element={<GameResultEntry />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/posts/:id" element={<PostDetail />} />
             <Route path="/statistics" element={<Statistics />} />
             <Route path="/teams" element={<Teams />} />
             <Route path="/teams/:id" element={<TeamDetail />} />

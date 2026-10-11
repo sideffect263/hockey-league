@@ -63,11 +63,17 @@
       "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|Slackbot|LinkedInBot|TelegramBot|Discordbot|Pinterest|redditbot|Embedly|vkShare|Applebot|SkypeUriPreview|W3C_Validator).*" }],
       "destination": "/api/og?type=tournaments&id=:id"
     },
+    {
+      "source": "/posts/:id",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|Slackbot|LinkedInBot|TelegramBot|Discordbot|Pinterest|redditbot|Embedly|vkShare|Applebot|SkypeUriPreview|W3C_Validator).*" }],
+      "destination": "/api/og?type=posts&id=:id"
+    },
 
     { "source": "/players/:id", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?type=players&id=:id" },
     { "source": "/teams/:id", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?type=teams&id=:id" },
     { "source": "/games/:id", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?type=games&id=:id" },
     { "source": "/tournaments/:id", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?type=tournaments&id=:id" },
+    { "source": "/posts/:id", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?type=posts&id=:id" },
     { "source": "/", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=home" },
     { "source": "/standings", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=standings" },
     { "source": "/teams", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=teams" },

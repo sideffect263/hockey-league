@@ -17,6 +17,11 @@ import { TARGET_POST, TARGET_COMMENT } from "@/lib/moderation"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import { entityPath } from "@/lib/slugs"
 import { birthdayPlayerId } from "@/lib/feed"
+import { buildShare } from "@/lib/shareLinks"
+import { shareTarget } from "@/lib/shareItem"
+import MentionInput from "@/components/feed/MentionInput"
+import MentionText, { useMentionViewer, untagItems } from "@/components/feed/MentionText"
+import { getMentions, setMentions, removeMention, MENTION_KIND } from "@/lib/mentionsApi"
 
 function Avatar({ url, name, className = "w-9 h-9" }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase() || "?"
@@ -263,7 +268,7 @@ function ResultTeam({ team, side, isWin, isLoss, label }) {
 }
 
 /* ============ CHAMPION ============ */
-function ChampionPost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed }) {
+function ChampionPost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
   const { team, seasonName } = post.data
   return (
     <motion.div {...fade} className="card p-5 border-amber-200 dark:border-amber-800 bg-gradient-to-l from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800">
@@ -285,13 +290,13 @@ function ChampionPost({ post, likedItems, itemLikeCounts, itemCommentCounts, blo
         <Trophy className="w-8 h-8 text-amber-400 shrink-0" />
       </div>
       <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
-      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} />
+      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
     </motion.div>
   )
 }
 
 /* ============ TOP SCORER ============ */
-function TopScorerPost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed }) {
+function TopScorerPost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
   const { player, team, goals } = post.data
   return (
     <motion.div {...fade} className="card p-5">
@@ -318,13 +323,13 @@ function TopScorerPost({ post, likedItems, itemLikeCounts, itemCommentCounts, bl
         </div>
       </div>
       <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
-      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} />
+      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
     </motion.div>
   )
 }
 
 /* ============ GAME RESULT ============ */
-function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed }) {
+function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
   const [open, setOpen] = useState(false)
   const { game, home, away, stats } = post.data
   const teamName = (id) => teamsMap[id]?.name || '—'
@@ -454,14 +459,14 @@ function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts
       </AnimatePresence>
 
       <div className="px-4 sm:px-5 pb-4 cursor-auto" data-no-card-nav>
-        <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} />
+        <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
       </div>
     </motion.div>
   )
 }
 
 /* ============ MILESTONE ============ */
-function MilestonePost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed }) {
+function MilestonePost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
   const { kind, name, playerId, teamName, goals, home, away, game } = post.data
   const bigGame = kind === 'big_game'
   const emoji = bigGame ? '🔥' : '🎩'
@@ -489,7 +494,7 @@ function MilestonePost({ post, likedItems, itemLikeCounts, itemCommentCounts, bl
         <TeamLink team={away} className="hover:text-brand transition-colors">{away?.name}</TeamLink>
       </p>
       <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
-      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} />
+      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
     </motion.div>
   )
 }
@@ -526,8 +531,9 @@ function BirthdayBanner({ player, team, fallbackPhoto, body }) {
 }
 
 /* ============ HUMAN POST (Stage B2 + likes/comments) ============ */
-function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap }) {
+function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap, share, mentions, initialShowComments = false }) {
   const { user, openAuth } = useAuth()
+  const viewer = useMentionViewer()
   const { post: p, author, team } = post.data
   const name = birthdayPlayerId(p) ? "ליגת הוקי גלגיליות" : (author?.display_name || "חבר/ת הליגה")
   const linkedPlayerId = author?.player_id || null   // paired → has a player page
@@ -539,6 +545,8 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
     : []
 
   const [liked, setLiked] = useState(() => likedPostIds?.has?.(p.id) || false)
+  // The permalink page learns the viewer's likes after the card mounts.
+  useEffect(() => { if (likedPostIds?.has?.(p.id)) setLiked(true) }, [likedPostIds, p.id])
   const [likeCount, setLikeCount] = useState(p.like_count || 0)
   const [commentCount, setCommentCount] = useState(p.comment_count || 0)
   const [showComments, setShowComments] = useState(false)
@@ -547,6 +555,27 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   const [loadingComments, setLoadingComments] = useState(false)
   const [newComment, setNewComment] = useState("")
   const [posting, setPosting] = useState(false)
+
+  // ---- @player tags (lib/mentions.js). Saved AFTER the post/comment, so a failed
+  // set_mentions never loses what was written — it only says so. ----
+  const [postMentions, setPostMentions] = useState(mentions || [])
+  useEffect(() => { setPostMentions(mentions || []) }, [mentions])
+  const [commentMentions, setCommentMentions] = useState({})   // comment id → tags
+  const [postPicks, setPostPicks] = useState([])
+  const [commentPicks, setCommentPicks] = useState([])
+  const [newPicks, setNewPicks] = useState([])
+  const [tagError, setTagError] = useState(null)
+  const tagFailed = (what) => setTagError(`${what === "הפוסט" ? "הפוסט נשמר" : "התגובה נשמרה"}, אבל התיוג נכשל`)
+  const untagPost = async (m) => {
+    try { await removeMention(m.id); setPostMentions(ms => ms.filter(x => x.id !== m.id)) }
+    catch { setTagError("הסרת התיוג נכשלה") }
+  }
+  const untagComment = async (m) => {
+    try {
+      await removeMention(m.id)
+      setCommentMentions(map => ({ ...map, [m.comment_id]: (map[m.comment_id] || []).filter(x => x.id !== m.id) }))
+    } catch { setTagError("הסרת התיוג נכשלה") }
+  }
 
   // ---- Moderation (edit / soft-delete) for this post ----
   // An ingested news item (supabase/functions/ingest-rink-hockey-news) carries a
@@ -592,7 +621,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   const [commentDraft, setCommentDraft] = useState("")
   const [savingComment, setSavingComment] = useState(false)
 
-  const startEditPost = () => { setPostDraft(postBody); setRowError(null); setEditingPost(true) }
+  const startEditPost = () => { setPostDraft(postBody); setRowError(null); setPostPicks([]); setEditingPost(true) }
   const saveEditPost = async () => {
     const text = postDraft.trim()
     if (!text || savingPost) return
@@ -600,6 +629,10 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
     try {
       await editPost(p.id, text)
       setPostBody(text); setEditingPost(false)
+      const picks = [...postMentions, ...postPicks]
+      if (picks.length) {
+        setMentions(MENTION_KIND.post, p.id, text, picks).then(setPostMentions).catch(() => tagFailed("הפוסט"))
+      }
     } catch { setRowError("עריכה נכשלה, נסו שוב") }
     finally { setSavingPost(false) }
   }
@@ -617,6 +650,12 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
       await editComment(c.id, text)
       setComments(cs => cs.map(x => x.id === c.id ? { ...x, body: text } : x))
       setEditingCommentId(null)
+      const picks = [...(commentMentions[c.id] || []), ...commentPicks]
+      if (picks.length) {
+        setMentions(MENTION_KIND.comment, c.id, text, picks)
+          .then(list => setCommentMentions(map => ({ ...map, [c.id]: list })))
+          .catch(() => tagFailed("התגובה"))
+      }
     } catch { /* keep the editor open on failure */ }
     finally { setSavingComment(false) }
   }
@@ -647,11 +686,15 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
     if (opening && !loadedComments) {
       setLoadingComments(true)
       try {
-        setComments(await getComments(p.id)); setLoadedComments(true)
+        const list = await getComments(p.id)
+        setComments(list); setLoadedComments(true)
+        getMentions(MENTION_KIND.comment, (list || []).map(c => c.id)).then(setCommentMentions)
       } catch { /* ignore */ }
       finally { setLoadingComments(false) }
     }
   }
+  // The permalink page (/posts/:id) opens with the comments showing.
+  useEffect(() => { if (initialShowComments) toggleComments() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const submitComment = async (e) => {
     e.preventDefault()
@@ -664,6 +707,13 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
       setComments(prev => [...prev, c])
       setCommentCount(n => n + 1)
       setNewComment("")
+      const picks = newPicks
+      setNewPicks([]); setTagError(null)
+      if (picks.length) {
+        setMentions(MENTION_KIND.comment, c.id, text, picks)
+          .then(list => setCommentMentions(map => ({ ...map, [c.id]: list })))
+          .catch(() => tagFailed("התגובה"))
+      }
     } catch { /* ignore */ }
     finally { setPosting(false) }
   }
@@ -673,13 +723,9 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
     setHeartPop(true); setTimeout(() => setHeartPop(false), 700)
     if (!liked) toggleLike()
   }
-  const sharePost = async () => {
-    const url = ext?.link || window.location.origin
-    const text = (postBody || "").split("\n")[0].slice(0, 140)
-    try { if (navigator.share) { await navigator.share({ title: name, text, url }); return } }
-    catch (e) { if (e?.name === "AbortError") return }
-    try { await navigator.clipboard.writeText(url) } catch { /* nothing else to do */ }
-  }
+  // The permalink (/posts/<id>) — or the player's page for a birthday — never the
+  // source link: the share should bring people HERE (lib/shareLinks.js).
+  const sharePost = () => shareTarget(share)
 
   if (removed) return null
 
@@ -722,7 +768,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
             {ext && <><span className="inline-flex items-center gap-0.5"><Globe className="w-3 h-3" />{ext.source}</span>·</>}
-            <span>{fmtDate(post.date)}</span>
+            <Link to={`/posts/${p.id}`} className="hover:text-brand hover:underline transition-colors">{fmtDate(post.date)}</Link>
             {team && <>·<TeamLink team={team} className="hover:text-brand transition-colors">{team.name}</TeamLink></>}
           </p>
         </div>
@@ -732,15 +778,18 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           authorId={p.author_id}
           onEdit={startEditPost}
           onDelete={handleDeletePost}
+          extraItems={untagItems(postMentions, viewer, untagPost)}
         />
       </div>
 
       {/* Body (inline-editable for the author / admins) */}
       {editingPost ? (
         <div>
-          <textarea
+          <MentionInput
             value={postDraft}
-            onChange={e => setPostDraft(e.target.value.slice(0, 2000))}
+            onChange={setPostDraft}
+            onPick={pk => setPostPicks(ps => [...ps, pk])}
+            maxLength={2000}
             rows={3}
             autoFocus
             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand resize-none"
@@ -764,7 +813,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           <p ref={bodyRef} className={`text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed ${!expanded ? (ext ? "line-clamp-5" : "line-clamp-3") : ""}`}>
             {ext && textBody.includes("\n") ? (
               <><span className="font-bold text-slate-900 dark:text-white">{textBody.split("\n")[0]}</span>{"\n" + textBody.split("\n").slice(1).join("\n")}</>
-            ) : textBody}
+            ) : <MentionText text={textBody} mentions={postMentions} />}
           </p>
           {clipped && !expanded && (
             <button onClick={() => setExpanded(true)} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-brand">עוד</button>
@@ -772,6 +821,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
         </div>
       )}
       {rowError && <p className="text-xs text-red-500 mt-2 px-4 sm:px-0">{rowError}</p>}
+      {tagError && <p className="text-xs text-red-500 mt-2 px-4 sm:px-0">{tagError}</p>}
 
       {/* External news media, edge to edge on a phone. The photo is no longer a link —
           a tap would fight the double-tap like; "צפייה במקור" sits in the counts line.
@@ -831,7 +881,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
             <MessageCircle className="w-6 h-6" />
           </button>
-          <button onClick={sharePost} aria-label="שיתוף" className="ms-auto text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+          <button onClick={sharePost} disabled={!share} aria-label="שיתוף" className="ms-auto text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
             <Share2 className="w-5 h-5" />
           </button>
         </div>
@@ -867,9 +917,11 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
                         </PlayerLink>
                         {editingCommentId === c.id ? (
                           <div className="mt-1">
-                            <textarea
+                            <MentionInput
                               value={commentDraft}
-                              onChange={e => setCommentDraft(e.target.value.slice(0, 1000))}
+                              onChange={setCommentDraft}
+                              onPick={pk => setCommentPicks(ps => [...ps, pk])}
+                              maxLength={1000}
                               rows={2}
                               autoFocus
                               className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand resize-none"
@@ -886,15 +938,16 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
                             </div>
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words">{c.body}</p>
+                          <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words"><MentionText text={c.body} mentions={commentMentions[c.id]} /></p>
                         )}
                       </div>
                       <ModerationMenu
                         targetType={TARGET_COMMENT}
                         targetId={c.id}
                         authorId={c.author_id}
-                        onEdit={() => { setEditingCommentId(c.id); setCommentDraft(c.body) }}
+                        onEdit={() => { setEditingCommentId(c.id); setCommentDraft(c.body); setCommentPicks([]) }}
                         onDelete={() => handleDeleteComment(c)}
+                        extraItems={untagItems(commentMentions[c.id], viewer, untagComment)}
                       />
                     </div>
                   ))}
@@ -902,11 +955,15 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 
                   {user ? (
                     <form onSubmit={submitComment} className="flex items-center gap-2 pt-1">
-                      <input
+                      <MentionInput
+                        as="input"
+                        wrapperClassName="flex-1 min-w-0"
                         value={newComment}
-                        onChange={e => setNewComment(e.target.value.slice(0, 1000))}
-                        placeholder="כתבו תגובה…"
-                        className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                        onChange={setNewComment}
+                        onPick={pk => setNewPicks(ps => [...ps, pk])}
+                        maxLength={1000}
+                        placeholder="כתבו תגובה… (@ לתיוג שחקן)"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                       />
                       <button type="submit" disabled={posting || !newComment.trim()} className="shrink-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center disabled:opacity-50">
                         {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
@@ -926,8 +983,10 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 }
 
 /* ============ Dispatcher ============ */
-export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed }) {
-  const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed }
+export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments }) {
+  // Every card but הוקי מרקט (18+) gets a share target — see lib/shareLinks.js.
+  const share = buildShare(post, { playersMap })
+  const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
   switch (post.type) {
     case 'champion':
       return <ChampionPost post={post} {...rx} />
@@ -941,7 +1000,8 @@ export default function FeedPost({ post, playersMap, teamsMap, roleBadges, liked
       return <MarketFeedCard post={post} teamsMap={teamsMap} />
     case 'post':
     case 'external':
-      return <PostCard post={post} likedPostIds={likedPostIds} blockedIds={blockedIds} roleBadges={roleBadges} playersMap={playersMap} teamsMap={teamsMap} />
+      return <PostCard post={post} likedPostIds={likedPostIds} blockedIds={blockedIds} roleBadges={roleBadges} playersMap={playersMap} teamsMap={teamsMap}
+        share={share} mentions={mentions} initialShowComments={initialShowComments} />
     default:
       return null
   }

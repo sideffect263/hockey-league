@@ -3,6 +3,8 @@ import { User, Loader2, Video, X } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { createPost, getGames, getTeams } from "@/lib/api"
 import { uploadFeedVideo, MAX_FEED_VIDEO_MB } from "@/lib/feedVideo"
+import { setMentions, MENTION_KIND } from "@/lib/mentionsApi"
+import MentionInput from "@/components/feed/MentionInput"
 
 const MAX = 2000
 
@@ -35,6 +37,7 @@ async function recentGames() {
 export default function Composer({ onPosted }) {
   const { user, canPost, openAuth, isAdmin, isContentEditor } = useAuth()
   const [body, setBody] = useState("")
+  const [picks, setPicks] = useState([])          // @player tags chosen in this draft
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   // Video post (admins / content editors): the chosen file, its local preview, upload progress.
@@ -104,9 +107,16 @@ export default function Composer({ onPosted }) {
         video = await uploadFeedVideo(file, setProgress)
       }
       const newPost = await createPost({ body: text, video, gameId: video ? (gameId || null) : null })
+      // Tags go on AFTER the post exists; if that fails the post stays and we say so.
+      let tags = []
+      if (picks.length) {
+        try { tags = await setMentions(MENTION_KIND.post, newPost.id, text, picks) }
+        catch { setError("הפוסט פורסם, אבל התיוג נכשל") }
+      }
       setBody("")
+      setPicks([])
       clearFile()
-      onPosted && onPosted(newPost)
+      onPosted && onPosted(newPost, tags)
     } catch (err) {
       setError(translatePostError(err?.message))
     } finally {
@@ -122,10 +132,12 @@ export default function Composer({ onPosted }) {
           {initial || <User className="w-5 h-5" />}
         </div>
         <div className="flex-1 min-w-0">
-          <textarea
+          <MentionInput
             value={body}
-            onChange={(e) => setBody(e.target.value.slice(0, MAX))}
-            placeholder={file ? "כיתוב לסרטון (חובה)…" : "מה קורה בליגה?"}
+            onChange={setBody}
+            onPick={pk => setPicks(ps => [...ps, pk])}
+            maxLength={MAX}
+            placeholder={file ? "כיתוב לסרטון (חובה)…" : "מה קורה בליגה? (@ לתיוג שחקן)"}
             rows={3}
             className="w-full resize-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"
           />

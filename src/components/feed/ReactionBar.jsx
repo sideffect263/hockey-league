@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Heart, MessageCircle, Send, Loader2 } from "lucide-react"
+import { Heart, MessageCircle, Send, Loader2, Share2 } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { likeItem, unlikeItem, getItemComments, createItemComment, editItemComment, deleteItemComment } from "@/lib/reactions"
 import ModerationMenu from "@/components/feed/ModerationMenu"
 import { TARGET_ITEM_COMMENT } from "@/lib/moderation"
+import MentionInput from "@/components/feed/MentionInput"
+import MentionText, { useMentionViewer, untagItems } from "@/components/feed/MentionText"
+import { getMentions, setMentions, removeMention, MENTION_KIND } from "@/lib/mentionsApi"
+import { shareTarget } from "@/lib/shareItem"
 
 /**
  * Reusable like + comment bar for SYNTHETIC feed cards (game results,
  * milestones, champion, top-scorer). Same look/behaviour as the human
  * PostCard actions, but backed by feed_item_likes / feed_item_comments,
  * keyed by the feed item's stable `itemKey` (post.id from lib/feed.js).
+ * `share` is a lib/shareLinks.js buildShare() target; when given, a share button shows.
+ * Comments support @player tags (feed_item_comments → set_mentions 'item_comment').
  */
 
 function CommentAvatar({ url, name, className = "w-8 h-8" }) {
@@ -20,8 +26,27 @@ function CommentAvatar({ url, name, className = "w-8 h-8" }) {
     : <div className={`${className} rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0`}>{initial}</div>
 }
 
-export default function ReactionBar({ itemKey, liked: likedInit = false, likeCount: likeInit = 0, commentCount: commentInit = 0, blockedIds }) {
+export default function ReactionBar({ itemKey, liked: likedInit = false, likeCount: likeInit = 0, commentCount: commentInit = 0, blockedIds, share }) {
   const { user, openAuth } = useAuth()
+  const viewer = useMentionViewer()
+  const [mentions, setMentionMap] = useState({})    // item comment id → active tags
+  const [newPicks, setNewPicks] = useState([])
+  const [editPicks, setEditPicks] = useState([])
+  const [tagError, setTagError] = useState(null)
+
+  // Tags are saved after the comment: a failure there never loses the comment.
+  const saveTags = async (commentId, text, picks) => {
+    try {
+      const list = await setMentions(MENTION_KIND.itemComment, commentId, text, picks)
+      setMentionMap(m => ({ ...m, [commentId]: list }))
+    } catch { setTagError("התגובה נשמרה, אבל התיוג נכשל") }
+  }
+  const untag = async (m) => {
+    try {
+      await removeMention(m.id)
+      setMentionMap(map => ({ ...map, [m.item_comment_id]: (map[m.item_comment_id] || []).filter(x => x.id !== m.id) }))
+    } catch { setTagError("הסרת התיוג נכשלה") }
+  }
 
   const [liked, setLiked] = useState(likedInit)
   const [likeCount, setLikeCount] = useState(likeInit)
@@ -46,6 +71,8 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
       await editItemComment(c.id, text)
       setComments(cs => cs.map(x => x.id === c.id ? { ...x, body: text } : x))
       setEditingCommentId(null)
+      const picks = [...(mentions[c.id] || []), ...editPicks]
+      if (picks.length) saveTags(c.id, text, picks)
     } catch { /* keep the editor open on failure */ }
     finally { setSavingComment(false) }
   }
@@ -83,7 +110,9 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
     if (opening && !loadedComments) {
       setLoadingComments(true)
       try {
-        setComments(await getItemComments(itemKey)); setLoadedComments(true)
+        const list = await getItemComments(itemKey)
+        setComments(list); setLoadedComments(true)
+        getMentions(MENTION_KIND.itemComment, (list || []).map(c => c.id)).then(setMentionMap)
       } catch { /* ignore */ }
       finally { setLoadingComments(false) }
     }
@@ -100,6 +129,9 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
       setComments(prev => [...prev, c])
       setCommentCount(n => n + 1)
       setNewComment("")
+      const picks = newPicks
+      setNewPicks([]); setTagError(null)
+      if (picks.length) saveTags(c.id, text, picks)
     } catch { /* ignore */ }
     finally { setPosting(false) }
   }
@@ -116,6 +148,11 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
           <MessageCircle className="w-4 h-4" />
           {commentCount > 0 ? <span>{commentCount}</span> : <span>תגובה</span>}
         </button>
+        {share && (
+          <button onClick={() => shareTarget(share)} aria-label="שיתוף" className="ms-auto flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+            <Share2 className="w-4 h-4" /> <span>שיתוף</span>
+          </button>
+        )}
       </div>
 
       {/* Comments */}
@@ -134,9 +171,11 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
                         <p className="text-xs font-bold text-slate-900 dark:text-white">{c.author?.display_name || "חבר/ת הליגה"}</p>
                         {editingCommentId === c.id ? (
                           <div className="mt-1">
-                            <textarea
+                            <MentionInput
                               value={commentDraft}
-                              onChange={e => setCommentDraft(e.target.value.slice(0, 1000))}
+                              onChange={setCommentDraft}
+                              onPick={p => setEditPicks(ps => [...ps, p])}
+                              maxLength={1000}
                               rows={2}
                               autoFocus
                               className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand resize-none"
@@ -153,27 +192,33 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
                             </div>
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words">{c.body}</p>
+                          <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words"><MentionText text={c.body} mentions={mentions[c.id]} /></p>
                         )}
                       </div>
                       <ModerationMenu
                         targetType={TARGET_ITEM_COMMENT}
                         targetId={c.id}
                         authorId={c.author_id}
-                        onEdit={() => { setEditingCommentId(c.id); setCommentDraft(c.body) }}
+                        onEdit={() => { setEditingCommentId(c.id); setCommentDraft(c.body); setEditPicks([]) }}
                         onDelete={() => handleDeleteComment(c)}
+                        extraItems={untagItems(mentions[c.id], viewer, untag)}
                       />
                     </div>
                   ))}
                   {visibleComments.length === 0 && <p className="text-center text-xs text-slate-500 dark:text-slate-400 py-1">היו הראשונים להגיב</p>}
+                  {tagError && <p className="text-[11px] text-red-500">{tagError}</p>}
 
                   {user ? (
                     <form onSubmit={submitComment} className="flex items-center gap-2 pt-1">
-                      <input
+                      <MentionInput
+                        as="input"
+                        wrapperClassName="flex-1 min-w-0"
                         value={newComment}
-                        onChange={e => setNewComment(e.target.value.slice(0, 1000))}
-                        placeholder="כתבו תגובה…"
-                        className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                        onChange={setNewComment}
+                        onPick={p => setNewPicks(ps => [...ps, p])}
+                        maxLength={1000}
+                        placeholder="כתבו תגובה… (@ לתיוג שחקן)"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                       />
                       <button type="submit" disabled={posting || !newComment.trim()} className="shrink-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center disabled:opacity-50">
                         {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
