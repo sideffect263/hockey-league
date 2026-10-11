@@ -22,6 +22,7 @@ import { shareTarget } from "@/lib/shareItem"
 import MentionInput from "@/components/feed/MentionInput"
 import MentionText, { useMentionViewer, untagItems } from "@/components/feed/MentionText"
 import { getMentions, setMentions, removeMention, MENTION_KIND } from "@/lib/mentionsApi"
+import { FeedCard, FeedCardHeader, FeedIcon, INSET, fade } from "@/components/feed/FeedCardShell"
 
 function Avatar({ url, name, className = "w-9 h-9" }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase() || "?"
@@ -45,19 +46,13 @@ function PlayerLink({ playerId, className = "", children }) {
 
 const fmtDate = (d) => format(new Date(d), "d/M/yyyy")
 
-function PostHeader({ icon, label, date, dateLabel }) {
+/* Like/comment/share row for automatic cards, inset like PostCard's. */
+function ItemReactions({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, share }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      {icon}
-      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-[11px] text-slate-500 dark:text-slate-400 mr-auto">{dateLabel || fmtDate(date)}</span>
+    <div className={`${INSET} cursor-auto`} data-no-card-nav>
+      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
     </div>
   )
-}
-
-const fade = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
 }
 
 /* ---- Auto-matched game photo (players' faces) attached to an event ---- */
@@ -156,7 +151,7 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
   if (imgError) {
     if (!canEdit) return null
     return (
-      <div className="relative mt-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 px-3 py-4 flex items-center justify-between gap-3">
+      <div className="relative mt-3 mx-4 sm:mx-0 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 px-3 py-4 flex items-center justify-between gap-3">
         <span className="text-xs text-slate-500 dark:text-slate-400">התמונה אינה זמינה</span>
         <button
           type="button"
@@ -175,7 +170,7 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
   return (
     <div className="relative mt-3">
       <a href={current.detail_url} target="_blank" rel="noopener noreferrer"
-         className="group block relative rounded-xl overflow-hidden bg-slate-900">
+         className="group block relative sm:rounded-xl overflow-hidden bg-slate-900">
         <img ref={imgRef} src={sizedUrl(current.image_url)} alt="" loading="lazy"
              onError={() => setImgError(true)}
              width={hasDims ? current.width : undefined}
@@ -210,7 +205,7 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
 
       {/* Admins + content editors: swap the auto-matched photo for the next candidate. */}
       {canEdit && (
-        <div className="absolute top-2 left-2 flex items-center gap-2">
+        <div className="absolute top-2 left-4 sm:left-2 flex items-center gap-2">
           <button
             type="button"
             onClick={cycle}
@@ -268,47 +263,39 @@ function ResultTeam({ team, side, isWin, isLoss, label }) {
 }
 
 /* ============ CHAMPION ============ */
-function ChampionPost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
+function ChampionPost({ post, onPhotoRefreshed, ...rx }) {
   const { team, seasonName } = post.data
   return (
-    <motion.div {...fade} className="card p-5 border-amber-200 dark:border-amber-800 bg-gradient-to-l from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800">
-      <PostHeader
-        icon={<Crown className="w-4 h-4 text-amber-500" />}
-        label="אלופת העונה"
-        dateLabel="סיכום עונה"
+    <FeedCard>
+      <FeedCardHeader
+        avatar={<FeedIcon tone="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"><Crown className="w-5 h-5" /></FeedIcon>}
+        title="אלופת העונה"
+        meta={<span>סיכום עונה{seasonName ? ` ${seasonName}` : ""}</span>}
       />
-      <div className="flex items-center gap-4">
-        <TeamLink team={team} className="shrink-0"><TeamLogo team={team} size={14} /></TeamLink>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
-            אלופת העונה {seasonName}
-          </p>
-          <TeamLink team={team} className="block w-fit">
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5 truncate hover:text-brand transition-colors">{team?.name}</h2>
-          </TeamLink>
-        </div>
-        <Trophy className="w-8 h-8 text-amber-400 shrink-0" />
+      <div className={`flex items-center gap-3 ${INSET}`}>
+        <TeamLink team={team} className="shrink-0"><TeamLogo team={team} size={12} /></TeamLink>
+        <TeamLink team={team} className="min-w-0">
+          <h2 className="text-lg font-extrabold text-slate-900 dark:text-white truncate hover:text-brand transition-colors">{team?.name}</h2>
+        </TeamLink>
+        <Trophy className="w-6 h-6 text-amber-500 shrink-0 ms-auto" />
       </div>
       <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
-      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
-    </motion.div>
+      <ItemReactions post={post} {...rx} />
+    </FeedCard>
   )
 }
 
 /* ============ TOP SCORER ============ */
-function TopScorerPost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
+function TopScorerPost({ post, onPhotoRefreshed, ...rx }) {
   const { player, team, goals } = post.data
   return (
-    <motion.div {...fade} className="card p-5">
-      <PostHeader
-        icon={<Flame className="w-4 h-4 text-red-500" />}
-        label="מלך השערים של העונה"
-        dateLabel="סיכום עונה"
+    <FeedCard>
+      <FeedCardHeader
+        avatar={<FeedIcon tone="bg-red-100 text-red-500 dark:bg-red-900/30 dark:text-red-400"><Flame className="w-5 h-5" /></FeedIcon>}
+        title="מלך השערים של העונה"
+        meta={<span>סיכום עונה</span>}
       />
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-full shrink-0 flex items-center justify-center bg-red-50 dark:bg-red-900/30">
-          <Flame className="w-6 h-6 text-red-500" />
-        </div>
+      <div className={`flex items-center gap-3 ${INSET}`}>
         <div className="flex-1 min-w-0">
           <PlayerLink playerId={player?.id} className="block w-fit max-w-full">
             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white truncate hover:text-brand transition-colors">{player?.first_name} {player?.last_name}</h2>
@@ -323,13 +310,13 @@ function TopScorerPost({ post, likedItems, itemLikeCounts, itemCommentCounts, bl
         </div>
       </div>
       <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
-      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
-    </motion.div>
+      <ItemReactions post={post} {...rx} />
+    </FeedCard>
   )
 }
 
 /* ============ GAME RESULT ============ */
-function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
+function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx }) {
   const [open, setOpen] = useState(false)
   const { game, home, away, stats } = post.data
   const teamName = (id) => teamsMap[id]?.name || '—'
@@ -348,60 +335,51 @@ function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts
   }
 
   return (
-    <motion.div {...fade} layout onClick={openGame} className="card-hover overflow-hidden cursor-pointer">
-      <div className="p-4 sm:p-5">
-        {/* Header — label + trophy on the right; type tags + date on the left */}
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">תוצאת משחק</span>
-          <div className="mr-auto flex items-center gap-1.5 flex-wrap justify-end">
-            {game.game_type === 'פלייאוף' && <span className="stat-pill badge-warning !py-0.5">פלייאוף</span>}
-            {game.game_type === FRIENDLY_GAME_TYPE && <span className="stat-pill badge-neutral !py-0.5">ידידותי</span>}
-            {game.series_game && <span className="stat-pill badge-info !py-0.5">משחק {game.series_game}</span>}
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(post.date)}</span>
-          </div>
-        </div>
+    <FeedCard layout onClick={openGame} className="cursor-pointer">
+      <FeedCardHeader
+        avatar={<FeedIcon tone="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"><Trophy className="w-5 h-5" /></FeedIcon>}
+        title={<>
+          <span>תוצאת משחק</span>
+          {game.game_type === 'פלייאוף' && <span className="stat-pill badge-warning !py-0.5">פלייאוף</span>}
+          {game.game_type === FRIENDLY_GAME_TYPE && <span className="stat-pill badge-neutral !py-0.5">ידידותי</span>}
+          {game.series_game && <span className="stat-pill badge-info !py-0.5">משחק {game.series_game}</span>}
+        </>}
+        meta={<><span>{fmtDate(post.date)}</span>{game.venue && <><span>·</span><span className="inline-flex items-center gap-0.5"><MapPin className="w-3 h-3" />{game.venue}</span></>}</>}
+      />
 
-        {/* Match row — the score is the hero; winning side tinted + trophy-marked.
-           RTL gotcha: home team renders first (right); ScoreBlock stays away:home. */}
-        <div className="flex items-center gap-1 sm:gap-2">
-          <ResultTeam team={home} side="home" isWin={homeWin} isLoss={awayWin}
-            label={tie ? 'תיקו' : homeWin ? 'מנצחת' : 'בית'} />
-          <div className="px-1 sm:px-2 text-center shrink-0">
-            <ScoreBlock away={game.away_score} home={game.home_score} awayWin={awayWin} homeWin={homeWin} />
-          </div>
-          <ResultTeam team={away} side="away" isWin={awayWin} isLoss={homeWin}
-            label={tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'} />
+      {/* Match row — the score is the hero; winning side tinted + trophy-marked.
+         RTL gotcha: home team renders first (right); ScoreBlock stays away:home. */}
+      <div className={`flex items-center gap-1 sm:gap-2 ${INSET}`}>
+        <ResultTeam team={home} side="home" isWin={homeWin} isLoss={awayWin}
+          label={tie ? 'תיקו' : homeWin ? 'מנצחת' : 'בית'} />
+        <div className="px-1 sm:px-2 text-center shrink-0">
+          <ScoreBlock away={game.away_score} home={game.home_score} awayWin={awayWin} homeWin={homeWin} />
         </div>
+        <ResultTeam team={away} side="away" isWin={awayWin} isLoss={homeWin}
+          label={tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'} />
+      </div>
 
-        {/* Meta row */}
-        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
-          <div className="mr-auto flex items-center gap-2">
-            <Link to={gamePath} className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold text-brand dark:text-brand-light hover:bg-brand/[0.06] dark:hover:bg-brand/10 transition-colors">
-              לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" />
-            </Link>
-            {stats.length > 0 && (
-              <button
-                onClick={() => setOpen(o => !o)}
-                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                {open ? 'סגור' : 'פרטים'}
-                <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
-              </button>
-            )}
-          </div>
-        </div>
+      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
 
-        <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
+      {/* Links — one small line, like "למשחק המלא" under a video post. */}
+      <div className={`mt-2 flex items-center gap-4 text-xs font-semibold ${INSET}`}>
+        <Link to={gamePath} className="inline-flex items-center gap-1 text-brand dark:text-brand-light hover:text-brand-hover">
+          לעמוד המשחק <ArrowLeft className="w-3 h-3" />
+        </Link>
+        {stats.length > 0 && (
+          <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+            <FileText className="w-3.5 h-3.5" />
+            {open ? 'סגור פרטים' : 'פרטים'}
+            <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        )}
       </div>
 
       {/* Expanded box score */}
       <AnimatePresence>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="px-5 pb-5 cursor-auto" data-no-card-nav>
+            <div className={`pt-3 cursor-auto ${INSET}`} data-no-card-nav>
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3">סטטיסטיקות שחקנים</h4>
                 {stats.length === 0 ? (
@@ -458,75 +436,78 @@ function GameResultPost({ post, playersMap, teamsMap, likedItems, itemLikeCounts
         )}
       </AnimatePresence>
 
-      <div className="px-4 sm:px-5 pb-4 cursor-auto" data-no-card-nav>
-        <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
-      </div>
-    </motion.div>
+      <ItemReactions post={post} {...rx} />
+    </FeedCard>
   )
 }
 
 /* ============ MILESTONE ============ */
-function MilestonePost({ post, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }) {
+function MilestonePost({ post, onPhotoRefreshed, ...rx }) {
   const { kind, name, playerId, teamName, goals, home, away, game } = post.data
   const bigGame = kind === 'big_game'
   const emoji = bigGame ? '🔥' : '🎩'
   const label = bigGame ? 'משחק ענק' : 'שלושער'
-  const accent = bigGame
-    ? "text-brand dark:text-brand-light"
-    : "text-emerald-600 dark:text-emerald-400"
 
   return (
-    <motion.div {...fade} className="card p-4">
-      <PostHeader
-        icon={<span className="text-base leading-none">{emoji}</span>}
-        label={label}
-        date={post.date}
+    <FeedCard>
+      <FeedCardHeader
+        avatar={<FeedIcon tone={bigGame ? "bg-orange-100 dark:bg-orange-900/30" : "bg-emerald-100 dark:bg-emerald-900/30"}>{emoji}</FeedIcon>}
+        title={label}
+        meta={<><span>{fmtDate(post.date)}</span>{teamName && <><span>·</span><span>{teamName}</span></>}</>}
       />
-      <p className="text-sm font-bold text-slate-900 dark:text-white">
-        <PlayerLink playerId={playerId} className={`${accent} hover:underline`}>{name}</PlayerLink> כבש {goals} שערים
-      </p>
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-        {teamName ? `(${teamName}) • ` : ''}
-        <TeamLink team={home} className="hover:text-brand transition-colors">{home?.name}</TeamLink>{' '}
-        {/* dir="ltr" bidi-isolates the score so RTL doesn't split "away:home" and
-            mispair each digit with the wrong team (see hockey-league-rtl-score-gotcha). */}
-        <span dir="ltr" className="tabular-nums">{game.away_score} : {game.home_score}</span>{' '}
-        <TeamLink team={away} className="hover:text-brand transition-colors">{away?.name}</TeamLink>
-      </p>
+      <div className={INSET}>
+        <p className="text-sm text-slate-700 dark:text-slate-200">
+          <PlayerLink playerId={playerId} className="font-bold text-slate-900 dark:text-white hover:text-brand transition-colors">{name}</PlayerLink> כבש {goals} שערים
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <TeamLink team={home} className="hover:text-brand transition-colors">{home?.name}</TeamLink>{' '}
+          {/* dir="ltr" bidi-isolates the score so RTL doesn't split "away:home" and
+              mispair each digit with the wrong team (see hockey-league-rtl-score-gotcha). */}
+          <span dir="ltr" className="tabular-nums">{game.away_score} : {game.home_score}</span>{' '}
+          <TeamLink team={away} className="hover:text-brand transition-colors">{away?.name}</TeamLink>
+        </p>
+      </div>
       <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
-      <ReactionBar itemKey={post.id} liked={likedItems?.has?.(post.id)} likeCount={itemLikeCounts?.[post.id] || 0} commentCount={itemCommentCounts?.[post.id] || 0} blockedIds={blockedIds} share={share} />
-    </motion.div>
+      <ItemReactions post={post} {...rx} />
+    </FeedCard>
   )
 }
 
 /* ============ BIRTHDAY (post_birthdays, supabase/birthday-celebrations.sql) ============
    Only "today" — never a date or an age. Falls back to the post's own text/photo when the
    player isn't in playersMap (e.g. archived). */
-function BirthdayBanner({ player, team, fallbackPhoto, body }) {
+function BirthdayBody({ player, team, fallbackPhoto, body }) {
   const fullName = [player.first_name, player.last_name].filter(Boolean).join(" ")
   const photo = player.photo_url || fallbackPhoto
+  const [imgError, setImgError] = useState(false)
   return (
-    <PlayerLink playerId={player.id} className="block rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 px-4 py-5 text-center hover:bg-amber-100/70 dark:hover:bg-amber-900/30 transition-colors">
-      <div className="relative w-fit mx-auto">
-        {photo
-          ? <img src={photo} alt="" className="w-20 h-20 rounded-full object-cover ring-4 ring-amber-400/70" />
-          : <div className="w-20 h-20 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-100 ring-4 ring-amber-400/70 flex items-center justify-center text-2xl font-bold">{(fullName || "?").charAt(0)}</div>}
-        <span className="absolute -bottom-1 -left-1 w-8 h-8 rounded-full bg-amber-400 text-amber-900 flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
-          <Cake className="w-4 h-4" />
-        </span>
+    <>
+      <div className={INSET}>
+        {fullName ? (
+          <>
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              יום הולדת שמח ל<PlayerLink playerId={player.id} className="font-bold text-slate-900 dark:text-white hover:text-brand transition-colors">{fullName}</PlayerLink>! 🎂
+            </p>
+            {(player.jersey_number != null || team?.name) && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {[player.jersey_number != null && `#${player.jersey_number}`, team?.name].filter(Boolean).join(" · ")}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{body}</p>
+        )}
+        <p className="text-sm text-slate-700 dark:text-slate-200 mt-1">כל הליגה מאחלת מזל טוב — כתבו ברכה בתגובות</p>
       </div>
-      <p className="mt-3 text-lg font-extrabold text-amber-800 dark:text-amber-200">יום הולדת שמח!</p>
-      {fullName ? (
-        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-          {fullName}
-          {player.jersey_number != null && <span className="text-slate-500 dark:text-slate-400 font-semibold"> · #{player.jersey_number}</span>}
-          {team?.name && <span className="text-slate-500 dark:text-slate-400 font-semibold"> · {team.name}</span>}
-        </p>
-      ) : (
-        <p className="text-sm text-slate-700 dark:text-slate-200">{body}</p>
+      {photo && !imgError && (
+        <PlayerLink playerId={player.id} className="block mt-3">
+          <div className="relative sm:rounded-xl overflow-hidden bg-slate-900 aspect-[4/5] sm:aspect-[4/3]">
+            <img src={photo} alt="" loading="lazy" onError={() => setImgError(true)}
+                 className="absolute inset-0 w-full h-full object-cover object-top" />
+          </div>
+        </PlayerLink>
       )}
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">כל הליגה מאחלת מזל טוב — כתבו ברכה בתגובות</p>
-    </PlayerLink>
+    </>
   )
 }
 
@@ -729,21 +710,15 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 
   if (removed) return null
 
-  // Automatic posts (birthdays here; results / milestones above) stay inset cards. A post
-  // by a person or the news bot runs edge to edge on a phone — the page's p-4 gutter is
-  // undone with -mx-4 — and stays a card in the desktop column.
-  const fullBleed = !bday
   // A staff post that just pastes a YouTube link plays it like a news video (the link
   // itself is hidden — the card IS the video). An uploaded clip takes precedence.
   const bodyYt = !ext && !bday && !p.video_uid ? youTubeInText(postBody) : null
   const textBody = ext ? (postBody || "").split("\n\n")[0] : withoutUrl(postBody || "", bodyYt?.url)
 
   return (
-    <motion.div {...fade} className={fullBleed
-      ? "card -mx-4 sm:mx-0 py-3 sm:p-4 rounded-none sm:rounded-2xl border-x-0 sm:border-x shadow-none sm:shadow-sm"
-      : "card p-4"}>
+    <FeedCard>
       {/* Author header */}
-      <div className={`flex items-center gap-3 mb-3 ${fullBleed ? "px-4 sm:px-0" : ""}`}>
+      <div className={`flex items-center gap-3 mb-3 ${INSET}`}>
         <PlayerLink playerId={linkedPlayerId} className="shrink-0">
           <Avatar url={author?.avatar_url} name={name} className="w-9 h-9" />
         </PlayerLink>
@@ -806,7 +781,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           </div>
         </div>
       ) : bday ? (
-        <BirthdayBanner player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} fallbackPhoto={p.image_url} body={postBody} />
+        <BirthdayBody player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} fallbackPhoto={p.image_url} body={postBody} />
       ) : (
         <div className="px-4 sm:px-0">
           {/* News: the headline is the first line, the summary (ingest, 2026-10-08) the rest. */}
@@ -872,7 +847,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
       )}
 
       {/* Actions: icons, then the counts on their own line (and the link out). */}
-      <div data-reactions className={`mt-2 ${fullBleed ? "px-4 sm:px-0" : ""}`}>
+      <div data-reactions className={`mt-2 ${INSET}`}>
         <div className="flex items-center gap-4 py-1">
           <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
             className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
@@ -900,7 +875,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
       {/* Comments */}
       <AnimatePresence>
         {showComments && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} data-reactions className={`overflow-hidden ${fullBleed ? "px-4 sm:px-0" : ""}`}>
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} data-reactions className={`overflow-hidden ${INSET}`}>
             <div className="mt-3 space-y-3">
               {loadingComments ? (
                 <div className="flex justify-center py-2"><Loader2 className="w-4 h-4 animate-spin text-slate-400" /></div>
@@ -978,7 +953,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </FeedCard>
   )
 }
 

@@ -137,23 +137,28 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
   }
 
   return (
-    <div data-reactions className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-      {/* Actions */}
-      <div className="flex items-center gap-5 text-xs">
-        <button onClick={toggleLike} className={`flex items-center gap-1.5 font-semibold transition-colors ${liked ? "text-red-500" : "text-slate-500 dark:text-slate-400 hover:text-red-500"}`}>
-          <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
-          {likeCount > 0 ? <span>{likeCount}</span> : <span>אהבתי</span>}
+    <div data-reactions className="mt-2">
+      {/* Actions — the same icon row as PostCard (FeedCardShell), counts on their own line. */}
+      <div className="flex items-center gap-4 py-1">
+        <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
+          className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
+          <Heart className={`w-6 h-6 ${liked ? "fill-current" : ""}`} />
         </button>
-        <button onClick={toggleComments} className="flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
-          <MessageCircle className="w-4 h-4" />
-          {commentCount > 0 ? <span>{commentCount}</span> : <span>תגובה</span>}
+        <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+          <MessageCircle className="w-6 h-6" />
         </button>
         {share && (
-          <button onClick={() => shareTarget(share)} aria-label="שיתוף" className="ms-auto flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
-            <Share2 className="w-4 h-4" /> <span>שיתוף</span>
+          <button onClick={() => shareTarget(share)} aria-label="שיתוף" className="ms-auto text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+            <Share2 className="w-5 h-5" />
           </button>
         )}
       </div>
+      {(likeCount > 0 || commentCount > 0) && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-1.5">
+          {likeCount > 0 && <span className="font-bold text-slate-900 dark:text-white">{likeCount} אהבו</span>}
+          {commentCount > 0 && <>{likeCount > 0 && <span>·</span>}<button onClick={toggleComments} className="hover:text-brand">{commentCount} תגובות</button></>}
+        </p>
+      )}
 
       {/* Comments */}
       <AnimatePresence>

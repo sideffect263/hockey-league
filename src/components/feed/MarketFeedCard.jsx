@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { motion } from "framer-motion"
+import { FeedCard, FeedCardHeader, FeedIcon, INSET } from "@/components/feed/FeedCardShell"
 import { Coins, Flame, TrendingUp, TrendingDown, Target, Trophy, ChevronLeft, Users, Zap } from "lucide-react"
 import TeamLogo from "@/components/TeamLogo"
 import { SplitBar, useSideColors } from "@/components/market/MatchCard"
@@ -10,12 +10,10 @@ import { pct, gameSides, matchdayLabel } from "@/lib/market"
  * returns nothing unless the viewer is market_eligible (18+) — so this component
  * never decides who may see it; if it renders, the server already said yes.
  *
- * Styled as the market, not as the feed: .mkt-card (squarer, terminal-like),
- * monospaced .mkt-num figures, gold coins, and the same split odds bar as the
- * board, so a card reads as "this is the market talking".
+ * Framed like every other feed card (FeedCardShell); inside it the market keeps its
+ * monospaced .mkt-num figures, gold coins and the board's split odds bar.
  */
 
-const fade = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 } }
 const TZ = "Asia/Jerusalem"
 const kickoff = (iso) => (iso ? new Date(iso).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", timeZone: TZ }) : "")
 const marketHref = (m) => `/market/${encodeURIComponent(m.slug || m.market_id)}`
@@ -24,25 +22,26 @@ const marketHref = (m) => `/market/${encodeURIComponent(m.slug || m.market_id)}`
 // since (בלג בוגרים → בלג אריות) should read by its current name.
 const teamName = (teamsMap, id, fallback) => teamsMap?.[id]?.name || fallback || "—"
 
+// The feed's shared frame (FeedCardShell) — the market keeps its gold icon, monospaced
+// figures and odds bars inside it, but no longer brings its own box.
 function Shell({ kind, icon, title, children, to = "/market", cta = "להוקי מרקט" }) {
   return (
-    <motion.div {...fade} className="mkt-card overflow-hidden" data-market-kind={kind}>
-      <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5 border-b border-line-subtle bg-gold/5">
-        <span className="w-6 h-6 rounded-md bg-gold/15 flex items-center justify-center shrink-0">
-          <Coins className="w-3.5 h-3.5 text-gold" />
-        </span>
-        <span className="text-[11px] font-black tracking-wide text-gold whitespace-nowrap shrink-0">הוקי מרקט</span>
-        <span className="text-fg-subtle text-[11px] shrink-0">·</span>
-        <span className="flex items-center gap-1 text-xs font-bold text-fg-strong min-w-0 truncate">
-          {icon}{title}
-        </span>
-        <span className="ms-auto stat-pill bg-surface-sunken text-fg-muted text-[10px] px-1.5 py-0">18+</span>
+    <FeedCard data-market-kind={kind}>
+      <FeedCardHeader
+        avatar={<FeedIcon tone="bg-gold/15 text-gold"><Coins className="w-5 h-5" /></FeedIcon>}
+        title={<>
+          <span>הוקי מרקט</span>
+          <span className="stat-pill bg-surface-sunken text-fg-muted text-[10px] px-1.5 py-0 font-semibold">18+</span>
+        </>}
+        meta={<span className="inline-flex items-center gap-1 min-w-0 truncate">{icon}{title}</span>}
+      />
+      <div className={INSET}>{children}</div>
+      <div className={`mt-2 ${INSET}`}>
+        <Link to={to} className="inline-flex items-center gap-1 text-xs font-semibold text-brand dark:text-brand-light hover:text-brand-hover">
+          {cta} <ChevronLeft className="w-3 h-3" />
+        </Link>
       </div>
-      <div className="p-4">{children}</div>
-      <Link to={to} className="flex items-center justify-end gap-0.5 px-4 py-2.5 border-t border-line-subtle text-[12px] font-bold text-brand hover:bg-surface-inset transition-colors">
-        {cta} <ChevronLeft className="w-3.5 h-3.5" />
-      </Link>
-    </motion.div>
+    </FeedCard>
   )
 }
 
