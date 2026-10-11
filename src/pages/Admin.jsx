@@ -823,6 +823,8 @@ function GameStatsEditor({ game, players, teamsMap, membersByTeam, existingStats
   const updateStat = (index, field, value) => {
     const updated = [...stats]
     updated[index] = { ...updated[index], [field]: value }
+    // a loan side belongs to the player it was recorded for
+    if (field === 'player_id' || field === 'is_guest_player') updated[index].played_for_team_id = null
     setStats(updated)
   }
 
@@ -845,6 +847,8 @@ function GameStatsEditor({ game, players, teamsMap, membersByTeam, existingStats
         guest_player_name: String(stat.guest_player_name || ''),
         guest_player_original_team: String(stat.guest_player_original_team || ''),
         guest_player_type: stat.guest_player_type ? String(stat.guest_player_type) : null,
+        // keep a loan the judge board recorded (save_game_stats replaces every row)
+        played_for_team_id: stat.played_for_team_id || null,
       })))
       // player-stat recalculation is disabled until the historical game_stats backfill is complete (Package 2)
       await reload()
