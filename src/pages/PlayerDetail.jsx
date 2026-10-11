@@ -488,9 +488,9 @@ export default function PlayerDetail() {
               : result === 'loss' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
               : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
             return (
-              <div key={stat.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                {/* Opponent + meta (right side in RTL) */}
-                <Link to={opp ? entityPath('teams', opp) : '#'} className="flex items-center gap-2.5 min-w-0 group">
+              <Link key={stat.id} to={entityPath('games', game)} className="group flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                {/* Opponent + meta (right side in RTL) — the whole row opens the game */}
+                <div className="flex items-center gap-2.5 min-w-0">
                   <TeamLogo team={opp} size={8} />
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{opp?.name || '—'}</p>
@@ -501,7 +501,7 @@ export default function PlayerDetail() {
                       )}
                     </p>
                   </div>
-                </Link>
+                </div>
                 {/* Player's per-game contribution + result score (left side in RTL) */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5">⚽ {stat.goals}</span>}
@@ -514,7 +514,7 @@ export default function PlayerDetail() {
                     {game.away_score}:{game.home_score}
                   </span>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>
