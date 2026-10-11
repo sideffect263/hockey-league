@@ -1,6 +1,6 @@
 import React from 'react'
 import { trackError, flush } from '@/lib/telemetry'
-import { isStaleChunkError, reloadForStaleChunk } from '@/lib/staleChunkReload'
+import { isStaleChunkError, reloadForStaleChunk, isReloadingForStaleChunk } from '@/lib/staleChunkReload'
 
 /**
  * Catches a render-time crash, reports it, and shows something human instead of the
@@ -31,6 +31,7 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, info) {
     // An old tab asking for a page file the latest deploy replaced: not a bug, just stale.
     // Reload once (guarded) instead of showing the crash page.
+    if (isReloadingForStaleChunk()) return
     if (isStaleChunkError(error) && reloadForStaleChunk()) return
 
     // The component stack names the screen that broke, which is the single most
@@ -48,6 +49,8 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (!this.state.crashed) return this.props.children
+    // The new build is already loading; a blank beat beats a crash page.
+    if (isReloadingForStaleChunk()) return null
     return (
       <div dir="rtl" className="min-h-screen flex items-center justify-center p-6 text-center bg-white dark:bg-slate-950">
         <div className="max-w-sm space-y-4">

@@ -200,6 +200,16 @@ export const trackAction = (name, detail) => track('action', name, { detail })
 /** Something failed. */
 export const trackError = (name, detail, status) => track('error', name, { detail, status })
 
+const BOT_UA = /\bbot\b|bot\/|crawl|spider|slurp|headless|lighthouse|pagespeed|facebookexternalhit|prerender|phantomjs|puppeteer|playwright/i
+
+/** A crawler, headless browser or automation driver rather than a person. */
+export function isAutomated(nav = typeof navigator !== 'undefined' ? navigator : null) {
+  try {
+    if (!nav) return false
+    return nav.webdriver === true || BOT_UA.test(nav.userAgent || '')
+  } catch { return false }
+}
+
 /**
  * Install the global listeners and start reporting.
  *
@@ -208,6 +218,11 @@ export const trackError = (name, detail, status) => track('error', name, { detai
  */
 export function initTelemetry() {
   if (started || typeof window === 'undefined') return
+  // Crawlers and headless browsers render the SPA but skip images, so each one logged
+  // a page view plus an asset_error for the logo — ~200 fake one-page "visitors" a
+  // week, every ~15 min, burying the real errors and inflating anonymous traffic.
+  // The local dev server is just as noisy (HMR mid-edit crashes). Neither is a user.
+  if (import.meta.env.DEV || isAutomated()) return
   started = true
 
   // Uncaught exceptions — the white-screen class.

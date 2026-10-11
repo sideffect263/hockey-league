@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { isStaleChunkError, reloadForStaleChunk } from './staleChunkReload'
+import { isStaleChunkError, reloadForStaleChunk, isReloadingForStaleChunk } from './staleChunkReload'
 
 describe('isStaleChunkError', () => {
   it('matches the browsers\' stale-chunk messages', () => {
@@ -27,6 +27,7 @@ describe('reloadForStaleChunk', () => {
 
   it('reloads once, then refuses inside the 30s window (no loop)', () => {
     expect(reloadForStaleChunk()).toBe(true)
+    expect(isReloadingForStaleChunk()).toBe(true)
     expect(reloadForStaleChunk()).toBe(false)
     expect(reload).toHaveBeenCalledTimes(1)
   })
