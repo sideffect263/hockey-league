@@ -301,7 +301,7 @@ export default function Games() {
                             <div key={tid}>
                               <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">{teamName(tid)}</h5>
                               <div className="space-y-1">
-                                {stats.filter(s => playersMap[s.player_id]?.team_id === tid).map(stat => {
+                                {stats.filter(s => (s.played_for_team_id || playersMap[s.player_id]?.team_id) === tid).map(stat => {
                                   const p = playersMap[stat.player_id]
                                   return (
                                     <div key={stat.id} className="flex items-center justify-between py-1 text-xs">

@@ -226,7 +226,7 @@ export function buildFeed({
       const key = s.player_id ? `p${s.player_id}` : `g${s.guest_player_name}`
       if (!scorers[key]) {
         const player = s.player_id ? playersMap[s.player_id] : null
-        const team = player ? teamsMap[player.team_id] : null
+        const team = player ? teamsMap[s.played_for_team_id || player.team_id] : null
         scorers[key] = {
           key,
           goals: 0,

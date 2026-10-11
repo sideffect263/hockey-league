@@ -401,6 +401,12 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
         r.clean_sheet = cs
         map.set(p.id, r)
       }
+      // A player borrowed in the lineup editor is on neither roster: tell the server which
+      // side he played for, so his goals land there (game_stats.played_for_team_id).
+      for (const r of map.values()) {
+        if (lineup.home?.added?.includes(r.player_id)) r.played_for_team_id = game.home_team_id
+        else if (lineup.guest?.added?.includes(r.player_id)) r.played_for_team_id = game.away_team_id
+      }
       await saveGameResult(game.id, homeScore, awayScore, [...map.values()])
       clearEngineDraft(game.id)
       setSaved(true)

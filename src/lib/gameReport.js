@@ -66,7 +66,9 @@ function teamPlayers({ teamId, players, statsByPlayer, squad, byTeam }) {
   for (const row of squad) {
     if (row.team_id === teamId && row.status === 'available') ids.add(row.player_id)
   }
-  for (const playerId of statsByPlayer.keys()) {
+  for (const [playerId, stat] of statsByPlayer) {
+    // a loaned player's line names the side he played for; he is on neither roster
+    if (stat?.played_for_team_id) { if (stat.played_for_team_id === teamId) ids.add(playerId); continue }
     if (byId.get(playerId)?.team_id === teamId || byTeam.get(teamId)?.has(playerId)) ids.add(playerId)
   }
   // Neither a squad nor a box score — fall back to the whole roster.

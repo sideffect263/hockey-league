@@ -10,6 +10,7 @@ import TeamLogo from "@/components/TeamLogo"
 import LiveGame from "@/components/LiveGame"
 import GameVideo from "@/components/GameVideo"
 import GameAvailability from "@/components/GameAvailability"
+import GameSquads from "@/components/GameSquads"
 import GameBroadcast from "@/components/GameBroadcast"
 import { TeamLink, PlayerLink } from "@/components/EntityLinks"
 import { useSeo } from "@/lib/seo"
@@ -199,7 +200,12 @@ export default function GameDetail() {
   })()
 
   // ---- Box score / stat derivations ----
-  const teamStats = (tid) => stats.filter(s => playersMap[s.player_id]?.team_id === tid)
+  // A loaned player's line carries the side he played for (played_for_team_id); everyone
+  // else plays for their own team.
+  const sideOf = (s) => s.played_for_team_id || playersMap[s.player_id]?.team_id
+  const loanFrom = (s) => (s.played_for_team_id && playersMap[s.player_id]?.team_id !== s.played_for_team_id)
+    ? teamsMap[playersMap[s.player_id]?.team_id] : null
+  const teamStats = (tid) => stats.filter(s => sideOf(s) === tid)
   const guestStats = stats.filter(s => s.is_guest_player)
   const scorers = [...stats].filter(s => (s.goals || 0) > 0).sort((a, b) => (b.goals || 0) - (a.goals || 0))
   // Own goals live on the game row, not in game_stats: they count for the side they're
@@ -503,6 +509,7 @@ export default function GameDetail() {
                               <div key={stat.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <PlayerLink playerId={stat.player_id} className="text-sm text-slate-700 dark:text-slate-300 hover:text-brand transition-colors truncate min-w-0">
                                   {p ? `${p.first_name} ${p.last_name}` : '—'}
+                                  {loanFrom(stat) && <span className="text-xs text-slate-400"> (בהשאלה מ{loanFrom(stat).name})</span>}
                                 </PlayerLink>
                                 <StatPills stat={stat} />
                               </div>
@@ -545,6 +552,9 @@ export default function GameDetail() {
         </motion.div>
       )}
 
+      {/* Who signed up for each side — kept on the page after the final whistle. */}
+      {done && user && <GameSquads game={game} teamsMap={teamsMap} playersMap={playersMap} />}
+
       {/* ============ SCORERS ============ */}
       {(scorers.length > 0 || ownGoalTotal > 0) && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="card overflow-hidden">
@@ -556,7 +566,7 @@ export default function GameDetail() {
           <div className="p-3 sm:p-4 space-y-0.5">
             {scorers.map(stat => {
               const p = playersMap[stat.player_id]
-              const team = p ? teamsMap[p.team_id] : null
+              const team = p ? teamsMap[sideOf(stat)] : null
               const name = stat.is_guest_player ? stat.guest_player_name : (p ? `${p.first_name} ${p.last_name}` : '—')
               return (
                 <div key={stat.id} className="flex items-center justify-between gap-3 py-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

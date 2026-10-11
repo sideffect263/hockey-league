@@ -227,7 +227,7 @@ export function teamAchievements(gameStats = [], players = [], teams = []) {
   )
   gameStats.forEach((s) => {
     if (!s.player_id) return
-    const tid = teamOf.get(s.player_id)
+    const tid = s.played_for_team_id || teamOf.get(s.player_id)   // a loaned player counts for the side he played for
     if (tid == null || !agg.has(tid)) return
     const goals = s.goals || 0
     if (goals === 2) agg.get(tid).braces += 1
