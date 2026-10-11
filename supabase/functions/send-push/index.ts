@@ -63,6 +63,8 @@ function bodyPreview(n: NotificationRow): string {
     const note = (n.data?.note ?? "").toString().trim();
     return note || "היכנסו ל-rinkhockeyil.com/app להורדת הגרסה החדשה";
   }
+  // Admin broadcast (admin_broadcast_notification): the admin wrote the words.
+  if (n.type === "announcement") return (n.data?.body ?? n.data?.preview ?? "").toString();
   return (n.data?.preview ?? "").toString();
 }
 
@@ -98,6 +100,8 @@ function officialsSummary(d: Record<string, any>): string {
 function notificationText(n: NotificationRow, actorName: string): string {
   const d = n.data ?? {};
   switch (n.type) {
+    // Admin broadcast — title as written, 📣 like the bell (docs/HIDDEN-FEATURES-SPEC.md).
+    case "announcement":   return `📣 ${(d.title ?? "").toString().trim() || "הודעה מהליגה"}`;
     case "app_update":
       return `גרסה חדשה של האפליקציה זמינה${d.version_name ? ` (${d.version_name})` : ""}`;
     case "post_like":      return `${actorName} אהב/ה את הפוסט שלך`;
@@ -254,6 +258,8 @@ function notificationHref(n: NotificationRow): string {
     case "post_comment":           return n.entity_id ? `/#post-${n.entity_id}` : "/";
     // set_mentions computes the destination (post page, game page, or the feed card).
     case "tagged":                 return typeof n.data?.href === "string" && n.data.href.startsWith("/") ? n.data.href : "/";
+    // the admin's optional link (the RPC only accepts in-app paths); none → the feed
+    case "announcement":           return typeof d.href === "string" && d.href.startsWith("/") && !d.href.startsWith("//") ? d.href : "/";
     default:               return "/";
   }
 }

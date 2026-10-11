@@ -88,7 +88,7 @@ export default function Notifications() {
               <Link to={notificationHref(n)} onClick={() => !n.read_at && markRead(n.id).catch(() => {})}
                 className={`card p-4 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
                   n.read_at ? "" : "border-brand/30 bg-brand/[0.04] dark:bg-brand/5"}`}>
-                {n.actor?.avatar_url ? (
+                {n.actor?.avatar_url && n.type !== 'announcement' ? (
                   <img src={n.actor.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                 ) : (
                   <span className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
@@ -102,7 +102,7 @@ export default function Notifications() {
                     {notificationText(n)}
                   </p>
                   {notificationPreview(n) && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-words">“{notificationPreview(n)}”</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-words whitespace-pre-line">{n.type === "announcement" ? notificationPreview(n) : `“${notificationPreview(n)}”`}</p>
                   )}
                   <p className="text-xs text-slate-400 mt-1">
                     {new Date(n.created_at).toLocaleString("he-IL", {

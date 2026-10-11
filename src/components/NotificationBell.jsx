@@ -140,7 +140,7 @@ export default function NotificationBell() {
                       n.read_at ? '' : 'bg-brand/[0.06] dark:bg-brand/5'
                     }`}
                   >
-                    {n.actor?.avatar_url ? (
+                    {n.actor?.avatar_url && n.type !== 'announcement' ? (
                       <img src={n.actor.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                     ) : (
                       <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
@@ -149,7 +149,7 @@ export default function NotificationBell() {
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-slate-700 dark:text-slate-200 leading-snug">{notificationText(n)}</p>
-                      {notificationPreview(n) && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">“{notificationPreview(n)}”</p>}
+                      {notificationPreview(n) && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.type === 'announcement' ? notificationPreview(n) : `“${notificationPreview(n)}”`}</p>}
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
                     </div>
                     {!n.read_at && <span className="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5" />}

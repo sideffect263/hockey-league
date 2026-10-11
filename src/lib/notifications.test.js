@@ -31,3 +31,20 @@ describe('tagged', () => {
     expect(notificationHref(n({}))).toBe('/')
   })
 })
+
+describe('announcement (admin broadcast)', () => {
+  const n = (data) => ({ type: 'announcement', actor: { display_name: 'אדמין', avatar_url: 'x' }, data })
+  it('title as written, 📣, body as preview', () => {
+    expect(notificationText(n({ title: ' כרטיסים לפיינל פור ', body: 'גוף' }))).toBe('כרטיסים לפיינל פור')
+    expect(notificationText(n({}))).toBe('הודעה מהליגה')
+    expect(notificationIcon(n({}))).toBe('📣')
+    expect(notificationPreview(n({ body: ' שורה 1\nשורה 2 ' }))).toBe('שורה 1\nשורה 2')
+    expect(notificationPreview(n({}))).toBeNull()
+  })
+  it('href = data.href (in-app only), none → /notifications', () => {
+    expect(notificationHref(n({ href: '/games' }))).toBe('/games')
+    expect(notificationHref(n({ href: 'https://evil.example' }))).toBe('/')
+    expect(notificationHref(n({ href: '//evil.example' }))).toBe('/')
+    expect(notificationHref(n({}))).toBe('/notifications')
+  })
+})

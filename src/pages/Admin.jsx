@@ -51,6 +51,7 @@ import UserAnalyticsAdmin from "@/components/admin/UserAnalyticsAdmin"
 import FeedAnalyticsAdmin from "@/components/admin/FeedAnalyticsAdmin"
 import CalendarSubscribersAdmin from "@/components/admin/CalendarSubscribersAdmin"
 import AppUsersAdmin from "@/components/admin/AppUsersAdmin"
+import HiddenFeaturesAdmin from "@/components/admin/HiddenFeaturesAdmin"
 import SuggestionsReview from "@/components/admin/SuggestionsReview"
 import RolesAdmin from "@/components/admin/RolesAdmin"
 import CoachesAdmin from "@/components/admin/CoachesAdmin"
@@ -59,7 +60,7 @@ import GameChangeRequestsReview from "@/components/admin/GameChangeRequestsRevie
 import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -88,6 +89,8 @@ const tabs = [
   { id: "calendar_subs", label: "מנויי יומן", icon: CalendarCheck },
   { id: "telemetry", label: "טלמטריה", icon: Activity },
   { id: "app_users", label: "משתמשי אפליקציה", icon: Smartphone },
+  // admin-only: no role's scopedTabIds lists it (docs/HIDDEN-FEATURES-SPEC.md)
+  { id: "hidden_features", label: "תכונות מוסתרות", icon: ToggleRight },
   { id: "roles", label: "תפקידים", icon: Award },
   { id: "users", label: "מנהלים", icon: Crown },
 ]
@@ -270,6 +273,7 @@ export default function Admin() {
               {currentTab === "calendar_subs" && <CalendarSubscribersAdmin />}
               {currentTab === "telemetry" && <TelemetryAdmin />}
               {currentTab === "app_users" && <AppUsersAdmin />}
+              {currentTab === "hidden_features" && isAdmin && <HiddenFeaturesAdmin teams={teams} />}
               {currentTab === "coaches" && <CoachesAdmin teamsMap={teamsMap} players={players} />}
               {currentTab === "roles" && <RolesAdmin teamsMap={teamsMap} players={players} />}
               {currentTab === "users" && <UsersAdmin adminUsers={adminUsers} currentUserEmail={user.email} reload={loadData} />}

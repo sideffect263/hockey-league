@@ -132,6 +132,8 @@ function officialsSummary(d) {
 export function notificationText(n) {
   const d = n.data || {}
   switch (n.type) {
+    // Admin broadcast (admin_broadcast_notification) — the title as written; body = notificationPreview.
+    case 'announcement':   return (d.title || '').toString().trim() || 'הודעה מהליגה'
     case 'post_like':      return `${actorName(n)} אהב/ה את הפוסט שלך`
     case 'post_comment':   return `${actorName(n)} הגיב/ה על הפוסט שלך`
     // @-tag (supabase/player-mentions.sql). The quoted text is notificationPreview.
@@ -216,6 +218,7 @@ export function notificationText(n) {
 // Emoji glyph per type (the bell keeps the actor avatar when there is one).
 export function notificationIcon(n) {
   switch (n.type) {
+    case 'announcement':   return '📣'
     case 'post_like':      return '❤️'
     case 'post_comment':   return '💬'
     case 'tagged':         return '🏷️'
@@ -278,7 +281,12 @@ export function notificationIcon(n) {
 const safeHref = (h) => (typeof h === 'string' && h.startsWith('/') && !h.startsWith('//') ? h : '/')
 
 // A second, quoted line under the notification text — the words you were tagged in.
+// For an admin announcement it is the message body itself.
 export function notificationPreview(n) {
+  if (n?.type === 'announcement') {
+    const b = typeof n.data?.body === 'string' ? n.data.body.trim() : ''
+    return b || null
+  }
   if (n?.type !== 'tagged') return null
   const p = typeof n.data?.preview === 'string' ? n.data.preview.trim() : ''
   return p || null
@@ -359,6 +367,8 @@ export function notificationHref(n) {
     case 'post_comment':   return n.entity_id ? `/posts/${n.entity_id}` : '/'
     // set_mentions writes the destination itself: /posts/<id>, /games/<id> or /#<feed item>.
     case 'tagged':         return safeHref(n.data?.href)
+    // the admin's optional link; none → the notifications page, where the body is readable
+    case 'announcement':   return n.data?.href ? safeHref(n.data.href) : '/notifications'
     default:               return '/'
   }
 }
