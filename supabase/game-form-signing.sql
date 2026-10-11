@@ -27,8 +27,11 @@
 -- Down: supabase/game-form-signing-down.sql
 
 -- ---------------------------------------------------------------- captains
+-- NO foreign key: an FK here gives PostgREST a second players↔teams relationship and every
+-- players↔teams embed fails with PGRST201 (broke player pages + the medical queue on
+-- 2026-10-11). Deleting a player clears it via a trigger instead — captain-fk-to-trigger.sql.
 alter table public.teams
-  add column if not exists captain_player_id uuid references public.players(id) on delete set null;
+  add column if not exists captain_player_id uuid;
 
 -- ---------------------------------------------------------------- game_reports
 create table if not exists public.game_reports (
