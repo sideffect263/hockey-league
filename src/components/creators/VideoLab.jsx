@@ -201,6 +201,13 @@ function ClipEditor({ id, onBack }) {
     if (advance && f < nFrames - 1) seek(f + 1)
   }, [persist, autoAdvance, nFrames, seek])
 
+  // frames that still need a person: the AI had no clean detection there and nobody labelled it yet
+  const needsLook = useCallback((f) => !labels.has(f) && !(track[f] && track[f][3] === "det"), [labels, track])
+  const nextToCheck = () => {
+    for (let f = frame + 1; f < nFrames; f++) if (needsLook(f)) return seek(f)
+    for (let f = 0; f <= frame; f++) if (needsLook(f)) return seek(f)
+  }
+
   const acceptAI = () => {
     const p = track[frame]; if (!p) return
     setLabel(frame, { kind: "ball", x: p[0], y: p[1] })
@@ -299,6 +306,7 @@ function ClipEditor({ id, onBack }) {
       else if (e.key === "Delete" || e.key === "Backspace") setLabel(frame, null, false)
       else if (k === "g" || k === "ע") setClipField({ goal_frame: frame })
       else if (k === "s" || k === "ד") setClipField({ strike_frame: frame })
+      else if (k === "j" || k === "ח") nextToCheck()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -307,8 +315,10 @@ function ClipEditor({ id, onBack }) {
   const stats = useMemo(() => {
     let ball = 0, none = 0, unsure = 0
     labels.forEach(l => { if (l.kind === "ball") ball++; else if (l.kind === "none") none++; else unsure++ })
-    return { ball, none, unsure, ai: track.filter(Boolean).length }
-  }, [labels, track])
+    let todo = 0
+    for (let f = 0; f < nFrames; f++) if (!labels.has(f) && !(track[f] && track[f][3] === "det")) todo++
+    return { ball, none, unsure, ai: track.filter(Boolean).length, todo }
+  }, [labels, track, nFrames])
 
   if (err) return <div className="card p-6 text-center text-sm text-red-600">{err} <button onClick={onBack} className="underline ms-2">חזרה</button></div>
   if (!clip) return <SkeletonPanelRows count={3} height="h-40" />
@@ -383,6 +393,9 @@ function ClipEditor({ id, onBack }) {
           <div className="card p-3 space-y-3">
             <div className="flex flex-wrap gap-2">
               <span className="text-sm text-slate-600 dark:text-slate-300 w-full">לחיצה על הכדור בתמונה = "הכדור כאן". או:</span>
+              <button className={`${act} border-brand/40 text-brand`} onClick={nextToCheck} disabled={stats.todo === 0} title="J">
+                <ChevronsLeft className="w-4 h-4" /> הפריים הבא לבדיקה ({stats.todo}) <kbd className="text-[10px] opacity-60">J</kbd>
+              </button>
               <button className={act} onClick={acceptAI} disabled={!cur} title="A"><Check className="w-4 h-4 text-emerald-600" /> ה-AI צודק <kbd className="text-[10px] opacity-60">A</kbd></button>
               <button className={act} onClick={() => setLabel(frame, { kind: "none" })} title="N"><Ban className="w-4 h-4 text-red-500" /> אין כדור / מוסתר <kbd className="text-[10px] opacity-60">N</kbd></button>
               <button className={act} onClick={() => setLabel(frame, { kind: "unsure" })} title="U"><HelpCircle className="w-4 h-4 text-slate-500" /> לא בטוח <kbd className="text-[10px] opacity-60">U</kbd></button>
@@ -398,7 +411,7 @@ function ClipEditor({ id, onBack }) {
               {clip.goal_frame != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip.goal_frame)}>גול: #{clip.goal_frame}</button>}
             </div>
             <Legend />
-            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה.</p>
+            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו.</p>
           </div>
         </>
       )}
