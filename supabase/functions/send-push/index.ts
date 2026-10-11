@@ -102,6 +102,7 @@ function notificationText(n: NotificationRow, actorName: string): string {
       return `גרסה חדשה של האפליקציה זמינה${d.version_name ? ` (${d.version_name})` : ""}`;
     case "post_like":      return `${actorName} אהב/ה את הפוסט שלך`;
     case "post_comment":   return `${actorName} הגיב/ה על הפוסט שלך`;
+    case "tagged":         return `${actorName} תייג/ה אותך ${d.where === "comment" ? "בתגובה" : "בפוסט"}`;
     case "claim_approved": return `הבקשה שלך להתחבר לשחקן ${d.player_name ?? ""} אושרה 🎉`;
     case "claim_rejected": return `הבקשה שלך להתחבר לשחקן ${d.player_name ?? ""} נדחתה`;
     case "role_granted":   return `קיבלת תפקיד: ${ROLE_LABEL[d.role] ?? d.role ?? ""}`;
@@ -251,6 +252,8 @@ function notificationHref(n: NotificationRow): string {
     case "market_coins":           return "/market";
     case "post_like":
     case "post_comment":           return n.entity_id ? `/#post-${n.entity_id}` : "/";
+    // set_mentions computes the destination (post page, game page, or the feed card).
+    case "tagged":                 return typeof n.data?.href === "string" && n.data.href.startsWith("/") ? n.data.href : "/";
     default:               return "/";
   }
 }
