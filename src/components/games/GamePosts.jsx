@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { Clapperboard } from "lucide-react"
+import { Clapperboard, ChevronDown } from "lucide-react"
 import { getGamePosts, getMyLikes, getRoleBadges } from "@/lib/api"
 import { getMyBlocks } from "@/lib/moderation"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
@@ -9,12 +9,20 @@ import { useAuth } from "@/lib/AuthContext"
 import FeedPost from "@/components/feed/FeedPost"
 
 const PAGE = 10
+// The viewer's last open/closed choice, shared by every game page. Storage can be
+// missing (private mode) — then the section simply starts open.
+const OPEN_KEY = "gamePosts.open"
+const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) !== "0" } catch { return true } }
+const writeOpen = (v) => { try { localStorage.setItem(OPEN_KEY, v ? "1" : "0") } catch { /* ignore */ } }
 
 /**
  * "היילייטס ופוסטים מהמשחק" — the posts attached to this game (posts.game_id, the
  * "שייך למשחק" picker). Video posts first; each is the feed's own card, so clips play
  * inline and likes / comments / share work as in the feed. Renders NOTHING when the
  * game has no attached posts (or the read fails).
+ *
+ * Collapsible: the header toggles it, and the choice is remembered. Collapsing unmounts
+ * the cards, so a playing clip stops rather than keeping on under a closed section.
  */
 export default function GamePosts({ game, teamsMap, playersMap }) {
   const { user } = useAuth()
@@ -24,6 +32,8 @@ export default function GamePosts({ game, teamsMap, playersMap }) {
   const [blocked, setBlocked] = useState(() => new Set())
   const [roleBadges, setRoleBadges] = useState({})
   const [mentions, setMentions] = useState({})
+  const [open, setOpen] = useState(readOpen)
+  const toggle = () => setOpen(v => { writeOpen(!v); return !v })
 
   useEffect(() => {
     if (!game?.id) return
@@ -64,11 +74,16 @@ export default function GamePosts({ game, teamsMap, playersMap }) {
 
   return (
     <section aria-labelledby="game-posts-title" className="space-y-3">
-      <h2 id="game-posts-title" className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
-        <Clapperboard className="w-5 h-5 text-brand" /> היילייטס ופוסטים מהמשחק
-        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">({items.length})</span>
+      <h2 id="game-posts-title" className="text-base font-bold text-slate-900 dark:text-white">
+        <button type="button" onClick={toggle} aria-expanded={open} aria-controls="game-posts-list"
+          className="w-full flex items-center gap-2 text-right rounded-lg -mx-1 px-1 py-1 hover:bg-surface-sunken transition-colors">
+          <Clapperboard className="w-5 h-5 text-brand shrink-0" /> היילייטס ופוסטים מהמשחק
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">({items.length})</span>
+          <ChevronDown className={`w-5 h-5 text-slate-400 mr-auto shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+        </button>
       </h2>
-      <div className="space-y-4">
+      {open && <>
+      <div id="game-posts-list" className="space-y-4">
         {items.slice(0, shown).map(item => (
           <FeedPost
             key={item.id}
@@ -89,6 +104,7 @@ export default function GamePosts({ game, teamsMap, playersMap }) {
           הצג עוד ({items.length - shown})
         </button>
       )}
+      </>}
     </section>
   )
 }
