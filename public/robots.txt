@@ -5,5 +5,12 @@ Allow: /
 Disallow: /admin
 Disallow: /judge
 Disallow: /me
+Disallow: /creators
+Disallow: /notifications
+Disallow: /results
+Disallow: /reset-password
+Disallow: /stream-debug
+Disallow: /games/*/control
+Disallow: /games/*/result
 
 Sitemap: https://rinkhockeyil.com/sitemap.xml

@@ -70,6 +70,28 @@ function standingsTable(teams) {
   return `<table><thead><tr><th>#</th><th>קבוצה</th><th>מש׳</th><th>נ</th><th>ת</th><th>ה</th><th>שערים</th><th>נק׳</th></tr></thead><tbody>${rows}</tbody></table>`
 }
 
+function scorersHtml(g, stats, h, a) {
+  const side = (st) => {
+    const t = st.played_for_team_id || st.player?.team_id
+    return t === g.home_team_id ? 'home' : t === g.away_team_id ? 'away' : null
+  }
+  const line = (st) => `<li>${st.player ? link(path('players', st.player.slug || st.player.id), fullName(st.player)) : 'שחקן'} — ${st.goals} ${st.goals === 1 ? 'שער' : 'שערים'}</li>`
+  const list = (k) => stats.filter(st => side(st) === k).sort((x, y) => y.goals - x.goals).map(line).join('')
+  const home = list('home'), away = list('away')
+  if (!home && !away) return ''
+  return `<h2>מבקיעים</h2>` + (home ? `<h3>${esc(h)}</h3><ul>${home}</ul>` : '') + (away ? `<h3>${esc(a)}</h3><ul>${away}</ul>` : '')
+}
+
+function highlightsHtml(posts) {
+  if (!posts.length) return ''
+  // Video posts first, like the game page section.
+  const sorted = [...posts].sort((x, y) => (y.video_uid ? 1 : 0) - (x.video_uid ? 1 : 0))
+  return `<h2>היילייטס ופוסטים מהמשחק</h2><ul>${sorted.map(p => {
+    const og = postOg(p)
+    return `<li>${link(`/posts/${p.id}`, og.desc || og.title)}</li>`
+  }).join('')}</ul>`
+}
+
 const TEAMS_Q = 'teams?status=eq.active&select=id,slug,name,city,wins,ties,losses,points,goals_for,goals_against&order=points.desc,goals_for.desc'
 
 async function activeSeasonId() {
@@ -111,7 +133,7 @@ const BUILDERS = {
   },
 
   async players() {
-    const players = await sb('players?select=id,slug,first_name,last_name,goals,games_played,team:teams(name)&order=goals.desc,last_name.asc')
+    const players = await sb('players?select=id,slug,first_name,last_name,goals,games_played,team:teams!players_team_id_fkey(name)&order=goals.desc,last_name.asc')
     return {
       title: `השחקנים | ${SITE_NAME}`, canonicalPath: '/players',
       desc: `כל ${players.length} השחקנים בליגת הוקי הגלגיליות הישראלית — שערים, משחקים וקבוצה.`,
@@ -131,7 +153,7 @@ const BUILDERS = {
   },
 
   async statistics() {
-    const players = await sb('players?select=id,slug,first_name,last_name,goals,games_played,blue_cards,red_cards,team:teams(name)&order=goals.desc,last_name.asc')
+    const players = await sb('players?select=id,slug,first_name,last_name,goals,games_played,blue_cards,red_cards,team:teams!players_team_id_fkey(name)&order=goals.desc,last_name.asc')
     const row = (p, stat) => `<li>${link(path('players', p.slug || p.id), fullName(p))}${p.team?.name ? ` (${esc(p.team.name)})` : ''} — ${esc(stat)}</li>`
     const scorers = players.filter(p => p.goals > 0).slice(0, 20)
     const cards = players.filter(p => (p.blue_cards || 0) + (p.red_cards || 0) > 0)
@@ -191,7 +213,7 @@ const BUILDERS = {
   },
 
   async player(key, match) {
-    const [p] = await sb(`players?${match}&select=id,slug,first_name,last_name,jersey_number,position,goals,games_played,blue_cards,red_cards,photo_url,team:teams(name,slug,id)`)
+    const [p] = await sb(`players?${match}&select=id,slug,first_name,last_name,jersey_number,position,goals,games_played,blue_cards,red_cards,photo_url,team:teams!players_team_id_fkey(name,slug,id)`)
     if (!p) return null
     const name = fullName(p)
     const facts = [p.team?.name, posHe(p.position), p.jersey_number != null ? `מספר ${p.jersey_number}` : null,
@@ -229,8 +251,14 @@ const BUILDERS = {
   },
 
   async game(key, match) {
-    const [g] = await sb(`games?${match}&select=${GAME_SELECT}`)
+    const [g] = await sb(`games?${match}&select=${GAME_SELECT},home_team_id,away_team_id`)
     if (!g) return null
+    // Same facts as the game page: the box score (a loaned player counts for the side he
+    // played for) and "היילייטס ופוסטים מהמשחק" — which is also how Google finds /posts/<id>.
+    const [stats, posts] = await Promise.all([
+      sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
+      sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT}&order=created_at.desc&limit=20`),
+    ])
     const h = g.home?.name || 'בית', a = g.away?.name || 'חוץ'
     const played = g.status === 'completed' && g.home_score != null
     const headline = played ? `${h} ${g.home_score} - ${g.away_score} ${a}` : `${h} נגד ${a}`
@@ -241,7 +269,8 @@ const BUILDERS = {
       body: `<h1>${esc(headline)}</h1><ul>` +
         (g.home ? `<li>בית: ${link(path('teams', g.home.slug), h)}</li>` : '') +
         (g.away ? `<li>חוץ: ${link(path('teams', g.away.slug), a)}</li>` : '') +
-        (when ? `<li>${esc(when)}</li>` : '') + (g.game_type ? `<li>סוג: ${esc(g.game_type)}</li>` : '') + `</ul>`,
+        (when ? `<li>${esc(when)}</li>` : '') + (g.game_type ? `<li>סוג: ${esc(g.game_type)}</li>` : '') + `</ul>` +
+        scorersHtml(g, stats, h, a) + highlightsHtml(posts),
     }
   },
 

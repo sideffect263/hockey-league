@@ -74,7 +74,7 @@ export default async function handler(req, res) {
   try {
     if (SUPABASE_ANON && id) {
       if (type === 'players') {
-        const p = await sbOne(`players?${match}&select=slug,first_name,last_name,goals,games_played,photo_url,team:teams(name,logo_url)`)
+        const p = await sbOne(`players?${match}&select=slug,first_name,last_name,goals,games_played,photo_url,team:teams!players_team_id_fkey(name,logo_url)`)
         if (p) {
           canonicalise(p.slug)
           title = `${p.first_name} ${p.last_name}`.trim()
