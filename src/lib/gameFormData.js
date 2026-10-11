@@ -40,7 +40,8 @@ function eventsFrom(row) {
     return { events: ev, periodMS: snap.settings?.periodMS || null, exact: true }
   }
   const ev = (row?.events || []).map(e => ({ type: e.type, side: sideOf(e.side), period: e.period || '', timeMS: e.timeMS }))
-  return { events: ev, periodMS: null, exact: false }
+  // Native boards report their half length on the save / broadcast (game_reports.period_ms).
+  return { events: ev, periodMS: row?.period_ms || null, exact: false }
 }
 
 const DEFAULT_PERIOD_MS = 25 * 60_000
