@@ -13,12 +13,14 @@ import { reportContent, blockUser, REPORT_REASONS, DETAILS_MAX } from "@/lib/mod
  *   - author OR admin               → עריכה + מחיקה
  *   - signed-in, not the author     → דיווח + חסימת משתמש
  *
+ *   - manageItems                   → appended for the author / admins / content editors only
+ *                                     (e.g. "שייך למשחק") — [{ key, label, icon, onClick }]
  *   - extraItems                    → appended for anyone signed in (e.g. "הסר תיוג",
  *                                     MentionText.jsx untagItems) — [{ key, label, onClick }]
  *
- * Props: { targetType, targetId, authorId, onEdit, onDelete, extraItems }
+ * Props: { targetType, targetId, authorId, onEdit, onDelete, manageItems, extraItems }
  */
-export default function ModerationMenu({ targetType, targetId, authorId, onEdit, onDelete, extraItems = [] }) {
+export default function ModerationMenu({ targetType, targetId, authorId, onEdit, onDelete, manageItems = [], extraItems = [] }) {
   const { user, isAdmin, isContentEditor } = useAuth()
   const rootRef = useRef(null)
   const [open, setOpen] = useState(false)
@@ -142,6 +144,15 @@ export default function ModerationMenu({ targetType, targetId, authorId, onEdit,
               </button>
             </>
           )}
+          {!confirm && canManage && manageItems.map(it => {
+            const Icon = it.icon || Tag
+            return (
+              <button key={it.key} type="button" role="menuitem" onClick={() => { close(); it.onClick() }}
+                className={`${item} text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border-t border-slate-100 dark:border-slate-700`}>
+                <Icon className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{it.label}</span>
+              </button>
+            )
+          })}
           {!confirm && extraItems.map(it => (
             <button key={it.key} type="button" role="menuitem" onClick={() => { close(); it.onClick() }}
               className={`${item} text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border-t border-slate-100 dark:border-slate-700`}>

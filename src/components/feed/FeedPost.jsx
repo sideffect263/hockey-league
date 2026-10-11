@@ -2,16 +2,18 @@ import { useState, useEffect, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
-import { Crown, Flame, Trophy, MapPin, FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2 } from "lucide-react"
+import { Crown, Flame, Trophy, MapPin, FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2, Link2, Unlink } from "lucide-react"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
-import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment } from "@/lib/api"
+import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment, setPostGame } from "@/lib/api"
 import { setPhotoOverride } from "@/lib/photoOverrides"
 import { parseYouTubeId, youTubeInText, withoutUrl } from "@/lib/video"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import ReactionBar from "@/components/feed/ReactionBar"
 import MarketFeedCard from "@/components/feed/MarketFeedCard"
 import ModerationMenu from "@/components/feed/ModerationMenu"
+import GameChip from "@/components/feed/GameChip"
+import GamePicker, { GamePickerModal } from "@/components/feed/GamePicker"
 import { RoleBadge, OgBadge, deriveRoleItems } from "@/components/RoleBadges"
 import { TARGET_POST, TARGET_COMMENT } from "@/lib/moderation"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
@@ -512,7 +514,7 @@ function BirthdayBody({ player, team, fallbackPhoto, body }) {
 }
 
 /* ============ HUMAN POST (Stage B2 + likes/comments) ============ */
-function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap, share, mentions, initialShowComments = false }) {
+function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap, share, mentions, initialShowComments = false, hideGameChip = false }) {
   const { user, openAuth } = useAuth()
   const viewer = useMentionViewer()
   const { post: p, author, team } = post.data
@@ -578,6 +580,21 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   const extVideoId = ext?.link ? parseYouTubeId(ext.link) : null
 
   const [postBody, setPostBody] = useState(p.body)
+  // ---- The game this post is attached to (posts.game_id) — chip + "שייך למשחק" ----
+  const [gameId, setGameId] = useState(p.game_id || null)
+  const [game, setGame] = useState(post.data.game || null)
+  const [gameModal, setGameModal] = useState(false)
+  // The permalink page learns the game row after the card mounts.
+  useEffect(() => { if (post.data.game && post.data.game.id === gameId) setGame(post.data.game) }, [post.data.game]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [draftGame, setDraftGame] = useState({ id: "", game: null })
+  const applyGame = async (id, option) => {
+    await setPostGame(p.id, id)
+    setGameId(id || null); setGame(option?.game || null)
+  }
+  const unlinkGame = async () => {
+    setRowError(null)
+    try { await applyGame(null) } catch { setRowError("הסרת השיוך נכשלה, נסו שוב") }
+  }
   const [editingPost, setEditingPost] = useState(false)
   const [postDraft, setPostDraft] = useState(p.body)
   const [savingPost, setSavingPost] = useState(false)
@@ -602,14 +619,19 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   const [commentDraft, setCommentDraft] = useState("")
   const [savingComment, setSavingComment] = useState(false)
 
-  const startEditPost = () => { setPostDraft(postBody); setRowError(null); setPostPicks([]); setEditingPost(true) }
+  const startEditPost = () => { setPostDraft(postBody); setRowError(null); setPostPicks([]); setDraftGame({ id: gameId || "", game }); setEditingPost(true) }
   const saveEditPost = async () => {
     const text = postDraft.trim()
     if (!text || savingPost) return
     setSavingPost(true); setRowError(null)
     try {
       await editPost(p.id, text)
-      setPostBody(text); setEditingPost(false)
+      setPostBody(text)
+      if ((draftGame.id || null) !== gameId) {
+        try { await applyGame(draftGame.id || null, draftGame.game ? { game: draftGame.game } : null) }
+        catch { setRowError("הפוסט נשמר, אבל שיוך המשחק נכשל") }
+      }
+      setEditingPost(false)
       const picks = [...postMentions, ...postPicks]
       if (picks.length) {
         setMentions(MENTION_KIND.post, p.id, text, picks).then(setPostMentions).catch(() => tagFailed("הפוסט"))
@@ -753,6 +775,12 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           authorId={p.author_id}
           onEdit={startEditPost}
           onDelete={handleDeletePost}
+          manageItems={gameId ? [
+            { key: "game-change", label: "שנה משחק", icon: Link2, onClick: () => setGameModal(true) },
+            { key: "game-unlink", label: "הסר שיוך למשחק", icon: Unlink, onClick: unlinkGame },
+          ] : [
+            { key: "game-link", label: "שייך למשחק", icon: Link2, onClick: () => setGameModal(true) },
+          ]}
           extraItems={untagItems(postMentions, viewer, untagPost)}
         />
       </div>
@@ -769,6 +797,10 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
             autoFocus
             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand resize-none"
           />
+          <div className={`mt-2 ${INSET}`}>
+            <GamePicker value={draftGame.id} disabled={savingPost}
+              onChange={(id, o) => setDraftGame({ id, game: o?.game || null })} />
+          </div>
           <div className="flex items-center gap-2 mt-2">
             <button onClick={saveEditPost} disabled={savingPost || !postDraft.trim()}
               className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50">
@@ -838,12 +870,17 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
             <FeedVideo provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
                        poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} />
           )}
-          {p.game_id && (
-            <Link to={`/games/${p.game_id}`} className="mt-2 inline-flex items-center gap-1 px-4 sm:px-0 text-xs font-semibold text-brand dark:text-brand-light hover:text-brand-hover">
-              למשחק המלא <ArrowLeft className="w-3 h-3" />
-            </Link>
-          )}
         </div>
+      )}
+
+      {/* The game this post belongs to (שייך למשחק). Not on the game page itself. */}
+      {gameId && !hideGameChip && !editingPost && (
+        <div className={`mt-2 ${INSET}`}>
+          <GameChip gameId={gameId} game={game} teamsMap={teamsMap} />
+        </div>
+      )}
+      {gameModal && (
+        <GamePickerModal value={gameId} onSave={applyGame} onClose={() => setGameModal(false)} />
       )}
 
       {/* Actions: icons, then the counts on their own line (and the link out). */}
@@ -958,7 +995,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 }
 
 /* ============ Dispatcher ============ */
-export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments }) {
+export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip }) {
   // Every card but הוקי מרקט (18+) gets a share target — see lib/shareLinks.js.
   const share = buildShare(post, { playersMap })
   const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
@@ -976,7 +1013,7 @@ export default function FeedPost({ post, playersMap, teamsMap, roleBadges, liked
     case 'post':
     case 'external':
       return <PostCard post={post} likedPostIds={likedPostIds} blockedIds={blockedIds} roleBadges={roleBadges} playersMap={playersMap} teamsMap={teamsMap}
-        share={share} mentions={mentions} initialShowComments={initialShowComments} />
+        share={share} mentions={mentions} initialShowComments={initialShowComments} hideGameChip={hideGameChip} />
     default:
       return null
   }

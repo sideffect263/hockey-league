@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react"
 import { User, Loader2, Video, X } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
-import { createPost, getGames, getTeams } from "@/lib/api"
+import { createPost } from "@/lib/api"
 import { uploadFeedVideo, MAX_FEED_VIDEO_MB } from "@/lib/feedVideo"
 import { setMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import MentionInput from "@/components/feed/MentionInput"
+import GamePicker from "@/components/feed/GamePicker"
 
 const MAX = 2000
 
@@ -20,20 +21,6 @@ function translatePostError(msg = "") {
   return "הפרסום נכשל. נסו שוב"
 }
 
-// Recent games for the "from which game?" picker on a video post: played or today, newest first.
-async function recentGames() {
-  const [games, teams] = await Promise.all([getGames("game_date", false), getTeams()])
-  const name = Object.fromEntries((teams || []).map(t => [t.id, t.name]))
-  const soon = Date.now() + 864e5
-  return (games || [])
-    .filter(g => new Date(g.game_date).getTime() < soon && !g.is_test)
-    .slice(0, 25)
-    .map(g => ({
-      id: g.id,
-      label: `${name[g.home_team_id] || "?"} – ${name[g.away_team_id] || "?"} · ${new Date(g.game_date).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" })}`,
-    }))
-}
-
 export default function Composer({ onPosted }) {
   const { user, canPost, openAuth, isAdmin, isContentEditor } = useAuth()
   const [body, setBody] = useState("")
@@ -46,13 +33,9 @@ export default function Composer({ onPosted }) {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [progress, setProgress] = useState(null)
-  const [games, setGames] = useState(null)
+  // "שייך למשחק" — any kind of post can belong to a game (shown on the game page).
   const [gameId, setGameId] = useState("")
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
-  useEffect(() => {
-    if (!file || games) return
-    recentGames().then(setGames).catch(() => setGames([]))
-  }, [file, games])
 
   const pickFile = (e) => {
     const f = e.target.files?.[0]
@@ -63,7 +46,7 @@ export default function Composer({ onPosted }) {
     if (f.size > MAX_FEED_VIDEO_MB * 1024 * 1024) { setError(translatePostError("too_big")); return }
     setFile(f); setPreview(URL.createObjectURL(f))
   }
-  const clearFile = () => { setFile(null); setPreview(null); setProgress(null); setGameId("") }
+  const clearFile = () => { setFile(null); setPreview(null); setProgress(null) }
 
   const initial = user?.email?.charAt(0)?.toUpperCase() || null
 
@@ -106,7 +89,7 @@ export default function Composer({ onPosted }) {
         setProgress(0)
         video = await uploadFeedVideo(file, setProgress)
       }
-      const newPost = await createPost({ body: text, video, gameId: video ? (gameId || null) : null })
+      const newPost = await createPost({ body: text, video, gameId: gameId || null })
       // Tags go on AFTER the post exists; if that fails the post stays and we say so.
       let tags = []
       if (picks.length) {
@@ -115,6 +98,7 @@ export default function Composer({ onPosted }) {
       }
       setBody("")
       setPicks([])
+      setGameId("")
       clearFile()
       onPosted && onPosted(newPost, tags)
     } catch (err) {
@@ -152,11 +136,6 @@ export default function Composer({ onPosted }) {
                   </button>
                 )}
               </div>
-              <select value={gameId} onChange={e => setGameId(e.target.value)} disabled={busy}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-700 dark:text-slate-200">
-                <option value="">ממשחק… (לא חובה)</option>
-                {(games || []).map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-              </select>
               {progress != null && (
                 <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden" role="progressbar"
                      aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
@@ -165,6 +144,9 @@ export default function Composer({ onPosted }) {
               )}
             </div>
           )}
+          <div className="mt-2">
+            <GamePicker value={gameId} onChange={id => setGameId(id)} disabled={busy} />
+          </div>
           {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-medium">{error}</p>}
           <div className="mt-2 flex items-center justify-between">
             <button

@@ -198,6 +198,7 @@ export function buildFeed({
 } = {}) {
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const playersMap = Object.fromEntries(players.map(p => [p.id, p]))
+  const gamesMap = Object.fromEntries(games.map(g => [g.id, g]))
 
   const completed = games.filter(
     g => g.status === 'completed' && g.home_score != null && g.away_score != null
@@ -323,6 +324,7 @@ export function buildFeed({
         post: p,
         author: p.author || null,
         team: p.team_id ? teamsMap[p.team_id] : null,
+        game: p.game_id ? (gamesMap[p.game_id] || null) : null,   // שייך למשחק → GameChip
       },
     })
   }

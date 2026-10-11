@@ -317,6 +317,38 @@ export async function editPost(id, body) {
   if (error) throw error
 }
 
+// Attach a post to a game (or detach with null) — "שייך למשחק". Same RLS as editPost:
+// the author, admins and content editors may update the row.
+export async function setPostGame(id, gameId) {
+  const { data, error } = await supabase
+    .from('posts')
+    .update({ game_id: gameId || null })
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  // RLS turns a forbidden UPDATE into "0 rows, no error" — say so instead of pretending.
+  if (!data?.length) throw new Error('not permitted')
+}
+
+// Posts attached to a game, for its page (lib/gamePosts.js orders them). Same row
+// shape as getPosts(). Public read, like the feed.
+export async function getGamePosts(gameId) {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, author:profiles!posts_author_id_fkey(display_name, avatar_url, player_id), like_count:post_likes(count), comment_count:comments(count)')
+    .eq('game_id', gameId)
+    .is('deleted_at', null)
+    .is('comments.deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error) throw error
+  return (data || []).map(p => ({
+    ...p,
+    like_count: p.like_count?.[0]?.count ?? 0,
+    comment_count: p.comment_count?.[0]?.count ?? 0,
+  }))
+}
+
 // --- Likes ---
 export async function getMyLikes() {
   const user = await sessionUser()

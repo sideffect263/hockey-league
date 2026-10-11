@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
 import { ArrowRight, MessageSquareOff } from "lucide-react"
-import { getPost, getMyLikes, getRoleBadges, getTeams, getPlayers } from "@/lib/api"
+import { getPost, getMyLikes, getRoleBadges, getTeams, getPlayers, getGameById } from "@/lib/api"
 import { getMyBlocks } from "@/lib/moderation"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import { birthdayPlayerId } from "@/lib/feed"
@@ -29,6 +29,7 @@ export default function PostDetail() {
   const [players, setPlayers] = useState([])
   const [mentions, setMentions] = useState(undefined)
   const [blocked, setBlocked] = useState(() => new Set())
+  const [game, setGame] = useState(null)   // the game it is attached to → GameChip
 
   useEffect(() => {
     let alive = true
@@ -44,6 +45,7 @@ export default function PostDetail() {
         getMentions(MENTION_KIND.post, [p.id]).then(m => alive && setMentions(m[p.id] || []))
         // Players decorate only (birthday banner, OG badge) — never hold the page up.
         getPlayers().then(pl => alive && setPlayers(pl || [])).catch(() => {})
+        if (p.game_id) getGameById(p.game_id).then(g => alive && setGame(g)).catch(() => {})
       })
       .catch(() => alive && setState("error"))
     return () => { alive = false }
@@ -71,8 +73,8 @@ export default function PostDetail() {
     id: `post-${post.id}`,
     type: post.source_name && !isBirthday ? "external" : "post",
     date: post.created_at,
-    data: { post, author: post.author || null, team: post.team_id ? teamsMap[post.team_id] : null },
-  }), [post, teamsMap, isBirthday])
+    data: { post, author: post.author || null, team: post.team_id ? teamsMap[post.team_id] : null, game },
+  }), [post, teamsMap, isBirthday, game])
 
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4">

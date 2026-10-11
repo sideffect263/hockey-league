@@ -9,6 +9,7 @@ import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import LiveGame from "@/components/LiveGame"
 import GameVideo from "@/components/GameVideo"
+import GamePosts from "@/components/games/GamePosts"
 import GameAvailability from "@/components/GameAvailability"
 import GameSquads from "@/components/GameSquads"
 import GameBroadcast from "@/components/GameBroadcast"
@@ -429,6 +430,9 @@ export default function GameDetail() {
 
       {/* ===== VIDEO / VOD (the live stream is shown up top while in-progress) ===== */}
       {!showLive && <GameVideo game={game} home={home} away={away} players={players} />}
+
+      {/* ===== HIGHLIGHTS & POSTS attached to this game (שייך למשחק) — hidden when none ===== */}
+      <GamePosts game={game} teamsMap={teamsMap} playersMap={playersMap} />
 
       {/* ===== AVAILABILITY (upcoming games) ===== */}
       {/* #availability is the target of shared sign-up links (/games/next, the coach's
