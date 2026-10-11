@@ -331,6 +331,23 @@ function ClipEditor({ id, onBack }) {
       {saveErr && <div className="text-xs text-red-600">{saveErr}</div>}
       {clip.status === "new" && <div className="card p-3 text-sm text-slate-600 dark:text-slate-300">הקליפ ממתין לניתוח ה-AI. אפשר כבר לתייג, הסימון של ה-AI יופיע כשהניתוח יסתיים.</div>}
 
+      <div className="card p-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">סוג הקליפ:</span>
+        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-sm">
+          <button onClick={() => setClipField({ no_replay: false })}
+            className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 ${!clip.no_replay ? "bg-white dark:bg-slate-700 shadow text-brand" : "text-slate-500"}`}>
+            <Goal className="w-4 h-4" /> גול — עם הילוך חוזר
+          </button>
+          <button onClick={() => setClipField({ no_replay: true })}
+            className={`px-3 py-1.5 rounded-lg font-semibold ${clip.no_replay ? "bg-white dark:bg-slate-700 shadow text-brand" : "text-slate-500"}`}>
+            לא גול (מהלך, לחיצות ידיים…)
+          </button>
+        </div>
+        {!clip.no_replay && (clip.goal_frame == null
+          ? <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">חסר: סמנו את רגע הגול — עמדו על הפריים שהכדור נכנס ולחצו "רגע הגול כאן" (G)</span>
+          : <button className="text-xs underline text-slate-500" onClick={() => seek(clip.goal_frame)}>רגע הגול: פריים #{clip.goal_frame}</button>)}
+      </div>
+
       <div className="flex gap-1 text-sm">
         <button onClick={() => setMode("source")} className={`px-3 py-1.5 rounded-lg font-semibold ${mode === "source" ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-800"}`}>מקור + סימון AI</button>
         <button onClick={() => setMode("processed")} disabled={!clip.processed_path}
@@ -379,9 +396,6 @@ function ClipEditor({ id, onBack }) {
               <button className={act} onClick={() => setClipField({ goal_frame: frame })}><Goal className="w-4 h-4 text-red-500" /> רגע הגול כאן <kbd className="text-[10px] opacity-60">G</kbd></button>
               {clip.strike_frame != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip.strike_frame)}>בעיטה: #{clip.strike_frame}</button>}
               {clip.goal_frame != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip.goal_frame)}>גול: #{clip.goal_frame}</button>}
-              <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
-                <input type="checkbox" checked={clip.no_replay} onChange={e => setClipField({ no_replay: e.target.checked })} /> לא גול (בלי הילוך חוזר)
-              </label>
             </div>
             <Legend />
             <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה.</p>
@@ -394,7 +408,9 @@ function ClipEditor({ id, onBack }) {
           תויגו: <b>{stats.ball}</b> כדור · <b>{stats.none}</b> אין כדור · <b>{stats.unsure}</b> לא בטוח · ה-AI סימן {stats.ai} מתוך {nFrames} פריימים
         </span>
         <div className="ms-auto flex gap-2">
-          <button onClick={() => setClipField({ status: "queued", worker_note: null })} disabled={clip.status === "queued" || clip.status === "processing"}
+          {!clip.no_replay && clip.goal_frame == null && <span className="text-xs text-amber-700 dark:text-amber-400 self-center">קודם סמנו את רגע הגול (G)</span>}
+          <button onClick={() => setClipField({ status: "queued", worker_note: null })}
+            disabled={clip.status === "queued" || clip.status === "processing" || (!clip.no_replay && clip.goal_frame == null)}
             className="px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover disabled:opacity-50 flex items-center gap-1.5">
             <Wand2 className="w-4 h-4" /> {clip.status === "queued" ? "בתור לעיבוד" : "עבד מחדש עם התיקונים"}
           </button>
