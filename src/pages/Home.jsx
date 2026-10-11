@@ -83,16 +83,16 @@ export default function Home() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-brand-deep text-white text-[11px] uppercase tracking-wider">
-                  <th scope="col" className="ps-4 pe-2 py-3 text-right font-bold w-12 whitespace-nowrap">#</th>
-                  <th scope="col" className="px-3 py-3 text-right font-bold whitespace-nowrap">קבוצה</th>
-                  <th scope="col" className="px-2 py-3 text-center font-bold whitespace-nowrap">מש׳</th>
-                  <th scope="col" className="px-2 py-3 text-center font-bold whitespace-nowrap">נ</th>
-                  <th scope="col" className="px-2 py-3 text-center font-bold whitespace-nowrap">ת</th>
-                  <th scope="col" className="px-2 py-3 text-center font-bold whitespace-nowrap">ה</th>
-                  <th scope="col" className="px-2 py-3 text-center font-bold whitespace-nowrap">זכות</th>
-                  <th scope="col" className="px-2 py-3 text-center font-bold whitespace-nowrap">חובה</th>
-                  <th scope="col" className="px-2 py-3 text-center font-bold whitespace-nowrap">הפרש</th>
-                  <th scope="col" className="ps-2 pe-4 py-3 text-center font-bold whitespace-nowrap">נק׳</th>
+                  <th scope="col" className="ps-3 sm:ps-4 pe-1 sm:pe-2 py-3 text-right font-bold w-10 sm:w-12 whitespace-nowrap">#</th>
+                  <th scope="col" className="px-2 sm:px-3 py-3 text-right font-bold whitespace-nowrap">קבוצה</th>
+                  <th scope="col" className="px-1 sm:px-2 py-3 text-center font-bold whitespace-nowrap">מש׳</th>
+                  <th scope="col" className="px-1 sm:px-2 py-3 text-center font-bold whitespace-nowrap">נ</th>
+                  <th scope="col" className="px-1 sm:px-2 py-3 text-center font-bold whitespace-nowrap">ת</th>
+                  <th scope="col" className="px-1 sm:px-2 py-3 text-center font-bold whitespace-nowrap">ה</th>
+                  <th scope="col" className="hidden sm:table-cell px-1 sm:px-2 py-3 text-center font-bold whitespace-nowrap">זכות</th>
+                  <th scope="col" className="hidden sm:table-cell px-1 sm:px-2 py-3 text-center font-bold whitespace-nowrap">חובה</th>
+                  <th scope="col" className="px-1 sm:px-2 py-3 text-center font-bold whitespace-nowrap">הפרש</th>
+                  <th scope="col" className="ps-1 sm:ps-2 pe-3 sm:pe-4 py-3 text-center font-bold whitespace-nowrap">נק׳</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider">
@@ -119,7 +119,7 @@ export default function Home() {
                           : "hover:bg-surface-inset/50"
                     }`}
                   >
-                    <td className={`ps-4 pe-2 py-3 relative before:absolute before:inset-y-0 before:right-0 before:w-1 ${stripe}`}>
+                    <td className={`ps-3 sm:ps-4 pe-1 sm:pe-2 py-3 relative before:absolute before:inset-y-0 before:right-0 before:w-1 ${stripe}`}>
                       <div className={`grid size-7 place-items-center rounded-lg text-xs font-black tabular-nums ${
                         i === 0 ? "bg-gold text-surface-page" :
                         i <= 6 ? "bg-brand/[0.12] text-brand-strong dark:text-brand-light" :
@@ -128,26 +128,26 @@ export default function Home() {
                         {i + 1}
                       </div>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                    <td className="px-2 sm:px-3 py-3">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                         <TeamLogo team={team} size={8} />
-                        <TeamLink team={team} className="font-bold text-fg-strong text-sm truncate hover:text-brand hover:underline underline-offset-2 decoration-brand/40 transition-colors">{team.name}</TeamLink>
-                        {zone === "ff" && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold bg-gold/[0.15] text-gold">FF</span>}
-                        {zone === "po" && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold bg-brand/[0.12] text-brand-strong dark:text-brand-light">PO</span>}
+                        <TeamLink team={team} className="block font-bold text-fg-strong text-sm truncate max-w-[4.5rem] min-[380px]:max-w-[6.5rem] sm:max-w-none hover:text-brand hover:underline underline-offset-2 decoration-brand/40 transition-colors">{team.name}</TeamLink>
+                        {zone === "ff" && <span className="hidden sm:inline shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold bg-gold/[0.15] text-gold">FF</span>}
+                        {zone === "po" && <span className="hidden sm:inline shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold bg-brand/[0.12] text-brand-strong dark:text-brand-light">PO</span>}
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-center tabular-nums text-fg-muted">{played(team)}</td>
-                    <td className="px-2 py-3 text-center tabular-nums font-bold text-pos">{team.wins || 0}</td>
-                    <td className="px-2 py-3 text-center tabular-nums text-fg-subtle">{team.ties || 0}</td>
-                    <td className="px-2 py-3 text-center tabular-nums font-bold text-neg">{team.losses || 0}</td>
-                    <td className="px-2 py-3 text-center tabular-nums text-fg-muted">{team.goals_for || 0}</td>
-                    <td className="px-2 py-3 text-center tabular-nums text-fg-muted">{team.goals_against || 0}</td>
-                    <td className="px-2 py-3 text-center">
+                    <td className="px-1 sm:px-2 py-3 text-center tabular-nums text-fg-muted">{played(team)}</td>
+                    <td className="px-1 sm:px-2 py-3 text-center tabular-nums font-bold text-pos">{team.wins || 0}</td>
+                    <td className="px-1 sm:px-2 py-3 text-center tabular-nums text-fg-subtle">{team.ties || 0}</td>
+                    <td className="px-1 sm:px-2 py-3 text-center tabular-nums font-bold text-neg">{team.losses || 0}</td>
+                    <td className="hidden sm:table-cell px-1 sm:px-2 py-3 text-center tabular-nums text-fg-muted">{team.goals_for || 0}</td>
+                    <td className="hidden sm:table-cell px-1 sm:px-2 py-3 text-center tabular-nums text-fg-muted">{team.goals_against || 0}</td>
+                    <td className="px-1 sm:px-2 py-3 text-center">
                       <span dir="ltr" className={`inline-block font-bold text-sm tabular-nums ${d > 0 ? "text-pos" : d < 0 ? "text-neg" : "text-fg-subtle"}`}>
                         {d > 0 ? "+" : ""}{d}
                       </span>
                     </td>
-                    <td className="ps-2 pe-4 py-3 text-center">
+                    <td className="ps-1 sm:ps-2 pe-3 sm:pe-4 py-3 text-center">
                       <span className="stat-num text-lg text-brand">{team.points || 0}</span>
                       {/* Points bar — spans the FULL row width, pinned to the row's bottom edge. It sits in
                           this (static) cell but the <tr> is `relative`, so it measures against the whole row.
