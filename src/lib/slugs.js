@@ -19,6 +19,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export const isUuid = (s) => UUID_RE.test(String(s ?? ''))
 
+/**
+ * The UUID a path segment starts with, or null. Some share targets glue the share
+ * text onto the link (/posts/<uuid>%20⚪%20גול…), so a permalink must survive trailing junk.
+ */
+export const leadingUuid = (s) => (/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![0-9a-f-])/i.exec(String(s ?? '').trim()) || [])[1]?.toLowerCase() || null
+
 // ---------------------------------------------------------------------------
 // id -> slug, for building links
 // ---------------------------------------------------------------------------

@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom"
 import { ArrowRight, MessageSquareOff } from "lucide-react"
 import { getPost, getMyLikes, getRoleBadges, getTeams, getPlayers, getGameById } from "@/lib/api"
 import { getMyBlocks } from "@/lib/moderation"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import { birthdayPlayerId } from "@/lib/feed"
 import { firstLine } from "@/lib/shareLinks"
-import { isUuid } from "@/lib/slugs"
+import { isUuid, leadingUuid } from "@/lib/slugs"
 import { useSeo } from "@/lib/seo"
 import { useAuth } from "@/lib/AuthContext"
 import FeedPost from "@/components/feed/FeedPost"
@@ -20,6 +20,7 @@ import { SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
  */
 export default function PostDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [post, setPost] = useState(null)
   const [state, setState] = useState("loading") // loading | ready | missing | error
@@ -33,7 +34,13 @@ export default function PostDetail() {
 
   useEffect(() => {
     let alive = true
-    if (!isUuid(id)) { setState("missing"); return }
+    if (!isUuid(id)) {
+      // Share text glued onto the link (/posts/<uuid> ⚪ גול…) → the clean permalink.
+      const clean = leadingUuid(id)
+      if (clean) navigate(`/posts/${clean}`, { replace: true })
+      else setState("missing")
+      return
+    }
     setState("loading")
     Promise.all([getPost(id), getTeams().catch(() => [])])
       .then(([p, t]) => {

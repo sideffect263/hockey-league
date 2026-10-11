@@ -308,7 +308,10 @@ export default async function handler(req, res) {
   const site = `https://${req.headers.host || 'rinkhockeyil.com'}`
   const page = String(req.query.page || '')
   const type = String(req.query.type || '')
-  const id = String(req.query.id || '')
+  // A post link can arrive with share text glued on (/posts/<uuid>%20⚪%20גול…) — keep the UUID.
+  const rawId = String(req.query.id || '').trim()
+  const lead = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![0-9a-f-])/i.exec(rawId)
+  const id = type === 'posts' && lead ? lead[1].toLowerCase() : rawId
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
 
