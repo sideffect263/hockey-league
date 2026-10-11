@@ -7,7 +7,8 @@ import { supabase } from './supabase'
  * Fouls and timeouts come from `game_reports`, which a DB trigger fills from every live
  * broadcast (see supabase/game-form-signing.sql): the web judge's full engine snapshot
  * when there is one (exact), otherwise the merged play-by-play every judge app sends.
- * Games finished before 2026-10-11 have no row — their fouls were never kept.
+ * Games finished before 2026-10-11 have no archive — their fouls survive only on the
+ * paper form, entered by hand into the same row (home_fouls, halftime_*, timeouts).
  */
 
 export const SIGN_ROLES = ['referee', 'medic', 'home_coach', 'home_captain', 'away_coach', 'away_captain']
@@ -50,6 +51,37 @@ const DEFAULT_PERIOD_MS = 25 * 60_000
  * game has no recorded report at all.
  */
 export function summarizeReport(row) {
+  return withPaperSheet(summarizeArchive(row), row)
+}
+
+const isNum = (v) => Number.isFinite(v)
+
+/**
+ * The paper form's numbers (game_reports.home_fouls … timeouts, entered from the photo of
+ * the טופס שיפוט — see supabase/game-form-sheet.sql) win over anything derived from the
+ * board's archive: the paper is what the referee signed. Each fact falls back separately.
+ */
+function withPaperSheet(derived, row) {
+  const paperFouls = isNum(row?.home_fouls) || isNum(row?.away_fouls)
+  const paperHalftime = isNum(row?.halftime_home) && isNum(row?.halftime_away)
+  const paperTimeouts = !!row?.timeouts
+  if (!paperFouls && !paperHalftime && !paperTimeouts) return derived
+  const none = { first: [], second: [] }
+  return {
+    exact: derived?.exact ?? false,
+    goals: derived?.goals ?? { home: 0, away: 0 },
+    hasGoals: derived?.hasGoals ?? false,
+    fouls: paperFouls ? { home: row.home_fouls ?? 0, away: row.away_fouls ?? 0 } : (derived?.fouls ?? null),
+    timeouts: paperTimeouts
+      ? { home: { ...none, ...row.timeouts.home }, away: { ...none, ...row.timeouts.away } }
+      : (derived?.timeouts ?? null),
+    hasTimeouts: paperTimeouts || !!derived?.hasTimeouts,
+    halftime: paperHalftime ? { home: row.halftime_home, away: row.halftime_away } : (derived?.halftime ?? null),
+    fromPaper: { fouls: paperFouls, halftime: paperHalftime, timeouts: paperTimeouts },
+  }
+}
+
+function summarizeArchive(row) {
   if (!row || (!row.final_state && !(row.events || []).length)) return null
   const { events, periodMS, exact } = eventsFrom(row)
   const len = periodMS || DEFAULT_PERIOD_MS
@@ -72,7 +104,25 @@ export function summarizeReport(row) {
     // Native judge boards don't broadcast timeouts — say so rather than print "none".
     hasTimeouts: exact || events.some(e => e.type === 'timeout'),
     hasGoals: events.some(e => e.type === 'goal'),
+    fromPaper: null,
   }
+}
+
+// ---- the paper form's numbers + photos (admin / LM / judge) ----
+export async function setGameSheet(gameId, { homeFouls, awayFouls, halftimeHome, halftimeAway, timeouts }) {
+  const n = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v))
+  const { error } = await supabase.rpc('set_game_sheet', {
+    p_game_id: gameId,
+    p_home_fouls: n(homeFouls), p_away_fouls: n(awayFouls),
+    p_halftime_home: n(halftimeHome), p_halftime_away: n(halftimeAway),
+    p_timeouts: timeouts || null,
+  })
+  if (error) throw error
+}
+
+export async function removeGameFormPhoto(gameId, path) {
+  const { error } = await supabase.rpc('remove_game_form_photo', { p_game_id: gameId, p_path: path })
+  if (error) throw error
 }
 
 // ---- captains ----

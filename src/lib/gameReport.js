@@ -158,7 +158,9 @@ export function defaultFormFields({ game, stats, officials = [], refereeName, re
   const nameOf = (id) => fullName(players.find(p => p.id === id))
   // The archive only knows goals the judge entered on the board; trust its half-time
   // score only when its goal count matches the final.
-  const goalsAgree = !!summary?.hasGoals && summary.goals.home === game.home_score && summary.goals.away === game.away_score
+  // The paper form's half-time score (entered from its photo) is taken as written.
+  const goalsAgree = !!summary?.fromPaper?.halftime ||
+    (!!summary?.hasGoals && summary.goals.home === game.home_score && summary.goals.away === game.away_score)
   const fromArchive = (v) => (v == null ? '' : String(v))
   return {
     medic: resolved.medic,
@@ -166,10 +168,10 @@ export function defaultFormFields({ game, stats, officials = [], refereeName, re
     observer: '',
     halftimeHome: goalsAgree ? fromArchive(summary.halftime.home) : '',
     halftimeAway: goalsAgree ? fromArchive(summary.halftime.away) : '',
-    homeFouls: summary ? String(summary.fouls.home) : '',
-    awayFouls: summary ? String(summary.fouls.away) : '',
+    homeFouls: summary?.fouls ? String(summary.fouls.home) : '',
+    awayFouls: summary?.fouls ? String(summary.fouls.away) : '',
     timeouts: summary?.hasTimeouts ? summary.timeouts : null,
-    foulsSource: summary ? (summary.exact ? 'exact' : 'feed') : null,
+    foulsSource: !summary?.fouls ? null : summary.fromPaper?.fouls ? 'form' : summary.exact ? 'exact' : 'feed',
     homeCoach: resolved.homeCoaches[0] || '',
     homeCaptain: nameOf(caps.home),
     awayCoach: resolved.awayCoaches[0] || '',

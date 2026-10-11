@@ -8,11 +8,13 @@ import {
   getMySignRoles, getGameSignatures, signGameForm, clearGameSignature,
 } from "@/lib/gameFormData"
 import SignaturePad from "@/components/games/SignaturePad"
+import GameSheetSection from "@/components/games/GameSheetSection"
 
 /**
  * The game's match-sheet card: each side's captain (anyone can see it; coach, judge,
- * LM or admin can change it for this game), and — once the game is played — the six
- * signature slots of the טופס שיפוט. Each person signs from their own account; the
+ * LM or admin can change it for this game), and — once the game is played — the
+ * paper form's facts and photos (GameSheetSection) and the six signature slots of the
+ * טופס שיפוט. Each person signs from their own account; the
  * server decides who may sign which slot (see supabase/game-form-signing.sql).
  */
 
@@ -90,7 +92,11 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
   const showSignatures = done && (signatures || myRoles.length > 0)
   const anyCaptain = caps.home || caps.away
   const anyEditor = canSetCaptain("home") || canSetCaptain("away")
-  if (!anyCaptain && !anyEditor && !showSignatures) return null
+  // Same rule as the game-forms bucket and set_game_sheet: officials, never a coach.
+  const isOfficial = !!(isAdmin || isLeagueManager || isJudgeRole)
+  const hasSheet = !!reportRow && (reportRow.home_fouls != null || reportRow.halftime_home != null ||
+    reportRow.timeouts || reportRow.final_state || (reportRow.events || []).length > 0 || (reportRow.form_photos || []).length > 0)
+  if (!anyCaptain && !anyEditor && !showSignatures && !(done && hasSheet)) return null
 
   const signedCount = signatures ? Object.keys(signatures).length : 0
 
@@ -133,6 +139,11 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
           )
         })}
       </div>
+
+      {done && (
+        <GameSheetSection game={game} home={home} away={away} reportRow={reportRow}
+          canEdit={isOfficial} canSeePhotos={isOfficial} onChanged={load} />
+      )}
 
       {/* Signatures */}
       {showSignatures && (

@@ -102,6 +102,24 @@ export async function getOpenSubmissionStatuses(gameIds) {
   return out
 }
 
+/**
+ * Keep photos of an already-played game's paper form on the game itself (no submission,
+ * nothing re-applied): upload, then record the paths on game_reports.form_photos.
+ */
+export async function uploadGameFormPhotos(gameId, files) {
+  const paths = []
+  for (const file of files) {
+    const blob = await compressPhoto(file)
+    const path = `${gameId}/${crypto.randomUUID()}.jpg`
+    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg' })
+    if (error) throw error
+    paths.push(path)
+  }
+  const { error } = await supabase.rpc('add_game_form_photos', { p_game_id: gameId, p_paths: paths })
+  if (error) throw error
+  return paths
+}
+
 export async function signFormPhotos(paths) {
   if (!paths?.length) return []
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrls(paths, 3600)

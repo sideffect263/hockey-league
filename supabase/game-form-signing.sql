@@ -87,7 +87,7 @@ begin
     select coalesce(jsonb_agg(e order by public._game_event_key(e)), '[]'::jsonb) into merged
       from (
         select e from jsonb_array_elements(coalesce(old_events, '[]'::jsonb)) e
-         where public._game_event_key(e) < win_start
+         where public._game_event_key(e) <= win_start  -- <=: a foul + card at one paused instant share a key; the id check dedupes
            and not exists (select 1 from jsonb_array_elements(win) w where w->>'id' = e->>'id')
         union all
         select e from jsonb_array_elements(win) e

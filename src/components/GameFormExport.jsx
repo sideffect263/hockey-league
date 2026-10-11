@@ -168,7 +168,7 @@ export default function GameFormExport({ game, home, away, players, stats, refer
                     <p className="text-[11px] text-amber-600 dark:text-amber-400 -mt-1">נספר מעדכוני המשחק החי — כדאי לוודא מול השופט.</p>
                   )}
                   {!fields.foulsSource && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-1">לא נשמרו עבירות למשחק זה (נשמרות רק ממשחקים שנשפטו מ־11/10/2026).</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-1">לא נשמרו עבירות למשחק זה. אפשר להזין אותן מטופס השיפוט בכרטיס "טופס המשחק" בעמוד המשחק.</p>
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
