@@ -10,6 +10,7 @@ import { getClaimContext, createClaim, cancelClaim } from "@/lib/claims"
 import { ArrowRight, Shirt, Shield, Calendar, RefreshCw, UserPlus, Check, Clock, Award, Trophy, Flame, AtSign } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
+import { he } from "date-fns/locale"
 import TeamLogo from "@/components/TeamLogo"
 import PlayerAvatar from "@/components/PlayerAvatar"
 import TeamMembershipCard from "@/components/TeamMembershipCard"
@@ -495,7 +496,7 @@ export default function PlayerDetail() {
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{opp?.name || '—'}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {format(new Date(game.game_date), "d/M/yyyy")} · {isHome ? 'בית' : 'חוץ'}
+                      {format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })} · {isHome ? 'בית' : 'חוץ'}
                       {game.game_type === FRIENDLY_GAME_TYPE && (
                         <span className="text-violet-500 dark:text-violet-400 font-medium"> · ידידותי (לא נספר)</span>
                       )}

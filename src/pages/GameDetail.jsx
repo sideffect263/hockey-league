@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, MonitorPlay, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
+import { he } from "date-fns/locale"
 import TeamLogo from "@/components/TeamLogo"
 import LiveGame from "@/components/LiveGame"
 import GameVideo from "@/components/GameVideo"
@@ -340,7 +341,7 @@ export default function GameDetail() {
         </div>
 
         <div className="flex items-center justify-center gap-x-4 gap-y-2 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "d/M/yyyy")}</span>
+          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
           <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
           {/* Labelled: a bare name after the venue read as nothing (nobody saw it was the judge). */}

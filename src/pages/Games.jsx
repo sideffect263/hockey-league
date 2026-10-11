@@ -5,6 +5,7 @@ import { Calendar, Clock, MapPin, Trophy, Shield, X, ArrowLeft, RefreshCw, Alert
 import { Crossed } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
+import { he } from "date-fns/locale"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { getAvailabilityForGames } from "@/lib/availability"
@@ -263,7 +264,7 @@ export default function Games() {
 
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "d/M/yyyy")}</span>
+            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
             {/* Upcoming games already show the time in place of the score. */}
             {done && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>}
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
@@ -394,7 +395,7 @@ export default function Games() {
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
               <Trophy className="w-4 h-4 text-amber-500" /> המחזור האחרון
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(new Date(lastRound[0].game_date), "d/M/yyyy")}</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(new Date(lastRound[0].game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
             </h2>
             <div className="grid gap-3">{lastRound.map(g => GameCard({ game: g }))}</div>
           </div>
