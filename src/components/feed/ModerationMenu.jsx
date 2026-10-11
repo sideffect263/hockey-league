@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { MoreHorizontal, Pencil, Trash2, Flag, Ban, Loader2, Check, X } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Flag, Ban, Loader2, Check, X, Tag } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { reportContent, blockUser, REPORT_REASONS, DETAILS_MAX } from "@/lib/moderation"
 
@@ -13,9 +13,12 @@ import { reportContent, blockUser, REPORT_REASONS, DETAILS_MAX } from "@/lib/mod
  *   - author OR admin               → עריכה + מחיקה
  *   - signed-in, not the author     → דיווח + חסימת משתמש
  *
- * Props: { targetType, targetId, authorId, onEdit, onDelete }
+ *   - extraItems                    → appended for anyone signed in (e.g. "הסר תיוג",
+ *                                     MentionText.jsx untagItems) — [{ key, label, onClick }]
+ *
+ * Props: { targetType, targetId, authorId, onEdit, onDelete, extraItems }
  */
-export default function ModerationMenu({ targetType, targetId, authorId, onEdit, onDelete }) {
+export default function ModerationMenu({ targetType, targetId, authorId, onEdit, onDelete, extraItems = [] }) {
   const { user, isAdmin, isContentEditor } = useAuth()
   const rootRef = useRef(null)
   const [open, setOpen] = useState(false)
@@ -139,6 +142,12 @@ export default function ModerationMenu({ targetType, targetId, authorId, onEdit,
               </button>
             </>
           )}
+          {!confirm && extraItems.map(it => (
+            <button key={it.key} type="button" role="menuitem" onClick={() => { close(); it.onClick() }}
+              className={`${item} text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border-t border-slate-100 dark:border-slate-700`}>
+              <Tag className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{it.label}</span>
+            </button>
+          ))}
         </div>
       )}
 

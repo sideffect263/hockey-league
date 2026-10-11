@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import {
   getNotifications, markAllRead, markRead,
-  notificationText, notificationIcon, notificationHref,
+  notificationText, notificationIcon, notificationHref, notificationPreview,
 } from "@/lib/notifications"
 import { useSeo } from "@/lib/seo"
 import { Bell, CheckCheck, ArrowRight, RefreshCw } from "lucide-react"
@@ -101,6 +101,9 @@ export default function Notifications() {
                   <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed break-words whitespace-pre-line">
                     {notificationText(n)}
                   </p>
+                  {notificationPreview(n) && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-words">“{notificationPreview(n)}”</p>
+                  )}
                   <p className="text-xs text-slate-400 mt-1">
                     {new Date(n.created_at).toLocaleString("he-IL", {
                       day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}

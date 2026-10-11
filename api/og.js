@@ -10,6 +10,32 @@ const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const LEAGUE = 'ליגת הוקי הגלגיליות'
+const YT_ID = /(?:youtube\.com\/(?:watch\?\S*?\bv=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{6,32})/
+const YT_URL = /https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S*/g
+
+/** Columns a post preview needs. Deleted posts are filtered in the query, never shown. */
+export const POST_SELECT = 'id,body,image_url,link_url,source_name,external_guid,video_uid,video_cf_code,' +
+  'author:profiles!posts_author_id_fkey(display_name)'
+
+/**
+ * Preview for /posts/<id> from a posts row (POST_SELECT). Pure, so it is unit-tested.
+ * title: "<author> · ליגת הוקי הגלגיליות"; description: the body's first ~160 chars;
+ * image: the post's photo, else its video's thumbnail, else the league card (null here).
+ */
+export function postOg(p) {
+  const birthday = /^birthday:/.test(p?.external_guid || '')
+  const author = birthday ? 'יום הולדת שמח 🎂' : (p?.source_name || p?.author?.display_name || 'חבר/ת הליגה')
+  const text = String(p?.body || '').replace(YT_URL, ' ').replace(/\s+/g, ' ').trim()
+  const desc = text.length > 160 ? `${text.slice(0, 159).trimEnd()}…` : text
+  const yt = YT_ID.exec(p?.link_url || '') || YT_ID.exec(p?.body || '')
+  const image = p?.image_url
+    || (p?.video_uid && p?.video_cf_code ? `https://customer-${p.video_cf_code}.cloudflarestream.com/${p.video_uid}/thumbnails/thumbnail.jpg?time=2s&height=720` : null)
+    || (yt ? `https://i.ytimg.com/vi/${yt[1]}/hqdefault.jpg` : null)
+  return { title: `${author} · ${LEAGUE}`, desc: desc || LEAGUE, image }
+}
+
 async function sbOne(pathAndQuery) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
     headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
@@ -75,6 +101,17 @@ export default async function handler(req, res) {
             ? `${h} ${g.home_score} - ${g.away_score} ${a}`
             : 'משחק בליגת הוקי הגלגיליות הישראלית'
           image = absImg(g.home?.logo_url || g.away?.logo_url)
+        }
+      } else if (type === 'posts') {
+        // Permalinks are UUID-only (no slugs). A deleted post falls back to the league card.
+        if (UUID_RE.test(id)) {
+          const p = await sbOne(`posts?id=eq.${id}&deleted_at=is.null&select=${POST_SELECT}`)
+          if (p) {
+            const og = postOg(p)
+            title = og.title
+            desc = og.desc
+            image = absImg(og.image)
+          }
         }
       } else if (type === 'tournaments') {
         const t = await sbOne(`tournaments?${match}&select=slug,name,age_group,start_date,end_date,status`)

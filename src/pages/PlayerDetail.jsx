@@ -7,7 +7,7 @@ import { countsForStats, FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import { useAuth } from "@/lib/AuthContext"
 import { useSeasonMode } from "@/App"
 import { getClaimContext, createClaim, cancelClaim } from "@/lib/claims"
-import { ArrowRight, Shirt, Shield, Calendar, RefreshCw, UserPlus, Check, Clock, Award, Trophy, Flame } from "lucide-react"
+import { ArrowRight, Shirt, Shield, Calendar, RefreshCw, UserPlus, Check, Clock, Award, Trophy, Flame, AtSign } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -20,6 +20,7 @@ import { useSlugId, entityPath } from '@/lib/slugs'
 import FollowButton from "@/components/FollowButton"
 import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { PlayerDetailSkeleton } from "@/components/skeletons/PageSkeletons"
+import { getPlayerMentions } from "@/lib/mentionsApi"
 
 export default function PlayerDetail() {
   // The route param is a Hebrew slug (/players/יואב-תורגמן) or, for every link
@@ -43,6 +44,7 @@ export default function PlayerDetail() {
   const [claimBusy, setClaimBusy] = useState(false)
   const [claimErr, setClaimErr] = useState(null)
   const [accountBadges, setAccountBadges] = useState(null) // { isAdmin, roles } | null
+  const [tagged, setTagged] = useState([]) // "תויג/ה ב…" — posts/comments this player is @-tagged in
 
   const playerName = player ? `${player.first_name} ${player.last_name}` : null
   useSeo({
@@ -64,6 +66,14 @@ export default function PlayerDetail() {
     getClaimContext(player.id).then(c => alive && setClaimCtx(c)).catch(() => alive && setClaimCtx(null))
     return () => { alive = false }
   }, [player?.id, user])
+
+  useEffect(() => {
+    let alive = true
+    setTagged([])
+    if (!player?.id) return
+    getPlayerMentions(player.id, 10).then(rows => alive && setTagged(rows))
+    return () => { alive = false }
+  }, [player?.id])
 
   // Public league-role badges for the account (if any) linked to this player.
   useEffect(() => {
@@ -410,6 +420,36 @@ export default function PlayerDetail() {
               ))}
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* Where this player was @-tagged (player_mentions RPC). Hidden when empty. */}
+      {tagged.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className="card overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
+              <AtSign className="w-4 h-4 text-brand" /> תויג/ה ב…
+            </h2>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-700/60">
+            {tagged.map(t => (
+              <li key={t.id}>
+                <Link to={t.href} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  {t.author_avatar
+                    ? <img src={t.author_avatar} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                    : <span className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0">{t.author_name.charAt(0)}</span>}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">{t.author_name}</span>
+                      {t.kind === 'comment' ? ' · בתגובה' : ' · בפוסט'}
+                      {t.created_at && <> · {format(new Date(t.created_at), "d/M/yyyy")}</>}
+                    </p>
+                    <p className="text-sm text-slate-700 dark:text-slate-200 line-clamp-2 break-words">{t.preview}</p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </motion.div>
       )}
 

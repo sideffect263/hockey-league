@@ -16,6 +16,7 @@ import { setFeedTracking, observeFeedItem, getFeedPersonalization } from "@/lib/
 import { attachEventPhotos } from "@/lib/eventPhotos"
 import { getPhotoIndex } from "@/lib/media"
 import { getPhotoOverrides } from "@/lib/photoOverrides"
+import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import FeedPost from "@/components/feed/FeedPost"
 import Composer from "@/components/feed/Composer"
 import LiveGameBanner from "@/components/LiveGameBanner"
@@ -52,6 +53,7 @@ export default function Feed() {
   const [gameStats, setGameStats] = useState([])
   const [posts, setPosts] = useState([])
   const [roleBadges, setRoleBadges] = useState({}) // { [userId]: { isAdmin, roles } }
+  const [postMentions, setPostMentions] = useState({}) // { [postId]: active @-tags }
   const [photoIndex, setPhotoIndex] = useState({ photos: [], photoPlayers: [] })
   const [photoOverrides, setPhotoOverrides] = useState({})
   const [likedPostIds, setLikedPostIds] = useState(() => new Set())
@@ -133,6 +135,14 @@ export default function Feed() {
     getRoleBadges(authorIds).then(setRoleBadges).catch(() => {})
   }, [posts])
 
+  // Active @player tags on the loaded posts (one chunked read; a miss = plain text).
+  useEffect(() => {
+    if (!posts.length) return
+    let alive = true
+    getMentions(MENTION_KIND.post, posts.map(p => p.id)).then(m => { if (alive) setPostMentions(prev => ({ ...prev, ...m })) })
+    return () => { alive = false }
+  }, [posts])
+
   const loadData = async () => {
     try {
       setLoading(true); setError(null)
@@ -176,8 +186,10 @@ export default function Feed() {
     video: feed.filter(p => matchesFilter(p, "video")).length,
   }), [feed])
 
-  const handlePosted = (newPost) => {
-    if (newPost) setPosts(prev => [newPost, ...prev])
+  const handlePosted = (newPost, tags = []) => {
+    if (!newPost) return
+    if (tags.length) setPostMentions(prev => ({ ...prev, [newPost.id]: tags }))
+    setPosts(prev => [newPost, ...prev])
   }
 
   // An admin refreshed a card's photo — mirror the new pin into the overrides map so
@@ -282,11 +294,10 @@ export default function Feed() {
           ) : (
             <div className="space-y-2 sm:space-y-5">
               {visible.map(post => (
-                // Anchor for deep links: a like/comment notification points at
-                // /#post-<id>, and buildFeed already ids human posts as `post-<uuid>`,
-                // which is exactly the notification's entity_id.
+                // Anchor for deep links into the feed (/#game-…, /#ms-…). Old /#post-<id>
+                // links are redirected to the permalink /posts/<id> (App.jsx).
                 <TrackedItem key={post.id} post={post}>
-                <FeedPost key={post.id} post={post} playersMap={playersMap} teamsMap={teamsMap} roleBadges={roleBadges} likedPostIds={likedPostIds} likedItems={likedItems} itemLikeCounts={itemLikeCounts} itemCommentCounts={itemCommentCounts} blockedIds={blockedIds} onPhotoRefreshed={handlePhotoRefreshed} />
+                <FeedPost key={post.id} post={post} playersMap={playersMap} teamsMap={teamsMap} roleBadges={roleBadges} likedPostIds={likedPostIds} likedItems={likedItems} itemLikeCounts={itemLikeCounts} itemCommentCounts={itemCommentCounts} blockedIds={blockedIds} onPhotoRefreshed={handlePhotoRefreshed} mentions={postMentions[post.data?.post?.id]} />
                 </TrackedItem>
               ))}
             </div>
