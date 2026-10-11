@@ -7,7 +7,7 @@ import { UserCheck, Search, RefreshCw } from "lucide-react"
 import { Player as PlayerIcon } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import PlayerAvatar from "@/components/PlayerAvatar"
-import { OgBadge } from "@/components/RoleBadges"
+import { OgBadge, RoleBadge, deriveRoleItems } from "@/components/RoleBadges"
 import { entityPath } from "@/lib/slugs"
 import { PlayersSkeleton } from "@/components/skeletons/PageSkeletons"
 
@@ -132,6 +132,11 @@ export default function Players() {
                       return names.length ? names.join(' · ') : teamName(player.team_id)
                     })()}
                   </p>
+                  {player.role_badges && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {deriveRoleItems(player.role_badges).map(it => <RoleBadge key={it.role} role={it.role} size="sm" />)}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex gap-1">

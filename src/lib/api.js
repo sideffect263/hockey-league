@@ -150,18 +150,21 @@ export async function getPlayers(orderBy = 'goals', ascending = false) {
     .order(orderBy, { ascending })
   if (error) throw error
   const players = data || []
-  // Attach the paired user's uploaded avatar (claimed cards only) so player cards
-  // can show the person's photo. Batched lookup — NOT a profiles↔players embed
-  // (embed-ambiguity gotcha); profiles has a public-read policy so anon gets it too.
+  // Attach the paired account's uploaded avatar + public role badges (claimed cards
+  // only) in one call — player_cards() RPC, anon-readable. NOT a profiles↔players embed
+  // (embed-ambiguity gotcha).
   try {
-    const { data: owners } = await supabase
-      .from('profiles').select('player_id, avatar_url')
-      .not('player_id', 'is', null).not('avatar_url', 'is', null)
-    if (owners?.length) {
-      const byPlayer = Object.fromEntries(owners.map(o => [o.player_id, o.avatar_url]))
-      for (const p of players) if (byPlayer[p.id]) p.owner_avatar_url = byPlayer[p.id]
+    const { data: cards } = await supabase.rpc('player_cards')
+    if (cards?.length) {
+      const byPlayer = Object.fromEntries(cards.map(c => [c.player_id, c]))
+      for (const p of players) {
+        const c = byPlayer[p.id]
+        if (!c) continue
+        if (c.avatar_url) p.owner_avatar_url = c.avatar_url
+        if (c.is_admin || c.roles?.length) p.role_badges = { isAdmin: !!c.is_admin, roles: c.roles || [] }
+      }
     }
-  } catch { /* avatar is enhancement-only; never break the players fetch */ }
+  } catch { /* avatar/badges are enhancement-only; never break the players fetch */ }
   return registerSlugs('players', players)
 }
 
