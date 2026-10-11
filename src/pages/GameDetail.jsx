@@ -22,6 +22,7 @@ import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
 import { getGameOfficialsPublic } from "@/lib/officials"
 import AddToCalendar from "@/components/games/AddToCalendar"
 import GameFormExport from "@/components/GameFormExport"
+import GameFormCard from "@/components/games/GameFormCard"
 import GameMvp from "@/components/GameMvp"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
@@ -413,6 +414,9 @@ export default function GameDetail() {
           onSubmitted={refreshMyRequest}
         />
       )}
+
+      {/* ===== MATCH SHEET: captains + digital signatures of the טופס שיפוט ===== */}
+      <GameFormCard game={game} home={home} away={away} players={players} stats={stats} />
 
       {/* ===== OPPONENT COACH: respond to a reschedule request (pick workable dates) ===== */}
       <GameChangeOpponentCard game={game} coachTeamIds={coachTeamIds} onResponded={refreshMyRequest} />

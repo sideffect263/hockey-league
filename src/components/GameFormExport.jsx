@@ -9,11 +9,11 @@ import { getGameFormSources, buildReport, defaultFormFields, guestEntries, gameF
  * in — same .xlsx layout the judge gets as a blank, plus a חובש section the blank
  * form has no room for.
  *
- * The dialog exists because the app records a box score, not a match sheet. Half-time
- * score, the extra officials, coach and captain names have no column in the database,
- * so they are asked for here rather than exported blank — and the medic comes back
- * pre-filled from whoever was actually assigned to work the game. Team fouls, timeout
- * minutes and every signature stay empty by design: those are filled at the rink.
+ * Most of the sheet fills itself: officials and coaches from their assignments, the
+ * captains from the team / game captain, team fouls, timeouts and the half-time score
+ * from the judge board's archive (games judged since 2026-10-11), and the signatures
+ * people drew on the game page. The dialog shows all of it editable, and asks for what
+ * nothing records (the referees' observer, which side a guest played for).
  *
  * The generator is a dynamic import — the baked form template is ~100kB and no other
  * page has any use for it.
@@ -75,15 +75,15 @@ export default function GameFormExport({ game, home, away, players, stats, refer
     try {
       const src = await getGameFormSources(game.id)
       setSources(src)
-      setFields(defaultFormFields({ game, stats: stats || [], officials: src.officials, refereeName }))
+      setFields(defaultFormFields({ game, stats: stats || [], officials: src.officials, refereeName, reportRow: src.reportRow, home, away, players: players || [] }))
     } catch (e) {
       // The squad and officials only add to what the game page already holds, so a
       // failure here downgrades the export rather than blocking it — open the dialog
       // with empty defaults instead of spinning on absent `fields`.
       console.error(e)
       setError("חלק מהנתונים לא נטענו — אפשר להשלים ידנית ולייצא")
-      setSources({ squad: [], officials: [], memberships: [] })
-      setFields(defaultFormFields({ game, stats: stats || [], officials: [], refereeName }))
+      setSources({ squad: [], officials: [], memberships: [], reportRow: null, signatures: {} })
+      setFields(defaultFormFields({ game, stats: stats || [], officials: [], refereeName, home, away, players: players || [] }))
     } finally { setLoading(false) }
   }
 
@@ -102,6 +102,7 @@ export default function GameFormExport({ game, home, away, players, stats, refer
         officials: sources?.officials || [],
         refereeName,
         fields,
+        signatures: sources?.signatures || {},
       })
       downloadBytes(buildGameForm(report), gameFormFilename({ game, home, away }))
       close()
@@ -145,7 +146,7 @@ export default function GameFormExport({ game, home, away, players, stats, refer
               </div>
             ) : (
               <div className="space-y-5">
-                <Section title="לא נשמר במערכת" hint="יש להשלים ידנית">
+                <Section title="תוצאה, עבירות וקפטנים" hint="מולא מהמערכת ככל שנשמר — אפשר לתקן">
                   <Field label="תוצאת מחצית">
                     <div className="flex items-center gap-2">
                       <input type="number" min="0" value={fields.halftimeHome} onChange={set("halftimeHome")}
@@ -155,6 +156,20 @@ export default function GameFormExport({ game, home, away, players, stats, refer
                         placeholder={away?.name || "אורחת"} className="filter-input flex-1" />
                     </div>
                   </Field>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {[["home", home, "מארחת"], ["away", away, "אורחת"]].map(([side, team, label]) => (
+                      <Field key={side} label={`עבירות קבוצתיות — ${team?.name || label}`}>
+                        <input type="number" min="0" value={fields[`${side}Fouls`]} onChange={set(`${side}Fouls`)} className="filter-input w-full" />
+                      </Field>
+                    ))}
+                  </div>
+                  {fields.foulsSource === "feed" && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 -mt-1">נספר מעדכוני המשחק החי — כדאי לוודא מול השופט.</p>
+                  )}
+                  {!fields.foulsSource && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-1">לא נשמרו עבירות למשחק זה (נשמרות רק ממשחקים שנשפטו מ־11/10/2026).</p>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3">
                     {[["home", home, "מארחת"], ["away", away, "אורחת"]].map(([side, team, label]) => (
@@ -225,7 +240,10 @@ export default function GameFormExport({ game, home, away, players, stats, refer
             {error && <div className="rounded-lg px-3 py-2 text-sm bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
 
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              עבירות קבוצתיות, פסקי הזמן והחתימות נשארים ריקים למילוי ידני — הם אינם נשמרים במערכת.
+              {(() => {
+                const n = Object.keys(sources?.signatures || {}).length
+                return n ? `${n} מתוך 6 חתימות דיגיטליות יצורפו לטופס.` : "אין עדיין חתימות דיגיטליות — אפשר לחתום בעמוד המשחק."
+              })()}
             </p>
 
             <div className="flex gap-2">

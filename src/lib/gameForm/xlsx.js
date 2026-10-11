@@ -75,14 +75,15 @@ const DOS_TIME = 0
 const DOS_DATE = ((2020 - 1980) << 9) | (1 << 5) | 1
 
 /**
- * Pack `{ [path]: string }` into a zip. Returns a Uint8Array — hand it to a Blob.
- * Paths must use forward slashes; contents are encoded UTF-8.
+ * Pack `{ [path]: string | Uint8Array }` into a zip. Returns a Uint8Array — hand it to
+ * a Blob. Paths must use forward slashes; string contents are encoded UTF-8, bytes
+ * (the signature PNGs) go in as they are.
  */
 export function zip(files) {
   const enc = new TextEncoder()
   const entries = Object.entries(files).map(([name, body]) => ({
     name: enc.encode(name),
-    data: enc.encode(body),
+    data: body instanceof Uint8Array ? body : enc.encode(body),
   }))
   for (const e of entries) e.crc = crc32(e.data)
 

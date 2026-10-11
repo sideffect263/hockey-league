@@ -7,7 +7,7 @@ import { requestTeamJoin, joinErrorText } from "@/lib/teamMembership"
 import { standingsComparator } from "@/lib/utils"
 import { ageOf, DEFAULT_AGE, AGE_LABEL } from "@/lib/ageGroups"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
-import { ArrowRight, Users, Trophy, Target, Shield, Calendar, Clock, RefreshCw, Pencil, HeartPulse } from "lucide-react"
+import { ArrowRight, Users, Trophy, Target, Shield, Calendar, Clock, RefreshCw, Pencil, HeartPulse, Crown } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -18,6 +18,7 @@ import { useSlugId, entityPath } from "@/lib/slugs"
 import { TeamLink } from "@/components/EntityLinks"
 import { getApprovedMedicalPlayerIds } from "@/lib/medical"
 import { getTeamSubmissions } from "@/lib/playerSubmissions"
+import { setTeamCaptain } from "@/lib/gameFormData"
 import FollowButton from "@/components/FollowButton"
 import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
@@ -25,7 +26,8 @@ import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 export default function TeamDetail() {
   const { id: routeKey } = useParams()
   const { id, notFound: unknownRoute } = useSlugId('teams', routeKey)
-  const { profile, isAdmin, coachTeamIds } = useAuth()
+  const { profile, isAdmin, isLeagueManager, coachTeamIds } = useAuth()
+  const [captainBusy, setCaptainBusy] = useState(false)
   const [joinState, setJoinState] = useState(null)
   const [joinError, setJoinError] = useState(null)
   const [editing, setEditing] = useState(false)
@@ -106,6 +108,19 @@ export default function TeamDetail() {
   const team = teams.find(t => t.id === id)
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const canEdit = !!team && (isAdmin || coachTeamIds.includes(team.id))
+  // Season captain: the coach, an LM or an admin names one; each game can override it.
+  const canSetCaptain = canEdit || isLeagueManager
+  const toggleCaptain = async (e, playerId) => {
+    e.preventDefault(); e.stopPropagation()
+    if (captainBusy) return
+    const next = team.captain_player_id === playerId ? null : playerId
+    setCaptainBusy(true)
+    try {
+      await setTeamCaptain(team.id, next)
+      setTeams(ts => ts.map(t => (t.id === team.id ? { ...t, captain_player_id: next } : t)))
+    } catch (err) { console.error(err) }
+    finally { setCaptainBusy(false) }
+  }
   // League rank is senior only; a youth-tournament team isn't in the league
   // table, so it shows its age-group badge instead of a bogus rank.
   const isSeniorTeam = ageOf(team) === DEFAULT_AGE
@@ -228,6 +243,9 @@ export default function TeamDetail() {
                   {player.position === 'Goalkeeper' ? 'GK' : 'FP'}
                 </span>
                 {player.is_referee && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">REF</span>}
+                {team.captain_player_id === player.id && (
+                  <span title="קפטן הקבוצה" className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><Crown className="w-3 h-3" />C</span>
+                )}
                 {canEdit && (
                   medicalApproved.has(player.id)
                     ? <span title="בדיקה רפואית מאושרת" className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"><HeartPulse className="w-3 h-3" /></span>
@@ -235,6 +253,14 @@ export default function TeamDetail() {
                 )}
               </div>
               <div className="flex items-center gap-3 text-xs shrink-0">
+                {canSetCaptain && (
+                  <button onClick={(e) => toggleCaptain(e, player.id)} disabled={captainBusy}
+                    title={team.captain_player_id === player.id ? "הסר קפטן" : "קבע כקפטן"}
+                    aria-label={team.captain_player_id === player.id ? "הסר קפטן" : "קבע כקפטן"}
+                    className={`p-1 rounded-md transition-colors ${team.captain_player_id === player.id ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 hover:text-amber-500'}`}>
+                    <Crown className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 {(player.goals || 0) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{player.goals}</span><span>⚽</span></span>}
                 <span className="text-slate-400">{player.games_played || 0} מש׳</span>
               </div>

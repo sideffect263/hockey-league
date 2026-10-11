@@ -18,14 +18,18 @@ import { sheetXml, zip } from './xlsx'
  *  - The medic section the form has no room for is appended after the last row, built
  *    from the results section's own title/label/value rows so it looks native.
  *
- * Everything the app cannot know stays exactly as printed: the team-foul grids, the
- * timeout minutes, and every signature line.
+ * Team fouls are crossed off the printed 1–25 grid, timeouts go in as the minute of
+ * the half, and the digital signatures are placed as pictures over their signature
+ * lines (a drawing part the blank already links, so only its anchors are new).
+ * Anything the app does not know stays exactly as printed, for the pen.
  */
 
 // Rows of the blank form. `first`/`last` bracket the printed player rows; `last` is
 // the one with the closing border, so growth is inserted before it.
-const HOME = { teamName: 9, first: 11, last: 20, coach: 21 }
-const AWAY = { teamName: 25, first: 27, last: 36, coach: 37 }
+// `fouls` = first row of the 1–25 fouls grid; `timeouts` = the value rows under each
+// half's "דקה | דקה" labels (two timeouts per half).
+const HOME = { teamName: 9, first: 11, last: 20, coach: 21, foulsTitle: 8, foulsTotal: 9, fouls: 10, timeouts: [19, 22] }
+const AWAY = { teamName: 25, first: 27, last: 36, coach: 37, foulsTitle: 24, foulsTotal: 25, fouls: 26, timeouts: [35, 38] }
 const RESULTS = { title: 40, labels: 41, values: 42, entries: 43, notesLine: 44 }
 const PRINTED_ROWS = HOME.last - HOME.first + 1
 
@@ -33,6 +37,10 @@ const GOAL_COLS = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P']  // one cel
 const BLUE_COLS = ['Q', 'R', 'S']                                     // one cell per blue card
 const RED_COL = 'T'
 const SIDE_COLS = ['U', 'V', 'W', 'X', 'Y']                           // fouls grid + timeout box
+// The grid prints 5,4,3,2,1 in U..Y, so foul n sits in column FOUL_COLS[(n-1) % 5].
+const FOUL_COLS = ['Y', 'X', 'W', 'V', 'U']
+const FOUL_GRID_MAX = 25
+const TIMEOUT_COLS = ['U', 'X']
 const MARK = '1'   // the form's own instruction: "יש לסמן V או 1 בכל הבקעה"
 const GK_SUFFIX = ' (שוער/ת)'
 const BLANK_LINE = '___________'   // what the form prints wherever a name is written in
@@ -139,6 +147,22 @@ function fillTeamBlock(sheet, block, team, at) {
   })
   setCell(sheet, at(block.coach), 'E', team.coach)
   setCell(sheet, at(block.coach), 'N', team.captain)
+
+  // Fouls: cross off 1..n on the grid, the way the judge does it by pen, and write the
+  // total into the caption so nobody has to count the crosses.
+  if (Number.isFinite(team.fouls)) {
+    for (let n = 1; n <= Math.min(team.fouls, FOUL_GRID_MAX); n++) {
+      setCell(sheet, at(block.fouls) + Math.floor((n - 1) / 5), FOUL_COLS[(n - 1) % 5], 'X')
+    }
+    setCell(sheet, at(block.foulsTitle), 'U', 'עבירות קבוצתיות:')
+    setCell(sheet, at(block.foulsTotal), 'U', team.fouls)
+  }
+  // Timeouts: the minute of the half each was called in, two boxes per half.
+  ;[team.timeouts?.first, team.timeouts?.second].forEach((mins, h) => {
+    (mins || []).slice(0, TIMEOUT_COLS.length).forEach((m, i) => {
+      setCell(sheet, at(block.timeouts[h]), TIMEOUT_COLS[i], Number.isFinite(m) ? m : 'V')
+    })
+  })
 }
 
 /**
@@ -154,6 +178,55 @@ function appendMedicSection(sheet, medicName, at) {
   setCell(sheet, after + 1, 'G', 'חתימת חובש')
   setCell(sheet, after + 2, 'A', medicName || BLANK_LINE)
   setCell(sheet, after + 2, 'G', 'X _______________')
+  return after + 2
+}
+
+// ---- signature pictures ----
+const EMU_PER_PX = 9525
+const SIG_MAX_W = 120, SIG_MAX_H = 34   // px — fits one printed line without hiding the next
+const colIndex = (col) => [...col].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1
+
+function dataUrlBytes(url) {
+  const m = /^data:image\/png;base64,(.+)$/.exec(url || '')
+  if (!m) return null
+  const bin = atob(m[1])
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
+}
+
+/** PNG pixel size from its IHDR chunk (bytes 16..23, big-endian). */
+function pngSize(bytes) {
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  return { w: v.getUint32(16), h: v.getUint32(20) }
+}
+
+/**
+ * Place each signature as a picture anchored on its line. Returns the extra package
+ * parts: the PNGs, the drawing's rels, and the drawing + content types rewritten.
+ */
+function signatureParts(placements) {
+  const pics = placements.map(p => ({ ...p, bytes: dataUrlBytes(p.image) })).filter(p => p.bytes && p.bytes.length > 24)
+  if (!pics.length) return {}
+  const parts = {}
+  const rels = []
+  const anchors = pics.map((p, i) => {
+    const rid = `rId${i + 1}`
+    parts[`xl/media/signature${i + 1}.png`] = p.bytes
+    rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/signature${i + 1}.png"/>`)
+    const { w, h } = pngSize(p.bytes)
+    const scale = Math.min(SIG_MAX_W / w, SIG_MAX_H / h)
+    const cx = Math.round(w * scale * EMU_PER_PX), cy = Math.round(h * scale * EMU_PER_PX)
+    return `<xdr:oneCellAnchor><xdr:from><xdr:col>${colIndex(p.col)}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${p.row - 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>`
+      + `<xdr:ext cx="${cx}" cy="${cy}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i + 2}" name="${p.name}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>`
+      + `<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>`
+      + `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`
+  })
+  // The blank's drawing part is an empty, self-closed <xdr:wsDr …/>.
+  parts['xl/drawings/drawing1.xml'] = FILES['xl/drawings/drawing1.xml'].replace(/\/>\s*$/, `>${anchors.join('')}</xdr:wsDr>`)
+  parts['xl/drawings/_rels/drawing1.xml.rels'] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`
+  parts['[Content_Types].xml'] = FILES['[Content_Types].xml'].replace('<Default ', '<Default ContentType="image/png" Extension="png"/><Default ')
+  return parts
 }
 
 /**
@@ -202,7 +275,17 @@ export function buildGameForm(report) {
   setCell(sheet, entries, 'Q', note && note.length <= NOTE_INLINE_MAX ? `הערות שופט: ${note}` : 'הערות שופט:')
   if (note.length > NOTE_INLINE_MAX) setCell(sheet, at(RESULTS.notesLine), 'A', note)
 
-  appendMedicSection(sheet, report.medic, at)
+  const medicSigRow = appendMedicSection(sheet, report.medic, at)
 
-  return zip({ ...FILES, 'xl/worksheets/sheet1.xml': sheetXml(sheet) })
+  const sig = report.signatures || {}
+  const sigParts = signatureParts([
+    { name: 'חתימת שופט', image: sig.referee, row: at(RESULTS.values), col: 'R' },
+    { name: 'חתימת מאמן מארחת', image: sig.home_coach, row: at(HOME.coach), col: 'G' },
+    { name: 'חתימת קפטן מארחת', image: sig.home_captain, row: at(HOME.coach), col: 'R' },
+    { name: 'חתימת מאמן אורחת', image: sig.away_coach, row: at(AWAY.coach), col: 'G' },
+    { name: 'חתימת קפטן אורחת', image: sig.away_captain, row: at(AWAY.coach), col: 'R' },
+    { name: 'חתימת חובש', image: sig.medic, row: medicSigRow, col: 'H' },
+  ])
+
+  return zip({ ...FILES, 'xl/worksheets/sheet1.xml': sheetXml(sheet), ...sigParts })
 }

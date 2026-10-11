@@ -407,6 +407,9 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
         if (lineup.home?.added?.includes(r.player_id)) r.played_for_team_id = game.home_team_id
         else if (lineup.guest?.added?.includes(r.player_id)) r.played_for_team_id = game.away_team_id
       }
+      // One last, awaited broadcast: the server archives fouls/timeouts from the live
+      // row (game_reports) and the save deletes that row, so it must hold the final state.
+      await broadcastGameState(engine, game.id)
       await saveGameResult(game.id, homeScore, awayScore, [...map.values()])
       clearEngineDraft(game.id)
       setSaved(true)

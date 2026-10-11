@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { getGameSquad } from './squad'
 import { getPlayerTeams, buildMemberMaps } from './playerTeams'
 import { AGE_LABEL, ageOf } from './ageGroups'
+import { getGameReportRow, summarizeReport, gameCaptainIds, getGameSignatures } from './gameFormData'
 
 /**
  * Everything the game-form export needs to know about a played game, assembled from
@@ -35,12 +36,14 @@ async function getGameOfficials(gameId) {
 
 /** The extra reads the export needs beyond what the game page already holds. */
 export async function getGameFormSources(gameId) {
-  const [squad, officials, memberships] = await Promise.all([
+  const [squad, officials, memberships, reportRow, signatures] = await Promise.all([
     getGameSquad(gameId).catch(() => []),
     getGameOfficials(gameId).catch(() => []),
     getPlayerTeams().catch(() => []),
+    getGameReportRow(gameId).catch(() => null),
+    getGameSignatures(gameId).catch(() => ({})),
   ])
-  return { squad, officials, memberships }
+  return { squad, officials, memberships, reportRow, signatures }
 }
 
 // Several rows carry a trailing space in first_name, which would print as a gap.
@@ -140,26 +143,37 @@ export function resolveOfficials({ game, refereeName, officials = [] }) {
 
 /**
  * The values the export dialog opens with. Everything the league already knows arrives
- * filled — medic, the extra judge, both coaches, the referee's own notes — so the only
- * empty fields left are the ones nothing in the database can answer: the captains, the
- * referees' observer, and the half-time score.
+ * filled — medic, the extra judge, both coaches, the captains, the referee's own notes,
+ * and (from the judge board's archive) team fouls and the half-time score — so the only
+ * field nothing can answer is the referees' observer.
  *
  * A team can have several accounts holding the coach role (assistants, a manager who
  * also coaches), so `coachOptions` carries them all for the field to offer.
  */
-export function defaultFormFields({ game, stats, officials = [], refereeName }) {
+export function defaultFormFields({ game, stats, officials = [], refereeName, reportRow = null, home = null, away = null, players = [] }) {
   const resolved = resolveOfficials({ game, refereeName, officials })
   const guests = guestEntries(stats)
+  const summary = summarizeReport(reportRow)
+  const caps = gameCaptainIds(reportRow, home, away)
+  const nameOf = (id) => fullName(players.find(p => p.id === id))
+  // The archive only knows goals the judge entered on the board; trust its half-time
+  // score only when its goal count matches the final.
+  const goalsAgree = !!summary?.hasGoals && summary.goals.home === game.home_score && summary.goals.away === game.away_score
+  const fromArchive = (v) => (v == null ? '' : String(v))
   return {
     medic: resolved.medic,
     extraReferee: resolved.extraReferee,
     observer: '',
-    halftimeHome: '',
-    halftimeAway: '',
+    halftimeHome: goalsAgree ? fromArchive(summary.halftime.home) : '',
+    halftimeAway: goalsAgree ? fromArchive(summary.halftime.away) : '',
+    homeFouls: summary ? String(summary.fouls.home) : '',
+    awayFouls: summary ? String(summary.fouls.away) : '',
+    timeouts: summary?.hasTimeouts ? summary.timeouts : null,
+    foulsSource: summary ? (summary.exact ? 'exact' : 'feed') : null,
     homeCoach: resolved.homeCoaches[0] || '',
-    homeCaptain: '',
+    homeCaptain: nameOf(caps.home),
     awayCoach: resolved.awayCoaches[0] || '',
-    awayCaptain: '',
+    awayCaptain: nameOf(caps.away),
     refereeNotes: game.referee_notes || '',
     coachOptions: { home: resolved.homeCoaches, away: resolved.awayCoaches },
     // Nothing in the data says which side a guest played for; home is a starting
@@ -171,15 +185,18 @@ export function defaultFormFields({ game, stats, officials = [], refereeName }) 
 /**
  * Fold the page's data and the dialog's fields into the flat shape buildGameForm wants.
  */
-export function buildReport({ game, home, away, players, stats, squad, memberships, refereeName, officials, fields }) {
+export function buildReport({ game, home, away, players, stats, squad, memberships, refereeName, officials, fields, signatures = {} }) {
   const { byTeam } = buildMemberMaps(memberships, players)
   const statsByPlayer = new Map(stats.filter(s => s.player_id).map(s => [s.player_id, s]))
   const date = new Date(game.game_date)
 
   const guests = guestEntries(stats)
   const guestsFor = (side) => guests.filter(g => (fields.guestTeams?.[g.id] || 'home') === side)
+  const num = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v))
   const blockFor = (team, side) => ({
     name: team?.name || '',
+    fouls: num(side === 'home' ? fields.homeFouls : fields.awayFouls),
+    timeouts: fields.timeouts?.[side] || null,
     coach: side === 'home' ? fields.homeCoach : fields.awayCoach,
     captain: side === 'home' ? fields.homeCaptain : fields.awayCaptain,
     players: [
@@ -187,8 +204,6 @@ export function buildReport({ game, home, away, players, stats, squad, membershi
       ...guestsFor(side),
     ],
   })
-
-  const num = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v))
 
   return {
     date: format(date, 'dd/MM/yyyy'),
@@ -213,6 +228,7 @@ export function buildReport({ game, home, away, players, stats, squad, membershi
     finalAway: game.away_score ?? null,
     home: blockFor(home, 'home'),
     away: blockFor(away, 'away'),
+    signatures: Object.fromEntries(Object.entries(signatures).map(([role, s]) => [role, s?.image]).filter(([, img]) => img)),
   }
 }
 
