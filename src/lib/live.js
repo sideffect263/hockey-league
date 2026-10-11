@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamSide, CardType, Half, BreakKind } from './game/rules'
+import { TeamSide, CardType, Half, BreakKind, GameRules } from './game/rules'
 
 /**
  * Live-game bridge between the judge's authoritative GameEngine and public
@@ -65,10 +65,35 @@ export function buildLiveEvents(engine) {
 
 // Map an engine snapshot onto the RPC args and upsert. Best-effort: a failed
 // broadcast must never break live scoring for the judge, so errors are swallowed.
+/**
+ * Timeouts each side has taken this period, from a live row. Boards that send
+ * `state.timeouts` (web; native from their next release) are exact; otherwise count
+ * the timeout events in the current period of the play-by-play.
+ */
+export function liveTimeouts(live) {
+  const t = live?.state?.timeouts
+  if (t && Number.isFinite(t.home)) return { home: t.home, away: t.away, max: t.max || 2 }
+  const evs = live?.state?.events || []
+  // The period label of the most recent event stands in for "the current period".
+  const cur = [...evs].reverse().find(e => e.period)?.period
+  if (!cur) return null
+  const n = (side) => evs.filter(e => e.type === 'timeout' && e.side === side && e.period === cur).length
+  if (!evs.some(e => e.type === 'timeout')) return null
+  return { home: n('home'), away: n('away'), max: 2 }
+}
+
+/** Is this live row in a break, and which kind? → 'timeout' | 'halftime' | null */
+export function liveBreak(live) {
+  if (live?.phase !== 'breakTime') return null
+  return /פסק זמן/.test(live.period || '') ? 'timeout' : 'halftime'
+}
+
 export async function broadcastGameState(engine, gameId) {
   if (!engine || !gameId) return
   try {
-    const running = !!engine.isRunning
+    // A break (timeout / halftime) counts down too: send it as a running deadline so
+    // spectators see it tick, not a frozen "paused" clock.
+    const running = !!engine.isRunning || engine.phase === 'breakTime'
     const remainingMS = Math.max(0, Math.round(engine.clock?.remainingMS ?? 0))
     const { error } = await supabase.rpc('broadcast_game_state', {
       p_game_id: gameId,
@@ -83,7 +108,13 @@ export async function broadcastGameState(engine, gameId) {
       // events → spectator play-by-play; snapshot → the full engine state, so a judge
       // who lost their local draft (different device / cleared storage) resumes THIS
       // match instead of a fresh board. Spectators read events + columns, ignore snapshot.
-      p_state: { events: buildLiveEvents(engine), snapshot: engine.serialize() },
+      // timeouts → each side's timeouts taken this period, for the scoreboards and the
+      // score bar on the stream.
+      p_state: {
+        events: buildLiveEvents(engine),
+        snapshot: engine.serialize(),
+        timeouts: { home: engine.home?.timeoutsThisPeriod ?? 0, away: engine.guest?.timeoutsThisPeriod ?? 0, max: GameRules.maxTimeoutsPerPeriod },
+      },
     })
     if (error) throw error
   } catch (e) {

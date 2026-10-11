@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { getLiveGame, subscribeLiveGame } from "@/lib/live"
+import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak } from "@/lib/live"
 
 // Broadcast-style score bug drawn over the live video: crests, names, score, clock, period.
 //
@@ -68,6 +68,8 @@ export function clockMsAt(live, at) {
 }
 
 export function ScoreBug({ live, remainingMS, home, away, position = "top-right" }) {
+  const to = liveTimeouts(live)
+  const brk = liveBreak(live)
   const mm = String(Math.floor(remainingMS / 60000)).padStart(2, "0")
   const ss = String(Math.floor((remainingMS % 60000) / 1000)).padStart(2, "0")
   return (
@@ -76,18 +78,20 @@ export function ScoreBug({ live, remainingMS, home, away, position = "top-right"
     <div className={`pointer-events-none absolute top-[3cqw] ${position === "top-left" ? "left-[3cqw]" : "right-[3cqw]"} flex items-stretch rounded-[0.6em] overflow-hidden shadow-lg select-none`}
       style={{ fontSize: "clamp(10px, 2.3cqw, 30px)" }} aria-label="תוצאה">
       {/* RTL row: the first child is rightmost, so home sits on the right (house rule). */}
-      <Side team={home} score={live.home_score ?? 0} />
-      <Side team={away} score={live.away_score ?? 0} />
+      <Side team={home} score={live.home_score ?? 0} timeouts={to ? { used: to.home, max: to.max } : null} />
+      <Side team={away} score={live.away_score ?? 0} timeouts={to ? { used: to.away, max: to.max } : null} />
       <div className="flex items-center gap-[0.5em] px-[0.7em] bg-white text-[#0E2350] font-extrabold tabular-nums">
         <span dir="ltr">{mm}:{ss}</span>
-        {live.period && <span className="font-bold opacity-70 text-[0.8em]">{live.period}</span>}
-        {!live.is_running && <span className="text-amber-600 text-[0.8em]">עצור</span>}
+        {brk === "timeout"
+          ? <span className="text-amber-600 text-[0.8em]">פסק זמן</span>
+          : live.period && <span className="font-bold opacity-70 text-[0.8em]">{live.period}</span>}
+        {!live.is_running && !brk && <span className="text-amber-600 text-[0.8em]">עצור</span>}
       </div>
     </div>
   )
 }
 
-function Side({ team, score }) {
+function Side({ team, score, timeouts }) {
   const [imgError, setImgError] = useState(false)
   useEffect(() => { setImgError(false) }, [team?.logo_url])
   return (
@@ -97,6 +101,14 @@ function Side({ team, score }) {
         <img src={team.logo_url} alt="" onError={() => setImgError(true)} className="h-[1.5em] w-[1.5em] object-contain" />
       )}
       <span className="font-bold truncate max-w-[9em] py-[0.35em]">{team?.name || "—"}</span>
+      {/* timeouts taken this period — one pip per allowed timeout, filled = taken */}
+      {timeouts && (
+        <span className="flex flex-col gap-[0.18em]" aria-label={`פסקי זמן: ${timeouts.used}/${timeouts.max}`}>
+          {Array.from({ length: timeouts.max }, (_, i) => (
+            <span key={i} className={`block w-[0.38em] h-[0.38em] rounded-full border border-amber-400 ${i < timeouts.used ? "bg-amber-400" : ""}`} />
+          ))}
+        </span>
+      )}
       <span className="font-extrabold tabular-nums min-w-[1.6em] text-center self-stretch grid place-items-center bg-black/30 px-[0.35em]">{score}</span>
     </div>
   )

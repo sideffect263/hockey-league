@@ -5,7 +5,7 @@ import { saveGameResult } from "@/lib/judge"
 import { getGameAvailabilityForOfficial } from "@/lib/availability"
 import { broadcastGameState, setGameStatus } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
-import { Phase, TeamSide, CardType, GameFormat } from "@/lib/game/rules"
+import { Phase, TeamSide, CardType, GameFormat, GameRules, BreakKind } from "@/lib/game/rules"
 import { issueSuspension, getGamePlayerEligibility } from "@/lib/suspensions"
 import { eligibilityMap, ineligibleReasons, isBlocked } from "@/lib/eligibility"
 import { useAuth } from "@/lib/AuthContext"
@@ -59,7 +59,8 @@ const HE = {
   fouls: "עבירות", timeout: "פסק זמן",
   tapToStart: "הקש על השעון כדי להתחיל", paused: "מושהה",
   namePlaceholder: "שם", minutes: "דק׳", seconds: "שנ׳",
-  pickScorer: "מי הבקיע?", pickCarded: "כרטיס עבור", skipBreak: "דלג על ההפסקה",
+  pickScorer: "מי הבקיע?", pickCarded: "כרטיס עבור", skipBreak: "דלג על ההפסקה", endTimeout: "סיים פסק זמן",
+  timeoutsUsed: (n, max) => `פסקי זמן במחצית: ${n}/${max}`,
   settings: "הגדרות", format: "פורמט משחק", formatHalves: "שתי מחציות", formatThirds: "שלישים",
   periodLength: "אורך מחצית", overtime: "הארכה בתיקו", breakLength: "אורך מנוחה",
   passivePlay: "שעון משחק פסיבי", theme: "ערכת נושא", themeLed: "LED / זירה", themeModern: "מודרני",
@@ -181,13 +182,26 @@ function TeamColumn({ side, engine, T, teamName, setPicker }) {
         {cards.map(c => <CardPill key={c.id} card={c} T={T} onRemove={() => engine.removeCard(c.id)} />)}
       </div>
 
-      {/* timeout */}
+      {/* timeout — with one dot per timeout this period (filled = taken) */}
       <button onClick={() => engine.requestTimeout(side)} disabled={!engine.canTimeout(side)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold transition-opacity"
-        style={{ background: T.panel, color: accent, opacity: engine.canTimeout(side) ? 1 : 0.25, fontSize: SB.timeout }}>
+        style={{ background: T.panel, color: accent, opacity: engine.canTimeout(side) ? 1 : 0.25, fontSize: SB.timeout }}
+        aria-label={HE.timeoutsUsed(engine._side(side).timeoutsThisPeriod, GameRules.maxTimeoutsPerPeriod)}>
         <Hand className="w-[1.1em] h-[1.1em]" /> {HE.timeout}
+        <TimeoutDots used={engine._side(side).timeoutsThisPeriod} color={accent} />
       </button>
     </div>
+  )
+}
+
+/** One dot per allowed timeout this period; filled = taken. */
+function TimeoutDots({ used, color }) {
+  return (
+    <span className="inline-flex items-center gap-[0.25em] ms-[0.2em]" aria-hidden="true">
+      {Array.from({ length: GameRules.maxTimeoutsPerPeriod }, (_, i) => (
+        <span key={i} className="inline-block rounded-full" style={{ width: "0.5em", height: "0.5em", border: `0.12em solid ${color}`, background: i < used ? color : "transparent" }} />
+      ))}
+    </span>
   )
 }
 
@@ -329,15 +343,17 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
     })
   }, [engine, game.id, game.status])
 
+  // A break clock (timeout / halftime) runs too — it gets the heartbeat as well.
+  const clockTicking = engine.isRunning || engine.phase === Phase.breakTime
   // Heartbeat: while the clock is running, re-broadcast every 10s so `updated_at`
   // stays fresh. If the judge disconnects (tab closed / phone dead), the heartbeat
   // stops and spectators freeze the clock ("ממתין לשופט") instead of it running
   // down to 0 with nobody officiating (see LiveGame.jsx judgeGone()).
   useEffect(() => {
-    if (game.status === "completed" || !engine.isRunning) return
+    if (game.status === "completed" || !clockTicking) return
     const iv = setInterval(() => broadcastGameState(engine, game.id), 10000)
     return () => clearInterval(iv)
-  }, [engine, engine.isRunning, game.id, game.status])
+  }, [engine, clockTicking, game.id, game.status])
 
   const doAbandon = async () => {
     setAbandoning(true); setSaveErr(null)
@@ -437,6 +453,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   const over = engine.phase === Phase.over
   const editing = engine.phase === Phase.editing
   const inBreak = engine.phase === Phase.breakTime
+  const inTimeout = inBreak && (engine.breakKind === BreakKind.homeTimeout || engine.breakKind === BreakKind.guestTimeout)
   const showTenths = engine.clock.showTenths
 
   return (
@@ -476,9 +493,18 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
           {editing ? (
             <TimeStepper engine={engine} T={T} />
           ) : inBreak ? (
-            <button onClick={() => engine.skipBreak()} className="flex items-center gap-1.5 font-semibold" style={{ color: T.accent, fontSize: SB.hint }}>
-              <SkipForward className="w-[1.1em] h-[1.1em]" /> {HE.skipBreak}
-            </button>
+            // A timeout is ended early all the time (the team is ready), so it gets a big,
+            // obvious button; halftime keeps the quieter link.
+            inTimeout ? (
+              <button onClick={() => engine.skipBreak()} className="flex items-center gap-2 font-bold rounded-full"
+                style={{ ...TOUCH, background: T.accent, color: T.bg, fontSize: SB.hint, padding: "0.55em 1.4em" }}>
+                <SkipForward className="w-[1.1em] h-[1.1em]" /> {HE.endTimeout}
+              </button>
+            ) : (
+              <button onClick={() => engine.skipBreak()} className="flex items-center gap-1.5 font-semibold" style={{ color: T.accent, fontSize: SB.hint }}>
+                <SkipForward className="w-[1.1em] h-[1.1em]" /> {HE.skipBreak}
+              </button>
+            )
           ) : (engine.phase === Phase.ready || engine.phase === Phase.readyOvertime) ? (
             <span className="font-semibold" style={{ color: T.secondaryText, fontSize: SB.hint }}>{HE.tapToStart}</span>
           ) : engine.phase === Phase.paused ? (

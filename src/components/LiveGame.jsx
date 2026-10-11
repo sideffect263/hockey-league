@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { getLiveGame, subscribeLiveGame } from "@/lib/live"
+import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import TeamLogo from "@/components/TeamLogo"
 import { Skeleton, SkeletonBlock } from "@/components/ui/Skeleton"
@@ -30,10 +30,24 @@ function remainingFrom(live) {
 const STALE_MS = 25000
 function judgeGone(live) {
   if (!live?.is_running || !live?.updated_at) return false
+  // Judge boards only heartbeat while the GAME clock runs; a timeout or halftime is
+  // quiet by design, so it never reads as a lost judge.
+  if (live.phase === "breakTime") return false
   return Date.now() - new Date(live.updated_at).getTime() > STALE_MS
 }
 
-function TeamPanel({ team, score, fallbackName }) {
+/** Timeouts this period: one dot per allowed timeout, filled = taken. */
+function TimeoutDots({ used, max }) {
+  return (
+    <span className="inline-flex items-center gap-1" title={`פסקי זמן במחצית: ${used}/${max}`} aria-label={`פסקי זמן במחצית: ${used} מתוך ${max}`}>
+      {Array.from({ length: max }, (_, i) => (
+        <span key={i} className={`w-2 h-2 rounded-full border border-amber-500 ${i < used ? "bg-amber-500" : ""}`} />
+      ))}
+    </span>
+  )
+}
+
+function TeamPanel({ team, score, fallbackName, timeouts }) {
   return (
     <div className="flex-1 min-w-0 flex flex-col items-center gap-2.5 text-center">
       <TeamLogo team={team} size={14} />
@@ -43,6 +57,7 @@ function TeamPanel({ team, score, fallbackName }) {
       <span className="text-5xl sm:text-7xl font-extrabold tabular-nums leading-none text-slate-900 dark:text-white">
         {score ?? 0}
       </span>
+      {timeouts && <TimeoutDots used={timeouts.used} max={timeouts.max} />}
     </div>
   )
 }
@@ -151,6 +166,8 @@ export default function LiveGame({ gameId, home, away, initial = null }) {
   const running = !!live.is_running
   const ended = live.phase === "over"
   const waiting = running && stale  // clock frozen: the judge's heartbeat went silent
+  const brk = liveBreak(live)           // 'timeout' | 'halftime' | null
+  const to = liveTimeouts(live)
 
   return (
     <div className="card relative overflow-hidden p-5 sm:p-8 ring-1 ring-brand/40">
@@ -182,16 +199,16 @@ export default function LiveGame({ gameId, home, away, initial = null }) {
       {/* scoreboard: home (right) | clock | away (left) — each score standalone
           to sidestep the RTL away:home digit-pairing gotcha. */}
       <div className="flex items-center gap-2 sm:gap-4">
-        <TeamPanel team={home} score={live.home_score} fallbackName="בית" />
+        <TeamPanel team={home} score={live.home_score} fallbackName="בית" timeouts={to && !ended ? { used: to.home, max: to.max } : null} />
         <div className="shrink-0 flex flex-col items-center gap-2">
-          <div className={`font-mono font-extrabold tabular-nums leading-none text-5xl sm:text-8xl ${running && !waiting ? "text-brand" : "text-slate-500 dark:text-slate-400"}`}>
+          <div className={`font-mono font-extrabold tabular-nums leading-none text-5xl sm:text-8xl ${brk ? "text-amber-500" : running && !waiting ? "text-brand" : "text-slate-500 dark:text-slate-400"}`}>
             {clockString(remaining)}
           </div>
-          <span className={`text-xs font-semibold uppercase tracking-wide ${waiting ? "text-amber-600 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"}`}>
-            {waiting ? "ממתין לשופט" : running ? "רץ" : ended ? "הסתיים" : "מושהה"}
+          <span className={`text-xs font-semibold uppercase tracking-wide ${waiting || brk ? "text-amber-600 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"}`}>
+            {waiting ? "ממתין לשופט" : brk === "timeout" ? "פסק זמן" : brk === "halftime" ? "הפסקה" : running ? "רץ" : ended ? "הסתיים" : "מושהה"}
           </span>
         </div>
-        <TeamPanel team={away} score={live.away_score} fallbackName="חוץ" />
+        <TeamPanel team={away} score={live.away_score} fallbackName="חוץ" timeouts={to && !ended ? { used: to.away, max: to.max } : null} />
       </div>
 
       {/* Live play-by-play — goals, cards and fouls the judge broadcasts. */}
