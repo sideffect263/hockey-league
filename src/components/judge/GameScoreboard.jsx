@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useGameEngine, clearEngineDraft } from "@/lib/game/useGameEngine"
-import { saveGameResult } from "@/lib/judge"
+import { saveGameResultReliably } from "@/lib/judge"
 import { getGameAvailabilityForOfficial } from "@/lib/availability"
-import { broadcastGameState, setGameStatus } from "@/lib/live"
+import { broadcastGameState, buildLiveEvents, setGameStatus } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import { Phase, TeamSide, CardType, GameFormat, GameRules, BreakKind } from "@/lib/game/rules"
-import { issueSuspension, getGamePlayerEligibility } from "@/lib/suspensions"
+import { issueSuspension, revokeRedCardSuspension, getGamePlayerEligibility } from "@/lib/suspensions"
 import { eligibilityMap, ineligibleReasons, isBlocked } from "@/lib/eligibility"
 import { useAuth } from "@/lib/AuthContext"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -25,6 +25,7 @@ import { StickBall } from "@/components/icons/HockeyIcons"
  *   • Tap the CLOCK to start/pause (or skip a break).
  *   • Tap a team's SCORE to add a goal (picker); LONG-PRESS to undo the last.
  *   • Tap FOULS to add; long-press to undo. Long-press a card pill to remove it.
+ *   • Tap TIMEOUT to call one (only while a period is in play); long-press to undo it.
  *   • Bottom control bar: reset (double-tap) · edit · buzzer · settings · theme.
  * Web-only bits (live broadcast, judge save, abandon, kiosk fullscreen) are kept.
  * ==========================================================================*/
@@ -62,7 +63,7 @@ const HE = {
   pickScorer: "מי הבקיע?", pickCarded: "כרטיס עבור", skipBreak: "דלג על ההפסקה", endTimeout: "סיים פסק זמן",
   timeoutsUsed: (n, max) => `פסקי זמן במחצית: ${n}/${max}`,
   settings: "הגדרות", format: "פורמט משחק", formatHalves: "שתי מחציות", formatThirds: "שלישים",
-  periodLength: "אורך מחצית", overtime: "הארכה בתיקו", breakLength: "אורך מנוחה",
+  periodLength: "אורך מחצית", overtime: "הארכה בתיקו", overtimeLength: "אורך הארכה", breakLength: "אורך מנוחה",
   passivePlay: "שעון משחק פסיבי", theme: "ערכת נושא", themeLed: "LED / זירה", themeModern: "מודרני",
   resetGame: "אפס משחק", done: "סיום", cancel: "ביטול", noPlayer: "ללא שיוך לשחקן",
   saveResult: "שמור תוצאה", abandon: "החזר למצב 'טרם החל'",
@@ -140,12 +141,16 @@ function CardPill({ card, T, onRemove }) {
 }
 
 /* ---------- team column (name · score · fouls · cards · timeout) ---------- */
-function TeamColumn({ side, engine, T, teamName, setPicker }) {
+function TeamColumn({ side, engine, T, teamName, setPicker, onRemoveCard }) {
   const s = engine._side(side)
   const editing = engine.phase === Phase.editing
   const accent = side === TeamSide.home ? T.homeAccent : T.guestAccent
   const scoreHold = useHold(() => setPicker({ side, kind: "goal" }), () => engine.removeGoal(side))
   const foulHold = useHold(() => engine.addStrike(side, null), () => engine.removeStrike(side))
+  // Timeout: tap to call (running/paused only), hold to undo a mis-tap. Not a disabled
+  // <button> — a disabled one swallows the long-press, and undo matters most at 2/2.
+  const timeoutHold = useHold(() => engine.requestTimeout(side), () => engine.removeTimeout(side))
+  const canTimeout = engine.canTimeout(side)
   const displayScore = side === TeamSide.home ? engine.homeDisplayScore : engine.guestDisplayScore
   const cards = engine.activeCards(side)
 
@@ -179,13 +184,13 @@ function TeamColumn({ side, engine, T, teamName, setPicker }) {
         <button onClick={() => setPicker({ side, kind: "red" })} className="flex items-center justify-center" style={{ width: SB.cardBtn, height: SB.cardBtn, fontSize: SB.cardBtn }} aria-label="כרטיס אדום">
           <RectangleVertical className="w-[0.6em] h-[0.8em]" style={{ color: T.cardRed }} fill="currentColor" />
         </button>
-        {cards.map(c => <CardPill key={c.id} card={c} T={T} onRemove={() => engine.removeCard(c.id)} />)}
+        {cards.map(c => <CardPill key={c.id} card={c} T={T} onRemove={() => onRemoveCard(c.id)} />)}
       </div>
 
       {/* timeout — with one dot per timeout this period (filled = taken) */}
-      <button onClick={() => engine.requestTimeout(side)} disabled={!engine.canTimeout(side)}
+      <button {...timeoutHold} aria-disabled={!canTimeout || undefined} title="החזק כדי לבטל פסק זמן"
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold transition-opacity"
-        style={{ background: T.panel, color: accent, opacity: engine.canTimeout(side) ? 1 : 0.25, fontSize: SB.timeout }}
+        style={{ ...TOUCH, background: T.panel, color: accent, opacity: canTimeout ? 1 : 0.25, fontSize: SB.timeout }}
         aria-label={HE.timeoutsUsed(engine._side(side).timeoutsThisPeriod, GameRules.maxTimeoutsPerPeriod)}>
         <Hand className="w-[1.1em] h-[1.1em]" /> {HE.timeout}
         <TimeoutDots used={engine._side(side).timeoutsThisPeriod} color={accent} />
@@ -398,8 +403,24 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
     setPicker(null)
   }
 
+  // Removing a red card on the board also lifts the suspension it filed for this game.
+  // Best-effort, like the issue: officiating must never stall on it.
+  const revokeRed = (playerId) => {
+    if (playerId == null || !game?.id) return
+    revokeRedCardSuspension(game.id, playerId).catch(() => {})
+  }
+  const removeCard = (id) => {
+    const card = engine.removeCard(id)
+    if (card?.type === CardType.red && card.player?.id != null && !engine.hasRedCard(card.player.id)) revokeRed(card.player.id)
+  }
+  // A reset discards the match, red cards included → lift the suspensions they filed.
+  const resetBoard = () => {
+    const reds = new Set(engine.cardLog.filter(c => c.type === CardType.red && c.player?.id != null).map(c => c.player.id))
+    engine.resetGame()
+    for (const pid of reds) revokeRed(pid)
+  }
   const handleReset = () => {
-    if (resetArmed) { setResetArmed(false); engine.resetGame() }
+    if (resetArmed) { setResetArmed(false); resetBoard() }
     else { setResetArmed(true); setTimeout(() => setResetArmed(false), 1200) }
   }
   const updateSettings = (patch) => { Object.assign(engine.settings, patch); engine._changed() }
@@ -423,14 +444,19 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
         if (lineup.home?.added?.includes(r.player_id)) r.played_for_team_id = game.home_team_id
         else if (lineup.guest?.added?.includes(r.player_id)) r.played_for_team_id = game.away_team_id
       }
-      // One last, awaited broadcast: the server archives fouls/timeouts from the live
-      // row (game_reports) and the save deletes that row, so it must hold the final state.
-      await broadcastGameState(engine, game.id)
-      await saveGameResult(game.id, homeScore, awayScore, [...map.values()])
+      // The match report travels WITH the save (same transaction): the full, uncapped
+      // play-by-play, the engine snapshot and the half length → game_reports. The final
+      // broadcast below just refreshes spectators; it is best-effort and capped at 3s so
+      // a bad connection can't hold the save hostage.
+      const report = { events: buildLiveEvents(engine, { max: Infinity }), snapshot: engine.serialize(), periodMS: engine.settings.periodMS }
+      await Promise.race([broadcastGameState(engine, game.id), new Promise(r => setTimeout(r, 3000))])
+      await saveGameResultReliably(game.id, homeScore, awayScore, [...map.values()], report)
       clearEngineDraft(game.id)
       setSaved(true)
     } catch (e) {
-      setSaveErr(e.message === "game already completed" ? "המשחק כבר הסתיים" : "שגיאה בשמירת התוצאה")
+      // The local draft is NOT cleared — a reload keeps the whole match for another try.
+      setSaveErr(e?.message === "game already completed" ? "המשחק כבר הסתיים"
+        : "השמירה נכשלה — בדוק את החיבור ונסה שוב. המשחק נשמר במכשיר ולא יאבד.")
     } finally { setSaving(false) }
   }
 
@@ -471,7 +497,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
       {/* board: HOME (left) · center · GUEST (right) — items-stretch so each
           column fills the full height and spreads its rows to use the space */}
       <div className="flex-1 flex items-stretch justify-between gap-2" style={{ padding: "clamp(1rem,4vh,3.5rem) clamp(1rem,3vw,4rem)" }}>
-        <TeamColumn side={TeamSide.home} engine={engine} T={T} teamName={home?.name} setPicker={setPicker} />
+        <TeamColumn side={TeamSide.home} engine={engine} T={T} teamName={home?.name} setPicker={setPicker} onRemoveCard={removeCard} />
 
         {/* center stack */}
         <div className="flex-1 flex flex-col items-center justify-center min-w-0" style={{ gap: "clamp(0.5rem,1.6vh,1.75rem)" }}>
@@ -564,7 +590,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
           )}
         </div>
 
-        <TeamColumn side={TeamSide.guest} engine={engine} T={T} teamName={guest?.name} setPicker={setPicker} />
+        <TeamColumn side={TeamSide.guest} engine={engine} T={T} teamName={guest?.name} setPicker={setPicker} onRemoveCard={removeCard} />
       </div>
 
       {/* player picker */}
@@ -651,7 +677,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
 
       {showSettings && (
         <SettingsSheet engine={engine} T={T} themeKind={themeKind} setThemeKind={setThemeKind}
-          updateSettings={updateSettings} onClose={() => setShowSettings(false)} />
+          updateSettings={updateSettings} onReset={resetBoard} onClose={() => setShowSettings(false)} />
       )}
     </div>
   )
@@ -682,9 +708,10 @@ function TimeStepper({ engine, T }) {
 }
 
 /* ---------- settings sheet (mirrors iOS SettingsSheet essentials) ---------- */
-function SettingsSheet({ engine, T, themeKind, setThemeKind, updateSettings, onClose }) {
+function SettingsSheet({ engine, T, themeKind, setThemeKind, updateSettings, onReset, onClose }) {
   const s = engine.settings
   const mins = Math.max(1, Math.round(s.periodMS / 60000))
+  const otMins = Math.max(1, Math.round((s.overtimePeriodMS ?? GameRules.defaultOvertimePeriodMS) / 60000))
   const Row = ({ label, children }) => (
     <div className="flex items-center justify-between py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
       <span className="text-sm font-medium" style={{ color: T.primaryText }}>{label}</span>
@@ -719,6 +746,9 @@ function SettingsSheet({ engine, T, themeKind, setThemeKind, updateSettings, onC
           </Row>
           <Row label={HE.periodLength}><Step value={mins} suffix={HE.minutes} onDec={() => engine.setPeriodLength((mins - 1) * 60000)} onInc={() => engine.setPeriodLength((mins + 1) * 60000)} /></Row>
           <Row label={HE.overtime}><Toggle on={s.overtimeEnabled} onToggle={() => updateSettings({ overtimeEnabled: !s.overtimeEnabled })} /></Row>
+          {s.overtimeEnabled && (
+            <Row label={HE.overtimeLength}><Step value={otMins} suffix={HE.minutes} onDec={() => engine.setOvertimeLength(Math.max(1, otMins - 1) * 60000)} onInc={() => engine.setOvertimeLength(Math.min(25, otMins + 1) * 60000)} /></Row>
+          )}
           <Row label={HE.breakLength}><Step value={s.halfBreakMinutes} suffix={HE.minutes} onDec={() => updateSettings({ halfBreakMinutes: Math.max(1, s.halfBreakMinutes - 1) })} onInc={() => updateSettings({ halfBreakMinutes: Math.min(5, s.halfBreakMinutes + 1) })} /></Row>
           <Row label={HE.passivePlay}><Toggle on={s.passivePlayEnabled} onToggle={() => updateSettings({ passivePlayEnabled: !s.passivePlayEnabled })} /></Row>
           <Row label={HE.theme}>
@@ -727,7 +757,7 @@ function SettingsSheet({ engine, T, themeKind, setThemeKind, updateSettings, onC
               <option value="modern">{HE.themeModern}</option>
             </select>
           </Row>
-          <button onClick={() => { engine.resetGame(); onClose() }} className="w-full mt-3 py-2.5 rounded-lg text-sm font-bold" style={{ background: "rgba(240,0,0,0.15)", color: "#ff6b6b" }}>
+          <button onClick={() => { onReset(); onClose() }} className="w-full mt-3 py-2.5 rounded-lg text-sm font-bold" style={{ background: "rgba(240,0,0,0.15)", color: "#ff6b6b" }}>
             <RotateCcw className="w-4 h-4 inline ml-1" /> {HE.resetGame}
           </button>
         </div>

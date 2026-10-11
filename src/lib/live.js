@@ -45,7 +45,9 @@ function eventPeriod(half) {
 const eventSide = (side) => (side === TeamSide.home ? 'home' : 'away')
 
 // The compact event list broadcast to spectators (most recent MAX kept, in order).
-export function buildLiveEvents(engine) {
+// The judge's save passes { max: Infinity } for the full, uncapped match report — same
+// event objects, so game_reports.events keeps one shape whichever path wrote it.
+export function buildLiveEvents(engine, { max = MAX_LIVE_EVENTS } = {}) {
   if (!engine) return []
   const evs = []
   for (const g of engine.goals || [])
@@ -60,7 +62,8 @@ export function buildLiveEvents(engine) {
   }
   evs.sort((a, b) => a.seq - b.seq)
   // Drop the internal seq from the payload; the array is already chronological.
-  return evs.slice(-MAX_LIVE_EVENTS).map(({ seq, ...e }) => e)
+  const kept = Number.isFinite(max) ? evs.slice(-max) : evs
+  return kept.map(({ seq, ...e }) => e)
 }
 
 // Map an engine snapshot onto the RPC args and upsert. Best-effort: a failed
@@ -114,6 +117,8 @@ export async function broadcastGameState(engine, gameId) {
         events: buildLiveEvents(engine),
         snapshot: engine.serialize(),
         timeouts: { home: engine.home?.timeoutsThisPeriod ?? 0, away: engine.guest?.timeoutsThisPeriod ?? 0, max: GameRules.maxTimeoutsPerPeriod },
+        // Half length → game_reports.period_ms (the form's timeout minutes).
+        periodMS: engine.settings?.periodMS ?? null,
       },
     })
     if (error) throw error

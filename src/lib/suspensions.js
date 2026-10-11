@@ -21,6 +21,15 @@ export async function issueSuspension(playerId, { gameId = null, reason = null, 
   return data
 }
 
+/**
+ * Undo the suspension a board's red card filed for THIS game (the card was removed on
+ * the board, or the board was reset). Server: revoke_red_card_suspension.
+ */
+export async function revokeRedCardSuspension(gameId, playerId) {
+  const { error } = await supabase.rpc('revoke_red_card_suspension', { p_game_id: gameId, p_player_id: playerId })
+  if (error) throw error
+}
+
 /** Lift a block early — the card was given in error, or the manager decided otherwise. */
 export async function clearSuspension(id) {
   const { error } = await supabase.rpc('clear_suspension', { p_id: id })

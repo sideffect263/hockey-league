@@ -46,9 +46,16 @@ export function useGameEngine(game, home, guest) {
   // A pristine (never-touched) board is never persisted, so an opened-but-unused tab
   // can't leave behind a stale draft that blocks a later server-snapshot recovery.
   const save = useRef({ at: 0, timer: null })
+  // A pristine board normally writes nothing — EXCEPT when a draft already exists: that
+  // means the judge just reset the board, and the old draft must be overwritten, or a
+  // reload resurrects the game that was reset. (Overwritten, not removed: with no draft,
+  // a reload would recover the old match from the server's live snapshot instead.)
   const persist = () => {
-    if (finished.has(game.id) || engine.isPristine()) return
-    try { localStorage.setItem(LS(game.id), JSON.stringify(engine.serialize())) } catch { /* ignore */ }
+    if (finished.has(game.id)) return
+    try {
+      if (engine.isPristine() && localStorage.getItem(LS(game.id)) == null) return
+      localStorage.setItem(LS(game.id), JSON.stringify(engine.serialize()))
+    } catch { /* ignore */ }
   }
   const write = () => {
     save.current.at = Date.now()
@@ -64,7 +71,12 @@ export function useGameEngine(game, home, guest) {
 
   useEffect(() => {
     const since = Date.now() - save.current.at
-    if (since >= SAVE_EVERY_MS) write()
+    // A reset (pristine board) is written at once — a reload right after it must not
+    // find the old match in the throttled draft.
+    if (since >= SAVE_EVERY_MS || engine.isPristine()) {
+      if (save.current.timer) { clearTimeout(save.current.timer); save.current.timer = null }
+      write()
+    }
     else if (!save.current.timer) save.current.timer = setTimeout(write, SAVE_EVERY_MS - since)
   }, [version, engine, game.id])
 

@@ -33,7 +33,14 @@ export const GameRules = {
   resetDoubleTapWindowMS: 300,
   // League default confirmed with the product owner (2026-07-09): 25:00.
   defaultPeriodMS: 25 * 60 * 1000,
+  defaultOvertimePeriodMS: 5 * 60 * 1000,
 }
+
+/** Length of a play segment: overtime periods have their own (shorter) length. */
+export const periodLengthMS = (settings, half) =>
+  (half === 'ot1' || half === 'ot2')
+    ? (settings.overtimePeriodMS ?? GameRules.defaultOvertimePeriodMS)
+    : settings.periodMS
 
 /** True when the n-th foul against a side awards the OTHER side a penalty: 10, 15, 20, 25… */
 export function isPenaltyFoul(n) {
@@ -68,7 +75,11 @@ export function defaultSettings() {
   return {
     periodMS: GameRules.defaultPeriodMS,   // 25:00
     format: GameFormat.twoHalves,
-    overtimeEnabled: true,
+    // Off by default (2026-10-11): a league game that ends tied stays tied unless the
+    // judge switches overtime on for a cup/playoff game.
+    overtimeEnabled: false,
+    // Each overtime period's length — NOT a full half (was 25:00 per OT period).
+    overtimePeriodMS: GameRules.defaultOvertimePeriodMS,   // 5:00
     halfBreakMinutes: 5,
     passivePlayEnabled: true,
   }
