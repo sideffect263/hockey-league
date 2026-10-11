@@ -1072,10 +1072,8 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
         position: form.position,
         is_core: form.is_core,
         jersey_number: form.jersey_number !== '' ? Number(form.jersey_number) : null,
-        goals: Number(form.goals) || 0,
-        games_played: Number(form.games_played) || 0,
-        blue_cards: Number(form.blue_cards) || 0,
-        red_cards: Number(form.red_cards) || 0,
+        // goals / games / cards are NOT sent: the DB derives them from game_stats and its
+        // guard trigger (player-season-totals.sql) would overwrite any value written here.
       }
       let savedId = editingPlayer
       if (multiAge) {
@@ -1261,22 +1259,23 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
             </div>
           </div>
 
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 -mb-1">שערים, משחקים וכרטיסים מחושבים אוטומטית מתוצאות המשחקים.</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">שערים</label>
-              <input type="number" min="0" value={form.goals} onChange={e => setForm({ ...form, goals: e.target.value })} className="filter-input w-full" />
+              <input type="number" value={form.goals} readOnly disabled title="מחושב אוטומטית מתוצאות המשחקים" className="filter-input w-full opacity-60 cursor-not-allowed" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">משחקים</label>
-              <input type="number" min="0" value={form.games_played} onChange={e => setForm({ ...form, games_played: e.target.value })} className="filter-input w-full" />
+              <input type="number" value={form.games_played} readOnly disabled title="מחושב אוטומטית מתוצאות המשחקים" className="filter-input w-full opacity-60 cursor-not-allowed" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">כרטיסים כחולים</label>
-              <input type="number" min="0" value={form.blue_cards} onChange={e => setForm({ ...form, blue_cards: e.target.value })} className="filter-input w-full" />
+              <input type="number" value={form.blue_cards} readOnly disabled title="מחושב אוטומטית מתוצאות המשחקים" className="filter-input w-full opacity-60 cursor-not-allowed" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">כרטיסים אדומים</label>
-              <input type="number" min="0" value={form.red_cards} onChange={e => setForm({ ...form, red_cards: e.target.value })} className="filter-input w-full" />
+              <input type="number" value={form.red_cards} readOnly disabled title="מחושב אוטומטית מתוצאות המשחקים" className="filter-input w-full opacity-60 cursor-not-allowed" />
             </div>
           </div>
 
@@ -1441,15 +1440,12 @@ function TeamsAdmin({ teams, reload, reviewOnly = false }) {
   const handleSave = async () => {
     setSaving(true)
     try {
+      // The standings columns are derived from played games and guarded by a DB trigger
+      // (player-season-totals.sql) — sending them would be silently overwritten.
+      const { wins, losses, ties, points, goals_for, goals_against, ...editable } = form
       await updateTeam(editingTeam, {
-        ...form,
+        ...editable,
         age_groups: [form.age_group || DEFAULT_AGE],
-        wins: Number(form.wins) || 0,
-        losses: Number(form.losses) || 0,
-        ties: Number(form.ties) || 0,
-        points: Number(form.points) || 0,
-        goals_for: Number(form.goals_for) || 0,
-        goals_against: Number(form.goals_against) || 0,
         own_goals_received: Number(form.own_goals_received) || 0,
       })
       setEditingTeam(null)
@@ -1631,7 +1627,9 @@ function TeamsAdmin({ teams, reload, reviewOnly = false }) {
                 ].map(({ key, label }) => (
                   <div key={key}>
                     <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">{label}</label>
-                    <input type="number" min="0" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="filter-input w-full text-center" />
+                    {key === 'own_goals_received'
+                      ? <input type="number" min="0" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="filter-input w-full text-center" />
+                      : <input type="number" value={form[key]} readOnly disabled title="מחושב אוטומטית מתוצאות המשחקים" className="filter-input w-full text-center opacity-60 cursor-not-allowed" />}
                   </div>
                 ))}
               </div>
