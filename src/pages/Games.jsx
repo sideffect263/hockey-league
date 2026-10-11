@@ -217,12 +217,12 @@ export default function Games() {
 
           {/* Match row — winning side is tinted + trophy-marked */}
           <div className="flex items-center justify-between gap-2">
-            <div className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${homeWin ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
+            <div className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${homeWin ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
               <TeamLogo team={home} size={10} />
-              <div className="min-w-0">
-                <p className={`text-sm truncate flex items-center gap-1 ${homeWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : awayWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
+              <div className="min-w-0 max-w-full text-center sm:text-start">
+                <p className={`text-sm leading-tight flex items-center justify-center sm:justify-start gap-1 ${homeWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : awayWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
                   {homeWin && <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                  <span className="truncate">{home?.name}</span>
+                  <span className="line-clamp-2 break-words">{home?.name}</span>
                 </p>
                 <p className={`text-[11px] ${homeWin ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>{tie ? 'תיקו' : homeWin ? 'מנצחת' : 'בית'}</p>
               </div>
@@ -233,7 +233,7 @@ export default function Games() {
                 So the score outputs away_score first (renders on the left, beside the
                 away team) and home_score last (renders on the right, beside the home
                 team). Do NOT reorder to home:away — it looks flipped. */}
-            <div className="px-3 text-center shrink-0">
+            <div className="px-1 sm:px-3 text-center shrink-0">
               {done ? (
                 <div className="text-2xl font-extrabold tracking-tight tabular-nums">
                   <span className={awayWin ? 'text-emerald-600 dark:text-emerald-400' : homeWin ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}>{game.away_score}</span>
@@ -247,12 +247,12 @@ export default function Games() {
               )}
             </div>
 
-            <div className={`flex items-center gap-3 flex-1 min-w-0 flex-row-reverse rounded-xl px-2 py-1.5 transition-colors ${awayWin ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
+            <div className={`flex flex-col sm:flex-row-reverse items-center gap-1 sm:gap-3 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${awayWin ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
               <TeamLogo team={away} size={10} />
-              <div className="min-w-0 text-left">
-                <p className={`text-sm truncate flex items-center gap-1 flex-row-reverse ${awayWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : homeWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
+              <div className="min-w-0 max-w-full text-center sm:text-left">
+                <p className={`text-sm leading-tight flex items-center justify-center sm:justify-start gap-1 flex-row-reverse ${awayWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : homeWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
                   {awayWin && <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                  <span className="truncate">{away?.name}</span>
+                  <span className="line-clamp-2 break-words">{away?.name}</span>
                 </p>
                 <p className={`text-[11px] ${awayWin ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>{tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'}</p>
               </div>
@@ -372,7 +372,9 @@ export default function Games() {
             {teams.filter(t => ageGroupsOf(t).includes(ageTab)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           <div className="relative flex-1 min-w-[130px]">
-            <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} aria-label="סינון לפי תאריך" className="filter-input w-full" />
+            <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} aria-label="סינון לפי תאריך" className={`peer filter-input w-full ${dateFilter ? '' : 'text-transparent focus:text-fg-soft'}`} />
+            {/* iOS shows an empty date field as a blank box (desktop shows dd/mm/yyyy) — label it */}
+            {!dateFilter && <span className="peer-focus:hidden pointer-events-none absolute inset-y-0 right-9 flex items-center text-sm font-medium text-fg-soft">כל התאריכים</span>}
             {dateFilter && <button onClick={() => setDateFilter('')} aria-label="נקה תאריך" className="absolute left-2 top-1/2 -translate-y-1/2"><X className="w-4 h-4 text-slate-400" /></button>}
           </div>
         </div>

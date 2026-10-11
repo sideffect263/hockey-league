@@ -5,6 +5,19 @@
 @tailwind utilities;
 
 @layer base {
+  /* iOS Safari draws a native date field at its own intrinsic width (ignores
+     w-full, overflows a narrow phone row) and, when empty, as a blank box with
+     no text. Strip the native chrome so it sizes like any other input. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: start;
+    min-height: 1.25rem;
+  }
+
   /* ─── Design tokens ──────────────────────────────────────────────────────
      Every value is an `R G B` triplet so Tailwind can add an alpha channel
      (bg-surface/60, text-fg-muted, ring-brand/30). They map 1:1 to the CURRENT
