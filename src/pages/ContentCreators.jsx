@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import {
   Images, Camera, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard
+  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, FlaskConical
 } from "lucide-react"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import { getPlayers } from "@/lib/api"
@@ -13,9 +13,11 @@ import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
 import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import FeedDrafts from "@/components/creators/FeedDrafts"
+import VideoLab from "@/components/creators/VideoLab"
 
 const tabs = [
   { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
+  { id: "lab", label: "מעבדת וידאו", icon: FlaskConical },
   { id: "media", label: "מדיה", icon: Camera },
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
   { id: "reports", label: "דיווחים", icon: Flag },
@@ -59,7 +61,7 @@ export default function ContentCreators() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">טיוטות לפיד, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">טיוטות לפיד, מעבדת וידאו, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -88,6 +90,7 @@ export default function ContentCreators() {
 
         <div className="min-w-0">
           {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
+          {activeTab === "lab" && <VideoLab />}
           {activeTab === "media" && <MediaClusters />}
           {activeTab === "clusters" && <ClustersAdmin players={players} />}
           {activeTab === "reports" && <ReportsReview />}
