@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { getGames, getTeams, getPlayers, getReferees, getGameStatsByGameId } from "@/lib/api"
-import { Calendar, Clock, MapPin, Trophy, Shield, X, ChevronDown, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
+import { getGames, getTeams, getPlayers, getReferees, getGameStats } from "@/lib/api"
+import { Calendar, Clock, MapPin, Trophy, Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
 import { Crossed } from "@/components/icons/HockeyIcons"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
-import { PlayerLink } from "@/components/EntityLinks"
 import { useAuth } from "@/lib/AuthContext"
 import { getAvailabilityForGames } from "@/lib/availability"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
@@ -37,8 +36,7 @@ export default function Games() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [teamFilter, setTeamFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("")
-  const [expandedGame, setExpandedGame] = useState(null)
-  // Keyed by game id: a shared slot lets a slow request for game A land under game B.
+  // game_stats grouped by game id — every finished card shows its scorers/cards inline.
   const [statsByGame, setStatsByGame] = useState({})
 
   useEffect(() => { loadData() }, [])
@@ -81,6 +79,12 @@ export default function Games() {
       // Keep tournament games too — the age tabs + טורנירים filter surface them
       // (youth teams only ever play tournament games).
       setGames(g); setTeams(t); setPlayers(p); setReferees(r)
+      // Box scores are secondary — load them after the schedule renders, never block on them.
+      getGameStats().then(rows => {
+        const map = {}
+        rows.forEach(s => { (map[s.game_id] ||= []).push(s) })
+        setStatsByGame(map)
+      }).catch(err => console.error(err))
     } catch (err) { console.error(err); setError("שגיאה בטעינת הנתונים") }
     finally { setLoading(false) }
   }
@@ -95,19 +99,6 @@ export default function Games() {
     const pool = game.referee_type === 'player' ? players : referees
     const ref = pool.find(r => r.id === game.referee_id)
     return ref ? `${ref.first_name} ${ref.last_name}` : null
-  }
-
-  const toggleStats = async (game) => {
-    if (expandedGame === game.id) { setExpandedGame(null); return }
-    setExpandedGame(game.id)
-    // Only completed games have a box score to lazy-load; upcoming games just
-    // reveal their meta panel, so skip the (empty) fetch for them.
-    if (game.status !== 'completed') return
-    if (statsByGame[game.id]) return
-    try {
-      const stats = await getGameStatsByGameId(game.id)
-      setStatsByGame(prev => ({ ...prev, [game.id]: stats }))
-    } catch (err) { console.error(err) }
   }
 
   const statusCfg = {
@@ -176,7 +167,7 @@ export default function Games() {
   // Rendered by INVOKING this function inline (`{GameCard({ game })}`), not as
   // `<GameCard/>`. It's defined inside Games, so its identity changes every render;
   // as a JSX element that remounts every card on any state change — tearing down the
-  // DOM (scroll jumps to top) and replaying the entrance animation on each expand.
+  // DOM (scroll jumps to top) and replaying the entrance animation when stats arrive.
   // Invoking it inline keeps the keyed root <motion.div> stable. Safe because it has
   // no hooks. Keep the `key` on the returned motion.div.
   const GameCard = ({ game }) => {
@@ -190,8 +181,6 @@ export default function Games() {
       const coming = players.filter(p => p.team_id === myCoachTid && st[p.id] === "available")
       return { count: coming.length, gk: coming.some(p => p.position === "Goalkeeper"), tooFew: coming.length < 4 }
     })() : null
-    const open = expandedGame === game.id
-    const stats = statsByGame[game.id]
     const home = teamsMap[game.home_team_id]
     const away = teamsMap[game.away_team_id]
     const homeWin = done && game.home_score > game.away_score
@@ -200,9 +189,9 @@ export default function Games() {
 
     return (
       <motion.div key={game.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card-hover overflow-hidden">
-        {/* Whole header is the toggle (Teams.jsx pattern). Team names are plain text
-            here — you reach the team pages from the full game page below. */}
-        <button onClick={() => toggleStats(game)} className="w-full text-right p-4 sm:p-5" aria-expanded={open}>
+        {/* The whole card is the link to the full game page (live scoreboard, stream,
+            H2H, box score). Nothing inside may be another <a> — names are plain text. */}
+        <Link to={entityPath('games', game)} className="block text-right p-4 sm:p-5">
           {/* Tags row */}
           <div className="flex items-center gap-2 mb-3">
             <span className={`stat-pill ${status.cls}`}>{status.label}</span>
@@ -224,7 +213,6 @@ export default function Games() {
                 <XCircle className="w-3 h-3" /> לא מגיע/ה
               </span>
             )}
-            <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform mr-auto ${open ? 'rotate-180' : ''}`} />
           </div>
 
           {/* Match row — winning side is tinted + trophy-marked */}
@@ -271,9 +259,13 @@ export default function Games() {
             </div>
           </div>
 
+          {done && EventsRow(game)}
+
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
             <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "d/M/yyyy")}</span>
+            {/* Upcoming games already show the time in place of the score. */}
+            {done && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>}
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
             {/* Kiosk — only when someone has actually said. null stays silent. */}
             {game.kiosk_open != null && (
@@ -282,7 +274,7 @@ export default function Games() {
               </span>
             )}
             {ref && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{ref}</span>}
-            <span className="mr-auto font-semibold text-slate-500 dark:text-slate-400">{open ? 'סגור' : 'פרטים'}</span>
+            <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" /></span>
           </div>
 
           {game.notes && (
@@ -290,97 +282,50 @@ export default function Games() {
               {game.notes}
             </div>
           )}
-        </button>
-
-        {/* Expanded panel */}
-        <AnimatePresence>
-          {open && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="px-5 pb-5">
-                {done ? (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
-                    <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3">סטטיסטיקות שחקנים</h4>
-                    {!stats ? (
-                      <div className="flex justify-center py-4">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-brand border-t-transparent" />
-                      </div>
-                    ) : stats.length === 0 ? (
-                      <p className="text-center text-xs text-slate-500 dark:text-slate-400 py-4">לא הוזנו סטטיסטיקות למשחק זה</p>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-2 gap-6">
-                          {[game.home_team_id, game.away_team_id].map(tid => (
-                            <div key={tid}>
-                              <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">{teamName(tid)}</h5>
-                              <div className="space-y-1">
-                                {stats.filter(s => (s.played_for_team_id || playersMap[s.player_id]?.team_id) === tid).map(stat => {
-                                  const p = playersMap[stat.player_id]
-                                  return (
-                                    <div key={stat.id} className="flex items-center justify-between py-1 text-xs">
-                                      <PlayerLink playerId={stat.player_id} className="text-slate-700 dark:text-slate-300 hover:text-brand transition-colors">{p?.first_name} {p?.last_name}</PlayerLink>
-                                      <div className="flex gap-1.5">
-                                        {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5">⚽ {stat.goals}</span>}
-                                        {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-                                        {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        {stats.some(s => s.is_guest_player) && (
-                          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
-                            <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">אורחים</h5>
-                            <div className="space-y-1">
-                              {stats.filter(s => s.is_guest_player).map(stat => (
-                                <div key={stat.id} className="flex items-center justify-between py-1 text-xs">
-                                  {/* Guests have no player_id → PlayerLink degrades to inert text */}
-                                  <PlayerLink playerId={stat.player_id} className="text-slate-700 dark:text-slate-300">
-                                    {stat.guest_player_name}
-                                    {stat.guest_player_original_team && <span className="text-slate-400"> ({stat.guest_player_original_team})</span>}
-                                  </PlayerLink>
-                                  <div className="flex gap-1.5">
-                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5">⚽ {stat.goals}</span>}
-                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  /* Upcoming games have no box score — surface the info they do have. */
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
-                    <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3">פרטי המשחק</h4>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {format(new Date(game.game_date), "d/M/yyyy")}</div>
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><Clock className="w-3.5 h-3.5 text-slate-400" /> {format(new Date(game.game_date), "HH:mm")}</div>
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {game.venue || '—'}</div>
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><Trophy className="w-3.5 h-3.5 text-slate-400" /> {game.game_type}</div>
-                      {ref && <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300"><Shield className="w-3.5 h-3.5 text-slate-400" /> {ref}</div>}
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Always-visible entry to the full game page (live scoreboard, stream, H2H) */}
-        <Link
-          to={entityPath('games', game)}
-          className="flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 border-t border-slate-100 dark:border-slate-700/50 text-xs font-semibold text-brand dark:text-brand-light hover:bg-brand/[0.06] dark:hover:bg-brand/10 transition-colors"
-        >
-          לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" />
         </Link>
       </motion.div>
+    )
+  }
+
+  // Goals + cards of a finished game, one column per team (home on the right in RTL).
+  // Only players who did something — the full box score is on the game page.
+  const statLine = (s, name) => (
+    <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
+      <span className="truncate text-slate-700 dark:text-slate-300">{name}</span>
+      <span className="flex gap-1 shrink-0">
+        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5">⚽ {s.goals}</span>}
+        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {s.blue_cards}</span>}
+        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {s.red_cards}</span>}
+      </span>
+    </div>
+  )
+  const EventsRow = (game) => {
+    const notable = (statsByGame[game.id] || []).filter(s => s.goals > 0 || s.blue_cards > 0 || s.red_cards > 0)
+    if (!notable.length) return null
+    const nameOf = (s) => {
+      if (s.is_guest_player) return s.guest_player_name || 'אורח'
+      const p = playersMap[s.player_id]
+      return p ? `${p.first_name} ${p.last_name}` : '—'
+    }
+    const teamOf = (s) => s.played_for_team_id || playersMap[s.player_id]?.team_id
+    const guests = notable.filter(s => s.is_guest_player && !s.played_for_team_id)
+    return (
+      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+          {[game.home_team_id, game.away_team_id].map(tid => (
+            <div key={tid} className="space-y-1 min-w-0">
+              {notable.filter(s => !guests.includes(s) && teamOf(s) === tid)
+                .sort((a, b) => (b.goals || 0) - (a.goals || 0))
+                .map(s => statLine(s, nameOf(s)))}
+            </div>
+          ))}
+        </div>
+        {guests.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {guests.map(s => statLine(s, `${nameOf(s)}${s.guest_player_original_team ? ` (${s.guest_player_original_team})` : ''}`))}
+          </div>
+        )}
+      </div>
     )
   }
 
