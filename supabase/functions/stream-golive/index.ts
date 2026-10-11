@@ -21,7 +21,10 @@
 //
 // Cameras (multi-angle, 2026-10-11): every streamer in a game gets a camera_no. The same
 // person going live again keeps theirs (a restart is a new PART of the same camera), a
-// new person gets the next number. Optional body `camera` = a label ("מאחורי השער").
+// new person gets the next number. One account on SEVERAL devices (2026-10-12): a camera
+// of theirs that is on air right now (Cloudflare lifecycle says live) is not reused, so
+// the second device becomes its own camera; a camera of theirs that is off air is.
+// Optional body `camera` = a label ("מאחורי השער").
 // The director (game_broadcast) can lock new streams (423) and cap simultaneous cameras
 // (409); the admin is exempt from both. A camera starts hidden until the admin approves
 // it (trigger game_videos_guard_hidden) -- the response's `hidden` tells the app.
@@ -55,6 +58,35 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...CORS, "content-type": "application/json" },
   });
+
+// Is this live input receiving a broadcast right now? Cloudflare's public lifecycle
+// endpoint (the same check the web player uses; no auth, no edge hop). Unknown = not live:
+// the worst case is a restart landing on a new camera instead of a new part.
+async function inputIsLive(code: string | null, input: string): Promise<boolean> {
+  if (!code || !input) return false;
+  try {
+    const r = await fetch(`https://customer-${code}.cloudflarestream.com/${input}/lifecycle`,
+      { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) return false;
+    return (await r.json())?.live === true;
+  } catch {
+    return false;
+  }
+}
+
+async function pickOwnCamera(own: any[]): Promise<any | undefined> {
+  const nos = [...new Set(own.map((r) => r.camera_no as number))].sort((a, b) => a - b);
+  // Only rows still on their live input from the last 12h can be on air.
+  const since = Date.now() - 12 * 3600_000;
+  for (const no of nos) {
+    const rows = own.filter((r) => r.camera_no === no);
+    const candidates = rows.filter((r) =>
+      r.cf_live_input && r.video_id === r.cf_live_input && Date.parse(r.created_at) > since);
+    const live = await Promise.all(candidates.map((r) => inputIsLive(r.cf_customer_code, r.cf_live_input)));
+    if (!live.some(Boolean)) return rows[rows.length - 1];
+  }
+  return undefined;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -102,9 +134,12 @@ Deno.serve(async (req) => {
   const { data: bc } = await svc.from("game_broadcast")
     .select("max_cameras, streaming_locked").eq("game_id", gameId).maybeSingle();
   const { data: allCams } = await svc.from("game_videos")
-    .select("camera_no, camera_label, created_by, video_id, cf_live_input, created_at, hidden")
+    .select("camera_no, camera_label, created_by, video_id, cf_live_input, cf_customer_code, created_at, hidden")
     .eq("game_id", gameId).not("camera_no", "is", null);
-  const mine = (allCams ?? []).find((r: any) => r.created_by === user.id);
+  // The caller's camera for THIS go-live: their lowest camera that isn't on air right
+  // now (a restart = new part of it); if every one of theirs is live (another device of
+  // the same account is broadcasting), none -> a new number below.
+  const mine = await pickOwnCamera((allCams ?? []).filter((r: any) => r.created_by === user.id));
   if (isAdmin !== true) {
     if (bc?.streaming_locked) return json({ error: "locked" }, 423);
     // Abuse guard: each attempt mints a Cloudflare live input.
