@@ -28,6 +28,7 @@ import GameFormExport from "@/components/GameFormExport"
 import GameFormCard from "@/components/games/GameFormCard"
 import GameMvp from "@/components/GameMvp"
 import GameMarketCard from "@/components/games/GameMarketCard"
+import { usePinSeason } from "@/components/SeasonPicker"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
@@ -69,6 +70,8 @@ export default function GameDetail() {
   const [referees, setReferees] = useState([])
   const [games, setGames] = useState([])
   const [live, setLive] = useState(null)
+  // An old-season game wears that season's palette + badge, like its /archive page.
+  const pastSeason = usePinSeason(game?.season_id)
   const [officials, setOfficials] = useState([])   // confirmed judge(s) + medic (game_officials)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -268,6 +271,14 @@ export default function GameDetail() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
+      {pastSeason && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand/30 bg-brand/10 px-4 py-2.5">
+          <p className="text-sm font-semibold text-fg-strong">משחק מעונת {pastSeason.name} — עונה שהסתיימה</p>
+          <Link to={`/archive/${encodeURIComponent(pastSeason.slug || pastSeason.id)}`} className="text-xs font-bold text-brand-strong dark:text-brand-light hover:underline">
+            לעמוד העונה ←
+          </Link>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <Link to="/games" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
           <ArrowRight className="w-4 h-4" /> חזרה למשחקים

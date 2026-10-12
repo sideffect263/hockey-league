@@ -32,3 +32,18 @@ as $$
   order by g.game_date desc
 $$;
 grant execute on function public.season_games_detail(uuid) to anon, authenticated;
+
+-- Applied LIVE 2026-10-12 (migration season_game_stats_rpc): box scores for one season,
+-- so the archive's statistics tab can run the /statistics derivations on a past season.
+create or replace function public.season_game_stats(p_season_id uuid)
+returns setof public.game_stats
+language sql stable security definer set search_path to 'public'
+as $$
+  select st.* from public.game_stats st
+    join public.games g on g.id = st.game_id
+   where g.season_id = p_season_id
+     and (not g.is_test or public.can_see_test())
+     and exists (select 1 from public.seasons s where s.id = p_season_id and s.status in ('active', 'archived'))
+$$;
+revoke all on function public.season_game_stats(uuid) from public;
+grant execute on function public.season_game_stats(uuid) to anon, authenticated;

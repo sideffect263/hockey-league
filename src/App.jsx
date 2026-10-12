@@ -60,6 +60,12 @@ export const useSeasonName = () => useContext(SeasonModeContext)?.seasonName || 
 /** The live season + every archived one, newest first ([] until loaded or on error). */
 export const useSeasons = () => useContext(SeasonModeContext)?.seasons || []
 
+/** [pinnedSeasonId, setPinnedSeasonId] — internal to SeasonPicker's usePinSeason. */
+export const useSeasonPin = () => {
+  const ctx = useContext(SeasonModeContext)
+  return [ctx?.pinnedSeasonId || null, ctx?.setPinnedSeasonId || (() => {})]
+}
+
 /**
  * A plain <a href> reload starts at the top; a client-side route change does not
  * — React swaps the page under a scroll offset the user never asked to keep, so
@@ -150,6 +156,9 @@ function App() {
   const [seasonMode, setSeasonMode] = useState(null) // 'regular' or 'final_four'
   const [seasonName, setSeasonName] = useState('')
   const [seasons, setSeasons] = useState([])
+  // A page about one past-season thing (an old game) names its season here, so the
+  // header's season badge + palette follow it (see usePinSeason in SeasonPicker).
+  const [pinnedSeasonId, setPinnedSeasonId] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Both reads in one round trip — the shell already waits on the mode, so the
@@ -178,7 +187,7 @@ function App() {
   // (Layout's own season badge lives inside the closed mobile menu, so it has no
   // way to be seen during the fetch.)
   return (
-    <SeasonModeContext.Provider value={{ seasonMode, setSeasonMode, seasonName, setSeasonName, seasons }}>
+    <SeasonModeContext.Provider value={{ seasonMode, setSeasonMode, seasonName, setSeasonName, seasons, pinnedSeasonId, setPinnedSeasonId }}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RouteSeo />
         <LegacyPostRedirect />

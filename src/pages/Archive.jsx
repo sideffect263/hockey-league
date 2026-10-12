@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, lazy, Suspense } from "react"
 import { useParams, Link } from "react-router-dom"
 import {
   getArchivedSeasons, getArchivedStandings,
@@ -10,7 +10,11 @@ import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import { useSlugId } from "@/lib/slugs"
-import { ArchiveSkeleton, ArchiveSeasonSkeleton } from "@/components/skeletons/PageSkeletons"
+import { ArchiveSkeleton, ArchiveSeasonSkeleton, StatisticsSkeleton } from "@/components/skeletons/PageSkeletons"
+import { Stats } from "@/components/icons/HockeyIcons"
+
+// The live /statistics page, run on this season's archived data (its own chunk).
+const SeasonStatistics = lazy(() => import("./Statistics"))
 
 export default function ArchivePage() {
   // /archive/2025-26, or the season's UUID for any older link.
@@ -205,9 +209,11 @@ function SeasonDetail({ routeKey }) {
           { id: "standings", label: "טבלה", icon: Trophy },
           { id: "players", label: "שחקנים", icon: UserCheck },
           { id: "games", label: "משחקים", icon: Calendar },
+          { id: "stats", label: "סטטיסטיקות", icon: Stats },
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={tab === t.id ? "tab-active" : "tab-inactive"}>
-            <t.icon className="w-4 h-4" />
+          // Four tabs must fit a 375px phone: icons hide and padding tightens below sm.
+          <button key={t.id} onClick={() => setTab(t.id)} className={`${tab === t.id ? "tab-active" : "tab-inactive"} !px-2 sm:!px-4`}>
+            <t.icon className="w-4 h-4 hidden sm:block" />
             {t.label}
           </button>
         ))}
@@ -274,6 +280,13 @@ function SeasonDetail({ routeKey }) {
 
       {/* Players */}
       {tab === "players" && <SeasonPlayers players={playerStats} />}
+
+      {/* Statistics — charts, awards, goalkeepers, cards, referees for this season */}
+      {tab === "stats" && season && (
+        <Suspense fallback={<StatisticsSkeleton />}>
+          <SeasonStatistics season={season} />
+        </Suspense>
+      )}
 
       {/* Games */}
       {tab === "games" && (

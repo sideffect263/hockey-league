@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Check, ChevronDown, History } from "lucide-react"
-import { useSeasons } from "@/App"
+import { useSeasons, useSeasonPin } from "@/App"
 
 // Swatch per seasons.palette — the hue the site turns when that season is viewed.
 const PALETTE_SWATCH = { rink: "#3B4FC4", classic: "#F97316" }
@@ -13,13 +13,35 @@ const PALETTE_SWATCH = { rink: "#3B4FC4", classic: "#F97316" }
  */
 export function useViewedSeason() {
   const seasons = useSeasons()
+  const [pinnedId] = useSeasonPin()
   const { pathname } = useLocation()
   const live = seasons.find(s => s.status === "active") || null
   const m = /^\/archive\/([^/]+)/.exec(pathname)
-  if (!m) return { season: live, live, isPast: false }
+  if (!m) {
+    // A page pinned to a past season (an old game) — see usePinSeason.
+    const pinned = pinnedId && seasons.find(s => s.id === pinnedId)
+    return pinned && pinned.status !== "active" ? { season: pinned, live, isPast: true } : { season: live, live, isPast: false }
+  }
   const key = decodeURIComponent(m[1])
   const season = seasons.find(s => s.slug === key || s.id === key) || null
   return { season: season || live, live, isPast: !!season && season.status !== "active" }
+}
+
+/**
+ * For a page that belongs to one season wherever its URL says otherwise — an old
+ * game at /games/<slug>: while it is mounted, the header badge and palette follow
+ * that season. Returns the season row when it is a PAST one (for a banner), else null.
+ */
+export function usePinSeason(seasonId) {
+  const seasons = useSeasons()
+  const [, setPinned] = useSeasonPin()
+  useEffect(() => {
+    if (!seasonId) return
+    setPinned(seasonId)
+    return () => setPinned(null)
+  }, [seasonId, setPinned])
+  const season = seasonId ? seasons.find(s => s.id === seasonId) : null
+  return season && season.status !== "active" ? season : null
 }
 
 /**

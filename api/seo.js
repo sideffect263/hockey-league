@@ -423,12 +423,13 @@ const BUILDERS = {
   async archiveSeason(key, match, { site }) {
     const [s] = await sb(`seasons?${match}&status=eq.archived&select=id,slug,name,starts_on,ends_on`)
     if (!s) return null
-    const [standings, scorers, games] = await Promise.all([
+    const [standings, scorers, games, carded] = await Promise.all([
       sb(`team_season_stats?season_id=eq.${s.id}&select=team_name,team_id,final_rank,points,wins,ties,losses,goals_for,goals_against&order=final_rank.asc`),
       sb(`player_season_stats?season_id=eq.${s.id}&goals=gt.0&select=player_id,first_name,last_name,team_name,goals,games_played&order=goals.desc&limit=30`),
       sb('rpc/season_games_detail', { method: 'POST', body: JSON.stringify({ p_season_id: s.id }) }),
+      sb(`player_season_stats?season_id=eq.${s.id}&or=(blue_cards.gt.0,red_cards.gt.0)&select=player_id,first_name,last_name,team_name,blue_cards,red_cards&order=red_cards.desc,blue_cards.desc&limit=10`),
     ])
-    const ids = scorers.map(p => p.player_id).filter(Boolean)
+    const ids = [...new Set([...scorers, ...carded].map(p => p.player_id).filter(Boolean))]
     const slugs = ids.length ? Object.fromEntries((await sb(`players?id=in.(${ids.join(',')})&select=id,slug`)).map(p => [p.id, p.slug])) : {}
     const teamSlug = {}
     for (const g of games) { teamSlug[g.home_team_id] = g.home_team_slug; teamSlug[g.away_team_id] = g.away_team_slug }
@@ -457,6 +458,9 @@ const BUILDERS = {
         standings.map(t => `<tr><td>${t.final_rank}</td><td>${teamSlug[t.team_id] ? link(path('teams', teamSlug[t.team_id]), t.team_name) : esc(t.team_name)}</td><td>${t.points}</td><td>${t.wins}</td><td>${t.ties}</td><td>${t.losses}</td><td>${t.goals_for}:${t.goals_against}</td></tr>`).join('') +
         `</tbody></table>` +
         (scorers.length ? `<h2>מלכי השערים</h2><ol>${scorers.map(p => `<li>${slugs[p.player_id] ? link(path('players', slugs[p.player_id]), fullName(p)) : esc(fullName(p))} (${esc(p.team_name)}) — ${p.goals} שערים ב-${p.games_played} משחקים</li>`).join('')}</ol>` : '') +
+        (carded.length ? `<h2>כרטיסים</h2><ol>${carded.map(p => `<li>${slugs[p.player_id] ? link(path('players', slugs[p.player_id]), fullName(p)) : esc(fullName(p))} (${esc(p.team_name)}) — ${p.blue_cards || 0} כחולים, ${p.red_cards || 0} אדומים</li>`).join('')}</ol>` : '') +
+        (played.length ? `<h2>סטטיסטיקות העונה</h2><ul><li>משחקים: ${played.length}</li><li>שערים: ${played.reduce((n, g) => n + g.home_score + g.away_score, 0)}</li>` +
+          `<li>ממוצע שערים למשחק: ${(played.reduce((n, g) => n + g.home_score + g.away_score, 0) / played.length).toFixed(1)}</li></ul>` : '') +
         (games.length ? `<h2>כל המשחקים</h2><ul>${games.map(line).join('')}</ul>` : ''),
     }
   },

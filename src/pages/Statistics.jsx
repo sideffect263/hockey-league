@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
-import { getTeams, getPlayers, getGames, getReferees, getGameStats } from "@/lib/api"
+import { getTeams, getPlayers, getGames, getReferees, getGameStats, getSeasonStatisticsData } from "@/lib/api"
 import { BarChart3, Shield, Crown, ChevronDown, ChevronUp, RefreshCw, Trophy, TrendingUp, Flame, Zap, Target, Star } from "lucide-react"
 import { Player, Glove, Cards, Whistle, StickBall, BlueCard, RedCard, Goal, Crossed, Stats } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
@@ -31,9 +31,15 @@ import { StatisticsSkeleton } from "@/components/skeletons/PageSkeletons"
 const statsNote = (withStats, completed) =>
   `מבוסס על ${withStats} מתוך ${completed} משחקים עם סטטיסטיקות שחקנים`
 
-export default function Statistics() {
+/**
+ * /statistics for the live season — or, given `season` (an archived seasons row),
+ * the same page for that past season, embedded in its /archive page: its frozen
+ * player/team rows and box scores (getSeasonStatisticsData), no page header.
+ */
+export default function Statistics({ season = null }) {
   const { dark } = useTheme()
-  const seasonName = useSeasonName()
+  const liveSeasonName = useSeasonName()
+  const seasonName = season?.name || liveSeasonName
   const [teams, setTeams] = useState([])
   const [players, setPlayers] = useState([])
   const [games, setGames] = useState([])
@@ -48,11 +54,17 @@ export default function Statistics() {
   const [hatMode, setHatMode] = useState("player")    // שלישיות: שחקן / קבוצה
   const [hatView, setHatView] = useState("scatter")   // שלישיות: פיזור / מכ״ם
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [season?.id])
 
   const loadData = async () => {
     try {
       setLoading(true); setError(null)
+      if (season) {
+        // A past season is already league-only (its archived rows), so no age filter.
+        const [d, r] = await Promise.all([getSeasonStatisticsData(season.id), getReferees()])
+        setTeams(d.teams); setPlayers(d.players); setGames(d.games); setReferees(r); setGameStats(d.gameStats)
+        return
+      }
       const [t, p, g, r, s] = await Promise.all([getTeams(), getPlayers(), getGames(), getReferees(), getGameStats()])
       // Senior-league statistics only: youth-tournament teams/players don't belong
       // in these leaderboards (youth has its own tournament pages). Games are
@@ -394,13 +406,15 @@ export default function Statistics() {
   const biggest = summary.highestScoringGame
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5">
-          <Stats className="w-7 h-7 text-brand" /> סטטיסטיקות
-        </h1>
-        <p className="page-subtitle mt-1">נתוני ביצועים{seasonName && ` עונת ${seasonName}`}</p>
-      </motion.div>
+    <div className={season ? "space-y-6" : "p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6"}>
+      {!season && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="page-title flex items-center gap-2.5">
+            <Stats className="w-7 h-7 text-brand" /> סטטיסטיקות
+          </h1>
+          <p className="page-subtitle mt-1">נתוני ביצועים{seasonName && ` עונת ${seasonName}`}</p>
+        </motion.div>
+      )}
 
       {/* Overview tiles */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
