@@ -88,17 +88,22 @@ async function queue(limit: number) {
     admin.from("games").select("id,slug,game_date,status,home_score,away_score,is_test")
       .eq("status", "completed").eq("is_test", false).not("home_score", "is", null).order("game_date", { ascending: false }),
     admin.from("game_stories").select("game_id,status,generated_at,pending_revision,timeline"),
-    admin.from("game_media").select("game_id,updated_at,status").neq("status", "error"),
-    admin.from("game_events").select("game_id,updated_at"),
+    admin.from("game_media").select("game_id,updated_at,status,origin").neq("status", "error"),
+    admin.from("game_events").select("game_id,updated_at,status"),
   ]);
   if (error) throw error;
   const storyOf = new Map((stories ?? []).map((st: any) => [st.game_id, st]));
   const latest = (rows: any[] | null, id: string) => (rows ?? []).filter((r) => r.game_id === id).reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "");
-  const pendingMedia = new Set((media ?? []).filter((m: any) => m.status === "uploaded" || m.status === "processing").map((m: any) => m.game_id));
+  // Only footage someone sent is worth waiting for; recordings get analysed whenever the
+  // Mac pipeline runs and must not hold a story back.
+  const pendingMedia = new Set((media ?? []).filter((m: any) => m.status === "processing" || (m.status === "uploaded" && m.origin === "upload")).map((m: any) => m.game_id));
+  // A story needs evidence: footage, or the judge's event log. A bare score is not a story.
+  const hasEvidence = (id: string) => (media ?? []).some((m: any) => m.game_id === id) || (events ?? []).some((e: any) => e.game_id === id && e.status === "confirmed");
   const out: any[] = [];
   for (const g of games ?? []) {
     const st: any = storyOf.get(g.id);
     if (st?.status === "rejected") continue;
+    if (!hasEvidence(g.id)) continue;
     const writtenAt = st?.pending_revision?.generated_at || st?.generated_at || "";
     const newEvidence = st && (latest(media, g.id) > writtenAt || latest(events, g.id) > writtenAt);
     // A draft from before timelines (v1, plain prose) is rewritten as a timeline.

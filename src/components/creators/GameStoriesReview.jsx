@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import {
-  BookOpen, Check, Ban, Loader2, RefreshCw, ExternalLink, ArrowUp, ArrowDown, Trash2, Sparkles, Film,
+  BookOpen, Check, Ban, Loader2, RefreshCw, ExternalLink, ArrowUp, ArrowDown, Trash2, Sparkles, Film, ChevronRight, ChevronLeft,
   Image as ImageIcon, UploadCloud,
 } from "lucide-react"
 import {
@@ -23,6 +23,8 @@ import { UploadStatusChip } from "@/components/games/GameMediaUpload"
 export default function GameStoriesReview({ onCountChange }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
+  // One story at a time — a list of them above, previous/next below — instead of one long scroll.
+  const [current, setCurrent] = useState(null)
 
   const load = () => {
     setError(null)
@@ -33,10 +35,14 @@ export default function GameStoriesReview({ onCountChange }) {
   useEffect(load, [])
 
   const done = (gameId) => setItems(ds => {
+    const i = ds.findIndex(d => d.game_id === gameId)
     const next = ds.filter(d => d.game_id !== gameId)
     onCountChange?.(next.length)
+    setCurrent(next[Math.min(i, next.length - 1)]?.game_id ?? null)
     return next
   })
+  const idx = items ? Math.max(0, items.findIndex(d => d.game_id === current)) : 0
+  const selected = items?.[idx] || null
 
   return (
     <div className="space-y-4">
@@ -61,11 +67,50 @@ export default function GameStoriesReview({ onCountChange }) {
           {items.length === 0 && !error && (
             <div className="card p-10 text-center text-sm text-fg-muted">אין סיפורים שממתינים לבדיקה</div>
           )}
-          {items.map(d => <StoryReviewCard key={d.game_id} story={d} onDone={() => done(d.game_id)} />)}
+          {items.length > 0 && (
+            <StoryNavigator items={items} index={idx} onPick={(i) => setCurrent(items[i].game_id)} />
+          )}
+          {selected && <StoryReviewCard key={selected.game_id} story={selected} onDone={() => done(selected.game_id)} />}
+          {items.length > 1 && (
+            <div className="flex items-center justify-between">
+              <button onClick={() => setCurrent(items[idx - 1].game_id)} disabled={idx === 0} className="btn-secondary inline-flex items-center gap-1 disabled:opacity-40">
+                <ChevronRight className="w-4 h-4" /> הסיפור הקודם
+              </button>
+              <span className="text-xs text-fg-muted tabular-nums">{idx + 1} / {items.length}</span>
+              <button onClick={() => setCurrent(items[idx + 1].game_id)} disabled={idx === items.length - 1} className="btn-secondary inline-flex items-center gap-1 disabled:opacity-40">
+                הסיפור הבא <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </>
       )}
 
       <RecentUploads />
+    </div>
+  )
+}
+
+// ── story list: pick which story to review ──────────────────────────────────
+
+function StoryNavigator({ items, index, onPick }) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]" role="tablist" aria-label="סיפורים לבדיקה">
+      {items.map((d, i) => {
+        const g = d.game
+        const active = i === index
+        const date = g?.game_date ? new Date(g.game_date).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric" }) : ""
+        return (
+          <button key={d.game_id} role="tab" aria-selected={active} onClick={() => onPick(i)}
+            className={`shrink-0 text-start rounded-xl border px-3 py-2 transition-colors ${active ? "border-brand bg-brand/10" : "border-line bg-surface hover:bg-surface-sunken"}`}>
+            <span className="block text-xs font-bold text-fg-strong whitespace-nowrap">
+              {g?.home?.name} <span dir="ltr" className="tabular-nums">{g?.away_score}:{g?.home_score}</span> {g?.away?.name}
+            </span>
+            <span className="block text-[11px] text-fg-muted whitespace-nowrap">
+              {date} · {d.pending_revision ? "גרסה חדשה ממתינה" : "טיוטה"} · {(d.timeline || []).length} פסקאות
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
