@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 // (video-analysis/lab_worker.py on the Mac polls status='queued'|'new'). Admin / content editor only (RLS).
 
 const BUCKET = 'video-lab'
-const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at,post_id,feed_status,feed_uid,feed_prev_uid,feed_processed_path,feed_replaced_at,feed_note,goal2_frame,strike2_frame,cuts,mark_style,mark_color'
+const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at,post_id,feed_status,feed_uid,feed_prev_uid,feed_processed_path,feed_replaced_at,feed_note,goal2_frame,strike2_frame,cuts,mark_style,mark_color,processed_at'
 
 export function labUrl(path) {
   if (!path) return null
@@ -90,4 +90,12 @@ export async function getLabClipStatus(id) {
   const { data, error } = await supabase.from('video_lab_clips').select(CLIP_COLS).eq('id', id).single()
   if (error) throw error
   return data
+}
+
+// Every render of a clip (newest first) — the editor plays / compares them.
+export async function getLabVersions(clipId) {
+  const { data, error } = await supabase.from('video_lab_versions').select('id,path,label,created_at')
+    .eq('clip_id', clipId).order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
 }

@@ -5,7 +5,7 @@ import {
 } from "lucide-react"
 import {
   getLabClips, getLabClip, getLabLabels, saveLabLabel, deleteLabLabel, updateLabClip, uploadLabClip, deleteLabClip, labUrl,
-  getPostBrief, requestFeedSwap, getLabClipStatus,
+  getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions,
 } from "@/lib/videoLab"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { useAuth } from "@/lib/AuthContext"
@@ -29,6 +29,17 @@ function StatusPill({ status }) {
 
 export default function VideoLab() {
   const [clips, setClips] = useState(null)
+  const [sortBy, setSortBy] = useState(() => { try { return localStorage.getItem("lab_sort") || "processed" } catch { return "processed" } })
+  const changeSort = (v) => { setSortBy(v); try { localStorage.setItem("lab_sort", v) } catch { /* private mode */ } }
+  const sorted = useMemo(() => {
+    if (!clips) return clips
+    const t = (x) => (x ? new Date(x).getTime() : 0)
+    const arr = [...clips]
+    if (sortBy === "processed") arr.sort((a, b) => t(b.processed_at) - t(a.processed_at))
+    else if (sortBy === "updated") arr.sort((a, b) => t(b.updated_at) - t(a.updated_at))
+    else if (sortBy === "title") arr.sort((a, b) => a.title.localeCompare(b.title, "he"))
+    return arr
+  }, [clips, sortBy])
   const [error, setError] = useState(null)
   const [openId, setOpenId] = useState(() => new URLSearchParams(window.location.search).get("clip"))
 
@@ -76,8 +87,18 @@ export default function VideoLab() {
       ) : clips.length === 0 ? (
         <div className="card p-8 text-center text-sm text-slate-500">אין עדיין קליפים במעבדה.</div>
       ) : (
+        <>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-slate-500">מיון:</span>
+          <select value={sortBy} onChange={e => changeSort(e.target.value)} className="filter-input py-1">
+            <option value="processed">עובד לאחרונה</option>
+            <option value="updated">עודכן לאחרונה</option>
+            <option value="order">סדר מקורי</option>
+            <option value="title">לפי שם</option>
+          </select>
+        </div>
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {clips.map(c => (
+          {sorted.map(c => (
             <button key={c.id} onClick={() => open(c.id)}
               className="card overflow-hidden text-start hover:ring-2 hover:ring-brand/40 transition">
               <div className="aspect-video bg-slate-900">
@@ -88,12 +109,14 @@ export default function VideoLab() {
                   <span className="font-semibold text-sm text-slate-900 dark:text-white flex-1 min-w-0 line-clamp-2">{c.title}</span>
                   <StatusPill status={c.status} />
                 </div>
+                {c.processed_at && <span className="text-[11px] text-slate-400 block">עובד: {new Date(c.processed_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>}
                 <FeedBadge clip={c} />
                 {c.worker_note && <p className="text-xs text-slate-500 line-clamp-2">{c.worker_note}</p>}
               </div>
             </button>
           ))}
         </div>
+        </>
       )}
     </div>
   )
@@ -381,7 +404,7 @@ function ClipEditor({ id, onBack }) {
       </div>
 
       {mode === "processed" ? (
-        <video key={src} src={src} controls playsInline className="w-full rounded-xl bg-black" />
+        <Versions clip={clip} />
       ) : (
         <>
           <div ref={boxRef} className="relative w-full rounded-xl overflow-hidden bg-black select-none" style={{ aspectRatio: ratio }}>
@@ -642,6 +665,47 @@ function MarkStyle({ clip, onChange }) {
         </div>
       )}
       <span className="text-xs text-slate-500 w-full">השינוי ייכנס לתוקף בלחיצה על "עבד מחדש עם התיקונים".</span>
+    </div>
+  )
+}
+
+// All renders of the clip: play any, or compare two side by side (synced play / pause / seek).
+function Versions({ clip }) {
+  const [vers, setVers] = useState(null)
+  const [a, setA] = useState(null)
+  const [b, setB] = useState(null)
+  const ra = useRef(null), rb = useRef(null)
+  useEffect(() => {
+    getLabVersions(clip.id).then(v => {
+      const list = v.length ? v : (clip.processed_path ? [{ id: "cur", path: clip.processed_path, label: "הגרסה הנוכחית", created_at: clip.processed_at }] : [])
+      setVers(list); setA(list[0]?.id || null); setB(null)
+    }).catch(() => setVers([]))
+  }, [clip.id, clip.processed_path])
+  if (vers === null) return <SkeletonPanelRows count={1} height="h-64" />
+  if (!vers.length) return <div className="card p-6 text-sm text-slate-500 text-center">אין עדיין סרטון מעובד.</div>
+  const va = vers.find(v => v.id === a), vb = vers.find(v => v.id === b)
+  const when = (v) => v.created_at ? new Date(v.created_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : ""
+  const both = (fn) => { [ra.current, rb.current].forEach(v => v && fn(v)) }
+  const sync = (e) => { if (!vb) return; const o = e.target === ra.current ? rb.current : ra.current; if (o && Math.abs(o.currentTime - e.target.currentTime) > 0.15) o.currentTime = e.target.currentTime }
+  return (
+    <div className="space-y-3">
+      <div className={`grid gap-2 ${vb ? "lg:grid-cols-2" : ""}`}>
+        {va && <div><div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{va.label} <span className="font-normal text-slate-400">{when(va)}</span></div>
+          <video key={va.id} ref={ra} src={labUrl(va.path)} controls playsInline className="w-full rounded-xl bg-black" onSeeked={sync} onPlay={() => vb && both(v => v.play())} onPause={() => vb && both(v => v.pause())} /></div>}
+        {vb && <div><div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{vb.label} <span className="font-normal text-slate-400">{when(vb)}</span></div>
+          <video key={vb.id} ref={rb} src={labUrl(vb.path)} muted playsInline className="w-full rounded-xl bg-black" /></div>}
+      </div>
+      <div className="card p-2 divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="text-xs text-slate-500 px-2 py-1">כל הגרסאות ({vers.length}) — "צפייה" מחליף את הסרטון, "השוואה" מציג אותו ליד.</div>
+        {vers.map((v, i) => (
+          <div key={v.id} className={`flex items-center gap-2 px-2 py-1.5 text-sm ${v.id === a || v.id === b ? "bg-brand/5" : ""}`}>
+            <span className="flex-1 min-w-0 truncate">{v.label} {i === 0 && <span className="text-[10px] font-bold text-emerald-600 ms-1">אחרונה</span>}</span>
+            <span className="text-xs text-slate-400 shrink-0">{when(v)}</span>
+            <button onClick={() => { setA(v.id); if (b === v.id) setB(null) }} disabled={v.id === a} className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 disabled:opacity-40">צפייה</button>
+            <button onClick={() => setB(v.id === b ? null : v.id)} disabled={v.id === a} className={`text-xs px-2 py-1 rounded ${v.id === b ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-800"} disabled:opacity-40`}>{v.id === b ? "סגור השוואה" : "השוואה"}</button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

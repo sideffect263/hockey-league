@@ -100,3 +100,21 @@ alter table public.video_lab_clips
 alter table public.video_lab_clips
   add column if not exists mark_style text not null default 'paint' check (mark_style in ('paint','outline','none')),
   add column if not exists mark_color text not null default '#d4ff00' check (mark_color ~ '^#[0-9a-fA-F]{6}$');
+
+-- 2026-10-12: every render is kept as a version (the editor can play/compare them); processed_at = last render time
+create table if not exists public.video_lab_versions (
+  id         uuid primary key default gen_random_uuid(),
+  clip_id    uuid not null references public.video_lab_clips(id) on delete cascade,
+  path       text not null,
+  label      text not null check (char_length(label) between 1 and 200),
+  created_at timestamptz not null default now()
+);
+create index if not exists video_lab_versions_clip_idx on public.video_lab_versions(clip_id, created_at);
+alter table public.video_lab_versions enable row level security;
+drop policy if exists "Editors manage video lab versions" on public.video_lab_versions;
+create policy "Editors manage video lab versions" on public.video_lab_versions for all
+  using (public.is_admin() or public.is_content_editor())
+  with check (public.is_admin() or public.is_content_editor());
+revoke all on public.video_lab_versions from anon;
+grant select, insert, update, delete on public.video_lab_versions to authenticated;
+alter table public.video_lab_clips add column if not exists processed_at timestamptz;
