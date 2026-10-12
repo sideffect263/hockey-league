@@ -339,12 +339,13 @@ async function apnsAuthToken(): Promise<string> {
 
 async function sendApns(
   deviceToken: string, environment: string | null,
-  title: string, body: string, url: string, badge: number,
+  title: string, body: string, url: string, badge: number, section: string | null,
 ): Promise<{ ok: boolean; prune: boolean }> {
   const jwt = await apnsAuthToken();
   const aps = {
     aps: { alert: { title, body }, sound: "default", badge, "thread-id": "rinkhockeyil" },
     url,
+    ...(section ? { section } : {}),
   };
   const hosts = environment === "sandbox"
     ? ["api.sandbox.push.apple.com"]
@@ -425,7 +426,7 @@ async function fcmAccessToken(): Promise<string> {
 }
 
 async function sendFcm(
-  deviceToken: string, title: string, body: string, url: string,
+  deviceToken: string, title: string, body: string, url: string, section: string | null,
 ): Promise<{ ok: boolean; prune: boolean }> {
   const access = await fcmAccessToken();
   // notification + data: the `notification` block makes Android render it in the
@@ -435,7 +436,7 @@ async function sendFcm(
     message: {
       token: deviceToken,
       notification: { title, body },
-      data: { url, type: "bell" },
+      data: { url, type: "bell", ...(section ? { section } : {}) },
       android: {
         priority: "high",
         notification: { channel_id: "rinkhockeyil_default", default_sound: true },
@@ -648,6 +649,10 @@ Deno.serve(async (req) => {
   const title = notificationText(n, actorName);
   const body = bodyPreview(n);
   const path = notificationHref(n);
+  // Where on that page to land. A separate key, NOT a `#fragment` on `url`: apps that
+  // predate it read url's second segment as the row id, and "<id>#game-form" would
+  // never match (see notificationHref). New apps append it as `#<section>`.
+  const section = n.type === "game_form_sign" ? "game-form" : null;
 
   // Recipient's devices.
   //
@@ -705,12 +710,12 @@ Deno.serve(async (req) => {
         );
         sent++;
       } else if (s.platform === "ios") {
-        const r = await sendApns(s.endpoint, s.environment, title, body, path, badge ?? 0);
+        const r = await sendApns(s.endpoint, s.environment, title, body, path, badge ?? 0, section);
         if (r.ok) sent++;
         if (r.prune) toPrune.push(s.id);
       } else if (s.platform === "android") {
         if (!FCM_CONFIGURED) return; // Firebase not provisioned yet → skip silently
-        const r = await sendFcm(s.endpoint, title, body, path);
+        const r = await sendFcm(s.endpoint, title, body, path, section);
         if (r.ok) sent++;
         if (r.prune) toPrune.push(s.id);
       }
