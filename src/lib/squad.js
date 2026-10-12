@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { loanError } from './loans'
 
 /**
  * Manual squad management (P1 — sheet rows 7, 8, 13, 14, 15, 33).
@@ -29,10 +30,14 @@ export const SQUAD_ERRORS = {
   'game not found':       'המשחק לא נמצא',
   'not a manual entry':   'אפשר להסיר רק שחקן שנוסף ידנית',
   'not in this game':     'השחקן אינו שייך לאחת מהקבוצות במשחק',
+  // A coach borrows a player who has an account by inviting him (LoanFinder); the
+  // direct add is only for players who could not answer an invite.
+  'loan needs invite':    'לשחקן יש חשבון — שלחו לו הזמנה דרך "חיפוש שחקן להשאלה", והוא יאשר בעצמו',
 }
 
 function squadError(e) {
   const msg = String(e?.message || '')
+  if (msg.includes('loan_block:')) return loanError(e)
   for (const [key, he] of Object.entries(SQUAD_ERRORS)) {
     if (msg.includes(key)) return new Error(he)
   }

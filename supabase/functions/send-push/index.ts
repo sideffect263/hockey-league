@@ -154,6 +154,18 @@ function notificationText(n: NotificationRow, actorName: string): string {
     // Scheduled game reminders (P2). These MUST say what to do — a reminder that lands
     // on the lock screen as "התראה חדשה" is the one notification where a generic
     // fallback defeats the entire point of sending it.
+    // Loan invites — keep in step with src/lib/notifications.js.
+    case "loan_request":   return `${d.team_name ?? "קבוצה"} מזמינה אותך לשחק בהשאלה: ${vs(d)} — לאישור או דחייה`;
+    case "loan_accepted":  return `${d.player_name ?? "השחקן"} אישר/ה — משחק/ת בהשאלה ב${d.team_name ?? "קבוצה"} (${vs(d)}) ✅`;
+    case "loan_declined":  return d.withdrew
+      ? `${d.player_name ?? "השחקן"} יצא/ה מהסגל (השאלה) למשחק ${vs(d)}`
+      : `${d.player_name ?? "השחקן"} לא יכול/ה להגיע בהשאלה למשחק ${vs(d)}`;
+    case "loan_cancelled": return d.reason === "filled"
+      ? `הסגל של ${d.team_name ?? "הקבוצה"} התמלא — ההזמנה להשאלה (${vs(d)}) בוטלה`
+      : `${d.team_name ?? "הקבוצה"} ביטלה את ההזמנה להשאלה למשחק ${vs(d)}`;
+    case "loan_removed":   return d.for_coach
+      ? `${d.player_name ?? "השחקן"} הוסר/ה מהסגל — יש כבר ${d.own_field ?? 5} שחקני שדה של הקבוצה (${vs(d)})`
+      : `נרשמו מספיק שחקנים ב${d.team_name ?? "קבוצה"}, ולכן הוסרת מהסגל למשחק ${vs(d)}. תודה!`;
     case "game_register_reminder": return `משחק מתקרב: ${vs(d)} — נא לסמן הגעה`;
     case "game_register_nudge":    return `עדיין לא סימנת הגעה למשחק ${vs(d)}`;
     case "coach_squad_digest":     return `סגל למשחק ${vs(d)}: ${d.yes ?? 0} מגיעים, ${d.no ?? 0} לא מגיעים, ${d.pending ?? 0} טרם הגיבו`;
@@ -234,7 +246,12 @@ function notificationHref(n: NotificationRow): string {
     case "lm_broadcast":
     case "game_moved":
     case "follow_game_alert":
-    case "goal_scored":            return n.entity_id ? `/games/${n.entity_id}` : "/games";
+    case "goal_scored":
+    case "loan_request":
+    case "loan_accepted":
+    case "loan_declined":
+    case "loan_cancelled":
+    case "loan_removed":           return n.entity_id ? `/games/${n.entity_id}` : "/games";
     case "coach_request_rejected":
     case "team_join_approved":
     case "team_join_rejected":     return n.entity_id ? `/teams/${n.entity_id}` : "/me";

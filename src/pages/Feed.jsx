@@ -23,6 +23,7 @@ import LiveGameBanner from "@/components/LiveGameBanner"
 import { useLiveGames } from "@/lib/useLiveGames"
 import FeedFilters, { matchesFilter } from "@/components/feed/FeedFilters"
 import QuickActions from "@/components/feed/QuickActions"
+import LoanInvite from "@/components/LoanInvite"
 import VideoRail from "@/components/feed/VideoRail"
 import { StandingsWidget, NextGameWidget, LeadersWidget } from "@/components/feed/Widgets"
 import OnlinePresence from "@/components/OnlinePresence"
@@ -270,6 +271,9 @@ export default function Feed() {
 
           {/* Live now — pinned above the composer when a game is being officiated */}
           <LiveGameBanner liveGames={liveGames} gamesById={gamesById} teamsMap={teamsMap} />
+
+          {/* A pending loan invite needs an answer before kick-off — it goes where he looks first. */}
+          {user && <LoanInvite compact />}
 
           <Composer onPosted={handlePosted} />
 

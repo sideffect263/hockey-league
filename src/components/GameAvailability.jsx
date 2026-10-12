@@ -8,6 +8,7 @@ import {
   getUnavailabilityFor, reportUnavailability, decideUnavailability, clearUnavailability,
 } from "@/lib/unavailability"
 import AddSquadPlayer from "@/components/AddSquadPlayer"
+import LoanFinder from "@/components/LoanFinder"
 import { Check, X, Loader2, CalendarCheck, CalendarX, AlertTriangle, Ban, UserMinus, Share2, Link2, BellRing } from "lucide-react"
 
 /**
@@ -599,7 +600,8 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
               </button>
             )}
 
-            {/* Only a coach of this team (or an admin) builds the squad. */}
+            {/* Only a coach of this team (or an admin) builds the squad: his own players
+                here, borrowed ones through the loan desk below (invite → the player says yes). */}
             {full && (
               <AddSquadPlayer
                 gameId={game.id}
@@ -608,7 +610,12 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
                 players={pickerPlayers}
                 excludeIds={inSquadIds}
                 onAdded={refreshRows}
+                ownOnly
               />
+            )}
+            {full && (
+              <LoanFinder gameId={game.id} teamId={tid} teamName={teamsMap[tid]?.name || "הקבוצה"}
+                refreshKey={rows.length} onChanged={refreshRows} />
             )}
           </div>
         )

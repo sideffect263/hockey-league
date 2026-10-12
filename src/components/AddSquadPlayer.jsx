@@ -28,7 +28,7 @@ import { UserPlus, Loader2, X, Users } from "lucide-react"
  * where no DOB is on file, which would otherwise make every loan of an unregistered player
  * impossible. The server re-checks all of it.
  */
-export default function AddSquadPlayer({ gameId, teamId, teamName, players = [], excludeIds, onAdded }) {
+export default function AddSquadPlayer({ gameId, teamId, teamName, players = [], excludeIds, onAdded, ownOnly = false }) {
   const [open, setOpen] = useState(false)
   const [playerId, setPlayerId] = useState("")
   const [note, setNote] = useState("")
@@ -66,6 +66,9 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
     let hidden = 0
     for (const p of players) {
       if (skip.has(p.id)) continue
+      // ownOnly: borrowing goes through LoanFinder (an invite the player answers), so this
+      // form lists the team's own players only.
+      if (ownOnly && !isOwn(p)) continue
       if (!showAll && !isOwn(p) && !provenEligible(p)) { hidden++; continue }
       const label = p.teamName || "ללא קבוצה"
       if (!byTeam.has(label)) byTeam.set(label, [])
@@ -78,7 +81,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
     const entries = [...byTeam.entries()].sort(([a], [b]) =>
       a === teamName ? -1 : b === teamName ? 1 : a.localeCompare(b, "he"))
     return { grouped: entries, hiddenCount: hidden }
-  }, [players, excludeIds, teamName, showAll, memberIds, ages])
+  }, [players, excludeIds, teamName, showAll, memberIds, ages, ownOnly])
 
   const picked = players.find(p => p.id === playerId) || null
   // Borrowing = the player isn't one of this team's own. Only then does the age rule bite.
@@ -117,7 +120,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
     return (
       <button onClick={() => setOpen(true)}
         className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors">
-        <UserPlus className="w-3.5 h-3.5" /> הוספת שחקן ידנית
+        <UserPlus className="w-3.5 h-3.5" /> {ownOnly ? "הוספת שחקן מהקבוצה" : "הוספת שחקן ידנית"}
       </button>
     )
   }
@@ -152,7 +155,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
 
       {/* Say what was filtered out and why — a coach who can't find a player he knows
           exists must not be left thinking the app lost him. */}
-      {(hiddenCount > 0 || showAll) && (
+      {!ownOnly && (hiddenCount > 0 || showAll) && (
         <div className="flex items-start justify-between gap-2 text-[11px]">
           <span className="flex items-start gap-1 text-slate-500 dark:text-slate-400">
             <Users className="w-3 h-3 mt-0.5 shrink-0" />

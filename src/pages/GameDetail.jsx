@@ -12,6 +12,7 @@ import LiveGame from "@/components/LiveGame"
 import GameVideo from "@/components/GameVideo"
 import GamePosts from "@/components/games/GamePosts"
 import GameAvailability from "@/components/GameAvailability"
+import LoanInvite from "@/components/LoanInvite"
 import GameSquads from "@/components/GameSquads"
 import GameBroadcast from "@/components/GameBroadcast"
 import { TeamLink, PlayerLink } from "@/components/EntityLinks"
@@ -434,6 +435,9 @@ export default function GameDetail() {
 
       {/* ===== HIGHLIGHTS & POSTS attached to this game (שייך למשחק) — hidden when none ===== */}
       <GamePosts game={game} teamsMap={teamsMap} playersMap={playersMap} />
+
+      {/* ===== LOAN INVITE — a coach of another team asked this player for this game ===== */}
+      {game.status === "scheduled" && profile?.player_id && <LoanInvite gameId={game.id} />}
 
       {/* ===== AVAILABILITY (upcoming games) ===== */}
       {/* #availability is the target of shared sign-up links (/games/next, the coach's

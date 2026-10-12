@@ -1,0 +1,105 @@
+import { supabase } from './supabase'
+
+/**
+ * Loan invites (supabase/loan-requests.sql).
+ *
+ * A coach who is short picks from loanCandidates() — every player in the league with the
+ * reason he can or cannot be borrowed for this game — and invites one. The PLAYER accepts
+ * or declines; only an accepted invite puts him in the squad. A team borrows only up to
+ * five field players (own sign-ups + loans); one goalkeeper may be borrowed on top. When
+ * the team's own field players reach five, the server removes the loan accepted last.
+ *
+ * A player with no account cannot answer, so for him the coach still adds directly
+ * (addPlayerToSquad), under the same cap.
+ */
+
+export const LOAN_FIELD_TARGET = 5
+
+/** Why a player can't be borrowed — short chip text for the list. */
+export const LOAN_BLOCK_LABEL = {
+  own_player:      'שחקן הקבוצה',
+  opponent:        'בקבוצה היריבה',
+  in_squad:        'כבר בסגל',
+  too_old:         'מעל גיל 18',
+  suspended:       'מורחק',
+  unavailable:     'בהיעדרות',
+  no_medical:      'אין אישור רפואי',
+  busy:            'משחק באותו זמן',
+  squad_full:      'יש כבר 5 שחקני שדה',
+  gk_full:         'כבר הושאל שוער',
+  no_account:      'אין לו חשבון',
+  already_invited: 'כבר הוזמן',
+}
+
+/** The same reasons as full sentences, for a refusal. */
+const LOAN_BLOCK_MSG = {
+  own_player:      'השחקן כבר בקבוצה שלך — אין צורך בהשאלה',
+  opponent:        'אי אפשר להשאיל שחקן מהקבוצה היריבה',
+  in_squad:        'השחקן כבר רשום למשחק הזה',
+  too_old:         'אפשר להשאיל רק שחקן/ית עד גיל 18, או שוער/ת בכל גיל',
+  suspended:       'השחקן מורחק בגלל כרטיס אדום',
+  unavailable:     'לשחקן יש היעדרות מאושרת במועד המשחק',
+  no_medical:      'לשחקן אין אישור רפואי בתוקף ביום המשחק',
+  busy:            'השחקן כבר משחק במשחק אחר באותו זמן',
+  squad_full:      `יש כבר ${LOAN_FIELD_TARGET} שחקני שדה בסגל — אי אפשר להשאיל עוד`,
+  gk_full:         'כבר הושאל שוער למשחק הזה',
+  no_account:      'לשחקן אין חשבון באפליקציה, ולכן אי אפשר לשלוח לו הזמנה — אפשר להוסיף אותו ישירות',
+  already_invited: 'השחקן כבר הוזמן למשחק הזה',
+}
+
+const LOAN_ERRORS = {
+  'game already started': 'המשחק כבר התחיל',
+  'not authorized':       'אין לך הרשאה לפעולה הזו',
+  'request closed':       'ההזמנה כבר לא פתוחה',
+  'request not found':    'ההזמנה לא נמצאה',
+  'team not in this game': 'הקבוצה אינה משתתפת במשחק זה',
+}
+
+export function loanError(e) {
+  const msg = String(e?.message || '')
+  const block = msg.match(/loan_block:(\w+)/)
+  if (block) return new Error(LOAN_BLOCK_MSG[block[1]] || 'אי אפשר להשאיל את השחקן')
+  for (const [key, he] of Object.entries(LOAN_ERRORS)) if (msg.includes(key)) return new Error(he)
+  return new Error('הפעולה נכשלה, נסו שוב')
+}
+
+/** Everyone in the league who is not on this team, with `block` = why not (null = can). */
+export async function getLoanCandidates(gameId, teamId) {
+  const { data, error } = await supabase.rpc('loan_candidates', { p_game_id: gameId, p_team_id: teamId })
+  if (error) throw loanError(error)
+  return data || []
+}
+
+/** { own_field, loan_field, loan_gk, field_slots, gk_slots, open, requests[] } */
+export async function getLoanSummary(gameId, teamId) {
+  const { data, error } = await supabase.rpc('loan_summary', { p_game_id: gameId, p_team_id: teamId })
+  if (error) throw loanError(error)
+  return data
+}
+
+export async function requestLoan(gameId, teamId, playerId, note = null) {
+  const { data, error } = await supabase.rpc('request_loan', {
+    p_game_id: gameId, p_team_id: teamId, p_player_id: playerId, p_note: note || null,
+  })
+  if (error) throw loanError(error)
+  return data
+}
+
+export async function cancelLoan(requestId) {
+  const { error } = await supabase.rpc('cancel_loan', { p_request_id: requestId })
+  if (error) throw loanError(error)
+}
+
+/** The signed-in player's open invites (pending or accepted) for games not yet played. */
+export async function getMyLoanRequests() {
+  const { data, error } = await supabase.rpc('my_loan_requests')
+  if (error) return []
+  return data || []
+}
+
+/** → 'accepted' | 'declined' | 'filled' (the squad filled up before he answered). */
+export async function respondLoan(requestId, accept) {
+  const { data, error } = await supabase.rpc('respond_loan', { p_request_id: requestId, p_accept: !!accept })
+  if (error) throw loanError(error)
+  return data
+}

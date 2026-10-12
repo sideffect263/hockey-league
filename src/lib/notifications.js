@@ -184,6 +184,19 @@ export function notificationText(n) {
     case 'tournament_invite_declined': return `קבוצת ${d.team_name || ''} דחתה את ההזמנה לטורניר ${d.tournament_name || ''}`
     // Scheduled game reminders (P2). `vs` keeps the two team names in a fixed order so
     // the sentence reads the same regardless of which side is home.
+    // Loan invites (supabase/loan-requests.sql). The invite itself must say who is asking
+    // and for which game — it is the one the player has to answer.
+    case 'loan_request':   return `${d.team_name || 'קבוצה'} מזמינה אותך לשחק בהשאלה: ${vs(d)} — לאישור או דחייה`
+    case 'loan_accepted':  return `${d.player_name || 'השחקן'} אישר/ה — משחק/ת בהשאלה ב${d.team_name || 'קבוצה'} (${vs(d)}) ✅`
+    case 'loan_declined':  return d.withdrew
+      ? `${d.player_name || 'השחקן'} יצא/ה מהסגל (השאלה) למשחק ${vs(d)}`
+      : `${d.player_name || 'השחקן'} לא יכול/ה להגיע בהשאלה למשחק ${vs(d)}`
+    case 'loan_cancelled': return d.reason === 'filled'
+      ? `הסגל של ${d.team_name || 'הקבוצה'} התמלא — ההזמנה להשאלה (${vs(d)}) בוטלה`
+      : `${d.team_name || 'הקבוצה'} ביטלה את ההזמנה להשאלה למשחק ${vs(d)}`
+    case 'loan_removed':   return d.for_coach
+      ? `${d.player_name || 'השחקן'} הוסר/ה מהסגל — יש כבר ${d.own_field ?? 5} שחקני שדה של הקבוצה (${vs(d)})`
+      : `נרשמו מספיק שחקנים ב${d.team_name || 'קבוצה'}, ולכן הוסרת מהסגל למשחק ${vs(d)}. תודה!`
     case 'game_register_reminder': return `משחק מתקרב: ${vs(d)} — נא לסמן הגעה`
     case 'game_register_nudge':    return `עדיין לא סימנת הגעה למשחק ${vs(d)}`
     case 'coach_squad_digest':     return `סגל למשחק ${vs(d)}: ${d.yes ?? 0} מגיעים, ${d.no ?? 0} לא מגיעים, ${d.pending ?? 0} טרם הגיבו`
@@ -257,6 +270,11 @@ export function notificationIcon(n) {
     case 'tournament_invite':          return '🏆'
     case 'tournament_invite_accepted': return '✅'
     case 'tournament_invite_declined': return '⛔'
+    case 'loan_request':   return '🤝'
+    case 'loan_accepted':  return '🤝'
+    case 'loan_declined':  return '⛔'
+    case 'loan_cancelled': return '⛔'
+    case 'loan_removed':   return '↩️'
     case 'game_register_reminder': return '📣'
     case 'game_register_nudge':    return '⏰'
     case 'coach_squad_digest':     return '📋'
@@ -322,7 +340,13 @@ export function notificationHref(n) {
     case 'lm_officials_digest':
     case 'lm_broadcast':
     case 'game_moved':
-    case 'follow_game_alert':      return n.entity_id ? `/games/${n.entity_id}` : '/games'
+    case 'follow_game_alert':
+    // loans: the invite card (player) and the loan desk (coach) both live on the game page
+    case 'loan_request':
+    case 'loan_accepted':
+    case 'loan_declined':
+    case 'loan_cancelled':
+    case 'loan_removed':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
     case 'app_update':            return '/app'
     case 'goal_scored':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
     // reviewers land on the /admin review tabs. The claims tab stacks five queues, so
