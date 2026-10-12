@@ -73,3 +73,16 @@ create policy "video-lab editors update" on storage.objects for update to authen
 drop policy if exists "video-lab editors delete" on storage.objects;
 create policy "video-lab editors delete" on storage.objects for delete to authenticated
   using (bucket_id = 'video-lab' and (public.is_admin() or public.is_content_editor()));
+
+-- 2026-10-12: "החלף בפיד" — a lab clip knows its feed post; editors REQUEST a swap (feed_status), the Mac worker
+-- (service role) does it: uploads the render to Cloudflare, points posts.video_uid at it, keeps the previous uid for revert.
+alter table public.video_lab_clips
+  add column if not exists post_id uuid references public.posts(id) on delete set null,
+  add column if not exists feed_status text check (feed_status in ('requested','replacing','replaced','revert_requested','reverting','reverted','error')),
+  add column if not exists feed_uid text,               -- CF uid currently in the post (set by the worker)
+  add column if not exists feed_prev_uid text,          -- what the post showed before -> "החזר את הסרטון הקודם"
+  add column if not exists feed_prev_cf text,
+  add column if not exists feed_processed_path text,    -- which lab render is in the feed (vs processed_path = newest)
+  add column if not exists feed_replaced_at timestamptz,
+  add column if not exists feed_note text check (char_length(feed_note) <= 500);
+create index if not exists video_lab_clips_post_id_idx on public.video_lab_clips(post_id);

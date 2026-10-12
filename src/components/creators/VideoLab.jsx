@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FlaskConical, RefreshCw, Loader2, Upload, ArrowRight, Play, Pause, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, Ban, HelpCircle, Eraser, Goal, Zap, Trash2, Check, Wand2,
+  ChevronsLeft, ChevronsRight, Ban, HelpCircle, Eraser, Goal, Zap, Trash2, Check, Wand2, Newspaper, Undo2, ExternalLink,
 } from "lucide-react"
 import {
   getLabClips, getLabClip, getLabLabels, saveLabLabel, deleteLabLabel, updateLabClip, uploadLabClip, deleteLabClip, labUrl,
+  getPostBrief, requestFeedSwap, getLabClipStatus,
 } from "@/lib/videoLab"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -85,6 +86,7 @@ export default function VideoLab() {
                   <span className="font-semibold text-sm text-slate-900 dark:text-white flex-1 min-w-0 line-clamp-2">{c.title}</span>
                   <StatusPill status={c.status} />
                 </div>
+                <FeedBadge clip={c} />
                 {c.worker_note && <p className="text-xs text-slate-500 line-clamp-2">{c.worker_note}</p>}
               </div>
             </button>
@@ -339,6 +341,7 @@ function ClipEditor({ id, onBack }) {
         {saving > 0 ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <Check className="w-4 h-4 text-emerald-500" aria-label="נשמר" />}
       </div>
       {saveErr && <div className="text-xs text-red-600">{saveErr}</div>}
+      <FeedSwap clip={clip} onClip={(c) => setClip(prev => ({ ...prev, ...c }))} onWatch={() => setMode("processed")} />
       {clip.status === "new" && <div className="card p-3 text-sm text-slate-600 dark:text-slate-300">הקליפ ממתין לניתוח ה-AI. אפשר כבר לתייג, הסימון של ה-AI יופיע כשהניתוח יסתיים.</div>}
 
       <div className="card p-3 flex flex-wrap items-center gap-2">
@@ -465,5 +468,94 @@ function DeleteClip({ clip, onDone }) {
       <button disabled={busy} onClick={async () => { setBusy(true); try { await deleteLabClip(clip); onDone() } finally { setBusy(false) } }} className="px-2 py-1 rounded bg-red-600 text-white">כן</button>
       <button onClick={() => setConfirm(false)} className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800">לא</button>
     </span>
+  )
+}
+
+const SWAP_BUSY = ["requested", "replacing", "revert_requested", "reverting"]
+
+function FeedBadge({ clip }) {
+  if (!clip.post_id) return null
+  const inFeed = clip.feed_status === "replaced"
+  const newer = inFeed && clip.processed_path && clip.processed_path !== clip.feed_processed_path
+  if (SWAP_BUSY.includes(clip.feed_status)) return <span className="text-[11px] text-sky-700 dark:text-sky-300">מחליף בפיד…</span>
+  if (newer) return <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">יש גרסה חדשה שלא בפיד</span>
+  if (inFeed) return <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">✓ הגרסה מהמעבדה בפיד</span>
+  return <span className="text-[11px] text-slate-400">בפיד: הסרטון המקורי</span>
+}
+
+// "החלף בפיד": publish the lab render into the clip's feed post (and undo it). The Mac worker does the swap.
+function FeedSwap({ clip, onClip, onWatch }) {
+  const [post, setPost] = useState(undefined)
+  const [confirm, setConfirm] = useState(null)          // "swap" | "revert"
+  const [err, setErr] = useState(null)
+  useEffect(() => {
+    if (!clip.post_id) { setPost(null); return }
+    getPostBrief(clip.post_id).then(setPost).catch(() => setPost(null))
+  }, [clip.post_id, clip.feed_uid])
+  const busy = SWAP_BUSY.includes(clip.feed_status)
+  useEffect(() => {                                      // follow the worker until it's done
+    if (!busy) return
+    const t = setInterval(() => getLabClipStatus(clip.id).then(onClip).catch(() => {}), 4000)
+    return () => clearInterval(t)
+  }, [busy, clip.id, onClip])
+
+  if (!clip.post_id) return null
+  const snippet = (post?.body || "").split("\n")[0].slice(0, 70)
+  const inFeed = clip.feed_status === "replaced"
+  const upToDate = inFeed && clip.processed_path === clip.feed_processed_path
+  const rendering = clip.status === "queued" || clip.status === "processing"
+  const canSwap = !!clip.processed_path && !busy && !rendering && !upToDate
+  const go = async (revert) => {
+    setErr(null); setConfirm(null)
+    try { await requestFeedSwap(clip.id, revert); onClip({ feed_status: revert ? "revert_requested" : "requested", feed_note: null }) }
+    catch (e) { setErr(e.message || "הבקשה נכשלה") }
+  }
+  const when = clip.feed_replaced_at ? new Date(clip.feed_replaced_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : null
+
+  return (
+    <div className="card p-3 space-y-2 border border-brand/20">
+      <div className="flex items-center gap-2 flex-wrap text-sm">
+        <Newspaper className="w-4 h-4 text-brand shrink-0" />
+        <span className="text-slate-600 dark:text-slate-300">הפוסט בפיד:</span>
+        <a href={`/posts/${clip.post_id}`} target="_blank" rel="noreferrer" className="font-semibold text-slate-900 dark:text-white hover:underline flex items-center gap-1 min-w-0">
+          <span className="truncate">{post === undefined ? "…" : post ? snippet : "הפוסט לא נמצא"}</span> <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+        </a>
+      </div>
+      <div className="text-xs">
+        {busy ? <span className="text-sky-700 dark:text-sky-300 flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />{clip.feed_note || (clip.feed_status.startsWith("revert") ? "מחזיר את הסרטון הקודם…" : "מחליף את הסרטון בפיד… (כדקה)")}</span>
+          : clip.feed_status === "error" ? <span className="text-red-600">{clip.feed_note || "ההחלפה נכשלה"}</span>
+          : upToDate ? <span className="text-emerald-700 dark:text-emerald-400 font-semibold">✓ בפיד עכשיו: הגרסה האחרונה מהמעבדה{when && ` (הוחלף ${when})`}</span>
+          : inFeed ? <span className="text-amber-700 dark:text-amber-400 font-semibold">בפיד יש גרסה קודמת מהמעבדה — הגרסה החדשה עוד לא הוחלפה</span>
+          : clip.feed_status === "reverted" ? <span className="text-slate-500">בפיד: הסרטון הקודם (שוחזר{when && ` ${when}`})</span>
+          : <span className="text-slate-500">בפיד: הסרטון המקורי</span>}
+      </div>
+      {confirm ? (
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 text-sm space-y-2">
+          <p className="text-slate-800 dark:text-slate-100">
+            {confirm === "swap" ? <>להחליף את הסרטון בפוסט <b>״{snippet}״</b> בסרטון המעובד? כל מי שגולל בפיד יראה את הגרסה החדשה.</>
+              : <>להחזיר לפוסט <b>״{snippet}״</b> את הסרטון שהיה לפני ההחלפה?</>}
+          </p>
+          <div className="flex gap-2">
+            <button onClick={() => go(confirm === "revert")} className="px-3 py-1.5 rounded-lg bg-brand text-white font-semibold">{confirm === "swap" ? "כן, החלף" : "כן, החזר"}</button>
+            <button onClick={() => setConfirm(null)} className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">ביטול</button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2 items-center">
+          <button onClick={() => setConfirm("swap")} disabled={!canSwap}
+            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1.5">
+            <Newspaper className="w-4 h-4" /> החלף בפיד
+          </button>
+          {clip.processed_path && <button onClick={onWatch} className="text-xs underline text-slate-500">לצפות קודם בסרטון המעובד</button>}
+          {(inFeed || clip.feed_status === "error") && clip.feed_prev_uid && !busy && (
+            <button onClick={() => setConfirm("revert")} className="ms-auto px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+              <Undo2 className="w-4 h-4" /> החזר את הסרטון הקודם
+            </button>
+          )}
+          {rendering && <span className="text-xs text-slate-500">מחכה שהעיבוד יסתיים…</span>}
+        </div>
+      )}
+      {err && <p className="text-xs text-red-600">{err}</p>}
+    </div>
   )
 }

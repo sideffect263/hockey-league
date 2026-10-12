@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 // (video-analysis/lab_worker.py on the Mac polls status='queued'|'new'). Admin / content editor only (RLS).
 
 const BUCKET = 'video-lab'
-const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at'
+const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at,post_id,feed_status,feed_uid,feed_prev_uid,feed_processed_path,feed_replaced_at,feed_note'
 
 export function labUrl(path) {
   if (!path) return null
@@ -69,5 +69,25 @@ export async function uploadLabClip(file, title, gameId = null) {
     await supabase.storage.from(BUCKET).remove([path]).catch(() => {})
     throw error
   }
+  return data
+}
+
+// The feed post a lab clip belongs to (public read, like the feed).
+export async function getPostBrief(postId) {
+  const { data, error } = await supabase.from('posts').select('id,body,video_uid,deleted_at').eq('id', postId).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// "החלף בפיד" / "החזר את הסרטון הקודם": only a REQUEST — the Mac worker (service role) uploads the
+// full-quality render to Cloudflare and repoints posts.video_uid, keeping the previous video for revert.
+export async function requestFeedSwap(id, revert = false) {
+  await updateLabClip(id, { feed_status: revert ? 'revert_requested' : 'requested', feed_note: null })
+}
+
+// Clip columns only (no track) — for polling while the worker swaps.
+export async function getLabClipStatus(id) {
+  const { data, error } = await supabase.from('video_lab_clips').select(CLIP_COLS).eq('id', id).single()
+  if (error) throw error
   return data
 }
