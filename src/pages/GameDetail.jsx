@@ -27,6 +27,7 @@ import AddToCalendar from "@/components/games/AddToCalendar"
 import GameFormExport from "@/components/GameFormExport"
 import GameFormCard from "@/components/games/GameFormCard"
 import GameMvp from "@/components/GameMvp"
+import GameMarketCard from "@/components/games/GameMarketCard"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
@@ -683,6 +684,9 @@ export default function GameDetail() {
           )}
         </div>
       </motion.div>
+
+      {/* ============ הוקי מרקט: the bettors' odds — 18+ only, gated by the RPC ============ */}
+      <GameMarketCard game={game} teamsMap={teamsMap} />
 
       {/* ============ TEAM PAGE LINKS ============ */}
       <div className="grid grid-cols-2 gap-3">
