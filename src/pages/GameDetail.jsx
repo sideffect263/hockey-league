@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useLocation } from "react-router-dom"
-import { getGameById, getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames } from "@/lib/api"
+import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
 import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, MonitorPlay, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
@@ -126,10 +126,13 @@ export default function GameDetail() {
   const loadData = async () => {
     try {
       setLoading(true); setError(null)
-      const [g, s, t, p, r, allGames, lg] = await Promise.all([
-        getGameById(id), getGameStatsByGameId(id), getTeams(), getPlayers(), getReferees(), getGames(), getLiveGame(id),
+      // A game from an archived season is hidden from the table reads by RLS; that one
+      // game + its box score come from game_any_season instead (stats: null = live season).
+      const [cur, s, t, p, r, allGames, lg] = await Promise.all([
+        getGameAnySeason(id), getGameStatsByGameId(id), getTeams(), getPlayers(), getReferees(), getGames(), getLiveGame(id),
       ])
-      setGame(g); setStats(s || []); setTeams(t); setPlayers(p); setReferees(r); setGames(allGames); setLive(lg)
+      if (!cur) { setError('notfound'); return }
+      setGame(cur.game); setStats(cur.stats ?? s ?? []); setTeams(t); setPlayers(p); setReferees(r); setGames(allGames); setLive(lg)
     } catch (err) {
       console.error(err)
       setError(err?.code === 'PGRST116' ? 'notfound' : 'error')

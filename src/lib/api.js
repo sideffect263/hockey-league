@@ -201,6 +201,25 @@ export async function getGameById(id) {
   return data
 }
 
+/**
+ * One game from ANY season, or null: `{ game, stats }`, where stats is null for a live-season
+ * game (the caller reads game_stats as usual) and the box score for an archived one. The RLS keeps
+ * archived seasons out of every list on purpose; this answers only "show me this game",
+ * so an old link (WhatsApp, Google, a player's history) opens it instead of "not found".
+ */
+export async function getGameAnySeason(id) {
+  // Live season first: a plain read, and a miss is not an error (no 406 to log).
+  const { data: cur, error: curErr } = await supabase.from('games').select('*').eq('id', id).maybeSingle()
+  if (curErr) throw curErr
+  if (cur) { registerSlugs('games', [cur]); return { game: cur, stats: null } }
+
+  const { data, error } = await supabase.rpc('game_any_season', { p_game_id: id })
+  if (error) throw error
+  if (!data?.game) return null
+  registerSlugs('games', [data.game])
+  return { game: data.game, stats: data.stats || [] }
+}
+
 export async function getGameStatsByGameId(gameId) {
   const { data, error } = await supabase
     .from('game_stats')

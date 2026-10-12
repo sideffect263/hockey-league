@@ -38,6 +38,34 @@ async function sb(pathAndQuery) {
   return r.json()
 }
 
+// A game from an archived season: the games RLS hides it from table reads (so old seasons
+// stay out of standings and statistics), but its page — and this crawler copy — must still
+// answer. game_any_season returns the row + box score; names come from the public tables.
+async function archivedGame(key) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/game_any_season`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(isUuid ? { p_game_id: key } : { p_slug: key }),
+  })
+  if (!r.ok) throw new UpstreamError(`${r.status} rpc/game_any_season`)
+  const data = await r.json()
+  if (!data?.game) return null
+  const g = data.game
+  const scorers = (data.stats || []).filter(st => st.goals > 0)
+  const ids = [...new Set(scorers.map(st => st.player_id).filter(Boolean))]
+  const [teams, players] = await Promise.all([
+    sb(`teams?id=in.(${g.home_team_id},${g.away_team_id})&select=id,name,slug`),
+    ids.length ? sb(`players?id=in.(${ids.join(',')})&select=slug,id,first_name,last_name,team_id`) : [],
+  ])
+  const team = (id) => teams.find(t => t.id === id) || null
+  const player = (id) => players.find(p => p.id === id) || null
+  return {
+    g: { ...g, home: team(g.home_team_id), away: team(g.away_team_id) },
+    stats: scorers.map(st => ({ goals: st.goals, played_for_team_id: st.played_for_team_id, player: player(st.player_id) })),
+  }
+}
+
 // Percent-encoded, matching the sitemap and the SPA's canonical — two spellings
 // of one Hebrew URL read as two pages.
 const path = (type, slug) => `/${type}/${encodeURIComponent(slug)}`
@@ -251,14 +279,20 @@ const BUILDERS = {
   },
 
   async game(key, match) {
-    const [g] = await sb(`games?${match}&select=${GAME_SELECT},home_team_id,away_team_id`)
-    if (!g) return null
+    let [g] = await sb(`games?${match}&select=${GAME_SELECT},home_team_id,away_team_id`)
+    let stats
+    if (!g) {
+      const old = await archivedGame(key)
+      if (!old) return null
+      ;({ g, stats } = old)
+    }
     // Same facts as the game page: the box score (a loaned player counts for the side he
     // played for) and "היילייטס ופוסטים מהמשחק" — which is also how Google finds /posts/<id>.
-    const [stats, posts] = await Promise.all([
-      sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
+    const [liveStats, posts] = await Promise.all([
+      stats ? null : sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
       sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT}&order=created_at.desc&limit=20`),
     ])
+    stats = stats || liveStats
     const h = g.home?.name || 'בית', a = g.away?.name || 'חוץ'
     const played = g.status === 'completed' && g.home_score != null
     const headline = played ? `${h} ${g.home_score} - ${g.away_score} ${a}` : `${h} נגד ${a}`

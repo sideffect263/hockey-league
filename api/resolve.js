@@ -59,6 +59,17 @@ export default async function handler(req, res) {
         if (h?.entity_id) row = await sbOne(`${type}?id=eq.${h.entity_id}&select=slug`)
       }
 
+      // A game from an archived season is hidden from table reads by RLS; its slug
+      // comes from game_any_season, so old UUID links still consolidate onto it.
+      if (!row?.slug && type === 'games' && isUuid) {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/game_any_season`, {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_game_id: key }),
+        })
+        if (r.ok) row = { slug: (await r.json())?.game?.slug || null }
+      }
+
       if (row?.slug && row.slug !== key) {
         const target = `/${type}/${encodeURIComponent(row.slug)}${suffix}${qs ? `?${qs}` : ''}`
         // 308, not 302: the move is permanent, and unlike 301 it is guaranteed

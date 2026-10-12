@@ -124,6 +124,13 @@ export function useSlugId(table, param) {
           id = h?.entity_id || null
         }
 
+        // A game from an archived season: the games RLS hides those from every table
+        // read (so they stay out of standings and statistics), but its page must open.
+        if (!id && table === 'games') {
+          const { data: g } = await supabase.rpc('game_any_season', { p_slug: param })
+          id = g?.game?.id || null
+        }
+
         // Only successes are cached. Caching the miss would pin a page as
         // "not found" for the rest of the session even after the row appears.
         if (id) idBySlug.set(key, id)
