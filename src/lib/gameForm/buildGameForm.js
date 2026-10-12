@@ -20,7 +20,8 @@ import { sheetXml, zip } from './xlsx'
  *
  * Team fouls are crossed off the printed 1–25 grid, timeouts go in as the minute of
  * the half, and the digital signatures are placed as pictures over their signature
- * lines (a drawing part the blank already links, so only its anchors are new).
+ * lines (a drawing part the blank already links, so only its anchors are new). The
+ * league's logo goes the same way, into the corner of the title band.
  * Anything the app does not know stays exactly as printed, for the pen.
  */
 
@@ -186,9 +187,12 @@ function appendMedicSection(sheet, medicName, at) {
   return after + 2
 }
 
-// ---- signature pictures ----
+// ---- pictures (signatures, league logo) ----
 const EMU_PER_PX = 9525
 const SIG_MAX_W = 120, SIG_MAX_H = 34   // px — fits one printed line without hiding the next
+// The title band (A1:Y2) is 54pt = 72px tall; the logo sits inside it with a small inset,
+// at column A — the right-hand edge, since the sheet is RTL — clear of the centred title.
+const LOGO_SIZE = 64, LOGO_INSET = 4    // px
 const colIndex = (col) => [...col].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1
 
 function dataUrlBytes(url) {
@@ -207,22 +211,24 @@ function pngSize(bytes) {
 }
 
 /**
- * Place each signature as a picture anchored on its line. Returns the extra package
+ * Place each picture (a PNG as `bytes` or a data URL as `image`) anchored at its cell,
+ * scaled to fit `maxW`×`maxH` px and pushed in by `inset` px. Returns the extra package
  * parts: the PNGs, the drawing's rels, and the drawing + content types rewritten.
  */
-function signatureParts(placements) {
-  const pics = placements.map(p => ({ ...p, bytes: dataUrlBytes(p.image) })).filter(p => p.bytes && p.bytes.length > 24)
+function pictureParts(placements) {
+  const pics = placements.map(p => ({ ...p, bytes: p.bytes || dataUrlBytes(p.image) })).filter(p => p.bytes && p.bytes.length > 24)
   if (!pics.length) return {}
   const parts = {}
   const rels = []
   const anchors = pics.map((p, i) => {
     const rid = `rId${i + 1}`
-    parts[`xl/media/signature${i + 1}.png`] = p.bytes
-    rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/signature${i + 1}.png"/>`)
+    parts[`xl/media/image${i + 1}.png`] = p.bytes
+    rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${i + 1}.png"/>`)
     const { w, h } = pngSize(p.bytes)
-    const scale = Math.min(SIG_MAX_W / w, SIG_MAX_H / h)
+    const scale = Math.min((p.maxW ?? SIG_MAX_W) / w, (p.maxH ?? SIG_MAX_H) / h)
     const cx = Math.round(w * scale * EMU_PER_PX), cy = Math.round(h * scale * EMU_PER_PX)
-    return `<xdr:oneCellAnchor><xdr:from><xdr:col>${colIndex(p.col)}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${p.row - 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>`
+    const off = (p.inset || 0) * EMU_PER_PX
+    return `<xdr:oneCellAnchor><xdr:from><xdr:col>${colIndex(p.col)}</xdr:col><xdr:colOff>${off}</xdr:colOff><xdr:row>${p.row - 1}</xdr:row><xdr:rowOff>${off}</xdr:rowOff></xdr:from>`
       + `<xdr:ext cx="${cx}" cy="${cy}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i + 2}" name="${p.name}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>`
       + `<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>`
       + `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`
@@ -236,8 +242,8 @@ function signatureParts(placements) {
 
 /**
  * Build the filled form. `report` is what `lib/gameReport.js` assembles plus whatever
- * the export dialog collected; every field is optional and an absent one simply leaves
- * the printed blank in place.
+ * the export dialog collected (including `logo`, the league logo's PNG bytes); every
+ * field is optional and an absent one simply leaves the printed blank in place.
  */
 export function buildGameForm(report) {
   const sheet = cloneSheet(SHEET)
@@ -283,7 +289,8 @@ export function buildGameForm(report) {
   const medicSigRow = appendMedicSection(sheet, report.medic, at)
 
   const sig = report.signatures || {}
-  const sigParts = signatureParts([
+  const picParts = pictureParts([
+    { name: 'לוגו הליגה', bytes: report.logo, row: 1, col: 'A', maxW: LOGO_SIZE, maxH: LOGO_SIZE, inset: LOGO_INSET },
     { name: 'חתימת שופט', image: sig.referee, row: at(RESULTS.values), col: 'R' },
     { name: 'חתימת מאמן מארחת', image: sig.home_coach, row: at(HOME.coach), col: 'G' },
     { name: 'חתימת קפטן מארחת', image: sig.home_captain, row: at(HOME.coach), col: 'R' },
@@ -292,5 +299,5 @@ export function buildGameForm(report) {
     { name: 'חתימת חובש', image: sig.medic, row: medicSigRow, col: 'H' },
   ])
 
-  return zip({ ...FILES, 'xl/worksheets/sheet1.xml': sheetXml(sheet), ...sigParts })
+  return zip({ ...FILES, 'xl/worksheets/sheet1.xml': sheetXml(sheet), ...picParts })
 }
