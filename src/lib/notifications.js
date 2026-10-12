@@ -199,6 +199,7 @@ export function notificationText(n) {
       : `נרשמו מספיק שחקנים ב${d.team_name || 'קבוצה'}, ולכן הוסרת מהסגל למשחק ${vs(d)}. תודה!`
     case 'game_register_reminder': return `משחק מתקרב: ${vs(d)} — נא לסמן הגעה`
     case 'game_register_nudge':    return `עדיין לא סימנת הגעה למשחק ${vs(d)}`
+    case 'game_form_sign':         return `המשחק ${vs(d)} הסתיים — חסרה החתימה שלך על טופס המשחק`
     case 'coach_squad_digest':     return `סגל למשחק ${vs(d)}: ${d.yes ?? 0} מגיעים, ${d.no ?? 0} לא מגיעים, ${d.pending ?? 0} טרם הגיבו`
     case 'lm_squad_digest':        return `סגלים למשחק ${vs(d)}: ${d.home_team || 'בית'} ${d.home_count ?? 0}, ${d.away_team || 'חוץ'} ${d.away_count ?? 0}`
     case 'lm_officials_digest':    return `${vs(d)} — ${officialsSummary(d)}`
@@ -277,6 +278,7 @@ export function notificationIcon(n) {
     case 'loan_removed':   return '↩️'
     case 'game_register_reminder': return '📣'
     case 'game_register_nudge':    return '⏰'
+    case 'game_form_sign':         return '✍️'
     case 'coach_squad_digest':     return '📋'
     case 'lm_squad_digest':        return '📋'
     case 'lm_officials_digest':    return '⚖️'
@@ -347,6 +349,8 @@ export function notificationHref(n) {
     case 'loan_declined':
     case 'loan_cancelled':
     case 'loan_removed':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
+    // the signature slots live on the game page's טופס המשחק card
+    case 'game_form_sign':        return n.entity_id ? `/games/${n.entity_id}#game-form` : '/games'
     case 'app_update':            return '/app'
     case 'goal_scored':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
     // reviewers land on the /admin review tabs. The claims tab stacks five queues, so

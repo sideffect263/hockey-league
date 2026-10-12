@@ -168,6 +168,7 @@ function notificationText(n: NotificationRow, actorName: string): string {
       : `נרשמו מספיק שחקנים ב${d.team_name ?? "קבוצה"}, ולכן הוסרת מהסגל למשחק ${vs(d)}. תודה!`;
     case "game_register_reminder": return `משחק מתקרב: ${vs(d)} — נא לסמן הגעה`;
     case "game_register_nudge":    return `עדיין לא סימנת הגעה למשחק ${vs(d)}`;
+    case "game_form_sign":         return `המשחק ${vs(d)} הסתיים — חסרה החתימה שלך על טופס המשחק`;
     case "coach_squad_digest":     return `סגל למשחק ${vs(d)}: ${d.yes ?? 0} מגיעים, ${d.no ?? 0} לא מגיעים, ${d.pending ?? 0} טרם הגיבו`;
     case "lm_squad_digest":        return `סגלים למשחק ${vs(d)}: ${d.home_team ?? "בית"} ${d.home_count ?? 0}, ${d.away_team ?? "חוץ"} ${d.away_count ?? 0}`;
     case "lm_officials_digest":    return `${vs(d)} — ${officialsSummary(d)}`;
@@ -240,6 +241,7 @@ function notificationHref(n: NotificationRow): string {
     case "official_application_rejected":
     case "game_register_reminder":
     case "game_register_nudge":
+    case "game_form_sign":
     case "coach_squad_digest":
     case "lm_squad_digest":
     case "lm_officials_digest":

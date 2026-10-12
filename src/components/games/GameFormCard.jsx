@@ -6,6 +6,7 @@ import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
 import {
   SIGN_ROLES, getGameReportRow, gameCaptainIds, setGameCaptain,
   getMySignRoles, getGameSignatures, signGameForm, clearGameSignature,
+  getMySavedSignature, saveMySignature, deleteMySignature, signGameFormSaved,
 } from "@/lib/gameFormData"
 import SignaturePad from "@/components/games/SignaturePad"
 import GameSheetSection from "@/components/games/GameSheetSection"
@@ -26,6 +27,8 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
   const [memberships, setMemberships] = useState([])
   const [myRoles, setMyRoles] = useState([])
   const [signatures, setSignatures] = useState(null)
+  // The account's saved signature: undefined = not loaded / failed (offer drawing only).
+  const [savedSig, setSavedSig] = useState(undefined)
   const [padRole, setPadRole] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -40,7 +43,8 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
     if (user && done) {
       const [roles, sigs] = await Promise.all([getMySignRoles(game.id).catch(() => []), getGameSignatures(game.id)])
       setMyRoles(roles); setSignatures(sigs)
-    } else { setMyRoles([]); setSignatures(null) }
+      setSavedSig(roles.length > 0 ? await getMySavedSignature().catch(() => undefined) : undefined)
+    } else { setMyRoles([]); setSignatures(null); setSavedSig(undefined) }
   }
   useEffect(() => { load() }, [game.id, game.status, user?.id])
 
@@ -73,13 +77,33 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
     away_captain: `קפטן · ${away?.name || "אורחת"}`,
   }[role])
 
-  const saveSignature = async (png) => {
+  const signErrorText = (e) => (/already signed/.test(e?.message || "") ? "מישהו אחר כבר חתם בתפקיד הזה" : "שמירת החתימה נכשלה")
+
+  const saveSignature = async (png, remember) => {
     setBusy(true); setError(null)
-    try { await signGameForm(game.id, padRole, png); setPadRole(null); await load() }
-    catch (e) {
-      console.error(e)
-      setError(/already signed/.test(e.message) ? "מישהו אחר כבר חתם בתפקיד הזה" : "שמירת החתימה נכשלה")
-    } finally { setBusy(false) }
+    try {
+      await signGameForm(game.id, padRole, png)
+      setPadRole(null)
+      // The form is signed either way; a failed "remember" only costs the shortcut.
+      if (remember) await saveMySignature(png).catch(e => console.error(e))
+      await load()
+    } catch (e) { console.error(e); setError(signErrorText(e)) }
+    finally { setBusy(false) }
+  }
+
+  // One tap with the saved signature.
+  const approveWithSaved = async (role) => {
+    setBusy(true); setError(null)
+    try { await signGameFormSaved(game.id, role); await load() }
+    catch (e) { console.error(e); setError(signErrorText(e)) }
+    finally { setBusy(false) }
+  }
+
+  const forgetSaved = async () => {
+    setBusy(true); setError(null)
+    try { await deleteMySignature(); setSavedSig(null) }
+    catch (e) { console.error(e); setError("מחיקת החתימה השמורה נכשלה") }
+    finally { setBusy(false) }
   }
 
   const clearSig = async (role) => {
@@ -101,7 +125,7 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
   const signedCount = signatures ? Object.keys(signatures).length : 0
 
   return (
-    <div className="card p-4 sm:p-5 space-y-4">
+    <div id="game-form" className="card p-4 sm:p-5 space-y-4 scroll-mt-20">
       <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
         <PenLine className="w-4 h-4 text-brand" /> טופס המשחק
         {showSignatures && signatures && <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">· {signedCount}/6 חתימות</span>}
@@ -164,7 +188,16 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
                   )}
                 </div>
                 {sig?.image && <img src={sig.image} alt="" className="h-8 w-auto max-w-[110px] rounded bg-white px-1 shrink-0" />}
-                {mine && !sig && (
+                {mine && !sig && savedSig && (
+                  <>
+                    <img src={savedSig} alt="החתימה השמורה שלך" className="h-8 w-auto max-w-[110px] rounded bg-white px-1 shrink-0" />
+                    <button onClick={() => approveWithSaved(role)} disabled={busy} className="btn-primary btn-sm shrink-0">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> אישור וחתימה
+                    </button>
+                    <button onClick={() => setPadRole(role)} disabled={busy} className="text-[11px] font-semibold text-brand shrink-0">חתימה חדשה</button>
+                  </>
+                )}
+                {mine && !sig && !savedSig && (
                   <button onClick={() => setPadRole(role)} disabled={busy} className="btn-primary btn-sm shrink-0">
                     <PenLine className="w-3.5 h-3.5" /> חתום
                   </button>
@@ -180,13 +213,19 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
               </div>
             )
           })}
+          {savedSig && (
+            <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+              החתימה שלך שמורה לחתימה מהירה ·
+              <button onClick={forgetSaved} disabled={busy} className="font-semibold text-slate-500 hover:text-red-500">מחיקת החתימה השמורה</button>
+            </div>
+          )}
         </div>
       )}
 
       {error && <div className="rounded-lg px-3 py-2 text-sm bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
 
       {padRole && (
-        <SignaturePad title={`חתימה — ${roleLabel(padRole)}`} saving={busy} onCancel={() => setPadRole(null)} onSave={saveSignature} />
+        <SignaturePad title={`חתימה — ${roleLabel(padRole)}`} saving={busy} offerRemember onCancel={() => setPadRole(null)} onSave={saveSignature} />
       )}
     </div>
   )

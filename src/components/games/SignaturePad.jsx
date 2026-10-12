@@ -10,11 +10,13 @@ import { X, Eraser, Check } from "lucide-react"
  */
 const OUT_W = 600, OUT_H = 180
 
-export default function SignaturePad({ title, onCancel, onSave, saving }) {
+export default function SignaturePad({ title, onCancel, onSave, saving, offerRemember = false }) {
   const canvasRef = useRef(null)
   const drawing = useRef(false)
   const last = useRef(null)
   const [empty, setEmpty] = useState(true)
+  // Offered to signers: keep this signature so next time is one tap ("אישור וחתימה").
+  const [remember, setRemember] = useState(true)
 
   // Size the backing store to the element × devicePixelRatio, so strokes are crisp.
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function SignaturePad({ title, onCancel, onSave, saving }) {
     const out = document.createElement("canvas")
     out.width = OUT_W; out.height = OUT_H
     out.getContext("2d").drawImage(src, 0, 0, OUT_W, OUT_H)
-    onSave(out.toDataURL("image/png"))
+    onSave(out.toDataURL("image/png"), offerRemember && remember)
   }
 
   return (
@@ -81,6 +83,12 @@ export default function SignaturePad({ title, onCancel, onSave, saving }) {
           {empty && <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-300">חתימה</span>}
           <div className="pointer-events-none absolute left-6 right-6 bottom-[22%] border-b border-slate-200" />
         </div>
+        {offerRemember && (
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="accent-brand" />
+            שמור את החתימה לפעמים הבאות — בפעם הבאה רק לוחצים "אישור וחתימה"
+          </label>
+        )}
         <div className="flex gap-2">
           <button onClick={save} disabled={empty || saving} className="btn-primary flex-1 py-2.5">
             <Check className="w-4 h-4" /> {saving ? "שומר…" : "אישור חתימה"}

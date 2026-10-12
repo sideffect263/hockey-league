@@ -169,3 +169,27 @@ export async function clearGameSignature(gameId, role) {
   const { error } = await supabase.rpc('clear_game_signature', { p_game_id: gameId, p_role: role })
   if (error) throw error
 }
+
+// ---- saved signature (one per account; see supabase/game-form-sign-reminder.sql) ----
+/** The caller's saved signature PNG data URL, or null. */
+export async function getMySavedSignature() {
+  const { data, error } = await supabase.rpc('my_saved_signature')
+  if (error) throw error
+  return data || null
+}
+
+export async function saveMySignature(pngDataUrl) {
+  const { error } = await supabase.rpc('save_my_signature', { p_image: pngDataUrl })
+  if (error) throw error
+}
+
+export async function deleteMySignature() {
+  const { error } = await supabase.rpc('delete_my_signature')
+  if (error) throw error
+}
+
+/** One tap: the server signs with the caller's saved signature. */
+export async function signGameFormSaved(gameId, role) {
+  const { error } = await supabase.rpc('sign_game_form_saved', { p_game_id: gameId, p_role: role })
+  if (error) throw error
+}
