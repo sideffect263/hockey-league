@@ -362,7 +362,10 @@ export default function GameVideo({ game, home, away, players = [] }) {
   // Camera shown: the viewer's own pick, else the one the director put on air, else one on
   // air right now, else a full-game YouTube upload, else the first. Default part of a
   // camera: its live part, else part 1.
-  const cameras = groupCameras(videos)
+  // Cameras still waiting for approval stay in the control room — the game page shows
+  // only what the director let through, to the admin too (RLS already hides them from
+  // everyone else).
+  const cameras = groupCameras(videos).filter(c => !c.hidden)
   const program = broadcast.program_camera_no
   const autoCamera = (program != null && cameras.find(c => c.no === program))
     || [...cameras].reverse().find(c => c.live)
@@ -378,7 +381,9 @@ export default function GameVideo({ game, home, away, players = [] }) {
     .map(no => cameras.find(c => c.no === no && !c.hidden))
     .filter(c => c && c.key !== autoCamera?.key)
   const tiles = useLiveTiles(autoCamera && layoutExtras.length ? [autoCamera, ...layoutExtras] : [])
-  const multiLive = isLive && tiles && tiles.length > 1 ? tiles : null
+  // Not gated on game.status: cameras go up before kick-off (warm-up, a test game that was
+  // never started on the board), and useLiveTiles already drops any camera not on air.
+  const multiLive = tiles && tiles.length > 1 ? tiles : null
   const multi = cameraKey == null ? multiLive : null
   const [multiLatency, setMultiLatency] = useState(null)
   // Removing a video is for content creators (content_editor) + admin — mirrors the
@@ -389,7 +394,8 @@ export default function GameVideo({ game, home, away, players = [] }) {
 
   // Live viewer count via Realtime Presence — active while a Cloudflare live
   // stream is on this page.
-  const streamActive = video?.provider === "cloudflare" && isLive
+  const onAirNow = isLive || !!multi || !!camera?.live
+  const streamActive = video?.provider === "cloudflare" && onAirNow
   const viewers = useStreamViewers(gameId, streamActive, true)
 
   const load = useCallback(async () => {
@@ -399,7 +405,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
       setVideos(all)
       // Keep the viewer on the camera/part they picked; drop a pick that no longer exists.
       setSelectedId(id => (all.some(v => v.id === id) ? id : null))
-      setCameraKey(k => (groupCameras(all).some(c => c.key === k) ? k : null))
+      setCameraKey(k => (groupCameras(all).some(c => c.key === k && !c.hidden) ? k : null))
     }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -438,7 +444,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
     <motion.div id="video" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden scroll-mt-20">
       <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-          {isLive && camera?.live
+          {onAirNow && (multi || camera?.live)
             ? <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400"><Radio className="w-4 h-4 animate-pulse" /> שידור חי</span>
             : <><Video className="w-4 h-4 text-orange-500" /> וידאו מהמשחק</>}
           {streamActive && (
