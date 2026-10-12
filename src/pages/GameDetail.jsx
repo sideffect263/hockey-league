@@ -608,71 +608,76 @@ export default function GameDetail() {
         </motion.div>
       )}
 
-      {/* ============ HEAD-TO-HEAD ============ */}
+      {/* ============ BEFORE THE GAME: recent form + head-to-head ============ */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
           <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-            <Swords className="w-4 h-4 text-brand" /> מפגשים קודמים
-          </h2>
-          {h2h.length > 0 && <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">התוצאות מנקודת מבט {home?.name || 'הבית'}</p>}
-        </div>
-        <div className="p-4 space-y-2">
-          {h2h.length === 0 ? (
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-6">אין מפגשים קודמים בין הקבוצות</p>
-          ) : h2h.map(g => {
-            const wasHome = g.home_team_id === game.home_team_id
-            const my = wasHome ? g.home_score : g.away_score
-            const opp = wasHome ? g.away_score : g.home_score
-            const result = my > opp ? 'win' : my < opp ? 'loss' : 'tie'
-            return (
-              <Link key={g.id} to={entityPath('games', g)} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <div className="flex items-center gap-2 min-w-0 text-xs text-slate-500 dark:text-slate-400">
-                  <Calendar className="w-3.5 h-3.5 shrink-0" />
-                  <span>{format(new Date(g.game_date), "d/M/yyyy")}</span>
-                  <span className="text-slate-500 dark:text-slate-400">· {g.game_type}</span>
-                </div>
-                {/* dir=ltr isolates the standalone score so RTL can't split away:home
-                    and mispair digits (see hockey-league-rtl-score-gotcha). */}
-                <span dir="ltr" className={`text-sm font-bold px-2 py-1 rounded-md tabular-nums shrink-0 ${resultCls(result)}`} title={resultLabel(result)}>
-                  {g.away_score}:{g.home_score}
-                </span>
-              </Link>
-            )
-          })}
-        </div>
-      </motion.div>
-
-      {/* ============ PRE-MATCH FORM ============ */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} className="card overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-          <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-            <TrendingUp className="w-4 h-4 text-brand" /> טופס לפני המשחק
+            <TrendingUp className="w-4 h-4 text-brand" /> לפני המשחק
           </h2>
         </div>
-        <div className="p-4 space-y-3">
-          {[{ team: home, form: homeForm, side: 'בית' }, { team: away, form: awayForm, side: 'חוץ' }].map(({ team, form, side }) => (
-            <div key={side} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-              <TeamLink team={team} className="flex items-center gap-2.5 min-w-0 group">
-                <TeamLogo team={team} size={8} />
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{team?.name || '—'}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">{side}</p>
-                </div>
-              </TeamLink>
-              {form.length > 0 ? (
-                <div className="flex gap-1 shrink-0">
-                  {form.map((r, i) => (
-                    <span key={i} title={resultLabel(r)}
-                      className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white ${r === 'win' ? 'bg-emerald-500' : r === 'loss' ? 'bg-red-500' : 'bg-slate-400 dark:bg-slate-600'}`}>
-                      {r === 'win' ? 'נ' : r === 'loss' ? 'ה' : 'ת'}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">אין משחקים קודמים</span>
-              )}
+        <div className="p-4 space-y-4">
+          {/* Recent form: each team's last 5 results against anyone, newest first */}
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200">כושר אחרון</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">5 משחקים אחרונים · נ ניצחון · ת תיקו · ה הפסד</p>
             </div>
-          ))}
+            {[{ team: home, form: homeForm, side: 'בית' }, { team: away, form: awayForm, side: 'חוץ' }].map(({ team, form, side }) => (
+              <div key={side} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                <TeamLink team={team} className="flex items-center gap-2.5 min-w-0 group">
+                  <TeamLogo team={team} size={8} />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{team?.name || '—'}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{side}</p>
+                  </div>
+                </TeamLink>
+                {form.length > 0 ? (
+                  <div className="flex gap-1 shrink-0">
+                    {form.map((r, i) => (
+                      <span key={i} title={resultLabel(r)}
+                        className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white ${r === 'win' ? 'bg-emerald-500' : r === 'loss' ? 'bg-red-500' : 'bg-slate-400 dark:bg-slate-600'}`}>
+                        {r === 'win' ? 'נ' : r === 'loss' ? 'ה' : 'ת'}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">אין משחקים קודמים</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Head-to-head: only when the two teams actually met before */}
+          {h2h.length > 0 && (
+            <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+                  <Swords className="w-3.5 h-3.5 text-brand" /> מפגשים קודמים
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">מנקודת מבט {home?.name || 'הבית'}</p>
+              </div>
+              {h2h.map(g => {
+                const wasHome = g.home_team_id === game.home_team_id
+                const my = wasHome ? g.home_score : g.away_score
+                const opp = wasHome ? g.away_score : g.home_score
+                const result = my > opp ? 'win' : my < opp ? 'loss' : 'tie'
+                return (
+                  <Link key={g.id} to={entityPath('games', g)} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <div className="flex items-center gap-2 min-w-0 text-xs text-slate-500 dark:text-slate-400">
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <span>{format(new Date(g.game_date), "d/M/yyyy")}</span>
+                      <span className="text-slate-500 dark:text-slate-400">· {g.game_type}</span>
+                    </div>
+                    {/* dir=ltr isolates the standalone score so RTL can't split away:home
+                        and mispair digits (see hockey-league-rtl-score-gotcha). */}
+                    <span dir="ltr" className={`text-sm font-bold px-2 py-1 rounded-md tabular-nums shrink-0 ${resultCls(result)}`} title={resultLabel(result)}>
+                      {g.away_score}:{g.home_score}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
       </motion.div>
 
