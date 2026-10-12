@@ -29,6 +29,7 @@ import GameFormCard from "@/components/games/GameFormCard"
 import GameMvp from "@/components/GameMvp"
 import GameMarketCard from "@/components/games/GameMarketCard"
 import { usePinSeason } from "@/components/SeasonPicker"
+import GameStory from "@/components/games/GameStory"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
@@ -386,6 +387,9 @@ export default function GameDetail() {
           </div>
         )}
       </motion.div>
+
+      {/* ===== סיפור המשחק — written story (published, or a draft for editors) ===== */}
+      {done && <GameStory gameId={game.id} />}
 
       {/* ===== COACH: request a reschedule (date/venue) → manager approves ===== */}
       {canRequestChange && (

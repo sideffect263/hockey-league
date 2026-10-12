@@ -76,13 +76,15 @@ function urlTag(site, path, { changefreq, priority, lastmod, images = [], video 
 }
 
 export async function buildSitemap(site) {
-  const [teams, players, tournaments, seasons, posts] = await Promise.all([
+  const [teams, players, tournaments, seasons, posts, stories] = await Promise.all([
     sb('teams?status=eq.active&select=id,slug,name,logo_url'),
     sb('players?select=id,slug'),
     sb('tournaments?select=id,slug'),
     sb('seasons?status=in.(active,archived)&select=id,slug,status,ends_on'),
     sb(`posts?deleted_at=is.null&external_guid=is.null&select=${POST_SELECT},created_at,updated_at,game_id&order=created_at.desc`),
+    sb('game_stories?status=eq.published&select=game_id,hero_image_url,updated_at'),
   ])
+  const storyOf = Object.fromEntries(stories.map(s => [s.game_id, s]))
   // Every game of every browsable season. The RPC answers for archived seasons too.
   const seasonGames = await Promise.all(seasons.map(s =>
     sb('rpc/season_games_detail', { method: 'POST', body: JSON.stringify({ p_season_id: s.id }) })))
@@ -101,9 +103,12 @@ export async function buildSitemap(site) {
   for (const p of players) urls.push(urlTag(site, `/players/${enc(p.slug || p.id)}`, { changefreq: 'weekly', priority: '0.6' }))
   for (const g of games) {
     const played = g.status === 'completed'
+    const story = storyOf[g.id]
     urls.push(urlTag(site, `/games/${enc(g.slug || g.id)}`, {
-      changefreq: played ? 'yearly' : 'weekly', priority: played ? '0.6' : '0.5',
-      lastmod: played ? day(g.game_date) : null,
+      // A game page with its written story is the richest page we have — rank it so.
+      changefreq: played ? 'yearly' : 'weekly', priority: story ? '0.8' : played ? '0.6' : '0.5',
+      lastmod: story ? day(story.updated_at) : played ? day(g.game_date) : null,
+      images: story ? [absUrl(story.hero_image_url)] : [],
     }))
   }
   for (const s of seasons.filter(s => s.status === 'archived')) {

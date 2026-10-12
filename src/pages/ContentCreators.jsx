@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import {
   Images, Camera, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, FlaskConical
+  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, FlaskConical, BookOpen
 } from "lucide-react"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import { getPlayers } from "@/lib/api"
@@ -14,9 +14,12 @@ import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
 import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import FeedDrafts from "@/components/creators/FeedDrafts"
 import VideoLab from "@/components/creators/VideoLab"
+import GameStoriesReview from "@/components/creators/GameStoriesReview"
+import { countStoryDrafts } from "@/lib/gameStories"
 
 const tabs = [
   { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
+  { id: "stories", label: "סיפורי משחקים", icon: BookOpen },
   { id: "lab", label: "מעבדת וידאו", icon: FlaskConical },
   { id: "media", label: "מדיה", icon: Camera },
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
@@ -39,6 +42,7 @@ export default function ContentCreators() {
     return tabs.some(x => x.id === t) ? t : "drafts"
   })
   const [draftCount, setDraftCount] = useState(null)
+  const [storyCount, setStoryCount] = useState(null)
   const [players, setPlayers] = useState([])
 
   const canAccess = isContentEditor || isAdmin
@@ -47,6 +51,7 @@ export default function ContentCreators() {
   useEffect(() => {
     if (authLoading || !canAccess) return
     getPlayers().then(setPlayers).catch(() => setPlayers([]))
+    countStoryDrafts().then(setStoryCount).catch(() => {})
   }, [authLoading, canAccess])
 
   if (authLoading) return <CreatorsSkeleton />
@@ -61,7 +66,7 @@ export default function ContentCreators() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">טיוטות לפיד, מעבדת וידאו, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, מעבדת וידאו, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -79,6 +84,9 @@ export default function ContentCreators() {
                   }`}>
                   <tab.icon className="w-4 h-4 shrink-0" />
                   <span>{tab.label}</span>
+                  {tab.id === "stories" && storyCount > 0 && (
+                    <span className={`ms-auto text-[11px] font-bold px-1.5 rounded-full ${active ? "bg-white/25" : "bg-brand/10 text-brand"}`}>{storyCount}</span>
+                  )}
                   {tab.id === "drafts" && draftCount > 0 && (
                     <span className={`ms-auto text-[11px] font-bold px-1.5 rounded-full ${active ? "bg-white/25" : "bg-brand/10 text-brand"}`}>{draftCount}</span>
                   )}
@@ -90,6 +98,7 @@ export default function ContentCreators() {
 
         <div className="min-w-0">
           {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
+          {activeTab === "stories" && <GameStoriesReview onCountChange={setStoryCount} />}
           {activeTab === "lab" && <VideoLab />}
           {activeTab === "media" && <MediaClusters />}
           {activeTab === "clusters" && <ClustersAdmin players={players} />}

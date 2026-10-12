@@ -69,8 +69,11 @@ function CreatorsButton({ active }) {
   const [count, setCount] = useState(0)
   useEffect(() => {
     let alive = true
-    supabase.from("feed_drafts").select("id", { count: "exact", head: true })
-      .then(({ count: n }) => { if (alive) setCount(n || 0) })
+    // Feed drafts + game stories waiting for review — both land on this one desk.
+    Promise.all([
+      supabase.from("feed_drafts").select("id", { count: "exact", head: true }),
+      supabase.from("game_stories").select("game_id", { count: "exact", head: true }).eq("status", "draft"),
+    ]).then(([a, b]) => { if (alive) setCount((a.count || 0) + (b.count || 0)) })
     return () => { alive = false }
   }, [location.pathname, location.search])
   return (

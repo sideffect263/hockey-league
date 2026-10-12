@@ -137,6 +137,17 @@ function scorersHtml(g, stats, h, a) {
   return `<h2>מבקיעים</h2>` + (home ? `<h3>${esc(h)}</h3><ul>${home}</ul>` : '') + (away ? `<h3>${esc(a)}</h3><ul>${away}</ul>` : '')
 }
 
+function storyHtml(story) {
+  if (!story) return ''
+  const paras = String(story.body || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
+  const moments = Array.isArray(story.moments) ? story.moments : []
+  return `<article><h2>סיפור המשחק: ${esc(story.title)}</h2>` +
+    (absImg(story.hero_image_url) ? `<figure>${img(story.hero_image_url, story.title, 1280).replace(/ height="1280"/, '')}</figure>` : '') +
+    `<p><strong>${esc(story.summary)}</strong></p>${paras.map(t => `<p>${esc(t)}</p>`).join('')}` +
+    (moments.length ? `<h3>רגעי המפתח</h3><ol>${moments.map(m => `<li>${m.label ? `<strong>${esc(m.label)}</strong> — ` : ''}${esc(m.text)}${m.post_id ? ` ${link(`/posts/${m.post_id}`, 'לצפייה בקטע')}` : ''}</li>`).join('')}</ol>` : '') +
+    `</article>`
+}
+
 function highlightsHtml(posts) {
   if (!posts.length) return ''
   // Video posts first, like the game page section.
@@ -351,9 +362,11 @@ const BUILDERS = {
     }
     // Same facts as the game page: the box score (a loaned player counts for the side he
     // played for) and "היילייטס ופוסטים מהמשחק" — which is also how Google finds /posts/<id>.
-    const [liveStats, posts] = await Promise.all([
+    const [liveStats, posts, [story]] = await Promise.all([
       stats ? null : sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
       sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT},created_at&order=created_at.desc&limit=20`),
+      // סיפור המשחק — published only (anon RLS), the same text GameStory.jsx shows.
+      sb(`game_stories?game_id=eq.${g.id}&status=eq.published&select=title,summary,body,moments,hero_image_url,published_at,updated_at`),
     ])
     stats = stats || liveStats
     const h = g.home?.name || 'בית', a = g.away?.name || 'חוץ'
@@ -365,8 +378,9 @@ const BUILDERS = {
     const videos = posts.filter(p => streamPlayer(p))
     return {
       title: `${headline} | ${SITE_NAME}`, canonicalPath: path('games', g.slug || g.id),
-      image: postOg(videos[0] || {}).image || absImg(hLogo),
-      desc: `${played ? 'תוצאת המשחק' : 'משחק'} ${h} נגד ${a}${when ? ` — ${when}` : ''}${g.game_type ? ` (${g.game_type})` : ''}.`,
+      image: absImg(story?.hero_image_url) || postOg(videos[0] || {}).image || absImg(hLogo),
+      desc: story?.summary || `${played ? 'תוצאת המשחק' : 'משחק'} ${h} נגד ${a}${when ? ` — ${when}` : ''}${g.game_type ? ` (${g.game_type})` : ''}.`,
+      ogType: story ? 'article' : 'website',
       jsonLd: [
         { '@type': 'SportsEvent', '@id': `${url}#event`, name: `${h} נגד ${a}`, url, sport: 'Roller hockey',
           ...(g.game_date ? { startDate: g.game_date } : {}),
@@ -379,13 +393,20 @@ const BUILDERS = {
           ...(absImg(hLogo) ? { image: [hLogo, absImg(aLogo)].filter(Boolean) } : {}),
           description: played ? `תוצאה סופית: ${h} ${g.home_score}, ${a} ${g.away_score}` : `${h} נגד ${a}${when ? `, ${when}` : ''}` },
         ...videos.map(p => videoLd(site, p)),
+        ...(story ? [{
+          '@type': 'NewsArticle', '@id': `${url}#story`, headline: story.title.slice(0, 110), description: story.summary,
+          articleBody: story.body, inLanguage: 'he-IL', url, mainEntityOfPage: url,
+          datePublished: story.published_at || story.updated_at, dateModified: story.updated_at,
+          ...(absImg(story.hero_image_url) ? { image: [story.hero_image_url] } : {}),
+          about: { '@id': `${url}#event` }, author: ORG_REF(site), publisher: { ...ORG_REF(site), logo: { '@type': 'ImageObject', url: `${site}/logos/main-logo.png` } },
+        }] : []),
         breadcrumbs(site, [['ראשי', '/'], ['משחקים', '/games'], [`${h} נגד ${a}`, path('games', g.slug || g.id)]]),
       ],
       body: `<h1>${esc(headline)}</h1><p>${img(hLogo, `סמל ${h}`, 64)} ${img(aLogo, `סמל ${a}`, 64)}</p><ul>` +
         (g.home ? `<li>בית: ${link(path('teams', g.home.slug), h)}</li>` : '') +
         (g.away ? `<li>חוץ: ${link(path('teams', g.away.slug), a)}</li>` : '') +
         (when ? `<li>${esc(when)}</li>` : '') + (g.game_type ? `<li>סוג: ${esc(g.game_type)}</li>` : '') + `</ul>` +
-        scorersHtml(g, stats, h, a) + highlightsHtml(posts),
+        storyHtml(story) + scorersHtml(g, stats, h, a) + highlightsHtml(posts),
     }
   },
 
