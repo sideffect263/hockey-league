@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, EyeOff, Stethoscope, MonitorPlay, LayoutGrid } from "lucide-react"
+import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, Stethoscope, MonitorPlay } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
@@ -286,22 +286,12 @@ function StreamDiag({ diag, mode, isLive }) {
   )
 }
 
-// מצלמה 1 / מצלמה 2 … — one pill per camera (angle) of the game; a camera on air right
-// now is marked live. Fans pick their angle here; parts of that camera sit below.
-// `onMulti` (when the director set a multi-view and it's on air): a first pill for the
-// combined view, selected while `selected` is null.
-function CameraTabs({ cameras, selected, onSelect, onMulti }) {
+// מצלמה 1 / מצלמה 2 … — one pill per camera (angle) of the game, shown once nothing is
+// broadcasting (while live, viewers get the director's output only). Parts of the picked
+// camera sit below.
+function CameraTabs({ cameras, selected, onSelect }) {
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="מצלמות">
-      {onMulti && (
-        <button role="tab" aria-selected={!selected} onClick={onMulti}
-          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${!selected
-            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
-          <LayoutGrid className="w-3.5 h-3.5" /> תצוגה משולבת
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-label="בשידור חי" />
-        </button>
-      )}
       {cameras.map((c) => {
         const on = c.key === selected?.key
         return (
@@ -311,8 +301,6 @@ function CameraTabs({ cameras, selected, onSelect, onMulti }) {
               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
             <Camera className="w-3.5 h-3.5" />
             {c.label}
-            {c.hidden && <EyeOff className="w-3.5 h-3.5 opacity-70" aria-label="ממתין לאישור — מוסתר מהצופים" />}
-            {c.live && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-label="בשידור חי" />}
           </button>
         )
       })}
@@ -371,12 +359,15 @@ export default function GameVideo({ game, home, away, players = [] }) {
     || [...cameras].reverse().find(c => c.live)
     || cameras.find(c => c.parts.some(v => v.provider === "youtube" && v.kind === "full"))
     || cameras[0] || null
-  const camera = cameras.find(c => c.key === cameraKey) || autoCamera
+  // While any camera is broadcasting, viewers see exactly the director's output (the
+  // camera on air, or the multi-view) — no angle or part picker. Once the broadcast is
+  // over, every approved camera's recording is pickable again.
+  const broadcasting = cameras.some(c => c.live)
+  const camera = (!broadcasting && cameras.find(c => c.key === cameraKey)) || autoCamera
   const parts = camera?.parts || []
-  const video = parts.find(v => v.id === selectedId) || [...parts].reverse().find(isLiveRow) || parts[0] || null
-  // Multi-view: the director's layout around the camera on air. Shown to a viewer who
-  // hasn't picked a camera of their own; one who has gets a pill back to it. Extras =
-  // approved cameras the director added, on air now.
+  const video = (!broadcasting && parts.find(v => v.id === selectedId)) || [...parts].reverse().find(isLiveRow) || parts[0] || null
+  // Multi-view: the director's layout around the camera on air. Extras = approved cameras
+  // the director added, on air now.
   const layoutExtras = broadcast.layout === "single" ? [] : (broadcast.layout_cameras || [])
     .map(no => cameras.find(c => c.no === no && !c.hidden))
     .filter(c => c && c.key !== autoCamera?.key)
@@ -384,7 +375,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
   // Not gated on game.status: cameras go up before kick-off (warm-up, a test game that was
   // never started on the board), and useLiveTiles already drops any camera not on air.
   const multiLive = tiles && tiles.length > 1 ? tiles : null
-  const multi = cameraKey == null ? multiLive : null
+  const multi = multiLive
   const [multiLatency, setMultiLatency] = useState(null)
   // Removing a video is for content creators (content_editor) + admin — mirrors the
   // can_stream_game() backend gate. Going live is the apps' job now (RTMP); the web
@@ -469,13 +460,11 @@ export default function GameVideo({ game, home, away, players = [] }) {
 
       <div className="p-4 sm:p-5 space-y-4">
         <>
-            {cameras.length > 1 && (
-              <CameraTabs cameras={cameras} selected={multi ? null : camera}
-                onMulti={multiLive
-                  ? () => { setCameraKey(null); setSelectedId(null); setPlayer(null); setDuration(0) } : null}
+            {!broadcasting && cameras.length > 1 && (
+              <CameraTabs cameras={cameras} selected={camera}
                 onSelect={(c) => { setCameraKey(c.key); setSelectedId(null); setPlayer(null); setDuration(0) }} />
             )}
-            {!multi && parts.length > 1 && (
+            {!broadcasting && parts.length > 1 && (
               <PartTabs videos={parts} selected={video} onSelect={(v) => { setSelectedId(v.id); setPlayer(null); setDuration(0) }} />
             )}
             {multi ? (
