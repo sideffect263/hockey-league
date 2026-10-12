@@ -143,3 +143,25 @@ export function summarize(questions, results) {
     return { question: q, count: vals.length, avg: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null, dist }
   })
 }
+
+/** Admin: surveys that are running or about to (not stopped), with whether `postId` is in each. */
+export async function surveysForPost(postId) {
+  const { data, error } = await supabase.from('video_surveys')
+    .select('id, title, status, video_survey_posts(post_id)')
+    .neq('status', 'stopped').order('created_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(s => ({
+    id: s.id, title: s.title, status: s.status,
+    included: (s.video_survey_posts || []).some(p => p.post_id === postId),
+  }))
+}
+
+/** Admin: add `postId` to / remove it from one survey. */
+export async function setPostInSurvey(surveyId, postId, on) {
+  const q = supabase.from('video_survey_posts')
+  const { error } = on
+    ? await q.upsert({ survey_id: surveyId, post_id: postId }, { onConflict: 'survey_id,post_id', ignoreDuplicates: true })
+    : await q.delete().eq('survey_id', surveyId).eq('post_id', postId)
+  if (error) throw error
+  invalidateSurveyCache()
+}

@@ -8,6 +8,8 @@ import {
   getPostBrief, requestFeedSwap, getLabClipStatus,
 } from "@/lib/videoLab"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
+import { useAuth } from "@/lib/AuthContext"
+import { surveysForPost, setPostInSurvey } from "@/lib/videoSurveys"
 
 // Video lab: review the AI ball tracking frame by frame, fix it, queue a re-render.
 // Every fix is a training label for the ball models (video-analysis/ on the Mac).
@@ -505,9 +507,25 @@ function FeedSwap({ clip, onClip, onWatch }) {
   const upToDate = inFeed && clip.processed_path === clip.feed_processed_path
   const rendering = clip.status === "queued" || clip.status === "processing"
   const canSwap = !!clip.processed_path && !busy && !rendering && !upToDate
+  // Video surveys (/admin → סקרים) run per feed POST, so the swapped video keeps whatever
+  // survey the post is in. Admins tick here which surveys the post should be part of.
+  const { isAdmin } = useAuth()
+  const [surveys, setSurveys] = useState(null)        // [{id,title,status,included}] | null
+  const [surveyPick, setSurveyPick] = useState({})    // survey id → checked
+  useEffect(() => {
+    if (!isAdmin || !clip.post_id || confirm !== "swap") return
+    surveysForPost(clip.post_id).then(list => {
+      setSurveys(list); setSurveyPick(Object.fromEntries(list.map(s => [s.id, s.included])))
+    }).catch(() => setSurveys([]))
+  }, [isAdmin, clip.post_id, confirm])
   const go = async (revert) => {
     setErr(null); setConfirm(null)
-    try { await requestFeedSwap(clip.id, revert); onClip({ feed_status: revert ? "revert_requested" : "requested", feed_note: null }) }
+    try {
+      if (!revert && surveys) {
+        for (const s of surveys) if (!!surveyPick[s.id] !== s.included) await setPostInSurvey(s.id, clip.post_id, !!surveyPick[s.id])
+      }
+      await requestFeedSwap(clip.id, revert); onClip({ feed_status: revert ? "revert_requested" : "requested", feed_note: null })
+    }
     catch (e) { setErr(e.message || "הבקשה נכשלה") }
   }
   const when = clip.feed_replaced_at ? new Date(clip.feed_replaced_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : null
@@ -535,6 +553,16 @@ function FeedSwap({ clip, onClip, onWatch }) {
             {confirm === "swap" ? <>להחליף את הסרטון בפוסט <b>״{snippet}״</b> בסרטון המעובד? כל מי שגולל בפיד יראה את הגרסה החדשה.</>
               : <>להחזיר לפוסט <b>״{snippet}״</b> את הסרטון שהיה לפני ההחלפה?</>}
           </p>
+          {confirm === "swap" && surveys?.length > 0 && (
+            <div className="space-y-1">
+              {surveys.map(sv => (
+                <label key={sv.id} className="flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={!!surveyPick[sv.id]} onChange={e => setSurveyPick(p => ({ ...p, [sv.id]: e.target.checked }))} />
+                  <span>להוסיף לסקר <b>״{sv.title}״</b>{sv.status !== "active" && <span className="text-xs text-slate-500"> (טיוטה)</span>}</span>
+                </label>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
             <button onClick={() => go(confirm === "revert")} className="px-3 py-1.5 rounded-lg bg-brand text-white font-semibold">{confirm === "swap" ? "כן, החלף" : "כן, החזר"}</button>
             <button onClick={() => setConfirm(null)} className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">ביטול</button>
