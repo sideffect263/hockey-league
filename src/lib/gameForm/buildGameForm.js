@@ -156,6 +156,11 @@ function fillTeamBlock(sheet, block, team, at) {
     }
     setCell(sheet, at(block.foulsTitle), 'U', 'עבירות קבוצתיות:')
     setCell(sheet, at(block.foulsTotal), 'U', team.fouls)
+    // The total is set in 18pt, but the blank draws the away block's total row at only
+    // 14.25pt (the home one is 20.25) — give it the home row's height so it isn't clipped.
+    const totalRow = rowAt(sheet, at(block.foulsTotal))
+    const homeHt = rowAt(SHEET, HOME.foulsTotal)?.ht
+    if (totalRow && homeHt && (totalRow.ht ?? 0) < homeHt) totalRow.ht = homeHt
   }
   // Timeouts: the minute of the half each was called in, two boxes per half.
   ;[team.timeouts?.first, team.timeouts?.second].forEach((mins, h) => {
