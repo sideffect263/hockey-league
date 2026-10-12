@@ -9,6 +9,7 @@ import { likePost, unlikePost, getComments, createComment, editPost, deletePost,
 import { setPhotoOverride } from "@/lib/photoOverrides"
 import { parseYouTubeId, youTubeInText, withoutUrl } from "@/lib/video"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
+import ExperimentalVideo from "@/components/feed/ExperimentalVideo"
 import ReactionBar from "@/components/feed/ReactionBar"
 import MarketFeedCard from "@/components/feed/MarketFeedCard"
 import ModerationMenu from "@/components/feed/ModerationMenu"
@@ -867,7 +868,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           {bodyYt ? (
             <FeedVideo videoId={bodyYt.id} poster={`https://i.ytimg.com/vi/${bodyYt.id}/hqdefault.jpg`} title={textBody.split("\n")[0]} />
           ) : (
-            <FeedVideo provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
+            <ExperimentalVideo postId={p.id} provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
                        poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} />
           )}
         </div>

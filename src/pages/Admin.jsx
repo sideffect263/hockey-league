@@ -59,8 +59,9 @@ import ReportsReview from "@/components/admin/ReportsReview"
 import GameChangeRequestsReview from "@/components/admin/GameChangeRequestsReview"
 import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
+import SurveysAdmin from "@/components/admin/SurveysAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -86,6 +87,7 @@ const tabs = [
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
   { id: "analytics", label: "ניתוח משתמשים", icon: LineChartIcon },
   { id: "feed_analytics", label: "ניתוח פיד", icon: Newspaper },
+  { id: "surveys", label: "סקרים", icon: ClipboardCheck },
   { id: "calendar_subs", label: "מנויי יומן", icon: CalendarCheck },
   { id: "telemetry", label: "טלמטריה", icon: Activity },
   { id: "app_users", label: "משתמשי אפליקציה", icon: Smartphone },
@@ -270,6 +272,7 @@ export default function Admin() {
               {currentTab === "clusters" && <ClustersAdmin players={players} />}
               {currentTab === "analytics" && <UserAnalyticsAdmin />}
               {currentTab === "feed_analytics" && <FeedAnalyticsAdmin />}
+              {currentTab === "surveys" && isAdmin && <SurveysAdmin />}
               {currentTab === "calendar_subs" && <CalendarSubscribersAdmin />}
               {currentTab === "telemetry" && <TelemetryAdmin />}
               {currentTab === "app_users" && <AppUsersAdmin />}

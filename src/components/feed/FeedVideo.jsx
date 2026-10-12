@@ -66,7 +66,7 @@ function prefersNoAutoplay() {
  * provider "cloudflare": videoId = Stream uid, cfCode = account subdomain code, ratio =
  * width/height of the clip (a 9:16 clip shows in a 4:5 box, letterboxed, like Instagram).
  */
-export default function FeedVideo({ videoId, poster, title, provider = "youtube", cfCode, ratio }) {
+export default function FeedVideo({ videoId, poster, title, provider = "youtube", cfCode, ratio, onWatchTime, children }) {
   const isStream = provider === "cloudflare"
   const hostRef = useRef(null)      // stable wrapper; YT replaces the child node
   const playerRef = useRef(null)
@@ -153,6 +153,29 @@ export default function FeedVideo({ videoId, poster, title, provider = "youtube"
     }
   }, [started, videoId, isStream])
 
+  // Seconds actually PLAYED (not seconds on screen): sample the player's clock and add
+  // forward steps of up to 1.5 s — a pause adds nothing, a seek is not counted as watching.
+  // Only runs for callers that ask (the experimental-video survey).
+  const watchCb = useRef(onWatchTime)
+  watchCb.current = onWatchTime
+  const hasWatchCb = !!onWatchTime
+  useEffect(() => {
+    if (!started || !hasWatchCb) return
+    let last = null, total = 0
+    const id = setInterval(() => {
+      const p = playerRef.current
+      let t = null
+      try { t = isStream ? p?.currentTime : p?.getCurrentTime?.() } catch { /* ignore */ }
+      if (typeof t !== "number" || Number.isNaN(t)) return
+      if (last != null) {
+        const d = t - last
+        if (d > 0 && d <= 1.5) { total += d; watchCb.current?.(total) }
+      }
+      last = t
+    }, 500)
+    return () => clearInterval(id)
+  }, [started, isStream, hasWatchCb])
+
   // Visibility → play/pause. 60% keeps a card that's half off the bottom quiet.
   useEffect(() => {
     if (manual || !wrapRef.current) return
@@ -222,6 +245,7 @@ export default function FeedVideo({ videoId, poster, title, provider = "youtube"
           <span className="sr-only">{title}</span>
         </button>
       )}
+      {children}
     </div>
   )
 }
