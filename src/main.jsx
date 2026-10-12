@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { ThemeProvider } from './lib/ThemeContext.jsx'
 import { AuthProvider } from './lib/AuthContext.jsx'
-import { PresenceProvider } from './lib/PresenceContext.jsx'
 import { initAnalytics } from './lib/analytics'
 import { initTelemetry } from './lib/telemetry'
 import { installStaleChunkReload } from './lib/staleChunkReload'
@@ -25,9 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <PresenceProvider>
-            <App />
-          </PresenceProvider>
+          <App />
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

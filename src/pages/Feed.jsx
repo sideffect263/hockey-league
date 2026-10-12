@@ -26,7 +26,6 @@ import QuickActions from "@/components/feed/QuickActions"
 import LoanInvite from "@/components/LoanInvite"
 import VideoRail from "@/components/feed/VideoRail"
 import { StandingsWidget, NextGameWidget, LeadersWidget } from "@/components/feed/Widgets"
-import OnlinePresence from "@/components/OnlinePresence"
 import { FeedSkeleton, SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
 
 const PAGE_SIZE = 25
@@ -245,13 +244,9 @@ export default function Feed() {
           {/* Page header — title on the right (RTL), "download the app" banner on the left */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
             <div>
-              <div className="flex items-center gap-3">
-                <h1 className="page-title flex items-center gap-2.5">
-                  <Rink className="w-7 h-7 text-brand" /> המגרש
-                </h1>
-                {/* Live "who's skating" count (Realtime Presence), on the title's line */}
-                <OnlinePresence />
-              </div>
+              <h1 className="page-title flex items-center gap-2.5">
+                <Rink className="w-7 h-7 text-brand" /> המגרש
+              </h1>
               <p className="page-subtitle mt-1">כל מה שקורה בליגה</p>
             </div>
 

@@ -16,6 +16,9 @@ import { getBroadcast, subscribeBroadcast, BROADCAST_DEFAULTS } from "@/lib/stre
 import { useCameraOnAir } from "@/lib/useCameraOnAir"
 import { playWHEP, hasTurn } from "@/lib/whep"
 
+// The viewer count on a live stream hides below this.
+const MIN_VIEWERS_SHOWN = 15
+
 // Marker kinds → Hebrew label + emoji + pill colour (reuses the StatPills palette).
 const KINDS = {
   goal:      { he: "גול",   emoji: "⚽", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", dot: "bg-emerald-500" },
@@ -438,7 +441,8 @@ export default function GameVideo({ game, home, away, players = [] }) {
           {onAirNow && (multi || camera?.live)
             ? <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400"><Radio className="w-4 h-4 animate-pulse" /> שידור חי</span>
             : <><Video className="w-4 h-4 text-orange-500" /> וידאו מהמשחק</>}
-          {streamActive && (
+          {/* A small number reads as "nobody's watching" — only show a crowd. */}
+          {streamActive && viewers >= MIN_VIEWERS_SHOWN && (
             <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400" title="צופים בשידור">
               <Eye className="w-3.5 h-3.5" /> {viewers}
             </span>
