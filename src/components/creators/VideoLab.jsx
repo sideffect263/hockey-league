@@ -372,6 +372,8 @@ function ClipEditor({ id, onBack }) {
           : <button className="text-xs underline text-slate-500" onClick={() => seek(clip.goal_frame)}>רגע הגול: פריים #{clip.goal_frame}</button>)}
       </div>
 
+      <MarkStyle clip={clip} onChange={setClipField} />
+
       <div className="flex gap-1 text-sm">
         <button onClick={() => setMode("source")} className={`px-3 py-1.5 rounded-lg font-semibold ${mode === "source" ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-800"}`}>מקור + סימון AI</button>
         <button onClick={() => setMode("processed")} disabled={!clip.processed_path}
@@ -605,6 +607,41 @@ function FeedSwap({ clip, onClip, onWatch }) {
         </div>
       )}
       {err && <p className="text-xs text-red-600">{err}</p>}
+    </div>
+  )
+}
+
+// How the ball is marked in the rendered video (per clip). Applied on the next "עבד מחדש".
+const MARK_STYLES = [
+  { id: "paint", label: "כדור צבוע", hint: "הכדור עצמו נצבע + נקודות מסלול כשהוא זז" },
+  { id: "outline", label: "טבעת דקה", hint: "טבעת דקה סביב הכדור + קו מסלול" },
+  { id: "none", label: "בלי סימון", hint: "רק שיפור תמונה והילוך חוזר" },
+]
+const MARK_COLORS = [
+  { hex: "#d4ff00", name: "צהוב טניס" }, { hex: "#ffffff", name: "לבן" }, { hex: "#ff3df0", name: "ורוד" },
+  { hex: "#00e5ff", name: "תכלת" }, { hex: "#ff8a00", name: "כתום" },
+]
+function MarkStyle({ clip, onChange }) {
+  const style = clip.mark_style || "paint", color = (clip.mark_color || "#d4ff00").toLowerCase()
+  return (
+    <div className="card p-3 flex flex-wrap items-center gap-2">
+      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">סימון הכדור:</span>
+      <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-sm">
+        {MARK_STYLES.map(m => (
+          <button key={m.id} title={m.hint} onClick={() => onChange({ mark_style: m.id })}
+            className={`px-3 py-1.5 rounded-lg font-semibold ${style === m.id ? "bg-white dark:bg-slate-700 shadow text-brand" : "text-slate-500"}`}>{m.label}</button>
+        ))}
+      </div>
+      {style === "paint" && (
+        <div className="flex items-center gap-1.5" role="radiogroup" aria-label="צבע הכדור">
+          {MARK_COLORS.map(c => (
+            <button key={c.hex} role="radio" aria-checked={color === c.hex} title={c.name} onClick={() => onChange({ mark_color: c.hex })}
+              className={`w-7 h-7 rounded-full border-2 ${color === c.hex ? "border-brand scale-110" : "border-slate-300 dark:border-slate-600"}`}
+              style={{ background: c.hex }} />
+          ))}
+        </div>
+      )}
+      <span className="text-xs text-slate-500 w-full">השינוי ייכנס לתוקף בלחיצה על "עבד מחדש עם התיקונים".</span>
     </div>
   )
 }

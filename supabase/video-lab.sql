@@ -94,3 +94,9 @@ alter table public.video_lab_clips
   add column if not exists goal2_frame int,
   add column if not exists strike2_frame int,
   add column if not exists cuts jsonb;
+
+-- 2026-10-12: per-clip ball-mark look chosen in the editor: paint = the ball itself recoloured (default),
+-- outline = thin ring, none = no marking (enhance + replay only). mark_color = the paint colour.
+alter table public.video_lab_clips
+  add column if not exists mark_style text not null default 'paint' check (mark_style in ('paint','outline','none')),
+  add column if not exists mark_color text not null default '#d4ff00' check (mark_color ~ '^#[0-9a-fA-F]{6}$');
