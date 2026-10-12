@@ -30,6 +30,7 @@ import GameMvp from "@/components/GameMvp"
 import GameMarketCard from "@/components/games/GameMarketCard"
 import { usePinSeason } from "@/components/SeasonPicker"
 import GameStory from "@/components/games/GameStory"
+import GameMediaUpload from "@/components/games/GameMediaUpload"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
@@ -389,7 +390,10 @@ export default function GameDetail() {
       </motion.div>
 
       {/* ===== סיפור המשחק — written story (published, or a draft for editors) ===== */}
-      {done && <GameStory gameId={game.id} />}
+      {done && <GameStory gameId={game.id} home={home} away={away} />}
+
+      {/* ===== raw footage from coaches / officials / editors → the timeline pipeline ===== */}
+      {(done || game.status === 'in_progress') && <GameMediaUpload gameId={game.id} />}
 
       {/* ===== COACH: request a reschedule (date/venue) → manager approves ===== */}
       {canRequestChange && (

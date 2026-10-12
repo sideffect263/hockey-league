@@ -7,8 +7,14 @@
 //                                          head, plus its media (highlight videos as frame URLs,
 //                                          photos) — the routine LOOKS at the frames itself
 //   3. POST {action:"save", game_id,…}  → stores the story as a DRAFT
-// A content editor / admin then reviews, edits and publishes it in /creators. Nothing this
-// function writes is ever public on its own (game_stories RLS: anon reads published only).
+// v2 (2026-10-12): the story is a TIMELINE of beats, and every beat cites its evidence —
+// game_events (the judge's clock, the referee form, editor-confirmed moments), game_media (the
+// stream recording, clips the Mac pipeline cut, coach/official uploads) or named facts (box
+// score, table…). save() rejects a beat that cites nothing or cites what isn't this game's,
+// marks each beat verified / not, and applies the league's publish mode (league_settings
+// game_story_publish_mode: review → verified → auto, switched by an admin in /creators).
+// A story that is already live gets a pending_revision instead of being overwritten (unless
+// the mode is 'auto').
 //
 // Why a function and not the service-role key in the routine: same as weekly-preview — the
 // routine runs in a cloud environment we don't control, so this token can do exactly one
@@ -75,20 +81,54 @@ function framesFor(code: string, uid: string, duration: number | null, n: number
 }
 
 // ---- queue ------------------------------------------------------------------
+// A game needs (re)writing when it has no story, or when evidence arrived after the story was
+// written: new/updated media, judge events, or a changed box score. Rejected stories stay put.
 async function queue(limit: number) {
-  const [{ data: games, error }, { data: stories }] = await Promise.all([
-    admin.from("games").select("id,slug,game_date,status,home_score,away_score,is_test,season_id,tournament_id")
+  const [{ data: games, error }, { data: stories }, { data: media }, { data: events }] = await Promise.all([
+    admin.from("games").select("id,slug,game_date,status,home_score,away_score,is_test")
       .eq("status", "completed").eq("is_test", false).not("home_score", "is", null).order("game_date", { ascending: false }),
-    admin.from("game_stories").select("game_id"),
+    admin.from("game_stories").select("game_id,status,generated_at,pending_revision,timeline"),
+    admin.from("game_media").select("game_id,updated_at,status").neq("status", "error"),
+    admin.from("game_events").select("game_id,updated_at"),
   ]);
   if (error) throw error;
-  const have = new Set((stories ?? []).map((s: any) => s.game_id));
-  const todo = (games ?? []).filter((g: any) => !have.has(g.id));
-  // Games with media first — they make the best stories and are the newest anyway.
-  const { data: media } = await admin.from("posts").select("game_id").in("game_id", todo.map((g: any) => g.id)).is("deleted_at", null);
-  const withMedia = new Set((media ?? []).map((p: any) => p.game_id));
-  todo.sort((a: any, b: any) => (Number(withMedia.has(b.id)) - Number(withMedia.has(a.id))) || String(b.game_date).localeCompare(String(a.game_date)));
-  return { total_missing: todo.length, games: todo.slice(0, limit).map((g: any) => ({ id: g.id, slug: g.slug, date: localDate(g.game_date).date, has_media: withMedia.has(g.id) })) };
+  const storyOf = new Map((stories ?? []).map((st: any) => [st.game_id, st]));
+  const latest = (rows: any[] | null, id: string) => (rows ?? []).filter((r) => r.game_id === id).reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "");
+  const pendingMedia = new Set((media ?? []).filter((m: any) => m.status === "uploaded" || m.status === "processing").map((m: any) => m.game_id));
+  const out: any[] = [];
+  for (const g of games ?? []) {
+    const st: any = storyOf.get(g.id);
+    if (st?.status === "rejected") continue;
+    const writtenAt = st?.pending_revision?.generated_at || st?.generated_at || "";
+    const newEvidence = st && (latest(media, g.id) > writtenAt || latest(events, g.id) > writtenAt);
+    // A draft from before timelines (v1, plain prose) is rewritten as a timeline.
+    const upgrade = st && st.status === "draft" && !(Array.isArray(st.timeline) && st.timeline.length);
+    if (st && !newEvidence && !upgrade) continue;
+    out.push({ id: g.id, slug: g.slug, date: localDate(g.game_date).date, reason: !st ? "no_story" : upgrade ? "upgrade" : "new_evidence",
+      has_media: (media ?? []).some((m: any) => m.game_id === g.id), media_still_processing: pendingMedia.has(g.id) });
+  }
+  // New evidence first (a live story is out of date), then games with media, newest first.
+  out.sort((a, b) => (Number(b.reason === "new_evidence") - Number(a.reason === "new_evidence")) || (Number(b.has_media) - Number(a.has_media)) || b.date.localeCompare(a.date));
+  return { total: out.length, games: out.slice(0, limit) };
+}
+
+// Every game-linked post with a video/photo and every stream recording becomes a game_media
+// row, so a beat can cite it by id. Idempotent.
+async function ensureMediaRows(gameId: string, posts: any[], videos: any[]) {
+  const rows: any[] = [];
+  for (const p of posts) {
+    if (!p.video_uid && !p.image_url) continue;
+    rows.push({ game_id: gameId, kind: p.video_uid ? "video" : "image", origin: "post", post_id: p.id,
+      cf_uid: p.video_uid ?? null, cf_code: p.video_cf_code ?? null, public_url: p.video_uid ? null : p.image_url,
+      title: String(p.body || "").split("\n")[0].slice(0, 120), status: "ready", is_public: true, recorded_at: null });
+  }
+  if (rows.length) await admin.from("game_media").upsert(rows, { onConflict: "post_id", ignoreDuplicates: true });
+  const recs = videos.filter((v: any) => v.provider === "cloudflare" && v.cf_customer_code && v.video_id).map((v: any) => ({
+    game_id: gameId, kind: "video", origin: "recording", game_video_id: v.id, cf_uid: v.video_id, cf_code: v.cf_customer_code,
+    title: v.title || (v.camera_label ? `שידור · ${v.camera_label}` : "שידור המשחק"), recorded_at: v.created_at,
+    status: "uploaded", is_public: true,
+  }));
+  if (recs.length) await admin.from("game_media").upsert(recs, { onConflict: "game_video_id", ignoreDuplicates: true });
 }
 
 // ---- bundle -----------------------------------------------------------------
@@ -103,11 +143,12 @@ async function bundle(gameId: string) {
     g.season_id ? admin.from("games").select("id,game_date,status,home_team_id,away_team_id,home_score,away_score,game_type,is_test").eq("season_id", g.season_id).eq("is_test", false)
       : Promise.resolve({ data: [] }),
     admin.from("game_stats").select("player_id,goals,blue_cards,red_cards,clean_sheet,played_for_team_id,is_guest_player,guest_player_name").eq("game_id", gameId),
-    admin.from("game_reports").select("halftime_home,halftime_away,home_fouls,away_fouls,timeouts,events").eq("game_id", gameId).maybeSingle(),
+    admin.from("game_reports").select("halftime_home,halftime_away,home_fouls,away_fouls,timeouts,period_ms").eq("game_id", gameId).maybeSingle(),
     admin.from("posts").select("id,body,image_url,video_uid,video_cf_code,created_at,source_name").eq("game_id", gameId).is("deleted_at", null).order("created_at"),
-    admin.from("game_videos").select("id,provider,video_id,cf_customer_code,kind,title,hidden").eq("game_id", gameId).eq("hidden", false),
-    admin.from("game_stories").select("status").eq("game_id", gameId).maybeSingle(),
+    admin.from("game_videos").select("id,provider,video_id,cf_customer_code,kind,title,hidden,camera_label,created_at").eq("game_id", gameId).eq("hidden", false),
+    admin.from("game_stories").select("status,version,pending_revision").eq("game_id", gameId).maybeSingle(),
   ]);
+  await ensureMediaRows(gameId, posts ?? [], videos ?? []);
 
   // Names as they were THAT season (teams get renamed; the archive keeps the old name).
   const teamIds = [g.home_team_id, g.away_team_id];
@@ -181,24 +222,58 @@ async function bundle(gameId: string) {
     .lt("game_date", g.game_date).eq("status", "completed").eq("is_test", false).order("game_date", { ascending: false }).limit(10);
   const h2h = (h2hRaw ?? []).map((x: any) => ({ date: localDate(x.game_date).date, home: team(x.home_team_id).name, away: team(x.away_team_id).name, score: `${x.home_score}-${x.away_score}` }));
 
-  // Media. Highlight videos → frame URLs the routine fetches and looks at.
+  // ── The event log (game_events): the timeline's spine. Score after each goal, game time.
+  const periodMs = report?.period_ms || 25 * 60e3;
+  const { data: evRows } = await admin.from("game_events")
+    .select("id,kind,side,player_id,player_name,own_goal,period,clock_ms,wall_at,source,status,note")
+    .eq("game_id", gameId).neq("status", "rejected");
+  const ord = (e: any) => ({ "1": 1, "2": 2, "3": 3, "הארכה 1": 4, "הארכה 2": 5 } as any)[e.period ?? ""] * 1e8 - (e.clock_ms ?? 0);
+  let sh = 0, sa = 0;
+  const events = (evRows ?? []).sort((a: any, b: any) => (ord(a) - ord(b)) || String(a.wall_at).localeCompare(String(b.wall_at))).map((e: any) => {
+    if (e.kind === "goal" && e.status === "confirmed") { if (e.side === "home") sh++; else if (e.side === "away") sa++; }
+    const elapsed = e.clock_ms != null ? Math.max(0, periodMs - e.clock_ms) : null;
+    return {
+      event_id: e.id, kind: e.kind, side: e.side, team: e.side === "home" ? home.name : e.side === "away" ? away.name : null,
+      player: e.player_id && pById[e.player_id] ? `${pById[e.player_id].first_name} ${pById[e.player_id].last_name}`.trim() : e.player_name,
+      own_goal: e.own_goal, period: e.period,
+      game_time: elapsed != null ? `${String(Math.floor(elapsed / 60000)).padStart(2, "0")}:${String(Math.floor(elapsed / 1000) % 60).padStart(2, "0")}` : null,
+      score_after: e.kind === "goal" && e.status === "confirmed" ? { home: sh, away: sa } : null,
+      wall_at: e.wall_at, source: e.source, status: e.status, note: e.note,
+    };
+  });
+  // Events whose player is not in the box score lookup still need a name; fetch any missing.
+  const missing = [...new Set((evRows ?? []).map((e: any) => e.player_id).filter((id: string) => id && !pById[id]))];
+  if (missing.length) {
+    const { data: more } = await admin.from("players").select("id,first_name,last_name").in("id", missing);
+    for (const p of more ?? []) for (const ev of events) if ((evRows ?? []).find((r: any) => r.id === ev.event_id)?.player_id === p.id) ev.player = `${p.first_name} ${p.last_name}`.trim();
+  }
+
+  // ── Media (game_media): everything filmed or photographed at this game, with what the Mac
+  // pipeline found in it. Videos come with frame URLs the writer downloads and LOOKS at.
+  const { data: mediaRows } = await admin.from("game_media")
+    .select("id,kind,origin,cf_uid,cf_code,storage_path,public_url,parent_id,post_id,event_id,clip_start_s,clip_end_s,title,note,recorded_at,duration_s,status,analysis,is_public,game_video_id")
+    .eq("game_id", gameId).neq("status", "error").order("created_at");
   const media: any[] = [];
-  for (const p of posts ?? []) {
-    const item: any = { post_id: p.id, text: String(p.body || "").slice(0, 600), posted_at: p.created_at, url: `${SITE}/posts/${p.id}` };
-    if (p.image_url) item.image_url = p.image_url;
-    if (p.video_uid && p.video_cf_code) {
-      const dur = await videoDuration(p.video_cf_code, p.video_uid);
-      item.video = { duration_seconds: dur, frames: framesFor(p.video_cf_code, p.video_uid, dur, 6) };
+  for (const m of mediaRows ?? []) {
+    const item: any = { media_id: m.id, kind: m.kind, origin: m.origin, title: m.title, note: m.note,
+      event_id: m.event_id, parent_media_id: m.parent_id, clip: m.clip_start_s != null ? { start_s: m.clip_start_s, end_s: m.clip_end_s } : null,
+      recorded_at: m.recorded_at, status: m.status, public: m.is_public,
+      caption: m.post_id ? String((posts ?? []).find((p: any) => p.id === m.post_id)?.body || "").slice(0, 600) : null,
+      findings: m.analysis?.moments ?? null, transcript: m.analysis?.speech ?? null };
+    if (m.kind === "video" && m.cf_uid && m.cf_code) {
+      const dur = m.duration_s ?? (m.origin === "recording" ? null : await videoDuration(m.cf_code, m.cf_uid));
+      item.duration_s = dur;
+      // Recordings are long: frames only where the pipeline found something, plus a few wide shots.
+      const findingFrames = (m.analysis?.moments ?? []).slice(0, 12).map((x: any) => ({ second: Math.round(x.t), url: frameUrl(m.cf_code, m.cf_uid, Math.max(1, Math.round(x.t))), why: x.kind }));
+      item.frames = m.origin === "recording" ? [...findingFrames, ...framesFor(m.cf_code, m.cf_uid, dur, 4)] : (m.analysis?.frames?.length ? m.analysis.frames.map((t: number) => ({ second: t, url: frameUrl(m.cf_code, m.cf_uid, t) })) : framesFor(m.cf_code, m.cf_uid, dur, 6));
+      item.frame_url_template = frameUrl(m.cf_code, m.cf_uid, 0).replace("time=0s", "time={SECOND}s");
+    } else if (m.kind === "image") {
+      item.image_url = m.public_url || (m.storage_path ? (await admin.storage.from("game-media").createSignedUrl(m.storage_path, 3600)).data?.signedUrl : null);
     }
-    if (item.image_url || item.video) media.push(item);
+    media.push(item);
   }
-  // Full-game recordings: a few wide frames (atmosphere, the rink) — never a goal moment.
-  const recordings = [];
-  for (const v of videos ?? []) {
-    if (v.provider !== "cloudflare" || !v.cf_customer_code || !v.video_id) continue;
-    const dur = await videoDuration(v.cf_customer_code, v.video_id);
-    recordings.push({ title: v.title, duration_seconds: dur, frames: framesFor(v.cf_customer_code, v.video_id, dur, 4) });
-  }
+  const recordings = media.filter((m) => m.origin === "recording");
+  const { data: modeRow } = await admin.from("league_settings").select("value").eq("key", "game_story_publish_mode").maybeSingle();
 
   const when = localDate(g.game_date);
   const mvp = g.mvp_player_id && pById[g.mvp_player_id] ? `${pById[g.mvp_player_id].first_name} ${pById[g.mvp_player_id].last_name}`.trim() : null;
@@ -220,57 +295,94 @@ async function bundle(gameId: string) {
     rank_change: { home: [rankOf(before, g.home_team_id), rankOf(after, g.home_team_id)], away: [rankOf(before, g.away_team_id), rankOf(after, g.away_team_id)] },
     form_before: { home: form(g.home_team_id), away: form(g.away_team_id) },
     head_to_head: h2h,
-    media, recordings,
+    events, media,
   };
-  return { ok: true, existing_story_status: story?.status ?? null, facts_hash: await factsHash(g, stats ?? []), facts };
+  return { ok: true, existing_story_status: story?.status ?? null, existing_story_version: story?.version ?? null,
+    publish_mode: modeRow?.value ?? "review", facts_hash: await factsHash(g, stats ?? []), facts, _recordings: recordings.length };
 }
 
 // ---- save -------------------------------------------------------------------
+const STAT_KEYS = new Set(["score", "halftime", "fouls", "box_score", "mvp", "table", "form", "head_to_head", "clean_sheet", "own_goals", "season"]);
+const BEAT_KINDS = new Set(["intro", "event", "context", "closing"]);
+const HARD_SOURCES = new Set(["judge", "form", "editor", "box"]);
+
 async function save(body: any) {
   const gameId = String(body?.game_id ?? "");
   if (!UUID.test(gameId)) return { ok: false, error: "game_id must be a uuid" };
   const title = String(body?.title ?? "").trim();
   const summary = String(body?.summary ?? "").trim();
-  const text = String(body?.body ?? "").replace(/\r/g, "").trim();
   if (title.length < 8 || title.length > 120) return { ok: false, error: "title must be 8-120 chars" };
   if (summary.length < 40 || summary.length > 220) return { ok: false, error: "summary must be 40-220 chars" };
-  if (text.length < 300 || text.length > 5000) return { ok: false, error: "body must be 300-5000 chars" };
-  if (/[<>]/.test(title + summary + text)) return { ok: false, error: "no HTML" };
+  const beatsIn = Array.isArray(body?.timeline) ? body.timeline : [];
+  if (beatsIn.length < 2 || beatsIn.length > 30) return { ok: false, error: "timeline must have 2-30 beats" };
 
-  const b = await bundle(gameId);
+  const b: any = await bundle(gameId);
   if (!b.ok) return b;
-  const facts: any = (b as any).facts;
-  // Media must be this game's own — a hero image or a moment from another game is a lie.
-  const ownPosts = new Set(facts.media.map((m: any) => m.post_id));
-  const ownImages = new Set<string>([
-    ...facts.media.flatMap((m: any) => [m.image_url, ...(m.video?.frames ?? []).map((f: any) => f.url)]).filter(Boolean),
-    ...facts.recordings.flatMap((r: any) => r.frames.map((f: any) => f.url)),
-  ]);
-  const ownImagePrefixes = [...ownImages].map((u) => u.split("/thumbnails/")[0]).filter((u) => u.includes("cloudflarestream.com"));
-  const hero = body?.hero_image_url ? String(body.hero_image_url) : null;
-  if (hero && !ownImages.has(hero) && !ownImagePrefixes.some((p) => hero.startsWith(`${p}/thumbnails/thumbnail.jpg?`))) {
-    return { ok: false, error: "hero_image_url must be one of this game's media URLs (an image_url or a frame of its videos)" };
-  }
-  const moments = Array.isArray(body?.moments) ? body.moments.slice(0, 8).map((m: any) => ({
-    label: String(m?.label ?? "").slice(0, 40), text: String(m?.text ?? "").slice(0, 400),
-    ...(m?.post_id && ownPosts.has(m.post_id) ? { post_id: m.post_id } : {}),
-  })).filter((m: any) => m.text) : [];
-  const usedPosts = (Array.isArray(body?.media_post_ids) ? body.media_post_ids : []).filter((id: any) => ownPosts.has(id));
+  const evById = new Map(b.facts.events.map((e: any) => [e.event_id, e]));
+  const mediaById = new Map(b.facts.media.map((m: any) => [m.media_id, m]));
 
-  const { data: existing } = await admin.from("game_stories").select("status").eq("game_id", gameId).maybeSingle();
-  if (existing?.status === "published" && !body?.replace_published) {
-    return { ok: false, error: "a published story exists — pass replace_published:true only when asked to rewrite it" };
-  }
-  if (body?.dry_run) return { ok: true, dry_run: true, would_save: { title, summary, chars: text.length, moments: moments.length, hero } };
+  const errors: string[] = [];
+  const timeline = beatsIn.map((x: any, i: number) => {
+    const n = i + 1;
+    const kind = BEAT_KINDS.has(x?.kind) ? x.kind : "context";
+    const text = String(x?.text ?? "").replace(/\r/g, "").trim();
+    if (text.length < 20 || text.length > 700) errors.push(`beat ${n}: text must be 20-700 chars`);
+    if (/[<>]/.test(text)) errors.push(`beat ${n}: no HTML`);
+    const eventIds = (Array.isArray(x?.event_ids) ? x.event_ids : []).map(String);
+    for (const id of eventIds) if (!evById.has(id)) errors.push(`beat ${n}: event ${id} is not one of this game's events`);
+    const stats = (Array.isArray(x?.stats) ? x.stats : []).map(String);
+    for (const k of stats) if (!STAT_KEYS.has(k)) errors.push(`beat ${n}: unknown stat "${k}"`);
+    const media = (Array.isArray(x?.media) ? x.media : []).slice(0, 4).map((m: any) => {
+      const src: any = mediaById.get(String(m?.media_id));
+      if (!src) { errors.push(`beat ${n}: media ${m?.media_id} is not this game's`); return null; }
+      const at = m?.at_s != null ? Number(m.at_s) : null;
+      if (at != null && src.duration_s && (at < 0 || at > src.duration_s)) errors.push(`beat ${n}: at_s ${at} outside the video`);
+      return { media_id: src.media_id, kind: src.kind, ...(at != null ? { at_s: at } : {}),
+        ...(m?.start_s != null ? { start_s: Number(m.start_s), end_s: Number(m.end_s ?? Number(m.start_s) + 12) } : {}),
+        ...(m?.caption ? { caption: String(m.caption).slice(0, 200) } : {}) };
+    }).filter(Boolean);
+    if (kind === "event" && !eventIds.length && !media.length) errors.push(`beat ${n}: an event beat must cite an event or a clip`);
+    if (!eventIds.length && !stats.length && !media.length) errors.push(`beat ${n}: cites no evidence`);
+    // Verified = rests on hard evidence: a confirmed event from the judge/form/editor/box, or named facts.
+    const hardEvents = eventIds.length > 0 && eventIds.every((id: string) => { const e: any = evById.get(id); return e?.status === "confirmed" && HARD_SOURCES.has(e.source); });
+    const verified = kind === "event" ? hardEvents : (stats.length > 0 || hardEvents);
+    const first: any = eventIds.length ? evById.get(eventIds[0]) : null;
+    return {
+      id: `b${n}`, kind, title: String(x?.title ?? "").trim().slice(0, 60), text, event_ids: eventIds, stats, media, verified,
+      ...(first ? { period: first.period, game_time: first.game_time, score_after: first.score_after, side: first.side } : {}),
+    };
+  });
+  if (errors.length) return { ok: false, error: "evidence check failed", details: errors.slice(0, 20) };
 
-  const row = {
-    game_id: gameId, status: "draft", title, summary, body: text, moments, hero_image_url: hero,
-    media_post_ids: usedPosts, facts_hash: b.facts_hash, generated_at: new Date().toISOString(),
-    generated_by: String(body?.generated_by ?? "routine").slice(0, 60), published_at: null, published_by: null,
-  };
+  const heroId = body?.hero_media_id && mediaById.has(String(body.hero_media_id)) ? String(body.hero_media_id) : null;
+  const hero: any = heroId ? mediaById.get(heroId) : null;
+  const heroAt = body?.hero_at_s != null ? Math.max(1, Math.round(Number(body.hero_at_s))) : null;
+  const heroUrl = hero?.kind === "image" ? (hero.public ? hero.image_url : null)
+    : hero?.frame_url_template && heroAt != null ? hero.frame_url_template.replace("{SECOND}", String(heroAt)) : null;
+  const text = timeline.map((t: any) => t.text).join("\n\n");
+  const allVerified = timeline.every((t: any) => t.verified);
+
+  const { data: existing } = await admin.from("game_stories").select("status,version").eq("game_id", gameId).maybeSingle();
+  const mode = b.publish_mode;
+  const publishNow = mode === "auto" || (mode === "verified" && allVerified);
+  if (body?.dry_run) return { ok: true, dry_run: true, would: { beats: timeline.length, verified: timeline.filter((t: any) => t.verified).length, publish: publishNow, mode } };
+
+  const content = { title, summary, body: text, timeline, moments: [], hero_image_url: heroUrl, hero_media_id: heroId,
+    media_post_ids: [], facts_hash: b.facts_hash, generated_at: new Date().toISOString(), generated_by: String(body?.generated_by ?? "routine").slice(0, 60) };
+
+  if (existing?.status === "published" && !publishNow) {
+    // Live story stays as is; the newer version waits for an editor.
+    const { error } = await admin.from("game_stories").update({ pending_revision: content }).eq("game_id", gameId);
+    if (error) throw error;
+    return { ok: true, saved: "pending_revision", beats: timeline.length, verified: timeline.filter((t: any) => t.verified).length, mode };
+  }
+  const row = { game_id: gameId, ...content, status: publishNow ? "published" : "draft", auto_published: publishNow,
+    pending_revision: null, version: (existing?.version ?? 0) + 1,
+    ...(publishNow ? { published_at: new Date().toISOString() } : { published_at: null, published_by: null }) };
   const { error } = await admin.from("game_stories").upsert(row, { onConflict: "game_id" });
   if (error) throw error;
-  return { ok: true, saved: { game_id: gameId, status: "draft", title }, review_url: `${SITE}/creators?tab=stories` };
+  return { ok: true, saved: publishNow ? "published" : "draft", beats: timeline.length, verified: timeline.filter((t: any) => t.verified).length, mode,
+    review_url: `${SITE}/creators?tab=stories` };
 }
 
 Deno.serve(async (req) => {

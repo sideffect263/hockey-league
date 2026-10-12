@@ -137,15 +137,31 @@ function scorersHtml(g, stats, h, a) {
   return `<h2>מבקיעים</h2>` + (home ? `<h3>${esc(h)}</h3><ul>${home}</ul>` : '') + (away ? `<h3>${esc(a)}</h3><ul>${away}</ul>` : '')
 }
 
-function storyHtml(story) {
+const PERIOD_HE = { '1': 'מחצית 1', '2': 'מחצית 2', 'הארכה 1': 'הארכה 1', 'הארכה 2': 'הארכה 2' }
+const frameOf = (m, sec) => m?.cf_uid && m?.cf_code
+  ? `https://customer-${m.cf_code}.cloudflarestream.com/${m.cf_uid}/thumbnails/thumbnail.jpg?time=${Math.max(1, Math.round(sec || 1))}s&height=720`
+  : (m?.public_url || null)
+
+// Same content as GameStory.jsx: the timeline beats, each with the frame of the clip it cites.
+function storyHtml(story, media = []) {
   if (!story) return ''
-  const paras = String(story.body || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
-  const moments = Array.isArray(story.moments) ? story.moments : []
-  return `<article><h2>סיפור המשחק: ${esc(story.title)}</h2>` +
+  const beats = Array.isArray(story.timeline) ? story.timeline : []
+  const head = `<article><h2>סיפור המשחק: ${esc(story.title)}</h2>` +
     (absImg(story.hero_image_url) ? `<figure>${img(story.hero_image_url, story.title, 1280).replace(/ height="1280"/, '')}</figure>` : '') +
-    `<p><strong>${esc(story.summary)}</strong></p>${paras.map(t => `<p>${esc(t)}</p>`).join('')}` +
-    (moments.length ? `<h3>רגעי המפתח</h3><ol>${moments.map(m => `<li>${m.label ? `<strong>${esc(m.label)}</strong> — ` : ''}${esc(m.text)}${m.post_id ? ` ${link(`/posts/${m.post_id}`, 'לצפייה בקטע')}` : ''}</li>`).join('')}</ol>` : '') +
-    `</article>`
+    `<p><strong>${esc(story.summary)}</strong></p>`
+  if (!beats.length) {
+    const paras = String(story.body || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
+    return head + paras.map(t => `<p>${esc(t)}</p>`).join('') + `</article>`
+  }
+  const byId = Object.fromEntries(media.map(m => [m.id, m]))
+  return head + `<ol>` + beats.map(b => {
+    const when = [PERIOD_HE[b.period] || '', b.game_time || ''].filter(Boolean).join(' · ')
+    const ev = (b.media || []).map(m => ({ ...m, row: byId[m.media_id] })).find(m => m.row)
+    const src = ev ? frameOf(ev.row, ev.at_s ?? ev.start_s) : null
+    return `<li><h3>${when ? `${esc(when)} — ` : ''}${esc(b.title || '')}</h3>` +
+      (src ? `<figure>${img(src, b.title || story.title, 720).replace(/ height="720"/, '')}${ev.row.post_id ? `<figcaption>${link(`/posts/${ev.row.post_id}`, 'לצפייה בקטע')}</figcaption>` : ''}</figure>` : '') +
+      `<p>${esc(b.text)}</p></li>`
+  }).join('') + `</ol></article>`
 }
 
 function highlightsHtml(posts) {
@@ -366,9 +382,12 @@ const BUILDERS = {
       stats ? null : sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
       sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT},created_at&order=created_at.desc&limit=20`),
       // סיפור המשחק — published only (anon RLS), the same text GameStory.jsx shows.
-      sb(`game_stories?game_id=eq.${g.id}&status=eq.published&select=title,summary,body,moments,hero_image_url,published_at,updated_at`),
+      sb(`game_stories?game_id=eq.${g.id}&status=eq.published&select=title,summary,body,moments,timeline,hero_image_url,published_at,updated_at`),
     ])
     stats = stats || liveStats
+    // The timeline's evidence: the public media its beats cite (frames shown beside each beat).
+    const citedIds = [...new Set((story?.timeline || []).flatMap(b => (b.media || []).map(m => m.media_id)).filter(id => /^[0-9a-f-]{36}$/i.test(id)))]
+    const citedMedia = citedIds.length ? await sb(`game_media?id=in.(${citedIds.join(',')})&is_public=eq.true&select=id,kind,cf_uid,cf_code,public_url,post_id`) : []
     const h = g.home?.name || 'בית', a = g.away?.name || 'חוץ'
     const hLogo = g.home_logo?.logo_url || g.home?.logo_url, aLogo = g.away_logo?.logo_url || g.away?.logo_url
     const played = g.status === 'completed' && g.home_score != null
@@ -406,7 +425,7 @@ const BUILDERS = {
         (g.home ? `<li>בית: ${link(path('teams', g.home.slug), h)}</li>` : '') +
         (g.away ? `<li>חוץ: ${link(path('teams', g.away.slug), a)}</li>` : '') +
         (when ? `<li>${esc(when)}</li>` : '') + (g.game_type ? `<li>סוג: ${esc(g.game_type)}</li>` : '') + `</ul>` +
-        storyHtml(story) + scorersHtml(g, stats, h, a) + highlightsHtml(posts),
+        storyHtml(story, citedMedia) + scorersHtml(g, stats, h, a) + highlightsHtml(posts),
     }
   },
 

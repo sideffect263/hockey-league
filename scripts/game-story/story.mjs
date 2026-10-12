@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Talks to the game-story edge function. See ROUTINE.md for the whole flow.
 //
-//   node scripts/game-story/story.mjs queue [limit]              > queue.json
+//   node scripts/game-story/story.mjs queue [limit]              > queue.json   (games with no story, or new evidence)
 //   node scripts/game-story/story.mjs bundle <game_id> <dir>     → <dir>/facts.json + <dir>/media/*.jpg
 //   node scripts/game-story/story.mjs save <story.json> [--dry-run]
 //
@@ -52,26 +52,21 @@ if (cmd === 'queue') {
   if (!gameId || !dir) { console.error('usage: bundle <game_id> <dir>'); process.exit(2) }
   const r = await call({ action: 'bundle', game_id: gameId })
   await mkdir(path.join(dir, 'media'), { recursive: true })
-  // Every image gets a local file; the facts note where, so the writer can Read it.
+  // Every image / frame gets a local file next to facts.json, so the writer can Read it.
   let n = 0
   for (const [i, m] of r.facts.media.entries()) {
+    const tag = `${String(i + 1).padStart(2, '0')}-${m.origin}`
     if (m.image_url) {
-      const f = path.join(dir, 'media', `post${i + 1}-photo.jpg`)
+      const f = path.join(dir, 'media', `${tag}-photo.jpg`)
       m.image_file = (await download(m.image_url, f)) ? f : null; n += m.image_file ? 1 : 0
     }
-    for (const fr of m.video?.frames ?? []) {
-      const f = path.join(dir, 'media', `post${i + 1}-video-${String(fr.second).padStart(3, '0')}s.jpg`)
+    for (const fr of m.frames ?? []) {
+      const f = path.join(dir, 'media', `${tag}-${String(fr.second).padStart(4, '0')}s.jpg`)
       fr.file = (await download(fr.url, f)) ? f : null; n += fr.file ? 1 : 0
     }
   }
-  for (const [i, v] of r.facts.recordings.entries()) {
-    for (const fr of v.frames) {
-      const f = path.join(dir, 'media', `recording${i + 1}-${String(fr.second).padStart(4, '0')}s.jpg`)
-      fr.file = (await download(fr.url, f)) ? f : null; n += fr.file ? 1 : 0
-    }
-  }
-  await writeFile(path.join(dir, 'facts.json'), JSON.stringify({ facts_hash: r.facts_hash, existing_story_status: r.existing_story_status, ...r.facts }, null, 2))
-  console.log(JSON.stringify({ ok: true, facts: path.join(dir, 'facts.json'), images_downloaded: n, media_posts: r.facts.media.length, recordings: r.facts.recordings.length, existing_story_status: r.existing_story_status }))
+  await writeFile(path.join(dir, 'facts.json'), JSON.stringify({ facts_hash: r.facts_hash, publish_mode: r.publish_mode, existing_story_status: r.existing_story_status, existing_story_version: r.existing_story_version, ...r.facts }, null, 2))
+  console.log(JSON.stringify({ ok: true, facts: path.join(dir, 'facts.json'), images_downloaded: n, events: r.facts.events.length, media: r.facts.media.length, publish_mode: r.publish_mode, existing_story_status: r.existing_story_status }))
 } else if (cmd === 'save') {
   const [file] = args
   if (!file) { console.error('usage: save <story.json> [--dry-run]'); process.exit(2) }
