@@ -13,9 +13,15 @@ export const BROADCAST_DEFAULTS = {
   overlay_position: 'top-right',
   max_cameras: 4,
   streaming_locked: false,
+  // Multi-view (2026-10-12): how extra cameras are shown with the program camera.
+  layout: 'single',          // single | pip | side | grid
+  layout_cameras: [],        // camera_no of the extras, in order (max 3)
 }
 
-const COLS = 'game_id, program_camera_no, overlay_score, overlay_position, max_cameras, streaming_locked, updated_at'
+// How many extra cameras each layout shows next to the program camera.
+export const LAYOUT_SLOTS = { single: 0, pip: 1, side: 1, grid: 3 }
+
+const COLS = 'game_id, program_camera_no, overlay_score, overlay_position, max_cameras, streaming_locked, layout, layout_cameras, updated_at'
 
 // A game's settings, or the defaults when the director never touched them.
 export async function getBroadcast(gameId) {

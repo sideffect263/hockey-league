@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus, LayoutGrid } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useSlugId } from "@/lib/slugs"
 import { getGameById, getTeams } from "@/lib/api"
 import { getGameVideos, subscribeGameVideo, groupCameras } from "@/lib/video"
 import {
   getBroadcast, subscribeBroadcast, saveBroadcast, setCameraHidden, renameCamera, getCameraStreamers, BROADCAST_DEFAULTS,
+  LAYOUT_SLOTS,
 } from "@/lib/streamControl"
 import { useCameraOnAir } from "@/lib/useCameraOnAir"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import LiveHlsPlayer from "@/components/LiveHlsPlayer"
 import ScoreOverlay from "@/components/ScoreOverlay"
+import LiveMultiView, { useLiveTiles } from "@/components/LiveMultiView"
 
 /**
  * חדר שידור — the director's control room for one game (/games/:id/control, admin only).
@@ -21,6 +23,8 @@ import ScoreOverlay from "@/components/ScoreOverlay"
  *    see it, score overlay included.
  *  - Cameras: a small live preview of every streamer (lowest rendition, to spare the rink's
  *    connection), approve / hide (a new camera is hidden until approved), put on air, rename.
+ *  - Layout: one camera, picture-in-picture, side by side or a 2x2 grid — the camera on air
+ *    is the main picture, the director adds the others ("הוסף לתצוגה").
  *  - Settings: score overlay on/off + corner, cap on simultaneous cameras, lock new streams.
  *
  * Nothing is mixed on a server: the settings live in game_broadcast and every viewer's
@@ -83,6 +87,18 @@ export default function GameControl() {
   const pending = cameras.filter((c) => c.hidden)
   const approved = cameras.filter((c) => !c.hidden)
   const program = cameras.find((c) => c.no === bc.program_camera_no) || null
+  const slots = LAYOUT_SLOTS[bc.layout] ?? 0
+  const extras = (bc.layout_cameras || []).filter((no) => no !== bc.program_camera_no)
+  // Add/remove a camera from the layout's extra slots; a full layout drops its oldest extra.
+  const toggleExtra = (no) => {
+    const has = extras.includes(no)
+    const next = has ? extras.filter((n) => n !== no) : [...extras, no].slice(-Math.max(slots, 1))
+    save({ layout_cameras: next })
+  }
+  const setLayout = (layout) => {
+    const n = LAYOUT_SLOTS[layout] ?? 0
+    save({ layout, layout_cameras: n ? extras.slice(0, n) : extras })
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
@@ -114,12 +130,27 @@ export default function GameControl() {
           <span className="font-medium text-slate-500">{program ? program.label : "אוטומטי"}</span>
         </h2>
         {program
-          ? <ProgramView camera={program} gameId={gameId} home={home} away={away} bc={bc} />
+          ? <ProgramView camera={program} extras={extras.slice(0, slots).map((no) => approved.find((c) => c.no === no)).filter(Boolean)}
+              gameId={gameId} home={home} away={away} bc={bc} />
           : <p className="text-sm text-slate-500">לא נבחרה מצלמה — הצופים רואים מצלמה חיה שאושרה (החדשה ביותר). בחר "שים באוויר" על אחת המצלמות.</p>}
         {program && (
           <button onClick={() => save({ program_camera_no: null })} className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
             חזור לבחירה אוטומטית
           </button>
+        )}
+      </section>
+
+      {/* Layout — how the other cameras appear around the one on air */}
+      <section className="card p-4 space-y-3">
+        <h2 className="flex items-center gap-2 font-bold text-sm"><LayoutGrid className="w-4 h-4 text-brand" /> תצוגה</h2>
+        <Segmented value={bc.layout} onChange={setLayout}
+          options={[["single", "מצלמה אחת"], ["pip", "תמונה בתמונה"], ["side", "זו לצד זו"], ["grid", "רשת 2×2"]]} />
+        {slots > 0 && (
+          <p className="text-xs text-slate-500">
+            {extras.length === 0
+              ? `הוסף ${slots === 1 ? "מצלמה" : "עד 3 מצלמות"} עם "הוסף לתצוגה". המצלמה שבאוויר היא התמונה הראשית.`
+              : "רק מצלמות שמשדרות כרגע מוצגות. צופים יכולים לעבור למצלמה אחת; האפליקציות מציגות עדיין רק את המצלמה שבאוויר."}
+          </p>
         )}
       </section>
 
@@ -142,10 +173,13 @@ export default function GameControl() {
         <div className="grid gap-3 sm:grid-cols-2">
           {approved.map((c) => (
             <CameraCard key={c.key} camera={c} gameId={gameId} onAir={bc.program_camera_no === c.no} streamer={streamers[c.no]}
-              onPutOnAir={() => save({ program_camera_no: c.no })}
+              inLayout={slots > 0 && extras.slice(0, slots).includes(c.no)}
+              onToggleLayout={slots > 0 && bc.program_camera_no !== c.no ? () => toggleExtra(c.no) : null}
+              onPutOnAir={() => save({ program_camera_no: c.no, layout_cameras: extras.filter((n) => n !== c.no) })}
               onHide={() => act(async () => {
                 await setCameraHidden(gameId, c.no, true)
                 if (bc.program_camera_no === c.no) await save({ program_camera_no: null })
+                if (extras.includes(c.no)) await save({ layout_cameras: extras.filter((n) => n !== c.no) })
               })}
               onRename={(l) => act(() => renameCamera(gameId, c.no, l))} />
           ))}
@@ -184,12 +218,21 @@ export default function GameControl() {
   )
 }
 
-// The program camera as viewers see it: its newest part, live with the overlay, or a note.
-function ProgramView({ camera, gameId, home, away, bc }) {
+// The program camera as viewers see it: its newest part, live with the overlay — inside the
+// chosen layout when other cameras are added and on air — or a note.
+function ProgramView({ camera, extras = [], gameId, home, away, bc }) {
   const part = camera.parts[camera.parts.length - 1]
   const onAir = useCameraOnAir(part)
   const [latency, setLatency] = useState(null) // the score waits for the picture, as for viewers
+  const tiles = useLiveTiles(bc.layout !== "single" ? [camera, ...extras] : [])
   const code = part?.cf_customer_code
+  if (onAir && tiles && tiles.length > 1) {
+    return (
+      <LiveMultiView layout={bc.layout} tiles={tiles} onLatency={setLatency} overlayPosition={bc.overlay_position}>
+        {bc.overlay_score && <ScoreOverlay gameId={gameId} home={home} away={away} position={bc.overlay_position} latencyMs={latency?.ms ?? 0} />}
+      </LiveMultiView>
+    )
+  }
   if (!onAir || !code) {
     return <div className="w-full aspect-video rounded-xl bg-black grid place-items-center text-sm text-slate-300">{onAir === null ? "טוען…" : "המצלמה לא משדרת כרגע"}</div>
   }
@@ -201,7 +244,7 @@ function ProgramView({ camera, gameId, home, away, bc }) {
   )
 }
 
-function CameraCard({ camera, onAir, streamer, onApprove, onHide, onPutOnAir, onRename }) {
+function CameraCard({ camera, onAir, streamer, onApprove, onHide, onPutOnAir, onRename, inLayout, onToggleLayout }) {
   const part = camera.parts[camera.parts.length - 1]
   const live = useCameraOnAir(part)
   const code = part?.cf_customer_code
@@ -235,6 +278,7 @@ function CameraCard({ camera, onAir, streamer, onApprove, onHide, onPutOnAir, on
         {live && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">● משדר</span>}
         {onAir && <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">באוויר</span>}
         {camera.hidden && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">מוסתר</span>}
+        {inLayout && <span className="px-2 py-0.5 rounded-full bg-brand/15 text-brand">בתצוגה</span>}
       </div>
       <div className="flex gap-2">
         {camera.hidden ? (
@@ -253,6 +297,14 @@ function CameraCard({ camera, onAir, streamer, onApprove, onHide, onPutOnAir, on
           </>
         )}
       </div>
+      {onToggleLayout && (
+        <button onClick={onToggleLayout} aria-pressed={!!inLayout}
+          className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold ${inLayout
+            ? "bg-brand text-white hover:opacity-90"
+            : "bg-brand/10 text-brand hover:bg-brand/20"}`}>
+          <LayoutGrid className="w-3.5 h-3.5" /> {inLayout ? "הסר מהתצוגה" : "הוסף לתצוגה"}
+        </button>
+      )}
     </div>
   )
 }

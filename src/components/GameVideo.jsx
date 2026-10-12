@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, EyeOff, Stethoscope, MonitorPlay } from "lucide-react"
+import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, EyeOff, Stethoscope, MonitorPlay, LayoutGrid } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
@@ -10,6 +10,7 @@ import {
   subscribeGameVideo, fmtClock, getViewerIceServersDetailed, groupCameras,
 } from "@/lib/video"
 import LiveHlsPlayer from "@/components/LiveHlsPlayer"
+import LiveMultiView, { useLiveTiles } from "@/components/LiveMultiView"
 import ScoreOverlay from "@/components/ScoreOverlay"
 import { getBroadcast, subscribeBroadcast, BROADCAST_DEFAULTS } from "@/lib/streamControl"
 import { useCameraOnAir } from "@/lib/useCameraOnAir"
@@ -287,9 +288,20 @@ function StreamDiag({ diag, mode, isLive }) {
 
 // מצלמה 1 / מצלמה 2 … — one pill per camera (angle) of the game; a camera on air right
 // now is marked live. Fans pick their angle here; parts of that camera sit below.
-function CameraTabs({ cameras, selected, onSelect }) {
+// `onMulti` (when the director set a multi-view and it's on air): a first pill for the
+// combined view, selected while `selected` is null.
+function CameraTabs({ cameras, selected, onSelect, onMulti }) {
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="מצלמות">
+      {onMulti && (
+        <button role="tab" aria-selected={!selected} onClick={onMulti}
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${!selected
+            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
+          <LayoutGrid className="w-3.5 h-3.5" /> תצוגה משולבת
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-label="בשידור חי" />
+        </button>
+      )}
       {cameras.map((c) => {
         const on = c.key === selected?.key
         return (
@@ -352,13 +364,23 @@ export default function GameVideo({ game, home, away, players = [] }) {
   // camera: its live part, else part 1.
   const cameras = groupCameras(videos)
   const program = broadcast.program_camera_no
-  const camera = cameras.find(c => c.key === cameraKey)
-    || (program != null && cameras.find(c => c.no === program))
+  const autoCamera = (program != null && cameras.find(c => c.no === program))
     || [...cameras].reverse().find(c => c.live)
     || cameras.find(c => c.parts.some(v => v.provider === "youtube" && v.kind === "full"))
     || cameras[0] || null
+  const camera = cameras.find(c => c.key === cameraKey) || autoCamera
   const parts = camera?.parts || []
   const video = parts.find(v => v.id === selectedId) || [...parts].reverse().find(isLiveRow) || parts[0] || null
+  // Multi-view: the director's layout around the camera on air. Shown to a viewer who
+  // hasn't picked a camera of their own; one who has gets a pill back to it. Extras =
+  // approved cameras the director added, on air now.
+  const layoutExtras = broadcast.layout === "single" ? [] : (broadcast.layout_cameras || [])
+    .map(no => cameras.find(c => c.no === no && !c.hidden))
+    .filter(c => c && c.key !== autoCamera?.key)
+  const tiles = useLiveTiles(autoCamera && layoutExtras.length ? [autoCamera, ...layoutExtras] : [])
+  const multiLive = isLive && tiles && tiles.length > 1 ? tiles : null
+  const multi = cameraKey == null ? multiLive : null
+  const [multiLatency, setMultiLatency] = useState(null)
   // Removing a video is for content creators (content_editor) + admin — mirrors the
   // can_stream_game() backend gate. Going live is the apps' job now (RTMP); the web
   // camera broadcast was retired before Cloudflare began billing WebRTC (2026-10-15).
@@ -442,13 +464,21 @@ export default function GameVideo({ game, home, away, players = [] }) {
       <div className="p-4 sm:p-5 space-y-4">
         <>
             {cameras.length > 1 && (
-              <CameraTabs cameras={cameras} selected={camera}
+              <CameraTabs cameras={cameras} selected={multi ? null : camera}
+                onMulti={multiLive
+                  ? () => { setCameraKey(null); setSelectedId(null); setPlayer(null); setDuration(0) } : null}
                 onSelect={(c) => { setCameraKey(c.key); setSelectedId(null); setPlayer(null); setDuration(0) }} />
             )}
-            {parts.length > 1 && (
+            {!multi && parts.length > 1 && (
               <PartTabs videos={parts} selected={video} onSelect={(v) => { setSelectedId(v.id); setPlayer(null); setDuration(0) }} />
             )}
-            {video.provider === "cloudflare"
+            {multi ? (
+              <LiveMultiView layout={broadcast.layout} tiles={multi} onLatency={setMultiLatency} overlayPosition={broadcast.overlay_position}>
+                {broadcast.overlay_score && (
+                  <ScoreOverlay gameId={gameId} home={home} away={away} latencyMs={multiLatency?.ms ?? 0} position={broadcast.overlay_position} />
+                )}
+              </LiveMultiView>
+            ) : video.provider === "cloudflare"
               ? (video.ingest === "rtmp"
                   ? <RtmpPlayer key={video.id} video={video} gameId={gameId} home={home} away={away} overlay={broadcast} />
                   : <CloudflarePlayer key={video.id} video={video} isLive={isLive} />)

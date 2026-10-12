@@ -41,7 +41,9 @@ function measureLatency(video, hls) {
 // `preview` = a small muted tile for the director's multiview: lowest rendition that fits
 // the tile (saves the rink's bandwidth when several cameras are on screen), no controls.
 // `fsSide` = which top corner the fullscreen button sits in (away from the score bug).
-export default function LiveHlsPlayer({ src, children, onLatency, preview = false, fsSide = "left" }) {
+// `muted` = for a tile without its own controls (the multi-view), whose sound button lives
+// outside the player. A player with controls starts muted (autoplay) and the viewer unmutes.
+export default function LiveHlsPlayer({ src, children, onLatency, preview = false, fsSide = "left", muted = true }) {
   const videoRef = useRef(null)
   const boxRef = useRef(null)
   const [waiting, setWaiting] = useState(true)
@@ -116,7 +118,13 @@ export default function LiveHlsPlayer({ src, children, onLatency, preview = fals
     // Watchdog — the thing a viewer used to do by refreshing.
     let lastTime = -1, lastMove = Date.now()
     const tick = setInterval(() => {
-      if (video.paused && video.readyState > 0) return // viewer paused on purpose
+      if (video.paused && video.readyState > 0) {
+        // A tile without controls (multi-view, director's previews) can't be paused by the
+        // viewer, so a pause is the browser's (autoplay policy, tab in the background) —
+        // resume it. A player with controls was paused on purpose.
+        if (preview) video.play?.().catch(() => {})
+        return
+      }
       const t = video.currentTime
       if (t !== lastTime) { lastTime = t; lastMove = Date.now(); return }
       if (Date.now() - lastMove > STALL_MS) {
@@ -156,6 +164,10 @@ export default function LiveHlsPlayer({ src, children, onLatency, preview = fals
       video.removeAttribute("src"); video.load?.()
     }
   }, [src])
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted
+  }, [muted])
 
   return (
     <div ref={boxRef} className="relative w-full aspect-video bg-black rounded-xl overflow-hidden [container-type:inline-size]">
