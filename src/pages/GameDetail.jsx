@@ -270,7 +270,7 @@ export default function GameDetail() {
         {/* Officials: jump straight to this game's scoreboard to run the clock / go live */}
         {canOfficiate && !done && (
           <Link to={`/judge/${id}`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-            <Radio className="w-3.5 h-3.5" /> {game.status === 'in_progress' ? 'נהל שידור חי' : 'שפוט / שדר משחק'}
+            <Radio className="w-3.5 h-3.5" /> לוח שיפוט
           </Link>
         )}
         {/* Admin: the multi-camera control room — reachable before any camera exists */}
