@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { getMyLoanRequests, respondLoan } from "@/lib/loans"
+import { getMyLoanRequests, respondLoan, cancelLoan } from "@/lib/loans"
 import { setMyAvailability } from "@/lib/availability"
 import { Handshake, Check, X, Loader2 } from "lucide-react"
 
@@ -21,7 +21,10 @@ export default function LoanInvite({ gameId = null, compact = false }) {
   useEffect(() => {
     let alive = true
     getMyLoanRequests().then(list => {
-      if (alive) setInvites(gameId ? list.filter(r => r.game_id === gameId) : list.filter(r => r.status === "pending"))
+      // The feed strip is for what needs HIS answer: invites still pending. The game page
+      // shows everything about that game, including his own asks to the coach.
+      if (alive) setInvites(gameId ? list.filter(r => r.game_id === gameId)
+        : list.filter(r => r.status === "pending" && r.initiated_by !== "player"))
     })
     return () => { alive = false }
   }, [gameId, tick])
@@ -33,6 +36,17 @@ export default function LoanInvite({ gameId = null, compact = false }) {
       setMsg(m => ({ ...m, [r.id]: out === "accepted" ? `✓ את/ה בסגל של ${r.team_name}`
         : out === "filled" ? "הסגל כבר התמלא לפני שאישרת — ההזמנה בוטלה"
         : "ההזמנה נדחתה — המאמן/ת יקבל/ו הודעה" }))
+      setTick(t => t + 1)
+    } catch (e) {
+      setMsg(m => ({ ...m, [r.id]: e.message }))
+    } finally { setBusy(null) }
+  }
+
+  const cancelAsk = async (r) => {
+    setBusy(r.id)
+    try {
+      await cancelLoan(r.id)
+      setMsg(m => ({ ...m, [r.id]: "הבקשה בוטלה" }))
       setTick(t => t + 1)
     } catch (e) {
       setMsg(m => ({ ...m, [r.id]: e.message }))
@@ -67,7 +81,9 @@ export default function LoanInvite({ gameId = null, compact = false }) {
             <span>
               {r.status === "accepted"
                 ? <>את/ה משחק/ת בהשאלה ב<span className="text-brand">{r.team_name}</span></>
-                : <><span className="text-brand">{r.team_name}</span> מזמינה אותך לשחק בהשאלה</>}
+                : r.initiated_by === "player"
+                  ? <>ביקשת לשחק בהשאלה ב<span className="text-brand">{r.team_name}</span> — ממתין לאישור המאמן/ת</>
+                  : <><span className="text-brand">{r.team_name}</span> מזמינה אותך לשחק בהשאלה</>}
             </span>
           </p>
           <p className="text-xs text-slate-600 dark:text-slate-300">
@@ -79,7 +95,12 @@ export default function LoanInvite({ gameId = null, compact = false }) {
           {r.note && r.note !== "שחקן בהשאלה" && (
             <p className="text-xs text-slate-500 dark:text-slate-400">„{r.note}”</p>
           )}
-          {r.status === "pending" ? (
+          {r.status === "pending" && r.initiated_by === "player" ? (
+            <button onClick={() => cancelAsk(r)} disabled={busy === r.id}
+              className="text-xs font-semibold text-slate-500 hover:text-red-600 underline disabled:opacity-50">
+              ביטול הבקשה
+            </button>
+          ) : r.status === "pending" ? (
             <div className="flex items-center gap-2">
               <button onClick={() => answer(r, true)} disabled={busy === r.id}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50">

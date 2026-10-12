@@ -14,9 +14,11 @@ import {
   MoreHorizontal,
   Gamepad2,
   ClipboardCheck,
-  Clapperboard
+  Clapperboard,
+  Handshake
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { getMyLoanEligibility } from "@/lib/loans"
 import { Rink, Standings, Crossed, Teams, Player, Whistle, Stats, Camera, Edit, Clipboard } from "./components/icons/HockeyIcons"
 import { useAuth } from "./lib/AuthContext"
 import AuthModal from "./components/AuthModal"
@@ -244,6 +246,18 @@ export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, profile, signOut, openAuth } = useAuth()
 
+  // השאלות למשחקים is for the players a team may borrow (under 18, or a keeper), plus a
+  // player who just has no date of birth yet, and coaches / managers who post the calls.
+  const [showLoans, setShowLoans] = useState(false)
+  useEffect(() => {
+    if (!user) { setShowLoans(false); return }
+    let alive = true
+    getMyLoanEligibility().then(e => {
+      if (alive) setShowLoans(!!e && (e.eligible || e.viewer || e.reason === "no_dob"))
+    })
+    return () => { alive = false }
+  }, [user?.id, profile?.player_id])
+
   // The header is split into three groups so its width no longer depends on how
   // many roles you hold: six public destinations always visible, everything else
   // folded into "עוד", and the role tools kept next to the avatar (where people
@@ -267,6 +281,7 @@ export default function Layout({ children }) {
     // touches no league data, and is the one page here a visitor who has never
     // heard of the sport might actually stay on.
     { title: "ליגיונר", url: "/career", icon: Gamepad2 },
+    ...(showLoans ? [{ title: "השאלות למשחקים", url: "/loans", icon: Handshake }] : []),
     // הוקי מרקט is signed-in only: the page is gated to 18+ league players
     // anyway, and the public site should not advertise a betting board to the
     // youth-team visitors who make up much of its traffic.

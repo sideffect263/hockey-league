@@ -186,6 +186,10 @@ export function notificationText(n) {
     // the sentence reads the same regardless of which side is home.
     // Loan invites (supabase/loan-requests.sql). The invite itself must say who is asking
     // and for which game — it is the one the player has to answer.
+    case 'loan_call':      return `${d.team_name || 'קבוצה'} מחפשת ${d.need === 'gk' ? 'שוער' : 'שחקן שדה'} בהשאלה למשחק ${vs(d)} — רוצה לשחק?`
+    case 'loan_join_request':  return `${d.player_name || 'שחקן'}${d.age != null ? ` (${d.age})` : ''} מבקש/ת לשחק בהשאלה ב${d.team_name || 'קבוצה'} — ${vs(d)}`
+    case 'loan_join_approved': return `אושרת! את/ה בסגל של ${d.team_name || 'הקבוצה'} למשחק ${vs(d)} 🎉`
+    case 'loan_join_declined': return `${d.team_name || 'הקבוצה'} לא אישרה את הבקשה להשאלה למשחק ${vs(d)}`
     case 'loan_request':   return `${d.team_name || 'קבוצה'} מזמינה אותך לשחק בהשאלה: ${vs(d)} — לאישור או דחייה`
     case 'loan_accepted':  return `${d.player_name || 'השחקן'} אישר/ה — משחק/ת בהשאלה ב${d.team_name || 'קבוצה'} (${vs(d)}) ✅`
     case 'loan_declined':  return d.withdrew
@@ -271,6 +275,10 @@ export function notificationIcon(n) {
     case 'tournament_invite':          return '🏆'
     case 'tournament_invite_accepted': return '✅'
     case 'tournament_invite_declined': return '⛔'
+    case 'loan_call':          return '📣'
+    case 'loan_join_request':  return '🙋'
+    case 'loan_join_approved': return '🤝'
+    case 'loan_join_declined': return '⛔'
     case 'loan_request':   return '🤝'
     case 'loan_accepted':  return '🤝'
     case 'loan_declined':  return '⛔'
@@ -344,6 +352,9 @@ export function notificationHref(n) {
     case 'game_moved':
     case 'follow_game_alert':
     // loans: the invite card (player) and the loan desk (coach) both live on the game page
+    case 'loan_join_request':
+    case 'loan_join_approved':
+    case 'loan_join_declined':
     case 'loan_request':
     case 'loan_accepted':
     case 'loan_declined':
@@ -351,6 +362,8 @@ export function notificationHref(n) {
     case 'loan_removed':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
     // the signature slots live on the game page's טופס המשחק card
     case 'game_form_sign':        return n.entity_id ? `/games/${n.entity_id}#game-form` : '/games'
+    // a team's call for players → the youth loan page, where the ask button is
+    case 'loan_call':             return '/loans'
     case 'app_update':            return '/app'
     case 'goal_scored':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
     // reviewers land on the /admin review tabs. The claims tab stacks five queues, so

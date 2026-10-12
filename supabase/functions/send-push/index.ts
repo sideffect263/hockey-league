@@ -155,6 +155,10 @@ function notificationText(n: NotificationRow, actorName: string): string {
     // on the lock screen as "התראה חדשה" is the one notification where a generic
     // fallback defeats the entire point of sending it.
     // Loan invites — keep in step with src/lib/notifications.js.
+    case "loan_call":          return `${d.team_name ?? "קבוצה"} מחפשת ${d.need === "gk" ? "שוער" : "שחקן שדה"} בהשאלה למשחק ${vs(d)} — רוצה לשחק?`;
+    case "loan_join_request":  return `${d.player_name ?? "שחקן"}${d.age != null ? ` (${d.age})` : ""} מבקש/ת לשחק בהשאלה ב${d.team_name ?? "קבוצה"} — ${vs(d)}`;
+    case "loan_join_approved": return `אושרת! את/ה בסגל של ${d.team_name ?? "הקבוצה"} למשחק ${vs(d)} 🎉`;
+    case "loan_join_declined": return `${d.team_name ?? "הקבוצה"} לא אישרה את הבקשה להשאלה למשחק ${vs(d)}`;
     case "loan_request":   return `${d.team_name ?? "קבוצה"} מזמינה אותך לשחק בהשאלה: ${vs(d)} — לאישור או דחייה`;
     case "loan_accepted":  return `${d.player_name ?? "השחקן"} אישר/ה — משחק/ת בהשאלה ב${d.team_name ?? "קבוצה"} (${vs(d)}) ✅`;
     case "loan_declined":  return d.withdrew
@@ -214,6 +218,9 @@ function notificationHref(n: NotificationRow): string {
     case "claim_approved":
     case "claim_rejected": return n.entity_id ? `/players/${n.entity_id}` : "/me";
     case "role_granted":   return "/me";
+    // a team's call for players → the youth loan page (web only for now; the apps
+    // fall back to their default screen until they learn the route)
+    case "loan_call":      return "/loans";
     case "app_update":     return "/app";
     // Reviewer queues: land on the TAB (and, inside the stacked claims tab, the
     // SECTION) the notification is about. A bare /admin opens whichever tab happens to
@@ -249,6 +256,9 @@ function notificationHref(n: NotificationRow): string {
     case "game_moved":
     case "follow_game_alert":
     case "goal_scored":
+    case "loan_join_request":
+    case "loan_join_approved":
+    case "loan_join_declined":
     case "loan_request":
     case "loan_accepted":
     case "loan_declined":

@@ -29,6 +29,8 @@ export const LOAN_BLOCK_LABEL = {
   gk_full:         'כבר הושאל שוער',
   no_account:      'אין לו חשבון',
   already_invited: 'כבר הוזמן',
+  no_dob:          'אין תאריך לידה',
+  no_call:         'הקבוצה כבר לא מחפשת',
 }
 
 /** The same reasons as full sentences, for a refusal. */
@@ -44,7 +46,9 @@ const LOAN_BLOCK_MSG = {
   squad_full:      `יש כבר ${LOAN_FIELD_TARGET} שחקני שדה בסגל — אי אפשר להשאיל עוד`,
   gk_full:         'כבר הושאל שוער למשחק הזה',
   no_account:      'לשחקן אין חשבון באפליקציה, ולכן אי אפשר לשלוח לו הזמנה — אפשר להוסיף אותו ישירות',
-  already_invited: 'השחקן כבר הוזמן למשחק הזה',
+  already_invited: 'כבר יש בקשה פתוחה למשחק הזה',
+  no_dob:          'כדי להצטרף צריך תאריך לידה בכרטיס השחקן — אפשר להוסיף אותו באזור האישי',
+  no_call:         'הקבוצה כבר לא מחפשת שחקן בתפקיד שלך למשחק הזה',
 }
 
 const LOAN_ERRORS = {
@@ -100,6 +104,45 @@ export async function getMyLoanRequests() {
 /** → 'accepted' | 'declined' | 'filled' (the squad filled up before he answered). */
 export async function respondLoan(requestId, accept) {
   const { data, error } = await supabase.rpc('respond_loan', { p_request_id: requestId, p_accept: !!accept })
+  if (error) throw loanError(error)
+  return data
+}
+
+// ── loan calls + the youth loan page (supabase/loan-calls.sql) ─────────────────────
+
+/** { player_id, position, age, eligible, reason: null|'no_dob'|'too_old'|'no_player', viewer } */
+export async function getMyLoanEligibility() {
+  const { data, error } = await supabase.rpc('my_loan_eligibility')
+  if (error) return null
+  return data
+}
+
+/** The coach raises (or lowers) his team's hand for a game. */
+export async function setLoanCall(gameId, teamId, { needField, needGk, note = null }) {
+  const { error } = await supabase.rpc('set_loan_call', {
+    p_game_id: gameId, p_team_id: teamId, p_need_field: !!needField, p_need_gk: !!needGk, p_note: note || null,
+  })
+  if (error) throw loanError(error)
+}
+
+/** Every open call that still has room, with the caller's own standing for each. */
+export async function getLoanBoard() {
+  const { data, error } = await supabase.rpc('loan_board')
+  if (error) throw loanError(error)
+  return data || []
+}
+
+export async function askToJoinLoan(gameId, teamId, note = null) {
+  const { data, error } = await supabase.rpc('ask_to_join_loan', {
+    p_game_id: gameId, p_team_id: teamId, p_note: note || null,
+  })
+  if (error) throw loanError(error)
+  return data
+}
+
+/** The coach answers a player's ask → 'accepted' | 'declined' | 'filled'. */
+export async function respondLoanJoin(requestId, accept) {
+  const { data, error } = await supabase.rpc('respond_loan_join', { p_request_id: requestId, p_accept: !!accept })
   if (error) throw loanError(error)
   return data
 }

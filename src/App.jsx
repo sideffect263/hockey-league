@@ -33,6 +33,7 @@ const ArchivePage = lazy(() => import('./pages/Archive'))
 const Media = lazy(() => import('./pages/Media'))
 const ContentCreators = lazy(() => import('./pages/ContentCreators'))
 const Market = lazy(() => import('./pages/Market'))
+const Loans = lazy(() => import('./pages/Loans'))
 const MarketDetail = lazy(() => import('./pages/MarketDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
@@ -198,6 +199,7 @@ function App() {
             <Route path="/players/:id" element={<PlayerDetail />} />
             {/* הוקי מרקט — play-money prediction market, 18+ league players only.
                 Both routes re-skin the whole shell (see useMarketTheme). */}
+            <Route path="/loans" element={<Loans />} />
             <Route path="/market" element={<Market />} />
             <Route path="/market/:id" element={<MarketDetail />} />
             <Route path="/me" element={<Profile />} />
