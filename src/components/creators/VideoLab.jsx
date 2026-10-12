@@ -5,8 +5,9 @@ import {
 } from "lucide-react"
 import {
   getLabClips, getLabClip, getLabLabels, saveLabLabel, deleteLabLabel, updateLabClip, uploadLabClip, deleteLabClip, labUrl,
-  getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions,
+  getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions, getLabShots, getGameSides,
 } from "@/lib/videoLab"
+import { ShotsPanel, ShotsSummary, RESULTS as SHOT_RESULTS } from "./LabShots"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { useAuth } from "@/lib/AuthContext"
 import { surveysForPost, setPostInSurvey } from "@/lib/videoSurveys"
@@ -77,6 +78,7 @@ export default function VideoLab() {
       </div>
 
       <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />
+      <ShotsSummary />
 
       {error ? (
         <div className="card p-6 text-center text-sm text-red-600">
@@ -174,11 +176,18 @@ function ClipEditor({ id, onBack }) {
   const canvasRef = useRef(null)
   const timelineRef = useRef(null)
   const boxRef = useRef(null)
+  const [shots, setShots] = useState([])
+  const [shotDraft, setShotDraft] = useState(null)     // the shot being tagged / edited
+  const [sides, setSides] = useState([])               // the game's two teams + rosters
 
   useEffect(() => {
     let alive = true
-    Promise.all([getLabClip(id), getLabLabels(id)])
-      .then(([c, ls]) => { if (!alive) return; setClip(c); setLabels(new Map(ls.map(l => [l.frame, l]))) })
+    Promise.all([getLabClip(id), getLabLabels(id), getLabShots(id)])
+      .then(([c, ls, sh]) => {
+        if (!alive) return
+        setClip(c); setLabels(new Map(ls.map(l => [l.frame, l]))); setShots(sh)
+        if (c.game_id) getGameSides(c.game_id).then(s => alive && setSides(s)).catch(() => {})
+      })
       .catch(e => alive && setErr(e.message || "שגיאה בטעינה"))
     return () => { alive = false }
   }, [id])
@@ -310,8 +319,12 @@ function ClipEditor({ id, onBack }) {
     for (const c of (Array.isArray(clip.cuts) ? clip.cuts : [])) for (let yy = 0; yy < H; yy += 6) ctx.fillRect(c * cw - 1, yy, 2, 3)
     mark(clip.strike_frame, "#fb923c"); mark(clip.goal_frame, "#ef4444")
     mark(clip.strike2_frame, "#f0abfc"); mark(clip.goal2_frame, "#c026d3")
+    for (const s of shots) {                               // tagged shots: a small triangle on top
+      ctx.fillStyle = SHOT_RESULTS.find(r => r.id === s.result)?.color || "#fff"
+      const x = s.frame * cw; ctx.beginPath(); ctx.moveTo(x - 5, 0); ctx.lineTo(x + 5, 0); ctx.lineTo(x, 8); ctx.fill()
+    }
     ctx.fillStyle = "#3b4fc4"; ctx.fillRect(frame * cw - 1, 0, 2, H)
-  }, [clip, frame, labels, nFrames, track])
+  }, [clip, frame, labels, nFrames, track, shots])
   useEffect(drawTimeline, [drawTimeline])
 
   const onTimeline = (e) => {
@@ -343,6 +356,7 @@ function ClipEditor({ id, onBack }) {
       else if (k === "g" || k === "ע") setClipField({ [markField("goal")]: frame })
       else if (k === "s" || k === "ד") setClipField({ [markField("strike")]: frame })
       else if (k === "j" || k === "ח") nextToCheck()
+      else if ((k === "b" || k === "נ") && !shotDraft) setShotDraft({ clip_id: id, frame, result: null, screened: false })
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -462,8 +476,11 @@ function ClipEditor({ id, onBack }) {
             })}
             {cuts.length > 0 && <p className="text-[11px] text-slate-500">בקליפ יש {cuts.length === 1 ? "חיתוך" : `${cuts.length} חיתוכים`} (קו מקווקו בציר הזמן). אם סימנתם בעיטה וגול גם בזווית 2 — ההילוך האיטי ייבנה ממנה.</p>}
             <Legend />
-            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו, S/G בעיטה/גול בזווית שבה אתם נמצאים.</p>
+            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו, S/G בעיטה/גול בזווית שבה אתם נמצאים, B תיוג בעיטה.</p>
           </div>
+
+          <ShotsPanel clipId={id} frame={frame} seek={seek} sides={sides}
+            shots={shots} setShots={setShots} draft={shotDraft} setDraft={setShotDraft} />
         </>
       )}
 
