@@ -79,6 +79,8 @@ first with an en dash: "2–1 לגבעת עדה נוער".
   emotions ("קבוצה רעבה", "רצון אדיר"), atmosphere you didn't see, or turning points;
 - phrases about your sources ("לפי הכיתוב", "בקטעים שפרסמה הליגה רואים", "על פי הנתונים") —
   the evidence sits beside the text; just state what it shows;
+- positions inside a clip ("בשנייה ה-19", "בתחילת הקטע", "בשידור החוזר") — the clip already
+  starts at the right second next to the text; write about the GAME, not about the video;
 - identifying a person from face, body or jersey number in a frame — names only from
   `events`, `box_score`, `mvp`, a post `caption` or an upload `note`;
 - ages, birthdays, schools, family, injuries, anything off the rink; criticism of a referee or
