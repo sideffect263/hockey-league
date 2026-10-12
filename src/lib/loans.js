@@ -31,6 +31,7 @@ export const LOAN_BLOCK_LABEL = {
   already_invited: 'כבר הוזמן',
   no_dob:          'אין תאריך לידה',
   no_call:         'הקבוצה כבר לא מחפשת',
+  test_mismatch:   'קבוצת בדיקה 🧪',
 }
 
 /** The same reasons as full sentences, for a refusal. */
@@ -49,6 +50,7 @@ const LOAN_BLOCK_MSG = {
   already_invited: 'כבר יש בקשה פתוחה למשחק הזה',
   no_dob:          'כדי להצטרף צריך תאריך לידה בכרטיס השחקן — אפשר להוסיף אותו באזור האישי',
   no_call:         'הקבוצה כבר לא מחפשת שחקן בתפקיד שלך למשחק הזה',
+  test_mismatch:   'שחקני קבוצות הבדיקה 🧪 לא משחקים במשחקי הליגה (ולהפך)',
 }
 
 const LOAN_ERRORS = {

@@ -102,6 +102,13 @@ begin
   if public.on_team_roster(p_player_id, p_team_id) then return 'own_player'; end if;
   if public.on_team_roster(p_player_id, v_other) then return 'opponent'; end if;
 
+  -- 🧪 test teams and the real league never mix: a test player can't be borrowed into a
+  -- real game, nor a real player into a test one.
+  if coalesce((select t.is_test from public.teams t where t.id = p.team_id), false)
+     <> coalesce((select t.is_test from public.teams t where t.id = p_team_id), false) then
+    return 'test_mismatch';
+  end if;
+
   if exists (select 1 from public.game_availability ga
               where ga.game_id = p_game_id and ga.player_id = p_player_id and ga.status = 'available') then
     return 'in_squad';
