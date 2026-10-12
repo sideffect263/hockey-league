@@ -13,6 +13,7 @@ import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
 import TeamLogo from "@/components/TeamLogo"
+import PastSeasons from "@/components/PastSeasons"
 import PlayerAvatar from "@/components/PlayerAvatar"
 import TeamMembershipCard from "@/components/TeamMembershipCard"
 import { RoleBadge, OgBadge, deriveRoleItems } from "@/components/RoleBadges"
@@ -457,6 +458,8 @@ export default function PlayerDetail() {
           </ul>
         </motion.div>
       )}
+
+      <PastSeasons playerId={player.id} />
 
       {/* Per-game log */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card overflow-hidden">

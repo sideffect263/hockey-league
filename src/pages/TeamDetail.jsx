@@ -11,6 +11,7 @@ import { ArrowRight, Users, Trophy, Target, Shield, Calendar, Clock, RefreshCw, 
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
+import PastSeasons from "@/components/PastSeasons"
 import TeamEditModal from "@/components/TeamEditModal"
 import TeamCoachRequest from "@/components/TeamCoachRequest"
 import { useSeo } from "@/lib/seo"
@@ -396,6 +397,8 @@ export default function TeamDetail() {
           })}
         </div>
       </motion.div>
+
+      {team && <PastSeasons teamId={team.id} />}
 
       {editing && <TeamEditModal team={team} onClose={() => setEditing(false)} onSaved={loadData} />}
     </div>

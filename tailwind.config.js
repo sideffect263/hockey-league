@@ -41,6 +41,10 @@ const bronze = {
   800: '86 55 31', 900: '62 40 23', 950: '40 26 15',
 }
 const ramp = (m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, `rgb(${v})`]))
+// The two scales a SEASON palette re-points (see `html.season-classic` in index.css):
+// neutrals and the primary. Read through CSS vars so a past season can show in the
+// colours it wore at the time; the defaults on :root are the navy/blue ramps above.
+const varRamp = (name) => Object.fromEntries(Object.keys(navy).map(k => [k, `rgb(var(--${name}-${k}) / <alpha-value>)`]))
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -50,8 +54,8 @@ export default {
     extend: {
       // Remap the five raw scales to the Rink palette (see note above).
       colors: {
-        slate: ramp(navy),
-        orange: ramp(blue),
+        slate: varRamp('ramp-neutral'),
+        orange: varRamp('ramp-primary'),
         emerald: ramp(green),
         red: ramp(red),
         amber: ramp(gold),

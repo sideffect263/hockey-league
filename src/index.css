@@ -68,6 +68,31 @@
     --pos: 76 160 90;     /* #4CA05A win green */
     --neg: 215 84 80;     /* #D75450 danger red */
     --gold: 229 184 67;   /* #E5B843 champion gold */
+
+    /* Raw-scale ramps behind `slate-*` / `orange-*` (tailwind.config.js varRamp).
+       A season palette re-points these, so the ~3,000 raw-scale call-sites follow. */
+    --ramp-neutral-50: 246 247 251;
+    --ramp-neutral-100: 236 238 245;
+    --ramp-neutral-200: 223 227 238;
+    --ramp-neutral-300: 200 205 222;
+    --ramp-neutral-400: 148 156 182;
+    --ramp-neutral-500: 100 110 140;
+    --ramp-neutral-600: 71 82 112;
+    --ramp-neutral-700: 45 55 82;
+    --ramp-neutral-800: 20 27 46;
+    --ramp-neutral-900: 15 23 41;
+    --ramp-neutral-950: 13 19 34;
+    --ramp-primary-50: 236 240 252;
+    --ramp-primary-100: 223 230 250;
+    --ramp-primary-200: 197 209 247;
+    --ramp-primary-300: 150 172 250;
+    --ramp-primary-400: 124 147 255;
+    --ramp-primary-500: 59 79 196;
+    --ramp-primary-600: 46 62 168;
+    --ramp-primary-700: 38 52 140;
+    --ramp-primary-800: 30 42 120;
+    --ramp-primary-900: 26 36 100;
+    --ramp-primary-950: 20 28 78;
   }
 
   html.dark {
@@ -191,6 +216,101 @@
     --pos: 52 211 153;
     --neg: 248 113 113;
     --gold: 251 191 36;
+  }
+
+
+  /* ─── Season palette: "classic" (slate + orange) ─────────────────────────
+     What the site wore before the 2026-07 "Rink" reskin — and so what the
+     2025-26 season looked like. seasons.palette = 'classic' puts this class on
+     <html> while that season is the one being viewed (the nav-bar season picker),
+     so browsing last season visibly IS last season. Like market-theme, it only
+     re-points tokens; the `html` tag in the selector is what lets it beat
+     `html.dark` for specificity. */
+  html.season-classic {
+    --ramp-neutral-50: 248 250 252;
+    --ramp-neutral-100: 241 245 249;
+    --ramp-neutral-200: 226 232 240;
+    --ramp-neutral-300: 203 213 225;
+    --ramp-neutral-400: 148 163 184;
+    --ramp-neutral-500: 100 116 139;
+    --ramp-neutral-600: 71 85 105;
+    --ramp-neutral-700: 51 65 85;
+    --ramp-neutral-800: 30 41 59;
+    --ramp-neutral-900: 15 23 42;
+    --ramp-neutral-950: 2 6 23;
+    --ramp-primary-50: 255 247 237;
+    --ramp-primary-100: 255 237 213;
+    --ramp-primary-200: 254 215 170;
+    --ramp-primary-300: 253 186 116;
+    --ramp-primary-400: 251 146 60;
+    --ramp-primary-500: 249 115 22;
+    --ramp-primary-600: 234 88 12;
+    --ramp-primary-700: 194 65 12;
+    --ramp-primary-800: 154 52 18;
+    --ramp-primary-900: 124 45 18;
+    --ramp-primary-950: 67 20 7;
+
+    --brand: 249 115 22;
+    --brand-hover: 234 88 12;
+    --brand-strong: 234 88 12;
+    --brand-light: 251 146 60;
+    --brand-fg: 255 255 255;
+    --brand-deep: 154 52 18;
+
+    --surface: 255 255 255;
+    --surface-page: 248 250 252;
+    --surface-nav: 255 255 255;
+    --surface-inset: 248 250 252;
+    --surface-sunken: 241 245 249;
+    --surface-raised: 255 255 255;
+    --surface-chip: 226 232 240;
+
+    --fg: 51 65 85;
+    --fg-strong: 15 23 42;
+    --fg-soft: 51 65 85;
+    --fg-muted: 100 116 139;
+    --fg-subtle: 148 163 184;
+    --fg-faint: 203 213 225;
+    --fg-inverse: 255 255 255;
+
+    --line: 226 232 240;
+    --line-strong: 226 232 240;
+    --line-subtle: 241 245 249;
+    --line-header: 226 232 240;
+    --divider: 241 245 249;
+    --scrollbar: 203 213 225;
+  }
+
+  html.dark.season-classic {
+    --brand: 249 115 22;
+    --brand-hover: 251 146 60;
+    --brand-strong: 251 146 60;
+    --brand-light: 251 146 60;
+    --brand-fg: 255 255 255;
+    --brand-deep: 124 45 18;
+
+    --surface: 30 41 59;
+    --surface-page: 2 6 23;
+    --surface-nav: 15 23 42;
+    --surface-inset: 30 41 59;
+    --surface-sunken: 30 41 59;
+    --surface-raised: 51 65 85;
+    --surface-chip: 51 65 85;
+
+    --fg: 226 232 240;
+    --fg-strong: 255 255 255;
+    --fg-soft: 203 213 225;
+    --fg-muted: 148 163 184;
+    --fg-subtle: 100 116 139;
+    --fg-faint: 71 85 105;
+    --fg-inverse: 255 255 255;
+
+    --line: 51 65 85;
+    --line-strong: 71 85 105;
+    --line-subtle: 30 41 59;
+    --line-header: 30 41 59;
+    --divider: 51 65 85;
+    --scrollbar: 71 85 105;
   }
 
   html {

@@ -663,11 +663,19 @@ export async function getArchivedPlayerStats(seasonId) {
     .order('goals', { ascending: false })
   if (error) throw error
   // Unlike the old archive, these rows keep a real player_id — so a name can be
-  // linked back to the player rather than being a dead string.
+  // linked back to the player rather than being a dead string. The slug makes it
+  // a link; a failed lookup only costs the links, never the table.
+  const ids = [...new Set((data || []).map(r => r.player_id).filter(Boolean))]
+  let slugs = {}
+  if (ids.length) {
+    const { data: ps } = await supabase.from('players').select('id, slug').in('id', ids)
+    slugs = Object.fromEntries((ps || []).map(p => [p.id, p.slug]))
+  }
   return (data || []).map(r => ({
     ...r,
     player_first_name: r.first_name,
     player_last_name: r.last_name,
+    player_slug: slugs[r.player_id] || null,
   }))
 }
 
@@ -758,6 +766,20 @@ export async function getSeasonGames(seasonId) {
 }
 
 /** The season the live site is currently showing. */
+/**
+ * The seasons a visitor can browse — the live one and every archived one —
+ * newest first, with the palette each is shown in (the nav-bar season picker).
+ */
+export async function getBrowsableSeasons() {
+  const { data, error } = await supabase
+    .from('seasons')
+    .select('id, slug, name, status, palette, starts_on, ends_on')
+    .in('status', ['active', 'archived'])
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
 export async function getCurrentSeason() {
   const { data, error } = await supabase
     .from('seasons')
