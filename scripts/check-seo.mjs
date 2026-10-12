@@ -48,8 +48,16 @@ async function main() {
 
   const firstLink = (html, type) => html.match(new RegExp(`href="(/${type}/[^"]+)"`))?.[1]
   const player = firstLink(playersHtml, 'players'), team = firstLink(teamsHtml, 'teams')
-  player ? await checkBotPage(player) : fail('no player link on /players for Googlebot')
-  team ? await checkBotPage(team, 2000) : fail('no team link on /teams for Googlebot')
+  const playerHtml = player ? await checkBotPage(player) : (fail('no player link on /players for Googlebot'), '')
+  const teamHtml = team ? await checkBotPage(team, 2000) : (fail('no team link on /teams for Googlebot'), '')
+
+  // Structured data rides on the bot pages (the SPA's own copy never reaches a bot).
+  const ldTypes = (html) => {
+    try { return JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)?.[1])['@graph'].map(n => n['@type']) } catch { return [] }
+  }
+  const expectLd = (label, html, type) => ldTypes(html).includes(type) ? ok(`${label} has ${type} JSON-LD`) : fail(`${label}: no ${type} JSON-LD`)
+  if (playerHtml) expectLd(decodeURIComponent(player), playerHtml, 'Person')
+  if (teamHtml) expectLd(decodeURIComponent(team), teamHtml, 'SportsTeam')
 
   // Unknown slug → 404, so dead URLs leave the index instead of piling up as soft 404s.
   const missing = await get('/players/__seo-check-missing__', GOOGLEBOT)
@@ -67,6 +75,18 @@ async function main() {
   const sitemap = await get('/sitemap.xml', BROWSER)
   const locs = (sitemap.html.match(/<loc>/g) || []).length
   sitemap.status === 200 && locs > 20 ? ok(`sitemap.xml — ${locs} URLs`) : fail(`sitemap.xml: status ${sitemap.status}, ${locs} URLs`)
+  // Live from the DB (api/sitemap.js): it must list the archived season and its games,
+  // which a static / RLS-filtered sitemap silently dropped.
+  const archiveLoc = sitemap.html.match(/<loc>[^<]*(\/archive\/[^<]+)<\/loc>/)?.[1]
+  if (!archiveLoc) fail('sitemap.xml lists no /archive/<season> page')
+  else {
+    ok(`sitemap.xml lists ${decodeURIComponent(archiveLoc)}`)
+    const season = await checkBotPage(archiveLoc, 3000)
+    expectLd(decodeURIComponent(archiveLoc), season, 'SportsEvent')
+    const oldGame = season.match(/href="(\/games\/[^"]+)"/)?.[1]
+    if (!oldGame) fail(`${decodeURIComponent(archiveLoc)}: no game links`)
+    else sitemap.html.includes(oldGame) ? ok('sitemap.xml includes archived-season games') : fail(`sitemap.xml misses archived game ${decodeURIComponent(oldGame)}`)
+  }
 
   const robots = await get('/robots.txt', BROWSER)
   ;/Disallow:\s*\/\s*$/m.test(robots.html) ? fail('robots.txt disallows the whole site') : ok('robots.txt allows crawling')

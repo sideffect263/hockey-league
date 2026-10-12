@@ -5,8 +5,9 @@ import {
 } from "lucide-react"
 import {
   getLabClips, getLabClip, getLabLabels, saveLabLabel, deleteLabLabel, updateLabClip, uploadLabClip, deleteLabClip, labUrl,
-  getPostBrief, requestFeedSwap, getLabClipStatus,
+  getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions, getLabShots, getGameSides,
 } from "@/lib/videoLab"
+import { ShotsPanel, ShotsSummary, RESULTS as SHOT_RESULTS } from "./LabShots"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { useAuth } from "@/lib/AuthContext"
 import { surveysForPost, setPostInSurvey } from "@/lib/videoSurveys"
@@ -29,6 +30,17 @@ function StatusPill({ status }) {
 
 export default function VideoLab() {
   const [clips, setClips] = useState(null)
+  const [sortBy, setSortBy] = useState(() => { try { return localStorage.getItem("lab_sort") || "processed" } catch { return "processed" } })
+  const changeSort = (v) => { setSortBy(v); try { localStorage.setItem("lab_sort", v) } catch { /* private mode */ } }
+  const sorted = useMemo(() => {
+    if (!clips) return clips
+    const t = (x) => (x ? new Date(x).getTime() : 0)
+    const arr = [...clips]
+    if (sortBy === "processed") arr.sort((a, b) => t(b.processed_at) - t(a.processed_at))
+    else if (sortBy === "updated") arr.sort((a, b) => t(b.updated_at) - t(a.updated_at))
+    else if (sortBy === "title") arr.sort((a, b) => a.title.localeCompare(b.title, "he"))
+    return arr
+  }, [clips, sortBy])
   const [error, setError] = useState(null)
   const [openId, setOpenId] = useState(() => new URLSearchParams(window.location.search).get("clip"))
 
@@ -66,6 +78,7 @@ export default function VideoLab() {
       </div>
 
       <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />
+      <ShotsSummary />
 
       {error ? (
         <div className="card p-6 text-center text-sm text-red-600">
@@ -76,8 +89,18 @@ export default function VideoLab() {
       ) : clips.length === 0 ? (
         <div className="card p-8 text-center text-sm text-slate-500">אין עדיין קליפים במעבדה.</div>
       ) : (
+        <>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-slate-500">מיון:</span>
+          <select value={sortBy} onChange={e => changeSort(e.target.value)} className="filter-input py-1">
+            <option value="processed">עובד לאחרונה</option>
+            <option value="updated">עודכן לאחרונה</option>
+            <option value="order">סדר מקורי</option>
+            <option value="title">לפי שם</option>
+          </select>
+        </div>
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {clips.map(c => (
+          {sorted.map(c => (
             <button key={c.id} onClick={() => open(c.id)}
               className="card overflow-hidden text-start hover:ring-2 hover:ring-brand/40 transition">
               <div className="aspect-video bg-slate-900">
@@ -88,12 +111,14 @@ export default function VideoLab() {
                   <span className="font-semibold text-sm text-slate-900 dark:text-white flex-1 min-w-0 line-clamp-2">{c.title}</span>
                   <StatusPill status={c.status} />
                 </div>
+                {c.processed_at && <span className="text-[11px] text-slate-400 block">עובד: {new Date(c.processed_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>}
                 <FeedBadge clip={c} />
                 {c.worker_note && <p className="text-xs text-slate-500 line-clamp-2">{c.worker_note}</p>}
               </div>
             </button>
           ))}
         </div>
+        </>
       )}
     </div>
   )
@@ -151,11 +176,18 @@ function ClipEditor({ id, onBack }) {
   const canvasRef = useRef(null)
   const timelineRef = useRef(null)
   const boxRef = useRef(null)
+  const [shots, setShots] = useState([])
+  const [shotDraft, setShotDraft] = useState(null)     // the shot being tagged / edited
+  const [sides, setSides] = useState([])               // the game's two teams + rosters
 
   useEffect(() => {
     let alive = true
-    Promise.all([getLabClip(id), getLabLabels(id)])
-      .then(([c, ls]) => { if (!alive) return; setClip(c); setLabels(new Map(ls.map(l => [l.frame, l]))) })
+    Promise.all([getLabClip(id), getLabLabels(id), getLabShots(id)])
+      .then(([c, ls, sh]) => {
+        if (!alive) return
+        setClip(c); setLabels(new Map(ls.map(l => [l.frame, l]))); setShots(sh)
+        if (c.game_id) getGameSides(c.game_id).then(s => alive && setSides(s)).catch(() => {})
+      })
       .catch(e => alive && setErr(e.message || "שגיאה בטעינה"))
     return () => { alive = false }
   }, [id])
@@ -204,6 +236,12 @@ function ClipEditor({ id, onBack }) {
     persist(f, label)
     if (advance && f < nFrames - 1) seek(f + 1)
   }, [persist, autoAdvance, nFrames, seek])
+
+  // Most clips hold the play AND the broadcast's zoomed replay of the same goal, split by an edit cut.
+  // Angle 2 = after the first cut; S/G set the marks of the angle the current frame is in.
+  const cuts = Array.isArray(clip?.cuts) ? clip.cuts : []
+  const angleOf = useCallback((f) => (cuts.length && f >= cuts[0] ? 2 : 1), [cuts])
+  const markField = (kind) => (angleOf(frame) === 2 ? `${kind}2_frame` : `${kind}_frame`)
 
   // frames that still need a person: the AI had no clean detection there and nobody labelled it yet
   const needsLook = useCallback((f) => !labels.has(f) && !(track[f] && track[f][3] === "det"), [labels, track])
@@ -277,9 +315,16 @@ function ClipEditor({ id, onBack }) {
       if (l) { ctx.fillStyle = LABEL_COLOR[l.kind]; ctx.fillRect(f * cw, 22, Math.max(1, cw), 16) }
     }
     const mark = (f, col) => { if (f == null) return; ctx.fillStyle = col; ctx.fillRect(f * cw - 1, 0, 3, H) }
+    ctx.fillStyle = "rgba(255,255,255,.9)"
+    for (const c of (Array.isArray(clip.cuts) ? clip.cuts : [])) for (let yy = 0; yy < H; yy += 6) ctx.fillRect(c * cw - 1, yy, 2, 3)
     mark(clip.strike_frame, "#fb923c"); mark(clip.goal_frame, "#ef4444")
+    mark(clip.strike2_frame, "#f0abfc"); mark(clip.goal2_frame, "#c026d3")
+    for (const s of shots) {                               // tagged shots: a small triangle on top
+      ctx.fillStyle = SHOT_RESULTS.find(r => r.id === s.result)?.color || "#fff"
+      const x = s.frame * cw; ctx.beginPath(); ctx.moveTo(x - 5, 0); ctx.lineTo(x + 5, 0); ctx.lineTo(x, 8); ctx.fill()
+    }
     ctx.fillStyle = "#3b4fc4"; ctx.fillRect(frame * cw - 1, 0, 2, H)
-  }, [clip, frame, labels, nFrames, track])
+  }, [clip, frame, labels, nFrames, track, shots])
   useEffect(drawTimeline, [drawTimeline])
 
   const onTimeline = (e) => {
@@ -308,9 +353,10 @@ function ClipEditor({ id, onBack }) {
       else if (k === "u" || k === "ו") setLabel(frame, { kind: "unsure" })
       else if (k === "a" || k === "ש") acceptAI()
       else if (e.key === "Delete" || e.key === "Backspace") setLabel(frame, null, false)
-      else if (k === "g" || k === "ע") setClipField({ goal_frame: frame })
-      else if (k === "s" || k === "ד") setClipField({ strike_frame: frame })
+      else if (k === "g" || k === "ע") setClipField({ [markField("goal")]: frame })
+      else if (k === "s" || k === "ד") setClipField({ [markField("strike")]: frame })
       else if (k === "j" || k === "ח") nextToCheck()
+      else if ((k === "b" || k === "נ") && !shotDraft) setShotDraft({ clip_id: id, frame, result: null, screened: false })
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -363,6 +409,8 @@ function ClipEditor({ id, onBack }) {
           : <button className="text-xs underline text-slate-500" onClick={() => seek(clip.goal_frame)}>רגע הגול: פריים #{clip.goal_frame}</button>)}
       </div>
 
+      <MarkStyle clip={clip} onChange={setClipField} />
+
       <div className="flex gap-1 text-sm">
         <button onClick={() => setMode("source")} className={`px-3 py-1.5 rounded-lg font-semibold ${mode === "source" ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-800"}`}>מקור + סימון AI</button>
         <button onClick={() => setMode("processed")} disabled={!clip.processed_path}
@@ -370,7 +418,7 @@ function ClipEditor({ id, onBack }) {
       </div>
 
       {mode === "processed" ? (
-        <video key={src} src={src} controls playsInline className="w-full rounded-xl bg-black" />
+        <Versions clip={clip} />
       ) : (
         <>
           <div ref={boxRef} className="relative w-full rounded-xl overflow-hidden bg-black select-none" style={{ aspectRatio: ratio }}>
@@ -409,15 +457,30 @@ function ClipEditor({ id, onBack }) {
                 <input type="checkbox" checked={autoAdvance} onChange={e => setAutoAdvance(e.target.checked)} /> התקדם לפריים הבא אחרי תיוג
               </label>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <button className={act} onClick={() => setClipField({ strike_frame: frame })}><Zap className="w-4 h-4 text-orange-500" /> רגע הבעיטה כאן <kbd className="text-[10px] opacity-60">S</kbd></button>
-              <button className={act} onClick={() => setClipField({ goal_frame: frame })}><Goal className="w-4 h-4 text-red-500" /> רגע הגול כאן <kbd className="text-[10px] opacity-60">G</kbd></button>
-              {clip.strike_frame != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip.strike_frame)}>בעיטה: #{clip.strike_frame}</button>}
-              {clip.goal_frame != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip.goal_frame)}>גול: #{clip.goal_frame}</button>}
-            </div>
+            {[1, ...(cuts.length ? [2] : [])].map(ang => {
+              const sf = ang === 2 ? "strike2_frame" : "strike_frame", gf = ang === 2 ? "goal2_frame" : "goal_frame"
+              const here = angleOf(frame) === ang
+              return (
+                <div key={ang} className={`flex flex-wrap gap-2 items-center rounded-xl p-2 ${here ? "bg-brand/5 ring-1 ring-brand/30" : "opacity-70"}`}>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 w-full sm:w-auto">
+                    {ang === 1 ? "זווית 1 — המהלך" : `זווית 2 — הריפליי / זום (מפריים #${cuts[0]})`}
+                    {!here && <button className="ms-2 text-xs underline font-normal text-slate-500" onClick={() => seek(ang === 2 ? cuts[0] : 0)}>מעבר לזווית</button>}
+                  </span>
+                  <button className={act} disabled={!here} onClick={() => setClipField({ [sf]: frame })}><Zap className={`w-4 h-4 ${ang === 2 ? "text-fuchsia-400" : "text-orange-500"}`} /> רגע הבעיטה כאן <kbd className="text-[10px] opacity-60">S</kbd></button>
+                  <button className={act} disabled={!here} onClick={() => setClipField({ [gf]: frame })}><Goal className={`w-4 h-4 ${ang === 2 ? "text-fuchsia-600" : "text-red-500"}`} /> רגע הגול כאן <kbd className="text-[10px] opacity-60">G</kbd></button>
+                  {clip[sf] != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip[sf])}>בעיטה: #{clip[sf]}</button>}
+                  {clip[gf] != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip[gf])}>גול: #{clip[gf]}</button>}
+                  {clip[sf] != null || clip[gf] != null ? <button className="text-xs text-slate-400 hover:text-red-500" onClick={() => setClipField({ [sf]: null, [gf]: null })}>ניקוי</button> : null}
+                </div>
+              )
+            })}
+            {cuts.length > 0 && <p className="text-[11px] text-slate-500">בקליפ יש {cuts.length === 1 ? "חיתוך" : `${cuts.length} חיתוכים`} (קו מקווקו בציר הזמן). אם סימנתם בעיטה וגול גם בזווית 2 — ההילוך האיטי ייבנה ממנה.</p>}
             <Legend />
-            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו.</p>
+            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו, S/G בעיטה/גול בזווית שבה אתם נמצאים, B תיוג בעיטה.</p>
           </div>
+
+          <ShotsPanel clipId={id} frame={frame} seek={seek} sides={sides}
+            shots={shots} setShots={setShots} draft={shotDraft} setDraft={setShotDraft} />
         </>
       )}
 
@@ -584,6 +647,82 @@ function FeedSwap({ clip, onClip, onWatch }) {
         </div>
       )}
       {err && <p className="text-xs text-red-600">{err}</p>}
+    </div>
+  )
+}
+
+// How the ball is marked in the rendered video (per clip). Applied on the next "עבד מחדש".
+const MARK_STYLES = [
+  { id: "paint", label: "כדור צבוע", hint: "הכדור עצמו נצבע + נקודות מסלול כשהוא זז" },
+  { id: "outline", label: "טבעת דקה", hint: "טבעת דקה סביב הכדור + קו מסלול" },
+  { id: "none", label: "בלי סימון", hint: "רק שיפור תמונה והילוך חוזר" },
+]
+const MARK_COLORS = [
+  { hex: "#d4ff00", name: "צהוב טניס" }, { hex: "#ffffff", name: "לבן" }, { hex: "#ff3df0", name: "ורוד" },
+  { hex: "#00e5ff", name: "תכלת" }, { hex: "#ff8a00", name: "כתום" },
+]
+function MarkStyle({ clip, onChange }) {
+  const style = clip.mark_style || "paint", color = (clip.mark_color || "#d4ff00").toLowerCase()
+  return (
+    <div className="card p-3 flex flex-wrap items-center gap-2">
+      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">סימון הכדור:</span>
+      <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-sm">
+        {MARK_STYLES.map(m => (
+          <button key={m.id} title={m.hint} onClick={() => onChange({ mark_style: m.id })}
+            className={`px-3 py-1.5 rounded-lg font-semibold ${style === m.id ? "bg-white dark:bg-slate-700 shadow text-brand" : "text-slate-500"}`}>{m.label}</button>
+        ))}
+      </div>
+      {style === "paint" && (
+        <div className="flex items-center gap-1.5" role="radiogroup" aria-label="צבע הכדור">
+          {MARK_COLORS.map(c => (
+            <button key={c.hex} role="radio" aria-checked={color === c.hex} title={c.name} onClick={() => onChange({ mark_color: c.hex })}
+              className={`w-7 h-7 rounded-full border-2 ${color === c.hex ? "border-brand scale-110" : "border-slate-300 dark:border-slate-600"}`}
+              style={{ background: c.hex }} />
+          ))}
+        </div>
+      )}
+      <span className="text-xs text-slate-500 w-full">השינוי ייכנס לתוקף בלחיצה על "עבד מחדש עם התיקונים".</span>
+    </div>
+  )
+}
+
+// All renders of the clip: play any, or compare two side by side (synced play / pause / seek).
+function Versions({ clip }) {
+  const [vers, setVers] = useState(null)
+  const [a, setA] = useState(null)
+  const [b, setB] = useState(null)
+  const ra = useRef(null), rb = useRef(null)
+  useEffect(() => {
+    getLabVersions(clip.id).then(v => {
+      const list = v.length ? v : (clip.processed_path ? [{ id: "cur", path: clip.processed_path, label: "הגרסה הנוכחית", created_at: clip.processed_at }] : [])
+      setVers(list); setA(list[0]?.id || null); setB(null)
+    }).catch(() => setVers([]))
+  }, [clip.id, clip.processed_path])
+  if (vers === null) return <SkeletonPanelRows count={1} height="h-64" />
+  if (!vers.length) return <div className="card p-6 text-sm text-slate-500 text-center">אין עדיין סרטון מעובד.</div>
+  const va = vers.find(v => v.id === a), vb = vers.find(v => v.id === b)
+  const when = (v) => v.created_at ? new Date(v.created_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : ""
+  const both = (fn) => { [ra.current, rb.current].forEach(v => v && fn(v)) }
+  const sync = (e) => { if (!vb) return; const o = e.target === ra.current ? rb.current : ra.current; if (o && Math.abs(o.currentTime - e.target.currentTime) > 0.15) o.currentTime = e.target.currentTime }
+  return (
+    <div className="space-y-3">
+      <div className={`grid gap-2 ${vb ? "lg:grid-cols-2" : ""}`}>
+        {va && <div><div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{va.label} <span className="font-normal text-slate-400">{when(va)}</span></div>
+          <video key={va.id} ref={ra} src={labUrl(va.path)} controls playsInline className="w-full rounded-xl bg-black" onSeeked={sync} onPlay={() => vb && both(v => v.play())} onPause={() => vb && both(v => v.pause())} /></div>}
+        {vb && <div><div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{vb.label} <span className="font-normal text-slate-400">{when(vb)}</span></div>
+          <video key={vb.id} ref={rb} src={labUrl(vb.path)} muted playsInline className="w-full rounded-xl bg-black" /></div>}
+      </div>
+      <div className="card p-2 divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="text-xs text-slate-500 px-2 py-1">כל הגרסאות ({vers.length}) — "צפייה" מחליף את הסרטון, "השוואה" מציג אותו ליד.</div>
+        {vers.map((v, i) => (
+          <div key={v.id} className={`flex items-center gap-2 px-2 py-1.5 text-sm ${v.id === a || v.id === b ? "bg-brand/5" : ""}`}>
+            <span className="flex-1 min-w-0 truncate">{v.label} {i === 0 && <span className="text-[10px] font-bold text-emerald-600 ms-1">אחרונה</span>}</span>
+            <span className="text-xs text-slate-400 shrink-0">{when(v)}</span>
+            <button onClick={() => { setA(v.id); if (b === v.id) setB(null) }} disabled={v.id === a} className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 disabled:opacity-40">צפייה</button>
+            <button onClick={() => setB(v.id === b ? null : v.id)} disabled={v.id === a} className={`text-xs px-2 py-1 rounded ${v.id === b ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-800"} disabled:opacity-40`}>{v.id === b ? "סגור השוואה" : "השוואה"}</button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

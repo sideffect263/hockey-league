@@ -36,6 +36,7 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
 
     { "source": "/games/:id([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/tv", "destination": "/api/resolve?type=games&id=:id&suffix=tv" },
     { "source": "/players/:id([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", "destination": "/api/resolve?type=players&id=:id" },
@@ -81,6 +82,7 @@
     { "source": "/games", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=games" },
     { "source": "/statistics", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=statistics" },
     { "source": "/tournaments", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=tournaments" },
+    { "source": "/archive/:id", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?type=archive&id=:id" },
     { "source": "/archive", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=archive" },
     { "source": "/guide", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=guide" },
     { "source": "/app", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|Google-InspectionTool|bingbot|DuckDuckBot|YandexBot).*" }], "destination": "/api/seo?page=app" },

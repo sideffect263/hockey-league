@@ -78,7 +78,8 @@ possibly being written this minute. Leave them.
 
 - **`players` is the only table with column-level grants** (`birth_date` excluded). ANY `select('*')`
   on it — including a PostgREST embed `players(*)` — 403s the **whole request**. Name columns.
-- **`npm run build` rewrites tracked `public/sitemap.xml`.** Don't commit that hunk by accident.
+- **`/sitemap.xml` is `api/sitemap.js`, live from the DB** (vercel.json rewrite). Don't add a
+  `public/sitemap.xml` back: Vercel serves a static file before any rewrite, so it would silently win.
 - **Don't split React into its own Vite `manualChunk`** — circular chunk dep, `forwardRef` crash.
   Route-level `lazy()` is fine.
 - **Scores display as `away:home`.** Digits render LTR inside an RTL row, so the home team is on

@@ -182,6 +182,39 @@ export async function getGameStats() {
   return fetchAllRows('game_stats', '*', 'id')
 }
 
+/**
+ * Everything /statistics derives from, for one PAST season — the live-table reads
+ * (getTeams/getPlayers/getGames/getGameStats) only ever see the active season.
+ * Players are the season's frozen player_season_stats rows reshaped to look like
+ * `players` rows; teams carry the name they played under that season.
+ */
+export async function getSeasonStatisticsData(seasonId) {
+  const [teamRows, playerRows, games, statsRes] = await Promise.all([
+    getArchivedStandings(seasonId),
+    getArchivedPlayerStats(seasonId),
+    getSeasonGames(seasonId),
+    supabase.rpc('season_game_stats', { p_season_id: seasonId }),
+  ])
+  if (statsRes.error) throw statsRes.error
+  const teamIds = teamRows.map(t => t.team_id).filter(Boolean)
+  const { data: live } = teamIds.length
+    ? await supabase.from('teams').select('*').in('id', teamIds)
+    : { data: [] }
+  const liveById = Object.fromEntries((live || []).map(t => [t.id, t]))
+  const teams = teamRows.filter(t => t.team_id).map(t => ({
+    ...(liveById[t.team_id] || {}),
+    id: t.team_id, name: t.team_name,
+    wins: t.wins, ties: t.ties, losses: t.losses, points: t.points,
+    goals_for: t.goals_for, goals_against: t.goals_against,
+  }))
+  const players = playerRows.filter(p => p.player_id).map(p => ({
+    id: p.player_id, slug: p.player_slug, first_name: p.first_name, last_name: p.last_name,
+    team_id: p.team_id, position: p.position, goals: p.goals, games_played: p.games_played,
+    blue_cards: p.blue_cards, red_cards: p.red_cards,
+  }))
+  return { teams, players, games, gameStats: statsRes.data || [] }
+}
+
 export async function getReferees() {
   const { data, error } = await supabase
     .from('referees')
@@ -663,11 +696,19 @@ export async function getArchivedPlayerStats(seasonId) {
     .order('goals', { ascending: false })
   if (error) throw error
   // Unlike the old archive, these rows keep a real player_id — so a name can be
-  // linked back to the player rather than being a dead string.
+  // linked back to the player rather than being a dead string. The slug makes it
+  // a link; a failed lookup only costs the links, never the table.
+  const ids = [...new Set((data || []).map(r => r.player_id).filter(Boolean))]
+  let slugs = {}
+  if (ids.length) {
+    const { data: ps } = await supabase.from('players').select('id, slug').in('id', ids)
+    slugs = Object.fromEntries((ps || []).map(p => [p.id, p.slug]))
+  }
   return (data || []).map(r => ({
     ...r,
     player_first_name: r.first_name,
     player_last_name: r.last_name,
+    player_slug: slugs[r.player_id] || null,
   }))
 }
 
@@ -755,6 +796,20 @@ export async function getSeasonGames(seasonId) {
     .rpc('season_games', { p_season_id: seasonId })
   if (rpcError) throw rpcError
   return [...(viaRpc || [])].sort((a, b) => new Date(a.game_date) - new Date(b.game_date))
+}
+
+/**
+ * The seasons a visitor can browse — the live one and every archived one —
+ * newest first, with the palette each is shown in (the nav-bar season picker).
+ */
+export async function getBrowsableSeasons() {
+  const { data, error } = await supabase
+    .from('seasons')
+    .select('id, slug, name, status, palette, starts_on, ends_on')
+    .in('status', ['active', 'archived'])
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
 }
 
 /** The season the live site is currently showing. */

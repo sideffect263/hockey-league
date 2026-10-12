@@ -148,3 +148,16 @@ export async function respondLoanJoin(requestId, accept) {
   if (error) throw loanError(error)
   return data
 }
+
+/**
+ * Goals each player scored ON LOAN this season → { [playerId]: { goals, games } }.
+ * players.goals includes them (they are his goals); the team page subtracts them to show
+ * what he scored for his own team. Same game filter as the season total.
+ */
+export async function getPlayerLoanGoals(playerIds) {
+  const ids = (playerIds || []).filter(Boolean)
+  if (!ids.length) return {}
+  const { data, error } = await supabase.rpc('player_loan_goals', { p_player_ids: ids })
+  if (error) return {}
+  return Object.fromEntries((data || []).map(r => [r.player_id, { goals: r.loan_goals, games: r.loan_games }]))
+}

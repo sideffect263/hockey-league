@@ -27,12 +27,14 @@ const DEFAULT_DESC = 'ליגת הוקי הגלגיליות הישראלית — 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
 import { postOg, POST_SELECT } from './og.js'
+import { streamPlayer } from './sitemap.js'
 
 class UpstreamError extends Error {}
 
-async function sb(pathAndQuery) {
+async function sb(pathAndQuery, init = {}) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
-    headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+    ...init,
+    headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
   })
   if (!r.ok) throw new UpstreamError(`${r.status} ${pathAndQuery}`)
   return r.json()
@@ -55,7 +57,7 @@ async function archivedGame(key) {
   const scorers = (data.stats || []).filter(st => st.goals > 0)
   const ids = [...new Set(scorers.map(st => st.player_id).filter(Boolean))]
   const [teams, players] = await Promise.all([
-    sb(`teams?id=in.(${g.home_team_id},${g.away_team_id})&select=id,name,slug`),
+    sb(`teams?id=in.(${g.home_team_id},${g.away_team_id})&select=id,name,slug,logo_url`),
     ids.length ? sb(`players?id=in.(${ids.join(',')})&select=slug,id,first_name,last_name,team_id`) : [],
   ])
   const team = (id) => teams.find(t => t.id === id) || null
@@ -72,6 +74,31 @@ const path = (type, slug) => `/${type}/${encodeURIComponent(slug)}`
 const link = (href, text) => `<a href="${esc(href)}">${esc(text)}</a>`
 const fullName = (p) => `${p.first_name || ''} ${p.last_name || ''}`.trim()
 const posHe = (pos) => (pos === 'Goalkeeper' ? 'שוער' : 'שחקן שדה')
+const absImg = (u) => (u && /^https?:\/\//.test(u) ? u : null)
+// A crest / photo as a real <img> with Hebrew alt text: without one on the page,
+// Google Images has nothing to index and the sitemap's image entries point at
+// media the page itself never shows.
+const img = (src, alt, size = 96) => absImg(src) ? `<img src="${esc(src)}" alt="${esc(alt)}" width="${size}" height="${size}" loading="lazy"/>` : ''
+
+// ─── schema.org (JSON-LD) ────────────────────────────────────────────────────
+// The SPA injects the same graph client-side (src/lib/seo.js), but search bots get
+// this page instead of running the SPA — so the structured data has to be here.
+const ORG_REF = (site) => ({ '@type': 'SportsOrganization', '@id': `${site}/#league`, name: SITE_NAME, url: `${site}/` })
+const breadcrumbs = (site, trail) => ({
+  '@type': 'BreadcrumbList',
+  itemListElement: trail.map(([name, p], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${site}${p}` })),
+})
+/** VideoObject for a post's Cloudflare Stream video (Google video results). */
+function videoLd(site, p) {
+  const og = postOg(p)
+  return {
+    '@type': 'VideoObject', '@id': `${site}/posts/${p.id}#video`, name: (og.desc || og.title).slice(0, 100),
+    description: og.desc || og.title, ...(og.image ? { thumbnailUrl: og.image } : {}),
+    ...(p.created_at ? { uploadDate: p.created_at } : {}), embedUrl: streamPlayer(p), url: `${site}/posts/${p.id}`,
+    publisher: ORG_REF(site),
+  }
+}
+const teamRef = (site, t) => t ? { '@type': 'SportsTeam', name: t.name, ...(t.slug ? { url: `${site}${path('teams', t.slug)}` } : {}) } : undefined
 
 const fmtDate = (iso) => {
   if (!iso) return ''
@@ -116,7 +143,7 @@ function highlightsHtml(posts) {
   const sorted = [...posts].sort((x, y) => (y.video_uid ? 1 : 0) - (x.video_uid ? 1 : 0))
   return `<h2>היילייטס ופוסטים מהמשחק</h2><ul>${sorted.map(p => {
     const og = postOg(p)
-    return `<li>${link(`/posts/${p.id}`, og.desc || og.title)}</li>`
+    return `<li>${og.image ? `${img(og.image, og.desc || og.title, 160).replace(/ height="160"/, '')} ` : ''}${link(`/posts/${p.id}`, og.desc || og.title)}</li>`
   }).join('')}</ul>`
 }
 
@@ -129,13 +156,18 @@ async function activeSeasonId() {
 
 // Each builder returns { title, desc, body, canonicalPath } or null for "no such page".
 const BUILDERS = {
-  async home() {
+  async home({ site }) {
     const [teams, sid] = await Promise.all([sb(TEAMS_Q), activeSeasonId()])
     const upcoming = sid ? await sb(`games?season_id=eq.${sid}&status=eq.scheduled&select=${GAME_SELECT}&order=game_date.asc&limit=8`) : []
     const recent = sid ? await sb(`games?season_id=eq.${sid}&status=eq.completed&select=${GAME_SELECT}&order=game_date.desc&limit=8`) : []
     return {
       title: SITE_NAME, desc: DEFAULT_DESC, canonicalPath: '/',
-      body: `<h1>${esc(SITE_NAME)}</h1><p>${esc(DEFAULT_DESC)}</p>` +
+      jsonLd: [
+        { ...ORG_REF(site), logo: `${site}/logos/main-logo.png`, sport: 'Roller hockey', location: { '@type': 'Country', name: 'Israel' },
+          member: teams.map(t => teamRef(site, t)) },
+        { '@type': 'WebSite', '@id': `${site}/#site`, name: SITE_NAME, url: `${site}/`, inLanguage: 'he-IL', publisher: { '@id': `${site}/#league` } },
+      ],
+      body: `<h1>${esc(SITE_NAME)}</h1>${img(`${site}/logos/main-logo.png`, SITE_NAME, 120)}<p>${esc(DEFAULT_DESC)}</p>` +
         `<h2>טבלת הליגה</h2>${standingsTable(teams)}` +
         (recent.length ? `<h2>תוצאות אחרונות</h2><ul>${recent.map(gameLine).join('')}</ul>` : '') +
         (upcoming.length ? `<h2>המשחקים הבאים</h2><ul>${upcoming.map(gameLine).join('')}</ul>` : ''),
@@ -240,46 +272,77 @@ const BUILDERS = {
     return { title: `מדיניות פרטיות | ${SITE_NAME}`, canonicalPath: '/privacy', desc: `מדיניות הפרטיות של ${SITE_NAME}.`, body: '<h1>מדיניות פרטיות</h1>' }
   },
 
-  async player(key, match) {
-    const [p] = await sb(`players?${match}&select=id,slug,first_name,last_name,jersey_number,position,goals,games_played,blue_cards,red_cards,photo_url,team:teams!players_team_id_fkey(name,slug,id)`)
+  async player(key, match, { site }) {
+    const [p] = await sb(`players?${match}&select=id,slug,first_name,last_name,jersey_number,position,goals,games_played,blue_cards,red_cards,photo_url,team:teams!players_team_id_fkey(name,slug,id,logo_url)`)
     if (!p) return null
     const name = fullName(p)
+    // Past seasons (the archive's frozen per-season rows) + this season's game log —
+    // the same history the player page shows, and the links that tie a player page
+    // to the games it was earned in.
+    const [history, log] = await Promise.all([
+      sb(`player_season_stats?player_id=eq.${p.id}&select=goals,games_played,blue_cards,red_cards,team_name,season:seasons(name,slug)`),
+      sb(`game_stats?player_id=eq.${p.id}&select=goals,blue_cards,red_cards,game:games(${GAME_SELECT})&limit=40`),
+    ])
+    const games = log.filter(r => r.game).sort((a, b) => String(b.game.game_date).localeCompare(String(a.game.game_date)))
     const facts = [p.team?.name, posHe(p.position), p.jersey_number != null ? `מספר ${p.jersey_number}` : null,
       `${p.goals || 0} שערים`, `${p.games_played || 0} משחקים`].filter(Boolean)
+    const past = history.filter(h => h.season).sort((a, b) => b.season.name.localeCompare(a.season.name))
+    const pastLine = past.length ? ` בעונות קודמות: ${past.map(h => `${h.season.name} — ${h.goals} שערים ב-${h.games_played} משחקים`).join('; ')}.` : ''
+    const url = `${site}${path('players', p.slug || p.id)}`
     return {
-      title: `${name} | ${SITE_NAME}`, canonicalPath: path('players', p.slug || p.id), image: p.photo_url,
-      desc: `${name} — ${facts.join(' · ')}. פרופיל שחקן בליגת הוקי הגלגיליות הישראלית.`,
-      body: `<h1>${esc(name)}</h1>` +
-        (p.team ? `<p>קבוצה: ${link(path('teams', p.team.slug || p.team.id), p.team.name)}</p>` : '') +
-        `<ul><li>עמדה: ${esc(posHe(p.position))}</li>` +
+      title: `${name} | ${SITE_NAME}`, canonicalPath: path('players', p.slug || p.id), image: p.photo_url, ogType: 'profile',
+      desc: `${name} — ${facts.join(' · ')}.${pastLine} פרופיל שחקן בליגת הוקי הגלגיליות הישראלית.`.slice(0, 300),
+      jsonLd: [
+        { '@type': 'Person', '@id': `${url}#person`, name, url, ...(absImg(p.photo_url) ? { image: p.photo_url } : {}),
+          jobTitle: posHe(p.position), ...(p.team ? { memberOf: teamRef(site, p.team), affiliation: ORG_REF(site) } : { affiliation: ORG_REF(site) }) },
+        breadcrumbs(site, [['ראשי', '/'], ['שחקנים', '/players'], [name, path('players', p.slug || p.id)]]),
+      ],
+      body: `<h1>${esc(name)}</h1>` + img(p.photo_url, name, 160) +
+        (p.team ? `<p>קבוצה: ${img(p.team.logo_url, `סמל ${p.team.name}`, 32)} ${link(path('teams', p.team.slug || p.team.id), p.team.name)}</p>` : '') +
+        `<h2>העונה הנוכחית</h2><ul><li>עמדה: ${esc(posHe(p.position))}</li>` +
         (p.jersey_number != null ? `<li>מספר: ${esc(p.jersey_number)}</li>` : '') +
         `<li>שערים: ${p.goals || 0}</li><li>משחקים: ${p.games_played || 0}</li>` +
-        `<li>כרטיסים כחולים: ${p.blue_cards || 0}</li><li>כרטיסים אדומים: ${p.red_cards || 0}</li></ul>`,
+        `<li>כרטיסים כחולים: ${p.blue_cards || 0}</li><li>כרטיסים אדומים: ${p.red_cards || 0}</li></ul>` +
+        (games.length ? `<h2>משחקים העונה</h2><ul>${games.map(r => gameLine(r.game).replace('</li>', ` — ${r.goals || 0} שערים</li>`)).join('')}</ul>` : '') +
+        (past.length ? `<h2>עונות קודמות</h2><ul>${past.map(h => `<li>${link(`/archive/${encodeURIComponent(h.season.slug || '')}`, `עונת ${h.season.name}`)} — ${esc(h.team_name || '')}: ${h.goals} שערים, ${h.games_played} משחקים, ${h.blue_cards || 0} כחולים, ${h.red_cards || 0} אדומים</li>`).join('')}</ul>` : ''),
     }
   },
 
-  async team(key, match) {
+  async team(key, match, { site }) {
     const [t] = await sb(`teams?${match}&status=eq.active&select=id,slug,name,city,home_venue,founded_year,logo_url,wins,ties,losses,points,goals_for,goals_against`)
     if (!t) return null
-    const [roster, games] = await Promise.all([
+    const [roster, games, history] = await Promise.all([
       sb(`players?team_id=eq.${t.id}&select=id,slug,first_name,last_name,jersey_number,position,goals&order=goals.desc,last_name.asc`),
       sb(`games?or=(home_team_id.eq.${t.id},away_team_id.eq.${t.id})&select=${GAME_SELECT}&order=game_date.desc&limit=30`),
+      sb(`team_season_stats?team_id=eq.${t.id}&select=final_rank,points,wins,ties,losses,goals_for,goals_against,season:seasons(name,slug)`),
     ])
+    const url = `${site}${path('teams', t.slug || t.id)}`
+    const past = history.filter(h => h.season).sort((a, b) => b.season.name.localeCompare(a.season.name))
     return {
       title: `${t.name} | ${SITE_NAME}`, canonicalPath: path('teams', t.slug || t.id), image: t.logo_url,
       desc: `${t.name}${t.city ? ` (${t.city})` : ''} — ${t.points} נק׳, ${t.wins} ניצחונות, ${t.ties} תיקו, ${t.losses} הפסדים. סגל, משחקים ותוצאות.`,
-      body: `<h1>${esc(t.name)}</h1>` +
+      jsonLd: [
+        { '@type': 'SportsTeam', '@id': `${url}#team`, name: t.name, url, sport: 'Roller hockey',
+          ...(absImg(t.logo_url) ? { logo: t.logo_url, image: t.logo_url } : {}),
+          ...(t.city ? { location: { '@type': 'Place', name: t.home_venue || t.city, address: { '@type': 'PostalAddress', addressLocality: t.city, addressCountry: 'IL' } } } : {}),
+          ...(t.founded_year ? { foundingDate: String(t.founded_year) } : {}),
+          memberOf: ORG_REF(site),
+          athlete: roster.map(p => ({ '@type': 'Person', name: fullName(p), url: `${site}${path('players', p.slug || p.id)}` })) },
+        breadcrumbs(site, [['ראשי', '/'], ['קבוצות', '/teams'], [t.name, path('teams', t.slug || t.id)]]),
+      ],
+      body: `<h1>${esc(t.name)}</h1>` + img(t.logo_url, `סמל ${t.name}`, 128) +
         `<ul>${[t.city && `עיר: ${t.city}`, t.home_venue && `אולם בית: ${t.home_venue}`, t.founded_year && `נוסדה: ${t.founded_year}`,
           `נקודות: ${t.points}`, `מאזן: ${t.wins}-${t.ties}-${t.losses}`, `שערים: ${t.goals_for}:${t.goals_against}`]
           .filter(Boolean).map(s => `<li>${esc(s)}</li>`).join('')}</ul>` +
         (roster.length ? `<h2>סגל</h2><ul>${roster.map(p => `<li>${link(path('players', p.slug || p.id), fullName(p))}` +
           ` — ${esc([p.jersey_number != null ? `#${p.jersey_number}` : null, posHe(p.position), `${p.goals || 0} שערים`].filter(Boolean).join(' · '))}</li>`).join('')}</ul>` : '') +
-        (games.length ? `<h2>משחקים</h2><ul>${games.map(gameLine).join('')}</ul>` : ''),
+        (games.length ? `<h2>משחקים</h2><ul>${games.map(gameLine).join('')}</ul>` : '') +
+        (past.length ? `<h2>עונות קודמות</h2><ul>${past.map(h => `<li>${link(`/archive/${encodeURIComponent(h.season.slug || '')}`, `עונת ${h.season.name}`)} — מקום ${h.final_rank}, ${h.points} נק׳ (${h.wins}-${h.ties}-${h.losses}), שערים ${h.goals_for}:${h.goals_against}</li>`).join('')}</ul>` : ''),
     }
   },
 
-  async game(key, match) {
-    let [g] = await sb(`games?${match}&select=${GAME_SELECT},home_team_id,away_team_id`)
+  async game(key, match, { site }) {
+    let [g] = await sb(`games?${match}&select=${GAME_SELECT},home_team_id,away_team_id,home_logo:teams!games_home_team_id_fkey(logo_url),away_logo:teams!games_away_team_id_fkey(logo_url)`)
     let stats
     if (!g) {
       const old = await archivedGame(key)
@@ -290,17 +353,35 @@ const BUILDERS = {
     // played for) and "היילייטס ופוסטים מהמשחק" — which is also how Google finds /posts/<id>.
     const [liveStats, posts] = await Promise.all([
       stats ? null : sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
-      sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT}&order=created_at.desc&limit=20`),
+      sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT},created_at&order=created_at.desc&limit=20`),
     ])
     stats = stats || liveStats
     const h = g.home?.name || 'בית', a = g.away?.name || 'חוץ'
+    const hLogo = g.home_logo?.logo_url || g.home?.logo_url, aLogo = g.away_logo?.logo_url || g.away?.logo_url
     const played = g.status === 'completed' && g.home_score != null
     const headline = played ? `${h} ${g.home_score} - ${g.away_score} ${a}` : `${h} נגד ${a}`
     const when = [fmtDate(g.game_date), g.venue].filter(Boolean).join(', ')
+    const url = `${site}${path('games', g.slug || g.id)}`
+    const videos = posts.filter(p => streamPlayer(p))
     return {
       title: `${headline} | ${SITE_NAME}`, canonicalPath: path('games', g.slug || g.id),
+      image: postOg(videos[0] || {}).image || absImg(hLogo),
       desc: `${played ? 'תוצאת המשחק' : 'משחק'} ${h} נגד ${a}${when ? ` — ${when}` : ''}${g.game_type ? ` (${g.game_type})` : ''}.`,
-      body: `<h1>${esc(headline)}</h1><ul>` +
+      jsonLd: [
+        { '@type': 'SportsEvent', '@id': `${url}#event`, name: `${h} נגד ${a}`, url, sport: 'Roller hockey',
+          ...(g.game_date ? { startDate: g.game_date } : {}),
+          eventStatus: g.status === 'cancelled' ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
+          eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+          location: { '@type': 'Place', name: g.venue || h, address: { '@type': 'PostalAddress', addressCountry: 'IL', ...(g.venue ? { addressLocality: g.venue } : {}) } },
+          homeTeam: teamRef(site, g.home), awayTeam: teamRef(site, g.away),
+          competitor: [teamRef(site, g.home), teamRef(site, g.away)].filter(Boolean),
+          organizer: ORG_REF(site),
+          ...(absImg(hLogo) ? { image: [hLogo, absImg(aLogo)].filter(Boolean) } : {}),
+          description: played ? `תוצאה סופית: ${h} ${g.home_score}, ${a} ${g.away_score}` : `${h} נגד ${a}${when ? `, ${when}` : ''}` },
+        ...videos.map(p => videoLd(site, p)),
+        breadcrumbs(site, [['ראשי', '/'], ['משחקים', '/games'], [`${h} נגד ${a}`, path('games', g.slug || g.id)]]),
+      ],
+      body: `<h1>${esc(headline)}</h1><p>${img(hLogo, `סמל ${h}`, 64)} ${img(aLogo, `סמל ${a}`, 64)}</p><ul>` +
         (g.home ? `<li>בית: ${link(path('teams', g.home.slug), h)}</li>` : '') +
         (g.away ? `<li>חוץ: ${link(path('teams', g.away.slug), a)}</li>` : '') +
         (when ? `<li>${esc(when)}</li>` : '') + (g.game_type ? `<li>סוג: ${esc(g.game_type)}</li>` : '') + `</ul>` +
@@ -309,16 +390,78 @@ const BUILDERS = {
   },
 
   // A post permalink (/posts/<uuid>). UUID-only, never a deleted post; same words as
-  // the SPA card and the og.js unfurl.
-  async post(key) {
+  // the SPA card and the og.js unfurl — plus its photo or video, which is what makes
+  // it eligible for Images / video results.
+  async post(key, _match, { site }) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) return null
-    const [p] = await sb(`posts?id=eq.${key}&deleted_at=is.null&select=${POST_SELECT}`)
+    const [p] = await sb(`posts?id=eq.${key}&deleted_at=is.null&select=${POST_SELECT},created_at,updated_at,external_guid,game:games(slug,id)`)
     if (!p) return null
     const og = postOg(p)
     const paras = String(p.body || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
+    const player = streamPlayer(p)
+    const url = `${site}/posts/${p.id}`
+    const media = player
+      ? `<figure><iframe src="${esc(player)}" title="${esc(og.desc || og.title)}" width="640" height="360" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>` +
+        (og.image ? `<noscript>${img(og.image, og.desc || og.title, 640)}</noscript>` : '') + `</figure>`
+      : (absImg(p.image_url) ? `<figure>${img(p.image_url, og.desc || og.title, 640).replace(/ height="640"/, '')}</figure>` : '')
     return {
-      title: og.title, desc: og.desc, image: og.image, canonicalPath: `/posts/${p.id}`,
-      body: `<article><h1>${esc(og.title)}</h1>${paras.map(t => `<p>${esc(t)}</p>`).join('')}</article>`,
+      title: og.title, desc: og.desc, image: og.image, canonicalPath: `/posts/${p.id}`, ogType: player ? 'video.other' : 'article',
+      jsonLd: [
+        player ? videoLd(site, p) : {
+          '@type': 'SocialMediaPosting', '@id': `${url}#post`, url, headline: (og.desc || og.title).slice(0, 110),
+          ...(p.body ? { articleBody: p.body } : {}), datePublished: p.created_at, dateModified: p.updated_at || p.created_at,
+          ...(absImg(og.image) ? { image: og.image } : {}), author: { '@type': 'Organization', name: og.title.split(' · ')[0] }, publisher: ORG_REF(site),
+        },
+        breadcrumbs(site, [['ראשי', '/'], ['המגרש', '/'], [og.title.split(' · ')[0], `/posts/${p.id}`]]),
+      ],
+      body: `<article><h1>${esc(og.title)}</h1>${media}${paras.map(t => `<p>${esc(t)}</p>`).join('')}` +
+        (p.game ? `<p>${link(path('games', p.game.slug || p.game.id), 'לעמוד המשחק')}</p>` : '') + `</article>`,
+    }
+  },
+
+  // /archive/<slug> — one finished season: final table, scorers, every game.
+  async archiveSeason(key, match, { site }) {
+    const [s] = await sb(`seasons?${match}&status=eq.archived&select=id,slug,name,starts_on,ends_on`)
+    if (!s) return null
+    const [standings, scorers, games, carded] = await Promise.all([
+      sb(`team_season_stats?season_id=eq.${s.id}&select=team_name,team_id,final_rank,points,wins,ties,losses,goals_for,goals_against&order=final_rank.asc`),
+      sb(`player_season_stats?season_id=eq.${s.id}&goals=gt.0&select=player_id,first_name,last_name,team_name,goals,games_played&order=goals.desc&limit=30`),
+      sb('rpc/season_games_detail', { method: 'POST', body: JSON.stringify({ p_season_id: s.id }) }),
+      sb(`player_season_stats?season_id=eq.${s.id}&or=(blue_cards.gt.0,red_cards.gt.0)&select=player_id,first_name,last_name,team_name,blue_cards,red_cards&order=red_cards.desc,blue_cards.desc&limit=10`),
+    ])
+    const ids = [...new Set([...scorers, ...carded].map(p => p.player_id).filter(Boolean))]
+    const slugs = ids.length ? Object.fromEntries((await sb(`players?id=in.(${ids.join(',')})&select=id,slug`)).map(p => [p.id, p.slug])) : {}
+    const teamSlug = {}
+    for (const g of games) { teamSlug[g.home_team_id] = g.home_team_slug; teamSlug[g.away_team_id] = g.away_team_slug }
+    const champ = standings[0]
+    const played = games.filter(g => g.status === 'completed' && g.home_score != null)
+    const canonicalPath = `/archive/${encodeURIComponent(s.slug || s.id)}`
+    const line = (g) => {
+      const t = g.status === 'completed' && g.home_score != null ? `${g.home_team_name} ${g.home_score} - ${g.away_score} ${g.away_team_name}` : `${g.home_team_name} נגד ${g.away_team_name}`
+      const meta = [fmtDate(g.game_date), g.venue, g.playoff_round || g.game_type].filter(Boolean).join(' · ')
+      return `<li>${g.slug ? link(path('games', g.slug), t) : esc(t)}${meta ? ` — ${esc(meta)}` : ''}</li>`
+    }
+    return {
+      title: `עונת ${s.name} — טבלה סופית ותוצאות | ${SITE_NAME}`, canonicalPath,
+      desc: `עונת ${s.name} בליגת הוקי הגלגיליות הישראלית${champ ? `: האלופה ${champ.team_name} (${champ.points} נק׳)` : ''}${scorers[0] ? `, מלך השערים ${fullName(scorers[0])} (${scorers[0].goals})` : ''}. טבלה סופית, ${played.length} משחקים ותוצאות.`,
+      jsonLd: [
+        { '@type': 'SportsEvent', '@id': `${site}${canonicalPath}#season`, name: `${SITE_NAME} — עונת ${s.name}`, url: `${site}${canonicalPath}`, sport: 'Roller hockey',
+          ...(s.starts_on ? { startDate: s.starts_on } : {}), ...(s.ends_on ? { endDate: s.ends_on } : {}),
+          eventStatus: 'https://schema.org/EventScheduled', eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+          location: { '@type': 'Country', name: 'Israel' }, organizer: ORG_REF(site),
+          subEvent: played.filter(g => g.slug).map(g => ({ '@type': 'SportsEvent', name: `${g.home_team_name} נגד ${g.away_team_name}`, url: `${site}${path('games', g.slug)}`, startDate: g.game_date })) },
+        breadcrumbs(site, [['ראשי', '/'], ['ארכיון', '/archive'], [`עונת ${s.name}`, canonicalPath]]),
+      ],
+      body: `<h1>עונת ${esc(s.name)}</h1>` +
+        (champ ? `<p>האלופה: ${teamSlug[champ.team_id] ? link(path('teams', teamSlug[champ.team_id]), champ.team_name) : esc(champ.team_name)}</p>` : '') +
+        `<h2>טבלה סופית</h2><table><thead><tr><th>#</th><th>קבוצה</th><th>נק׳</th><th>נ</th><th>ת</th><th>ה</th><th>שערים</th></tr></thead><tbody>` +
+        standings.map(t => `<tr><td>${t.final_rank}</td><td>${teamSlug[t.team_id] ? link(path('teams', teamSlug[t.team_id]), t.team_name) : esc(t.team_name)}</td><td>${t.points}</td><td>${t.wins}</td><td>${t.ties}</td><td>${t.losses}</td><td>${t.goals_for}:${t.goals_against}</td></tr>`).join('') +
+        `</tbody></table>` +
+        (scorers.length ? `<h2>מלכי השערים</h2><ol>${scorers.map(p => `<li>${slugs[p.player_id] ? link(path('players', slugs[p.player_id]), fullName(p)) : esc(fullName(p))} (${esc(p.team_name)}) — ${p.goals} שערים ב-${p.games_played} משחקים</li>`).join('')}</ol>` : '') +
+        (carded.length ? `<h2>כרטיסים</h2><ol>${carded.map(p => `<li>${slugs[p.player_id] ? link(path('players', slugs[p.player_id]), fullName(p)) : esc(fullName(p))} (${esc(p.team_name)}) — ${p.blue_cards || 0} כחולים, ${p.red_cards || 0} אדומים</li>`).join('')}</ol>` : '') +
+        (played.length ? `<h2>סטטיסטיקות העונה</h2><ul><li>משחקים: ${played.length}</li><li>שערים: ${played.reduce((n, g) => n + g.home_score + g.away_score, 0)}</li>` +
+          `<li>ממוצע שערים למשחק: ${(played.reduce((n, g) => n + g.home_score + g.away_score, 0) / played.length).toFixed(1)}</li></ul>` : '') +
+        (games.length ? `<h2>כל המשחקים</h2><ul>${games.map(line).join('')}</ul>` : ''),
     }
   },
 
@@ -338,28 +481,29 @@ const PAGE_BUILDERS = {
   home: 'home', standings: 'standings', teams: 'teams', players: 'players', games: 'gamesList',
   statistics: 'statistics', tournaments: 'tournamentsList', archive: 'archive', guide: 'guide', app: 'app', privacy: 'privacy',
 }
-const DETAIL_BUILDERS = { players: 'player', teams: 'team', games: 'game', tournaments: 'tournament', posts: 'post' }
+const DETAIL_BUILDERS = { players: 'player', teams: 'team', games: 'game', tournaments: 'tournament', posts: 'post', archive: 'archiveSeason' }
 
 const NAV = `<nav>${[['/', 'ראשי'], ['/standings', 'טבלה'], ['/games', 'משחקים'], ['/teams', 'קבוצות'],
   ['/players', 'שחקנים'], ['/statistics', 'סטטיסטיקות'], ['/tournaments', 'טורנירים']]
   .map(([h, t]) => link(h, t)).join(' | ')}</nav>`
 
-function render(site, { title, desc, body, canonicalPath, image }, { noindex = false } = {}) {
+function render(site, { title, desc, body, canonicalPath, image, jsonLd, ogType = 'website' }, { noindex = false } = {}) {
   const url = `${site}${canonicalPath || '/'}`
-  const img = image && /^https?:\/\//.test(image) ? image : `${site}/logos/main-logo.png`
+  const ogImg = image && /^https?:\/\//.test(image) ? image : `${site}/logos/main-logo.png`
   return `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}"/>
 ${noindex ? '<meta name="robots" content="noindex"/>' : `<link rel="canonical" href="${esc(url)}"/>`}
-<meta property="og:type" content="website"/>
+<meta property="og:type" content="${esc(ogType)}"/>
 <meta property="og:site_name" content="${esc(SITE_NAME)}"/>
 <meta property="og:locale" content="he_IL"/>
 <meta property="og:title" content="${esc(title)}"/>
 <meta property="og:description" content="${esc(desc)}"/>
 <meta property="og:url" content="${esc(url)}"/>
-<meta property="og:image" content="${esc(img)}"/>
+<meta property="og:image" content="${esc(ogImg)}"/>
+${!noindex && jsonLd ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': [].concat(jsonLd) }).replace(/</g, '\\u003c')}</script>` : ''}
 </head><body>
 <header>${link('/', SITE_NAME)}</header>
 ${NAV}
@@ -381,13 +525,13 @@ export default async function handler(req, res) {
   try {
     let data
     if (PAGE_BUILDERS[page]) {
-      data = await BUILDERS[PAGE_BUILDERS[page]]()
+      data = await BUILDERS[PAGE_BUILDERS[page]]({ site })
     } else if (DETAIL_BUILDERS[type] && id) {
       // Slug for every link since slugs shipped; UUIDs are 308'd by resolve.js
       // before reaching here, but match either so a miss can't come from that.
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
       const match = isUuid ? `id=eq.${id}` : `slug=eq.${encodeURIComponent(id)}`
-      data = await BUILDERS[DETAIL_BUILDERS[type]](id, match)
+      data = await BUILDERS[DETAIL_BUILDERS[type]](id, match, { site })
     }
     if (!data) {
       res.setHeader('Cache-Control', 's-maxage=300')

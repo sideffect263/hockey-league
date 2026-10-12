@@ -118,6 +118,11 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
     const next = { needField: call.need_field, needGk: call.need_gk, note: callNote }
     if (key === "field") next.needField = !call.need_field
     if (key === "gk") next.needGk = !call.need_gk
+    // Switching ON notifies every player who could come, once — that can't be taken back.
+    const turningOn = (key === "field" && next.needField) || (key === "gk" && next.needGk)
+    if (turningOn && !window.confirm(`לפרסם שהקבוצה מחפשת ${key === "gk" ? "שוער" : "שחקן שדה"}?\nכל השחקנים שיכולים לשחק במשחק יקבלו הודעה.`)) {
+      setCallBusy(false); return
+    }
     try { await setLoanCall(gameId, teamId, next); reload() }
     catch (e) { setErr(e.message) }
     finally { setCallBusy(false) }

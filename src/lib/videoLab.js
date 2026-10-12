@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 // (video-analysis/lab_worker.py on the Mac polls status='queued'|'new'). Admin / content editor only (RLS).
 
 const BUCKET = 'video-lab'
-const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at,post_id,feed_status,feed_uid,feed_prev_uid,feed_processed_path,feed_replaced_at,feed_note'
+const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at,post_id,feed_status,feed_uid,feed_prev_uid,feed_processed_path,feed_replaced_at,feed_note,goal2_frame,strike2_frame,cuts,mark_style,mark_color,processed_at'
 
 export function labUrl(path) {
   if (!path) return null
@@ -90,4 +90,76 @@ export async function getLabClipStatus(id) {
   const { data, error } = await supabase.from('video_lab_clips').select(CLIP_COLS).eq('id', id).single()
   if (error) throw error
   return data
+}
+
+// Every render of a clip (newest first) — the editor plays / compares them.
+export async function getLabVersions(clipId) {
+  const { data, error } = await supabase.from('video_lab_versions').select('id,path,label,created_at')
+    .eq('clip_id', clipId).order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+// ---- Shot tagging (supabase/video-lab-shots.sql) --------------------------------------------
+// One row per shot in a clip: shooter, rink origin, net target, result, keeper stance. Scouting data.
+
+const SHOT_COLS = 'id,clip_id,frame,team_id,shooter_id,shooter_number,goalie_id,result,shot_type,gk_stance,origin_x,origin_y,net_x,net_y,screened,note,created_at'
+
+export async function getLabShots(clipId) {
+  const { data, error } = await supabase.from('video_lab_shots').select(SHOT_COLS).eq('clip_id', clipId).order('frame')
+  if (error) throw error
+  return data || []
+}
+
+// Every tagged shot in the lab (the summary card on the clip list).
+export async function getAllLabShots() {
+  const { data, error } = await supabase.from('video_lab_shots').select(SHOT_COLS).order('created_at').limit(5000)
+  if (error) throw error
+  return data || []
+}
+
+export async function saveLabShot(shot) {
+  const { id, created_at: _c, ...row } = shot
+  const q = id
+    ? supabase.from('video_lab_shots').update(row).eq('id', id)
+    : supabase.from('video_lab_shots').insert(row)
+  const { data, error } = await q.select(SHOT_COLS).single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteLabShot(id) {
+  const { error } = await supabase.from('video_lab_shots').delete().eq('id', id)
+  if (error) throw error
+}
+
+// The two teams of the clip's game, each with its roster (primary team or a player_teams membership).
+// players has column-level grants: name the columns, never select('*').
+export async function getGameSides(gameId) {
+  const { data: g, error } = await supabase.from('games').select('id,home_team_id,away_team_id').eq('id', gameId).maybeSingle()
+  if (error) throw error
+  if (!g) return []
+  const ids = [g.home_team_id, g.away_team_id].filter(Boolean)
+  const [{ data: teams, error: tErr }, { data: links, error: lErr }] = await Promise.all([
+    supabase.from('teams').select('id,name,primary_color').in('id', ids),
+    supabase.from('player_teams').select('player_id,team_id').in('team_id', ids),
+  ])
+  if (tErr) throw tErr
+  if (lErr) throw lErr
+  const linkIds = [...new Set((links || []).map(l => l.player_id))]
+  const cols = 'id,first_name,last_name,jersey_number,position,team_id'
+  const [{ data: own, error: oErr }, { data: linked, error: kErr }] = await Promise.all([
+    supabase.from('players').select(cols).in('team_id', ids),
+    linkIds.length ? supabase.from('players').select(cols).in('id', linkIds) : Promise.resolve({ data: [] }),
+  ])
+  if (oErr) throw oErr
+  if (kErr) throw kErr
+  const byId = new Map([...(own || []), ...(linked || [])].map(p => [p.id, p]))
+  const teamOf = (p) => new Set([p.team_id, ...(links || []).filter(l => l.player_id === p.id).map(l => l.team_id)])
+  return ids.map(tid => {
+    const t = (teams || []).find(x => x.id === tid) || { id: tid, name: '' }
+    const roster = [...byId.values()].filter(p => teamOf(p).has(tid))
+      .sort((a, b) => (a.jersey_number ?? 999) - (b.jersey_number ?? 999))
+    return { ...t, roster }
+  })
 }

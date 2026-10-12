@@ -3,7 +3,7 @@ import { useState, useEffect, createContext, useContext, lazy, Suspense } from '
 import Layout from './Layout'
 import RouteSeo from './components/RouteSeo'
 import RouteSkeleton from './components/skeletons/RouteSkeleton'
-import { getLeagueSetting, getCurrentSeason } from './lib/api'
+import { getLeagueSetting, getBrowsableSeasons } from './lib/api'
 
 // Route-level code splitting: each page ships as its own chunk, so the home
 // page no longer downloads Admin / Judge / poster generator / etc. up front.
@@ -56,6 +56,15 @@ export const useSeasonMode = () => useContext(SeasonModeContext)
  * the fetch resolves (App gates on it), so there is no flash of an empty one.
  */
 export const useSeasonName = () => useContext(SeasonModeContext)?.seasonName || ''
+
+/** The live season + every archived one, newest first ([] until loaded or on error). */
+export const useSeasons = () => useContext(SeasonModeContext)?.seasons || []
+
+/** [pinnedSeasonId, setPinnedSeasonId] — internal to SeasonPicker's usePinSeason. */
+export const useSeasonPin = () => {
+  const ctx = useContext(SeasonModeContext)
+  return [ctx?.pinnedSeasonId || null, ctx?.setPinnedSeasonId || (() => {})]
+}
 
 /**
  * A plain <a href> reload starts at the top; a client-side route change does not
@@ -146,6 +155,10 @@ function LegacyPostRedirect() {
 function App() {
   const [seasonMode, setSeasonMode] = useState(null) // 'regular' or 'final_four'
   const [seasonName, setSeasonName] = useState('')
+  const [seasons, setSeasons] = useState([])
+  // A page about one past-season thing (an old game) names its season here, so the
+  // header's season badge + palette follow it (see usePinSeason in SeasonPicker).
+  const [pinnedSeasonId, setPinnedSeasonId] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Both reads in one round trip — the shell already waits on the mode, so the
@@ -154,9 +167,13 @@ function App() {
   useEffect(() => {
     Promise.all([
       getLeagueSetting('season_mode').then(v => v || 'regular').catch(() => 'regular'),
-      getCurrentSeason().then(s => s?.name || '').catch(() => ''),
+      getBrowsableSeasons().catch(() => []),
     ])
-      .then(([mode, name]) => { setSeasonMode(mode); setSeasonName(name) })
+      .then(([mode, list]) => {
+        setSeasonMode(mode)
+        setSeasons(list)
+        setSeasonName(list.find(s => s.status === 'active')?.name || '')
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -170,7 +187,7 @@ function App() {
   // (Layout's own season badge lives inside the closed mobile menu, so it has no
   // way to be seen during the fetch.)
   return (
-    <SeasonModeContext.Provider value={{ seasonMode, setSeasonMode, seasonName, setSeasonName }}>
+    <SeasonModeContext.Provider value={{ seasonMode, setSeasonMode, seasonName, setSeasonName, seasons, pinnedSeasonId, setPinnedSeasonId }}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RouteSeo />
         <LegacyPostRedirect />

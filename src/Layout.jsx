@@ -1,7 +1,7 @@
 import { BRAND_ORANGE } from '@/lib/brand'
 import { Link, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
-import { useSeasonName } from "@/App"
+import SeasonPicker, { SeasonPaletteSync } from "./components/SeasonPicker"
 import {
   Menu,
   X,
@@ -241,7 +241,6 @@ function AvatarMenu({ user, profile, roleNav, isActivePage, signOut }) {
 
 export default function Layout({ children }) {
   const location = useLocation()
-  const seasonName = useSeasonName()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, profile, signOut, openAuth } = useAuth()
 
@@ -298,23 +297,26 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950" dir="rtl">
+      <SeasonPaletteSync />
       {/* Top header bar */}
       <header className="sticky top-0 z-50 bg-surface-nav/80 backdrop-blur-lg border-b border-line-header">
         <div className="flex items-center gap-3 px-4 sm:px-6 h-16">
           {/* RTL start (right): logo + wordmark */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <img src="/logos/main-logo.png" alt="ליגת הוקי" className="size-10 rounded-xl object-cover ring-1 ring-line shadow-sm" />
+          {/* The season badge is a button (the season picker), so it sits beside the
+              home link rather than inside it — a control nested in a link is invalid. */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Link to="/" className="shrink-0">
+              <img src="/logos/main-logo.png" alt="ליגת הוקי" className="size-10 rounded-xl object-cover ring-1 ring-line shadow-sm" />
+            </Link>
             <div className="leading-none">
               {/* Not an <h1>: the site wordmark repeats on every route, so tagging it
                   as a heading gave each page two h1s and made "ליגת הוקי" — rather than
                   the page's own title — its primary heading for crawlers and screen
                   readers. `block` keeps the exact layout the <h1> had. */}
-              <span className="block text-xl font-black text-fg-strong tracking-tight">ליגת הוקי</span>
-              {seasonName && (
-                <span className="mt-1 inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand-strong dark:text-brand-light">עונת {seasonName}</span>
-              )}
+              <Link to="/" className="block text-xl font-black text-fg-strong tracking-tight">ליגת הוקי</Link>
+              <SeasonPicker />
             </div>
-          </Link>
+          </div>
 
           {/* Inline nav (lg+). Grouping the tail into "עוד" and the role tools into
               the avatar menu caps the row at seven slots for every visitor, which

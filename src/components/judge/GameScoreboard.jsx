@@ -226,13 +226,22 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   // Who may play (suspension / valid medical). undefined = loading, null = failed →
   // block nobody but say so; Map = loaded. See src/lib/eligibility.js.
   const [elig, setElig] = useState(undefined)
+  // Sign-ups keep changing after the judge opens the board — a coach approves a loan, a
+  // player pulls out — so eligibility (which also carries each loan's side) and attendance
+  // are re-read every minute. A failed RE-read keeps what we had; only the first one can
+  // leave the board without data.
+  const [squadTick, setSquadTick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setSquadTick(n => n + 1), 60_000)
+    return () => clearInterval(t)
+  }, [])
   useEffect(() => {
     let alive = true
     getGamePlayerEligibility(game.id)
       .then(rows => { if (alive) setElig(eligibilityMap(rows)) })
-      .catch(e => { console.warn("eligibility unavailable", e); if (alive) setElig(null) })
+      .catch(e => { console.warn("eligibility unavailable", e); if (alive && squadTick === 0) setElig(null) })
     return () => { alive = false }
-  }, [game.id])
+  }, [game.id, squadTick])
   const [attendingIds, setAttendingIds] = useState(null) // Set of confirmed player_ids; null until loaded
   const [showAllRoster, setShowAllRoster] = useState(false)
   // Rosters come from player_teams (a player can be on one team per age group), with
@@ -327,9 +336,9 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
     let alive = true
     getGameAvailabilityForOfficial(game.id).then(rows => {
       if (alive) setAttendingIds(new Set(rows.filter(r => r.status === "available").map(r => r.player_id)))
-    }).catch(() => { if (alive) setAttendingIds(new Set()) })
+    }).catch(() => { if (alive && squadTick === 0) setAttendingIds(new Set()) })
     return () => { alive = false }
-  }, [game.id])
+  }, [game.id, squadTick])
 
   // Buzzer sound on every engine buzz (goal / card / foul / manual / period-end).
   const lastBuzz = useRef(-1)
