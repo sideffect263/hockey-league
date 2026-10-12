@@ -261,7 +261,18 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   }
   const squadFor = (side) => {
     const teamId = side === TeamSide.home ? game.home_team_id : game.away_team_id
-    return [...(byTeam.get(teamId) || [])].map(id => playersById.get(id)).filter(Boolean)
+    const own = byTeam.get(teamId) || new Set()
+    // Loans: a player signed up for this side (an accepted loan invite / ask, or a coach's
+    // direct add) is on neither roster, so the roster alone left him off the board and the
+    // judge typed his goals on a teammate (10/10). game_player_eligibility returns the
+    // sign-up's side; only those still marked coming count.
+    const loaned = elig instanceof Map
+      ? [...elig.values()]
+          .filter(r => r.team_id === teamId && !own.has(r.player_id)
+            && (!attendingIds || attendingIds.has(r.player_id)))
+          .map(r => r.player_id)
+      : []
+    return [...own, ...loaned].map(id => playersById.get(id)).filter(Boolean)
   }
   // C4: default the roster to confirmed attendees; the judge can switch to the full
   // squad. Borrowed players and guests are always shown. GK clean-sheet detection
