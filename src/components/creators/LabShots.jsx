@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
-import { Crosshair, Plus, Trash2, Loader2, X, Target } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Crosshair, Trash2, Loader2, X, Target } from "lucide-react"
 import { saveLabShot, deleteLabShot, getAllLabShots } from "@/lib/videoLab"
 
 // Shot tagging in the video lab (supabase/video-lab-shots.sql). Each shot: who, from where on the
@@ -37,8 +37,9 @@ export function shotLabel(s, sides) {
 }
 
 // ---- the panel in the clip editor ------------------------------------------------------------
-export function ShotsPanel({ clipId, frame, seek, sides, shots, setShots, draft, setDraft }) {
-  const startNew = () => setDraft({ clip_id: clipId, frame, result: null, screened: false })
+// Shots are opened by the editor's S key / "רגע הבעיטה כאן" button (one action = the strike mark
+// for the render AND the shot card), so the panel itself only lists and edits them.
+export function ShotsPanel({ frame, seek, sides, shots, setShots, draft, setDraft, onSaved, goalMissing }) {
   const edit = (s) => { seek(s.frame); setDraft({ ...s }) }
 
   return (
@@ -47,15 +48,16 @@ export function ShotsPanel({ clipId, frame, seek, sides, shots, setShots, draft,
         <Crosshair className="w-4 h-4 text-brand" />
         <span className="font-semibold text-slate-800 dark:text-slate-100">בעיטות בקליפ</span>
         <span className="text-xs text-slate-500">({shots.length})</span>
-        {!draft && (
-          <button onClick={startNew} className="ms-auto px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover flex items-center gap-1.5">
-            <Plus className="w-4 h-4" /> בעיטה בפריים הזה <kbd className="text-[10px] opacity-70">B</kbd>
-          </button>
-        )}
       </div>
       {!draft && shots.length === 0 && (
         <p className="text-sm text-slate-500">
-          עמדו על הפריים שבו הבעיטה יוצאת ולחצו "בעיטה בפריים הזה". מתייגים כל בעיטה, גם הצלות והחטאות — רק כך נוכל לדעת איפה כל שוער חלש ואיך כל שחקן בועט.
+          עמדו על הפריים שבו הבעיטה יוצאת ולחצו <b>S</b> (או "רגע הבעיטה כאן") — נפתח כרטיס לפרטי הבעיטה: מי בעט, מאיפה, לאן בשער ומה קרה.
+          מתייגים כל בעיטה, גם הצלות והחטאות — רק כך נוכל לדעת איפה כל שוער חלש ואיך כל שחקן בועט.
+        </p>
+      )}
+      {!draft && goalMissing && (
+        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+          תייגתם גול — עכשיו עמדו על הפריים שבו הכדור חוצה את הקו ולחצו G (רגע הגול), בשביל ההילוך החוזר.
         </p>
       )}
       {shots.length > 0 && (
@@ -74,7 +76,7 @@ export function ShotsPanel({ clipId, frame, seek, sides, shots, setShots, draft,
       )}
       {draft && (
         <ShotForm key={draft.id || "new"} draft={draft} setDraft={setDraft} frame={frame} sides={sides}
-          onSaved={(row) => { setShots(list => [...list.filter(x => x.id !== row.id), row].sort((a, b) => a.frame - b.frame)); setDraft(null) }}
+          onSaved={(row) => { setShots(list => [...list.filter(x => x.id !== row.id), row].sort((a, b) => a.frame - b.frame)); setDraft(null); onSaved?.(row) }}
           onDeleted={(id) => { setShots(list => list.filter(x => x.id !== id)); setDraft(null) }} />
       )}
     </div>
@@ -111,6 +113,8 @@ function ShotForm({ draft, setDraft, frame, sides, onSaved, onDeleted }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
   const [confirmDel, setConfirmDel] = useState(false)
+  const boxRef = useRef(null)
+  useEffect(() => { boxRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }) }, [])
   const set = (patch) => setDraft(d => ({ ...d, ...patch }))
   const team = sides.find(t => t.id === draft.team_id)
   const other = draft.team_id ? sides.find(t => t.id !== draft.team_id) : null
@@ -132,7 +136,7 @@ function ShotForm({ draft, setDraft, frame, sides, onSaved, onDeleted }) {
   }
 
   return (
-    <div className="rounded-xl ring-1 ring-brand/30 bg-brand/5 p-3 space-y-4">
+    <div ref={boxRef} className="rounded-xl ring-1 ring-brand/30 bg-brand/5 p-3 space-y-4 scroll-mt-4">
       <div className="flex items-center gap-2 flex-wrap text-sm">
         <span className="font-semibold">{draft.id ? "עריכת בעיטה" : "בעיטה חדשה"} · פריים <span dir="ltr">#{draft.frame}</span></span>
         {draft.frame !== frame && <button className="text-xs underline text-slate-500" onClick={() => set({ frame })}>להעביר לפריים הנוכחי (#{frame})</button>}

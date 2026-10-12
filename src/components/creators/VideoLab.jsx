@@ -250,6 +250,20 @@ function ClipEditor({ id, onBack }) {
     for (let f = 0; f <= frame; f++) if (needsLook(f)) return seek(f)
   }
 
+  // S = "the shot is here": one action for both jobs. Angle 1 opens the shot card (scouting data) and,
+  // unless a goal shot is already tagged, moves the strike mark the render uses. Angle 2 is the replay
+  // of the same shot, so there it only sets the replay's strike mark.
+  const markShot = () => {
+    if (angleOf(frame) === 2) { setClipField({ strike2_frame: frame }); return }
+    if (!shots.some(s => s.result === "goal" && angleOf(s.frame) === 1)) setClipField({ strike_frame: frame })
+    const near = shots.find(s => Math.abs(s.frame - frame) <= 3)
+    setShotDraft(near ? { ...near } : { clip_id: id, frame, result: null, screened: false })
+  }
+  // A saved goal shot is the shot the replay is about.
+  const onShotSaved = (row) => {
+    if (row.result === "goal" && angleOf(row.frame) === 1 && clip.strike_frame !== row.frame) setClipField({ strike_frame: row.frame })
+  }
+
   const acceptAI = () => {
     const p = track[frame]; if (!p) return
     setLabel(frame, { kind: "ball", x: p[0], y: p[1] })
@@ -354,9 +368,8 @@ function ClipEditor({ id, onBack }) {
       else if (k === "a" || k === "ש") acceptAI()
       else if (e.key === "Delete" || e.key === "Backspace") setLabel(frame, null, false)
       else if (k === "g" || k === "ע") setClipField({ [markField("goal")]: frame })
-      else if (k === "s" || k === "ד") setClipField({ [markField("strike")]: frame })
+      else if (k === "s" || k === "ד") markShot()
       else if (k === "j" || k === "ח") nextToCheck()
-      else if ((k === "b" || k === "נ") && !shotDraft) setShotDraft({ clip_id: id, frame, result: null, screened: false })
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -466,7 +479,7 @@ function ClipEditor({ id, onBack }) {
                     {ang === 1 ? "זווית 1 — המהלך" : `זווית 2 — הריפליי / זום (מפריים #${cuts[0]})`}
                     {!here && <button className="ms-2 text-xs underline font-normal text-slate-500" onClick={() => seek(ang === 2 ? cuts[0] : 0)}>מעבר לזווית</button>}
                   </span>
-                  <button className={act} disabled={!here} onClick={() => setClipField({ [sf]: frame })}><Zap className={`w-4 h-4 ${ang === 2 ? "text-fuchsia-400" : "text-orange-500"}`} /> רגע הבעיטה כאן <kbd className="text-[10px] opacity-60">S</kbd></button>
+                  <button className={act} disabled={!here} onClick={markShot}><Zap className={`w-4 h-4 ${ang === 2 ? "text-fuchsia-400" : "text-orange-500"}`} /> רגע הבעיטה כאן <kbd className="text-[10px] opacity-60">S</kbd></button>
                   <button className={act} disabled={!here} onClick={() => setClipField({ [gf]: frame })}><Goal className={`w-4 h-4 ${ang === 2 ? "text-fuchsia-600" : "text-red-500"}`} /> רגע הגול כאן <kbd className="text-[10px] opacity-60">G</kbd></button>
                   {clip[sf] != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip[sf])}>בעיטה: #{clip[sf]}</button>}
                   {clip[gf] != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip[gf])}>גול: #{clip[gf]}</button>}
@@ -476,11 +489,12 @@ function ClipEditor({ id, onBack }) {
             })}
             {cuts.length > 0 && <p className="text-[11px] text-slate-500">בקליפ יש {cuts.length === 1 ? "חיתוך" : `${cuts.length} חיתוכים`} (קו מקווקו בציר הזמן). אם סימנתם בעיטה וגול גם בזווית 2 — ההילוך האיטי ייבנה ממנה.</p>}
             <Legend />
-            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו, S/G בעיטה/גול בזווית שבה אתם נמצאים, B תיוג בעיטה.</p>
+            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו, S רגע הבעיטה (פותח את כרטיס הבעיטה), G רגע הגול — בזווית שבה אתם נמצאים.</p>
           </div>
 
-          <ShotsPanel clipId={id} frame={frame} seek={seek} sides={sides}
-            shots={shots} setShots={setShots} draft={shotDraft} setDraft={setShotDraft} />
+          <ShotsPanel frame={frame} seek={seek} sides={sides} shots={shots} setShots={setShots}
+            draft={shotDraft} setDraft={setShotDraft} onSaved={onShotSaved}
+            goalMissing={!clip.no_replay && clip.goal_frame == null && shots.some(s => s.result === "goal")} />
         </>
       )}
 
