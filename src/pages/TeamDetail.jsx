@@ -19,6 +19,7 @@ import { TeamLink } from "@/components/EntityLinks"
 import { getApprovedMedicalPlayerIds } from "@/lib/medical"
 import { getTeamSubmissions } from "@/lib/playerSubmissions"
 import { setTeamCaptain } from "@/lib/gameFormData"
+import { getPlayerLoanGoals } from "@/lib/loans"
 import FollowButton from "@/components/FollowButton"
 import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
@@ -37,6 +38,13 @@ export default function TeamDetail() {
   const [playerTeams, setPlayerTeams] = useState([])
   const [medicalApproved, setMedicalApproved] = useState(new Set())
   const [submissions, setSubmissions] = useState([])
+  // Goals each player scored on loan for another team — shown apart from his goals here.
+  const [loanGoals, setLoanGoals] = useState({})
+  useEffect(() => {
+    let alive = true
+    if (players.length) getPlayerLoanGoals(players.map(p => p.id)).then(m => { if (alive) setLoanGoals(m) })
+    return () => { alive = false }
+  }, [players])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -128,7 +136,10 @@ export default function TeamDetail() {
     ? [...teams].filter(t => ageOf(t) === DEFAULT_AGE).sort(standingsComparator).findIndex(t => t.id === id) + 1
     : null
   const { byTeam: membersByTeam } = buildMemberMaps(playerTeams, players)
-  const roster = players.filter(p => membersByTeam.get(id)?.has(p.id)).sort((a, b) => (b.goals || 0) - (a.goals || 0))
+  // players.goals is his whole season, loan games included. On HIS team's page the goals
+  // number is what he scored for this team; loan goals get their own chip.
+  const ownGoals = (p) => Math.max(0, (p.goals || 0) - (loanGoals[p.id]?.goals || 0))
+  const roster = players.filter(p => membersByTeam.get(id)?.has(p.id)).sort((a, b) => ownGoals(b) - ownGoals(a))
   const isLinkedPlayer = !!profile?.player_id
   const onThisTeam = isLinkedPlayer && roster.some(p => p.id === profile.player_id)
   const gd = (team.goals_for || 0) - (team.goals_against || 0)
@@ -261,7 +272,13 @@ export default function TeamDetail() {
                     <Crown className="w-3.5 h-3.5" />
                   </button>
                 )}
-                {(player.goals || 0) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{player.goals}</span><span>⚽</span></span>}
+                {ownGoals(player) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{ownGoals(player)}</span><span>⚽</span></span>}
+                {(loanGoals[player.id]?.goals || 0) > 0 && (
+                  <span title={`שערים במשחקי השאלה לקבוצות אחרות (${loanGoals[player.id].games} מש׳)`}
+                    className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                    <span dir="ltr">+{loanGoals[player.id].goals}</span> בהשאלה
+                  </span>
+                )}
                 <span className="text-slate-400">{player.games_played || 0} מש׳</span>
               </div>
             </Link>
