@@ -48,3 +48,10 @@ describe('announcement (admin broadcast)', () => {
     expect(notificationHref(n({}))).toBe('/notifications')
   })
 })
+
+describe('claim_rejected carries the reviewer\'s reason', () => {
+  it('appends the reason when present', () => {
+    expect(notificationText({ type: 'claim_rejected', data: { player_name: 'דנה', reason: 'לא מוכר' } })).toBe('הבקשה שלך להתחבר לשחקן דנה נדחתה — לא מוכר')
+    expect(notificationText({ type: 'claim_rejected', data: { player_name: 'דנה' } })).toBe('הבקשה שלך להתחבר לשחקן דנה נדחתה')
+  })
+})

@@ -139,7 +139,7 @@ export function notificationText(n) {
     // @-tag (supabase/player-mentions.sql). The quoted text is notificationPreview.
     case 'tagged':         return `${actorName(n)} תייג/ה אותך ${d.where === 'comment' ? 'בתגובה' : 'בפוסט'}`
     case 'claim_approved': return `הבקשה שלך להתחבר לשחקן ${d.player_name || ''} אושרה 🎉`
-    case 'claim_rejected': return `הבקשה שלך להתחבר לשחקן ${d.player_name || ''} נדחתה`
+    case 'claim_rejected': return `הבקשה שלך להתחבר לשחקן ${d.player_name || ''} נדחתה${d.reason ? ` — ${d.reason}` : ''}`
     case 'role_granted':   return `קיבלת תפקיד: ${ROLE_LABEL[d.role] || d.role || ''}`
     case 'claim_request':  return `${d.claimant || 'משתמש'} מבקש/ת להתחבר לשחקן ${d.player_name || ''}`
     case 'content_report': return `דווח תוכן${d.reason ? ` — ${d.reason}` : ''}`

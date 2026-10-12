@@ -7,6 +7,7 @@ import { countsForStats, FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import { useAuth } from "@/lib/AuthContext"
 import { useSeasonMode } from "@/App"
 import { getClaimContext, createClaim, cancelClaim } from "@/lib/claims"
+import { linkRequestErrorMessage } from "@/lib/linkRequests"
 import { ArrowRight, Shirt, Shield, Calendar, RefreshCw, UserPlus, Check, Clock, Award, Trophy, Flame, AtSign } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
@@ -215,7 +216,7 @@ export default function PlayerDetail() {
   const handleClaim = async () => {
     setClaimBusy(true); setClaimErr(null)
     try { await createClaim(player.id); await refreshClaim() }
-    catch (e) { setClaimErr(e.message === 'not-authenticated' ? 'יש להתחבר תחילה' : 'שגיאה בשליחת הבקשה') }
+    catch (e) { setClaimErr(linkRequestErrorMessage(e)); refreshClaim() }
     finally { setClaimBusy(false) }
   }
   const handleCancelClaim = async () => {
@@ -227,7 +228,8 @@ export default function PlayerDetail() {
   }
   const owned = claimCtx && claimCtx.profile?.player_id === player.id
   const pendingHere = claimCtx?.pendingClaim && claimCtx.pendingClaim.player_id === player.id
-  const pendingElsewhere = claimCtx?.pendingClaim && claimCtx.pendingClaim.player_id !== player.id
+  // A pending NEW-card submission blocks a claim too (one open request per account).
+  const pendingElsewhere = (claimCtx?.pendingClaim && claimCtx.pendingClaim.player_id !== player.id) || !!claimCtx?.pendingSubmission
   const takenByOther = claimCtx && claimCtx.playerOwnerId && claimCtx.playerOwnerId !== claimCtx.userId
   const linkedElsewhere = claimCtx && claimCtx.profile?.player_id && claimCtx.profile.player_id !== player.id
   const canClaim = claimCtx && !owned && !takenByOther && !pendingHere && !pendingElsewhere && !linkedElsewhere
@@ -321,7 +323,9 @@ export default function PlayerDetail() {
               )}
             </span>
           ) : pendingElsewhere ? (
-            <span className="text-sm text-slate-500 dark:text-slate-400">כבר הגשת בקשת בעלות על שחקן אחר</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              {claimCtx?.pendingSubmission ? "כבר הגשת כרטיס שחקן חדש לאישור" : "כבר הגשת בקשת בעלות על שחקן אחר"} — אפשר לבטל בעמוד <Link to="/me" className="underline">החשבון</Link>
+            </span>
           ) : linkedElsewhere ? (
             <span className="text-sm text-slate-500 dark:text-slate-400">החשבון שלך כבר משויך לשחקן אחר</span>
           ) : !user ? (

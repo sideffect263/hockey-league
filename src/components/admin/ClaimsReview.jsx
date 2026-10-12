@@ -9,6 +9,8 @@ import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 function claimErrorMessage(e, fallback) {
   if (e?.message === "player-already-linked") return "השחקן כבר משויך לחשבון אחר"
   if (e?.message === "not-authorized") return "אין לך הרשאה לאשר או לדחות בקשה זו"
+  if (/profile_already_linked/.test(e?.message || "")) return "החשבון של המבקש/ת כבר משויך לשחקן אחר"
+  if (/not pending/.test(e?.message || "")) return "הבקשה כבר טופלה"
   return fallback
 }
 
@@ -25,6 +27,8 @@ export default function ClaimsReview({ teamsMap = {}, coachTeamIds = null }) {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
+  const [rejectingId, setRejectingId] = useState(null) // row showing the (optional) reason box
+  const [rejectText, setRejectText] = useState("")
 
   const load = async () => {
     try { setLoading(true); setError(null); setClaims(await getPendingClaims()) }
@@ -41,7 +45,7 @@ export default function ClaimsReview({ teamsMap = {}, coachTeamIds = null }) {
   }
   const doReject = async (claim) => {
     setBusyId(claim.id); setError(null)
-    try { await rejectClaim(claim.id); await load() }
+    try { await rejectClaim(claim.id, rejectText.trim()); setRejectingId(null); setRejectText(""); await load() }
     catch (e) { setError(claimErrorMessage(e, "שגיאה בדחיית הבקשה")) }
     finally { setBusyId(null) }
   }
@@ -89,7 +93,8 @@ export default function ClaimsReview({ teamsMap = {}, coachTeamIds = null }) {
             const claimant = claim.profiles?.display_name || "משתמש"
             const busy = busyId === claim.id
             return (
-              <div key={claim.id} className="card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div key={claim.id} className="card p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <TeamLogo team={team} size={10} />
                   <div className="min-w-0">
@@ -109,11 +114,23 @@ export default function ClaimsReview({ teamsMap = {}, coachTeamIds = null }) {
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50">
                     <Check className="w-3.5 h-3.5" /> אישור
                   </button>
-                  <button onClick={() => doReject(claim)} disabled={busy}
+                  <button onClick={() => { setRejectingId(rejectingId === claim.id ? null : claim.id); setRejectText("") }} disabled={busy}
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
                     <X className="w-3.5 h-3.5" /> דחייה
                   </button>
                 </div>
+              </div>
+              {rejectingId === claim.id && (
+                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row gap-2">
+                  <input value={rejectText} onChange={e => setRejectText(e.target.value.slice(0, 300))} autoFocus
+                    placeholder="סיבה (לא חובה) — תישלח למבקש/ת"
+                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  <button onClick={() => doReject(claim)} disabled={busy}
+                    className="text-xs font-semibold px-3 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 shrink-0">
+                    אישור דחייה
+                  </button>
+                </div>
+              )}
               </div>
             )
           })}

@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react"
 import { X, Search, Loader2, UserPlus, Check, Cake } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
-import { supabase } from "@/lib/supabase"
 import { createClaim } from "@/lib/claims"
+import { getMyLinkState, getLinkedPlayerIds, linkRequestErrorMessage, splitName } from "@/lib/linkRequests"
+import PlayerCardSubmission from "@/components/PlayerCardSubmission"
 import { getPlayers, getTeams } from "@/lib/api"
 import { getMyBirthDate, setPlayerBirthDate } from "@/lib/birthDate"
 
@@ -12,9 +13,15 @@ import { getMyBirthDate, setPlayerBirthDate } from "@/lib/birthDate"
  * find + claim their player profile. It's a thin UI over the existing claim flow
  * (lib/claims.createClaim → admin/coach approves via approve_claim).
  *
- * Shown at most once per account per device: a localStorage flag is set on both
- * "skip" and a successful claim, and an existing pending claim / linked player
- * suppresses it too. Mounted globally in Layout, next to <AuthModal/>.
+ * Two roads out of it: claim a card that exists, or — when the search comes up empty —
+ * submit a NEW card (PlayerCardSubmission, coach-approved). It used to offer only the
+ * first, so a brand-new player's only button was "I didn't play / skip", which hid
+ * onboarding for good and never mentioned the new-card form on /me.
+ *
+ * Suppressed for good (localStorage) by "אני לא שחקן/ית" or a sent request; "אחר כך"
+ * only hides it for this browser session. A pending claim OR submission, a linked
+ * player, or a FAILED read of that state all keep it hidden — a failed read must never
+ * look like "nothing pending". Mounted globally in Layout, next to <AuthModal/>.
  *
  * A player who IS already linked gets the other prompt this file carries: a quiet
  * bottom-corner request for his date of birth when his card has none. 73 of 97 cards
@@ -25,16 +32,20 @@ import { getMyBirthDate, setPlayerBirthDate } from "@/lib/birthDate"
  */
 
 const dismissKey = (uid) => `rink-onboarded:v1:${uid}`
+const laterKey = (uid) => `rink-onboard-later:v1:${uid}`
+const store = (kind) => { try { return window[kind] } catch { return null } }
 const dobSnoozeKey = (uid) => `rink-dob-ask:v1:${uid}`
 const DOB_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000
 
 export default function OnboardingModal() {
-  const { user, profile, loading } = useAuth()
-  const [phase, setPhase] = useState("hidden") // 'hidden' | 'prompt' | 'sent' | 'dob'
+  const { user, profile, loading, refreshProfile } = useAuth()
+  const [phase, setPhase] = useState("hidden") // 'hidden' | 'prompt' | 'create' | 'sent' | 'dob'
   const [dob, setDob] = useState("")             // the DOB nudge's input
   const [dobSaving, setDobSaving] = useState(false)
   const [dobErr, setDobErr] = useState(null)
   const [players, setPlayers] = useState([])
+  const [linkedIds, setLinkedIds] = useState(() => new Set()) // cards that already belong to an account
+  const [sentName, setSentName] = useState(null)
   const [teams, setTeams] = useState({}) // team_id -> { name, color }
   const [loadingList, setLoadingList] = useState(false)
   const [q, setQ] = useState("")
@@ -47,14 +58,16 @@ export default function OnboardingModal() {
     let alive = true
     if (loading || !user || !profile) return
     if (profile.player_id) return // already linked to a player
-    if (localStorage.getItem(dismissKey(user.id))) return // dismissed before
+    if (store("localStorage")?.getItem(dismissKey(user.id))) return // dismissed for good
+    if (store("sessionStorage")?.getItem(laterKey(user.id))) return // "later", this session
     ;(async () => {
-      // Don't nag a user who already has a claim awaiting review.
-      const { data: pending } = await supabase
-        .from("player_claims").select("id")
-        .eq("profile_id", user.id).eq("status", "pending").maybeSingle()
-      if (!alive || pending) return
-      setPhase("prompt")
+      // Don't nag a user who already has a claim OR a new card awaiting review. If the
+      // read fails, stay quiet: we can't tell, and asking again invites a duplicate.
+      try {
+        const st = await getMyLinkState()
+        if (!alive || st.pendingClaim || st.pendingSubmission) return
+        setPhase(p => (p === "hidden" ? "prompt" : p))
+      } catch { /* unknown state → don't prompt */ }
     })()
     return () => { alive = false }
   }, [user, profile, loading])
@@ -78,12 +91,13 @@ export default function OnboardingModal() {
     if (phase !== "prompt" || players.length) return
     let alive = true
     setLoadingList(true)
-    Promise.all([getPlayers("goals", false), getTeams()])
-      .then(([pl, tm]) => {
+    Promise.all([getPlayers("goals", false), getTeams(), getLinkedPlayerIds().catch(() => new Set())])
+      .then(([pl, tm, linked]) => {
         if (!alive) return
         const map = {}
         for (const t of tm || []) map[t.id] = { name: t.name, color: t.primary_color }
         setTeams(map)
+        setLinkedIds(linked)
         setPlayers(pl || [])
       })
       .catch(() => {})
@@ -94,15 +108,22 @@ export default function OnboardingModal() {
   const results = useMemo(() => {
     const s = q.trim()
     if (!s) return []
+    const num = /^\d{1,2}$/.test(s) ? Number(s) : null
     return players
-      .filter(p =>
-        `${p.first_name} ${p.last_name}`.includes(s) ||
-        `${p.last_name} ${p.first_name}`.includes(s))
+      .filter(p => num != null
+        ? p.jersey_number === num
+        : `${p.first_name} ${p.last_name}`.includes(s) || `${p.last_name} ${p.first_name}`.includes(s))
       .slice(0, 8)
   }, [q, players])
 
+  // "I'm not a player" — never ask this account again on this device.
   const dismiss = () => {
-    if (user) localStorage.setItem(dismissKey(user.id), String(Date.now()))
+    if (user) store("localStorage")?.setItem(dismissKey(user.id), String(Date.now()))
+    setPhase("hidden")
+  }
+  // "Later" / X / backdrop — ask again next visit, not now.
+  const later = () => {
+    if (user) store("sessionStorage")?.setItem(laterKey(user.id), "1")
     setPhase("hidden")
   }
 
@@ -111,10 +132,12 @@ export default function OnboardingModal() {
     setSubmitting(true); setError(null)
     try {
       await createClaim(selected.id)
-      if (user) localStorage.setItem(dismissKey(user.id), String(Date.now()))
+      if (user) store("localStorage")?.setItem(dismissKey(user.id), String(Date.now()))
+      setSentName(`${selected.first_name} ${selected.last_name}`)
       setPhase("sent")
     } catch (e) {
-      setError(e?.code === "23505" ? "כבר קיימת בקשה עבור שחקן זה" : "אירעה שגיאה, נסו שוב")
+      setError(linkRequestErrorMessage(e))
+      if (/profile_already_linked/.test(e?.message || "")) refreshProfile?.()
     } finally {
       setSubmitting(false)
     }
@@ -136,6 +159,17 @@ export default function OnboardingModal() {
   }
 
   if (phase === "hidden") return null
+
+  // Not on the list → propose a new card (coach-approved), prefilled with the search.
+  if (phase === "create") {
+    return (
+      <PlayerCardSubmission
+        initialName={splitName(q)}
+        onSubmitted={() => { if (user) store("localStorage")?.setItem(dismissKey(user.id), String(Date.now())) }}
+        onClose={() => setPhase(p => (p === "create" && user && store("localStorage")?.getItem(dismissKey(user.id)) ? "hidden" : "prompt"))}
+      />
+    )
+  }
 
   // Deliberately not a modal: no backdrop, nothing blocked, pinned to the bottom-right
   // (the chat launcher owns the bottom-left) and clear of the iOS home indicator.
@@ -173,12 +207,13 @@ export default function OnboardingModal() {
     )
   }
 
+  const btnLink = "text-xs font-semibold text-brand dark:text-brand-light hover:underline"
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={dismiss} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={later} />
       <div className="relative card w-full max-w-md p-6 shadow-2xl">
         <button
-          onClick={dismiss}
+          onClick={later}
           className="absolute top-4 left-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           aria-label="סגור"
         >
@@ -192,7 +227,7 @@ export default function OnboardingModal() {
             </div>
             <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">הבקשה נשלחה 🛼</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              בקשת השיוך ל־<span className="font-semibold text-slate-700 dark:text-slate-300">{selected?.first_name} {selected?.last_name}</span> ממתינה לאישור מנהל/מאמן. נעדכן אותך כשהיא תאושר.
+              בקשת השיוך ל־<span className="font-semibold text-slate-700 dark:text-slate-300">{sentName}</span> ממתינה לאישור המאמן או מנהל הליגה. נעדכן אותך כשהיא תאושר.
             </p>
             <button onClick={() => setPhase("hidden")} className="mt-5 w-full py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors">
               מעולה
@@ -205,7 +240,7 @@ export default function OnboardingModal() {
             </div>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">שיחקת בליגה?</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              מצא/י את פרופיל השחקן שלך ושייך/י אותו לחשבון — כדי לראות את הסטטיסטיקות, המשחקים והתמונות שלך.
+              מצא/י את כרטיס השחקן שלך ושייך/י אותו לחשבון — כדי לראות את הסטטיסטיקות, המשחקים והתמונות שלך. אין לך כרטיס? אפשר לפתוח חדש.
             </p>
 
             <div className="relative mt-4">
@@ -214,7 +249,7 @@ export default function OnboardingModal() {
                 autoFocus
                 value={q}
                 onChange={e => { setQ(e.target.value); setSelected(null); setError(null) }}
-                placeholder="חיפוש לפי שם…"
+                placeholder="חיפוש לפי שם או מספר…"
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
               />
             </div>
@@ -223,7 +258,13 @@ export default function OnboardingModal() {
               {loadingList ? (
                 <div className="flex items-center justify-center py-6 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
               ) : q.trim() && results.length === 0 ? (
-                <p className="text-center text-xs text-slate-400 py-6">לא נמצאו שחקנים בשם הזה</p>
+                <div className="text-center py-5 space-y-2.5">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">לא מצאנו אותך?</p>
+                  <button onClick={() => setPhase("create")}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors">
+                    <UserPlus className="w-3.5 h-3.5" /> יצירת כרטיס שחקן חדש
+                  </button>
+                </div>
               ) : !q.trim() ? (
                 <p className="text-center text-xs text-slate-400 py-6">התחילו להקליד את שמכם…</p>
               ) : (
@@ -231,18 +272,22 @@ export default function OnboardingModal() {
                   {results.map(p => {
                     const team = teams[p.team_id]
                     const isSel = selected?.id === p.id
+                    const taken = linkedIds.has(p.id)
                     return (
                       <button
                         key={p.id}
+                        disabled={taken}
                         onClick={() => setSelected(p)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-right transition-colors ${isSel ? "bg-brand/10 ring-1 ring-brand/40" : "hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-right transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isSel ? "bg-brand/10 ring-1 ring-brand/40" : "hover:bg-slate-50 dark:hover:bg-slate-800"}`}
                       >
                         <span className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: team?.color || "#94a3b8" }}>
                           {p.jersey_number ?? (p.first_name?.charAt(0) || "?")}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-semibold text-slate-900 dark:text-white truncate">{p.first_name} {p.last_name}</span>
-                          {team?.name && <span className="block text-[11px] text-slate-400 truncate">{team.name}</span>}
+                          <span className="block text-[11px] text-slate-400 truncate">
+                            {taken ? "כבר משויך לחשבון" : team?.name || "שחקן/ית חופשי/ה"}
+                          </span>
                         </span>
                         {isSel && <Check className="w-4 h-4 text-brand shrink-0" />}
                       </button>
@@ -260,11 +305,21 @@ export default function OnboardingModal() {
               className="mt-4 w-full py-2.5 rounded-xl bg-brand text-white font-bold hover:bg-brand-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              בקשת שיוך לפרופיל
+              בקשת שיוך לכרטיס
             </button>
-            <button onClick={dismiss} className="mt-2 w-full py-2 rounded-xl text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-              לא שיחקתי בליגה / דלג
-            </button>
+            {(!q.trim() || results.length > 0) && (
+              <p className="mt-3 text-center">
+                <button onClick={() => setPhase("create")} className={btnLink}>לא מצאתי את עצמי — יצירת כרטיס חדש</button>
+              </p>
+            )}
+            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between gap-2">
+              <button onClick={dismiss} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                אני לא שחקן/ית
+              </button>
+              <button onClick={later} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                אחר כך
+              </button>
+            </div>
           </>
         )}
       </div>

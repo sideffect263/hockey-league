@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { X, Loader2, UserPlus, CheckCircle2 } from "lucide-react"
 import { getTeams } from "@/lib/api"
 import { createPlayerSubmission } from "@/lib/playerSubmissions"
+import { linkRequestErrorMessage } from "@/lib/linkRequests"
 
 const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
 
@@ -19,10 +20,15 @@ function Field({ label, children }) {
  * files a PENDING player_submission; the team's coach (or an admin) approves it in
  * the admin "בקשות" tab, which creates the real players row and links this account.
  * Calls onSubmitted() so the caller can refresh its pending-submission state.
+ * `initialName` ({ firstName, lastName }) prefills the form — onboarding passes what
+ * the user just searched for and didn't find.
  */
-export default function PlayerCardSubmission({ onClose, onSubmitted }) {
+export default function PlayerCardSubmission({ onClose, onSubmitted, initialName }) {
   const [teams, setTeams] = useState([])
-  const [form, setForm] = useState({ teamId: "", firstName: "", lastName: "", jerseyNumber: "", position: "Field Player", age: "", note: "" })
+  const [form, setForm] = useState({
+    teamId: "", firstName: initialName?.firstName || "", lastName: initialName?.lastName || "",
+    jerseyNumber: "", position: "Field Player", birthDate: "", note: "",
+  })
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState(null)
@@ -30,7 +36,7 @@ export default function PlayerCardSubmission({ onClose, onSubmitted }) {
   useEffect(() => { getTeams("name", true).then(setTeams).catch(() => setTeams([])) }, [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const canSubmit = form.teamId && form.firstName.trim() && form.lastName.trim() && !saving
+  const canSubmit = form.teamId && form.firstName.trim() && form.lastName.trim() && form.birthDate && !saving
 
   const submit = async () => {
     if (!canSubmit) return
@@ -42,15 +48,13 @@ export default function PlayerCardSubmission({ onClose, onSubmitted }) {
         lastName: form.lastName.trim(),
         jerseyNumber: form.jerseyNumber ? parseInt(form.jerseyNumber, 10) : null,
         position: form.position.trim() || null,
-        age: form.age ? parseInt(form.age, 10) : null,
+        birthDate: form.birthDate,
         note: form.note.trim() || null,
       })
       setDone(true)
       onSubmitted?.()
     } catch (e) {
-      setError(e?.message === "submission-already-pending"
-        ? "כבר יש לך בקשה ממתינה לאישור"
-        : "שגיאה בשליחת הבקשה, נסו שוב")
+      setError(linkRequestErrorMessage(e))
     } finally { setSaving(false) }
   }
 
@@ -100,12 +104,9 @@ export default function PlayerCardSubmission({ onClose, onSubmitted }) {
                   <input value={form.lastName} onChange={e => set("lastName", e.target.value.slice(0, 40))} className={inputCls} />
                 </Field>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <Field label="מספר">
                   <input value={form.jerseyNumber} onChange={e => set("jerseyNumber", e.target.value.replace(/\D/g, "").slice(0, 2))} inputMode="numeric" className={inputCls} />
-                </Field>
-                <Field label="גיל">
-                  <input value={form.age} onChange={e => set("age", e.target.value.replace(/\D/g, "").slice(0, 2))} inputMode="numeric" className={inputCls} />
                 </Field>
                 <Field label="עמדה">
                   <select value={form.position} onChange={e => set("position", e.target.value)} className={inputCls}>
@@ -114,6 +115,11 @@ export default function PlayerCardSubmission({ onClose, onSubmitted }) {
                   </select>
                 </Field>
               </div>
+              <Field label="תאריך לידה">
+                <input type="date" dir="ltr" value={form.birthDate} max={new Date().toLocaleDateString("en-CA")} min="1930-01-02"
+                  onChange={e => set("birthDate", e.target.value)} className={`${inputCls} tabular-nums`} />
+                <p className="text-[11px] text-slate-400 mt-1">משמש לכללי ההשאלה (עד גיל 18, או שוער/ת). לא מוצג בפומבי.</p>
+              </Field>
               <Field label="הערה למאמן (לא חובה)">
                 <textarea value={form.note} onChange={e => set("note", e.target.value.slice(0, 200))} rows={2} className={inputCls} />
               </Field>

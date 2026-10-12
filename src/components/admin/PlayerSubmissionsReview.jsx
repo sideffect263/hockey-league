@@ -5,8 +5,16 @@ import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
+// Submissions now carry a birth_date (older app builds still send age).
+function ageFromBirthDate(iso) {
+  const b = new Date(`${iso}T00:00:00`), n = new Date()
+  return n.getFullYear() - b.getFullYear() - ((n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) ? 1 : 0)
+}
+
 function submissionError(e, fallback) {
   if (e?.message === "not-authorized") return "אין לך הרשאה לאשר או לדחות בקשה זו"
+  if (/profile_already_linked/.test(e?.message || "")) return "החשבון של המגיש/ה כבר משויך לשחקן — אשרו שיוך במקום כרטיס חדש"
+  if (/not pending/.test(e?.message || "")) return "הבקשה כבר טופלה"
   return fallback
 }
 
@@ -101,7 +109,7 @@ export default function PlayerSubmissionsReview({ teamsMap = {}, coachTeamIds = 
             const meta = [
               s.jersey_number != null ? `#${s.jersey_number}` : null,
               s.position || null,
-              s.age != null ? `גיל ${s.age}` : null,
+              s.birth_date ? `גיל ${ageFromBirthDate(s.birth_date)}` : s.age != null ? `גיל ${s.age}` : null,
             ].filter(Boolean).join(" · ")
             const busy = busyId === s.id
             return (

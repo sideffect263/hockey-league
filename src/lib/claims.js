@@ -17,6 +17,7 @@ import { sessionUser } from './sessionUser'
  *  - userId: current auth user id (null if signed out)
  *  - profile: the user's profiles row (has player_id if already linked)
  *  - pendingClaim: the user's open claim, if any (across all players)
+ *  - pendingSubmission: the user's open NEW-card submission, if any (blocks claiming)
  *  - playerOwnerId: profile id that already owns THIS player, or null
  */
 export async function getClaimContext(playerId) {
@@ -26,18 +27,20 @@ export async function getClaimContext(playerId) {
     .from('profiles').select('id').eq('player_id', playerId).maybeSingle()
   if (ownerErr) throw ownerErr
 
-  let profile = null, pendingClaim = null
+  let profile = null, pendingClaim = null, pendingSubmission = null
   if (user) {
-    const [{ data: p, error: pErr }, { data: c, error: cErr }] = await Promise.all([
+    const [{ data: p, error: pErr }, { data: c, error: cErr }, { data: s, error: sErr }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase.from('player_claims').select('*').eq('profile_id', user.id).eq('status', 'pending').maybeSingle(),
+      supabase.from('player_submissions').select('id').eq('profile_id', user.id).eq('status', 'pending').maybeSingle(),
     ])
     if (pErr) throw pErr
     if (cErr) throw cErr
-    profile = p; pendingClaim = c
+    if (sErr) throw sErr
+    profile = p; pendingClaim = c; pendingSubmission = s
   }
 
-  return { userId: user?.id ?? null, profile, pendingClaim, playerOwnerId: owner?.id ?? null }
+  return { userId: user?.id ?? null, profile, pendingClaim, pendingSubmission, playerOwnerId: owner?.id ?? null }
 }
 
 export async function createClaim(playerId, note) {
@@ -106,8 +109,9 @@ export async function approveClaim(claimId) {
   }
 }
 
-export async function rejectClaim(claimId) {
-  const { error } = await supabase.rpc('reject_claim', { p_claim_id: claimId })
+/** Optional reason → player_claims.decision_note, and into the claimant's notification. */
+export async function rejectClaim(claimId, reason) {
+  const { error } = await supabase.rpc('reject_claim', { p_claim_id: claimId, p_reason: reason || null })
   if (error) {
     if (/not authorized/i.test(error.message || '')) throw new Error('not-authorized')
     throw error

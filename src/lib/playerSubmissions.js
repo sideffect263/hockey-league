@@ -28,7 +28,7 @@ export async function getMyPlayerSubmission() {
   return data
 }
 
-export async function createPlayerSubmission({ teamId, firstName, lastName, jerseyNumber, position, age, note }) {
+export async function createPlayerSubmission({ teamId, firstName, lastName, jerseyNumber, position, birthDate, note }) {
   const user = await sessionUser()
   if (!user) throw new Error('not-authenticated')
   const { data, error } = await supabase
@@ -40,7 +40,9 @@ export async function createPlayerSubmission({ teamId, firstName, lastName, jers
       last_name: lastName,
       jersey_number: jerseyNumber ?? null,
       position: position || null,
-      age: age ?? null,
+      // birth_date, not age: the loan rule (under 18 / goalkeeper) reads it, and
+      // approve_player_submission copies it onto the new player.
+      birth_date: birthDate || null,
       note: note || null,
     })
     .select().single()

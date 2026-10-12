@@ -9,7 +9,9 @@ import {
 import { useAuth } from "@/lib/AuthContext"
 import { useTheme } from "@/lib/ThemeContext"
 import { getMyProfile, updateMyProfile, getPlayerPhotos, disconnectPairing, uploadAvatar } from "@/lib/profile"
-import { getMyPlayerSubmission } from "@/lib/playerSubmissions"
+import { cancelPlayerSubmission } from "@/lib/playerSubmissions"
+import { cancelClaim } from "@/lib/claims"
+import { getMyLinkState } from "@/lib/linkRequests"
 import PlayerCardSubmission from "@/components/PlayerCardSubmission"
 import TeamMembershipCard from "@/components/TeamMembershipCard"
 import MedicalCertificateCard from "@/components/MedicalCertificateCard"
@@ -35,7 +37,13 @@ export default function Profile() {
   const [photos, setPhotos] = useState([])
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
-  const [pendingSubmission, setPendingSubmission] = useState(null)
+  // Claim / new-card state for an UNLINKED account. linkState null + linkErr = the read
+  // failed: show a retry, never the "claim / create" CTAs (that invites a duplicate).
+  const [linkState, setLinkState] = useState(null)
+  const [linkErr, setLinkErr] = useState(false)
+  const [confirmCancelReq, setConfirmCancelReq] = useState(false)
+  const [cancellingReq, setCancellingReq] = useState(false)
+  const [cancelReqErr, setCancelReqErr] = useState(null)
   const [showCreateCard, setShowCreateCard] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarErr, setAvatarErr] = useState(null)
@@ -91,11 +99,11 @@ export default function Profile() {
         setName(d?.profile?.display_name || "")
         setAvatar(d?.profile?.avatar_url || "")
         if (d?.player) {
-          setPendingSubmission(null)
+          setLinkState(null)
           getPlayerPhotos(d.player.id).then(ph => alive && setPhotos(ph)).catch(() => {})
         } else {
           setPhotos([])
-          getMyPlayerSubmission().then(s => alive && setPendingSubmission(s)).catch(() => {})
+          loadLinkState(() => alive)
         }
       })
       .catch(() => alive && setData(null))
@@ -103,12 +111,33 @@ export default function Profile() {
     return () => { alive = false }
   }, [user, authLoading])
 
+  function loadLinkState(isAlive = () => true) {
+    setLinkErr(false)
+    return getMyLinkState()
+      .then(st => { if (isAlive()) setLinkState(st) })
+      .catch(() => { if (isAlive()) { setLinkState(null); setLinkErr(true) } })
+  }
+
   const reloadProfile = () => {
     getMyProfile().then(d => {
       setData(d)
-      if (d?.player) setPendingSubmission(null)
-      else getMyPlayerSubmission().then(setPendingSubmission).catch(() => {})
+      if (d?.player) setLinkState(null)
+      else loadLinkState()
     }).catch(() => {})
+  }
+
+  const cancelPendingRequest = async () => {
+    setCancellingReq(true); setCancelReqErr(null)
+    try {
+      if (linkState?.pendingClaim) await cancelClaim(linkState.pendingClaim.id)
+      else if (linkState?.pendingSubmission) await cancelPlayerSubmission(linkState.pendingSubmission.id)
+      setConfirmCancelReq(false)
+    } catch (e) {
+      setCancelReqErr(/not-cancelable/.test(e?.message || "") ? "הבקשה כבר טופלה — מרעננים" : "הביטול נכשל, נסו שוב")
+    } finally {
+      setCancellingReq(false)
+      reloadProfile()
+    }
   }
 
   const doDisconnect = async () => {
@@ -172,7 +201,10 @@ export default function Profile() {
   if (authLoading || loading) return <ProfileSkeleton />
 
   const player = data?.player || null
-  const pendingClaim = data?.pendingClaim || null
+  const pendingClaim = linkState?.pendingClaim || null
+  const pendingSubmission = linkState?.pendingSubmission || null
+  const lastRejection = linkState?.lastRejection || null
+  const linkedButUnloaded = !player && !!data?.profile?.player_id
   const isJudge = hasRole("judge")
   const isPlayer = !!player
   // Badges are derived from the RAW granted roles (+ admin/player signals) so
@@ -243,28 +275,59 @@ export default function Profile() {
             )}
           </div>
         </div>
-      ) : pendingClaim ? (
-        <div className="card p-4 flex items-center gap-3 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
-          <Clock className="w-5 h-5 text-amber-500 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">בקשת בעלות ממתינה לאישור מנהל</p>
-            <p className="text-[11px] text-amber-600/80 dark:text-amber-500/80 truncate">
-              {pendingClaim.players ? `${pendingClaim.players.first_name} ${pendingClaim.players.last_name}` : "שחקן"}
-            </p>
-          </div>
+      ) : linkedButUnloaded ? null : linkErr ? (
+        <div className="card p-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500 dark:text-slate-400">לא הצלחנו לטעון את מצב השיוך</p>
+          <button onClick={() => loadLinkState()} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shrink-0">
+            נסו שוב
+          </button>
         </div>
-      ) : pendingSubmission ? (
-        <div className="card p-4 flex items-center gap-3 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
-          <Clock className="w-5 h-5 text-amber-500 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">כרטיס השחקן שלך ממתין לאישור המאמן</p>
-            <p className="text-[11px] text-amber-600/80 dark:text-amber-500/80 truncate">
-              {pendingSubmission.first_name} {pendingSubmission.last_name}{pendingSubmission.teams?.name ? ` · ${pendingSubmission.teams.name}` : ""}
-            </p>
+      ) : !linkState ? null : (pendingClaim || pendingSubmission) ? (
+        <div className="card p-4 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                {pendingClaim ? "בקשת השיוך ממתינה לאישור המאמן או מנהל הליגה" : "כרטיס השחקן שלך ממתין לאישור המאמן"}
+              </p>
+              <p className="text-[11px] text-amber-600/80 dark:text-amber-500/80 truncate">
+                {pendingClaim
+                  ? (pendingClaim.players ? `${pendingClaim.players.first_name} ${pendingClaim.players.last_name}` : "שחקן")
+                  : `${pendingSubmission.first_name} ${pendingSubmission.last_name}${pendingSubmission.teams?.name ? ` · ${pendingSubmission.teams.name}` : ""}`}
+              </p>
+            </div>
+            {!confirmCancelReq && (
+              <button onClick={() => { setConfirmCancelReq(true); setCancelReqErr(null) }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg text-amber-700 dark:text-amber-400 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors shrink-0">
+                ביטול הבקשה
+              </button>
+            )}
           </div>
+          {confirmCancelReq && (
+            <div className="mt-3 pt-3 border-t border-amber-200/70 dark:border-amber-800/60 flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs text-amber-700 dark:text-amber-400">לבטל את הבקשה? אפשר להגיש חדשה אחר כך.</span>
+              <div className="flex items-center gap-2">
+                <button onClick={cancelPendingRequest} disabled={cancellingReq}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50">
+                  {cancellingReq && <Loader2 className="w-3.5 h-3.5 animate-spin" />} כן, בטל
+                </button>
+                <button onClick={() => setConfirmCancelReq(false)} disabled={cancellingReq}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 transition-colors">
+                  השאר
+                </button>
+              </div>
+            </div>
+          )}
+          {cancelReqErr && <p className="mt-2 text-[11px] text-red-600 dark:text-red-400">{cancelReqErr}</p>}
         </div>
       ) : (
         <div className="card p-4 space-y-3">
+          {lastRejection && (
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 px-3 py-2">
+              <p className="text-xs font-bold text-red-700 dark:text-red-400">הבקשה האחרונה שלך נדחתה{lastRejection.name ? ` (${lastRejection.name})` : ""}</p>
+              {lastRejection.reason && <p className="text-[11px] text-red-600/90 dark:text-red-400/90 mt-0.5">{lastRejection.reason}</p>}
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
@@ -457,7 +520,7 @@ export default function Profile() {
       {showCreateCard && (
         <PlayerCardSubmission
           onClose={() => setShowCreateCard(false)}
-          onSubmitted={() => getMyPlayerSubmission().then(setPendingSubmission).catch(() => {})}
+          onSubmitted={() => loadLinkState()}
         />
       )}
     </div>
