@@ -1,4 +1,4 @@
--- Applied LIVE 2026-10-12 (migrations game_any_season_rpc + game_any_season_no_planned).
+-- Applied LIVE 2026-10-12 (migrations game_any_season_rpc, _no_planned, _embeds).
 -- One game + its box score, from ANY season. The games / game_stats RLS keeps archived
 -- seasons out of every list (standings, statistics, calendars) on purpose; this only
 -- answers "show me THIS game", so an old link opens the game instead of "not found".
@@ -17,8 +17,17 @@ as $$
      limit 1
   )
   select case when g.id is null then null else jsonb_build_object(
-           'game',  to_jsonb(g),
-           'stats', coalesce((select jsonb_agg(to_jsonb(s)) from public.game_stats s where s.game_id = g.id), '[]'::jsonb)
+           -- team name + crest embedded like the apps' games select, so one call is enough
+           'game', to_jsonb(g) || jsonb_build_object(
+               'home_team', (select jsonb_build_object('name', t.name, 'logo_url', t.logo_url) from public.teams t where t.id = g.home_team_id),
+               'away_team', (select jsonb_build_object('name', t.name, 'logo_url', t.logo_url) from public.teams t where t.id = g.away_team_id)),
+           'season_name', (select s.name from public.seasons s where s.id = g.season_id),
+           'stats', coalesce((
+               select jsonb_agg(to_jsonb(st) || jsonb_build_object('player',
+                        (select jsonb_build_object('first_name', p.first_name, 'last_name', p.last_name,
+                                                   'jersey_number', p.jersey_number, 'team_id', p.team_id)
+                           from public.players p where p.id = st.player_id)))
+                 from public.game_stats st where st.game_id = g.id), '[]'::jsonb)
          ) end
     from g
    where (not g.is_test or public.can_see_test())
