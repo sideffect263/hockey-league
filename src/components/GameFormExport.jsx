@@ -53,6 +53,14 @@ function Section({ title, hint, children }) {
   )
 }
 
+/** The league logo for the form's title band — or none, rather than no form, if it won't load. */
+async function leagueLogo() {
+  try {
+    const res = await fetch("/logos/main-logo.png")
+    return res.ok ? new Uint8Array(await res.arrayBuffer()) : null
+  } catch { return null }
+}
+
 export default function GameFormExport({ game, home, away, players, stats, refereeName }) {
   const { isAdmin, isJudgeRole, isLeagueManager, coachTeamIds } = useAuth()
   const [open, setOpen] = useState(false)
@@ -104,7 +112,7 @@ export default function GameFormExport({ game, home, away, players, stats, refer
         fields,
         signatures: sources?.signatures || {},
       })
-      downloadBytes(buildGameForm(report), gameFormFilename({ game, home, away }))
+      downloadBytes(buildGameForm({ ...report, logo: await leagueLogo() }), gameFormFilename({ game, home, away }))
       close()
     } catch (e) {
       console.error(e)
