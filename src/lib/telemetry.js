@@ -231,7 +231,10 @@ export function initTelemetry() {
     // worth knowing about (a dead crest, a chunk that 404s after a deploy) but they
     // are a different animal from a thrown exception, so name them apart.
     if (e?.target && e.target !== window && e.target.tagName) {
-      trackError('asset_error', { tag: e.target.tagName.toLowerCase(), src: String(e.target.src || e.target.href || '').slice(0, 200) })
+      // An SVG <image>'s href is an SVGAnimatedString, not a string — read its baseVal.
+      const raw = e.target.src || e.target.href
+      const src = raw && typeof raw === 'object' ? raw.baseVal : raw
+      trackError('asset_error', { tag: e.target.tagName.toLowerCase(), src: String(src || '').slice(0, 200) })
       return
     }
     trackError('js_error', {
