@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus, LayoutGrid } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus, LayoutGrid, Wand2 } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useSlugId } from "@/lib/slugs"
 import { getGameById, getTeams } from "@/lib/api"
 import { getGameVideos, subscribeGameVideo, groupCameras } from "@/lib/video"
 import {
   getBroadcast, subscribeBroadcast, saveBroadcast, setCameraHidden, renameCamera, getCameraStreamers, BROADCAST_DEFAULTS,
-  LAYOUT_SLOTS,
+  LAYOUT_SLOTS, getCameraActivity,
 } from "@/lib/streamControl"
 import { useCameraOnAir } from "@/lib/useCameraOnAir"
 import { useStreamViewers } from "@/lib/useStreamViewers"
@@ -25,6 +25,8 @@ import LiveMultiView, { useLiveTiles } from "@/components/LiveMultiView"
  *    connection), approve / hide (a new camera is hidden until approved), put on air, rename.
  *  - Layout: one camera, picture-in-picture, side by side or a 2x2 grid — the camera on air
  *    is the main picture, the director adds the others ("הוסף לתצוגה").
+ *  - Auto-director: phones with "מעקב אוטומטי" report how many players they see; the server
+ *    cuts to the camera with the play (two phones, one per half). See auto-director.sql.
  *  - Settings: score overlay on/off + corner, cap on simultaneous cameras, lock new streams.
  *
  * Nothing is mixed on a server: the settings live in game_broadcast and every viewer's
@@ -154,6 +156,8 @@ export default function GameControl() {
         )}
       </section>
 
+      <AutoDirector bc={bc} cameras={approved} gameId={gameId} save={save} />
+
       {/* Cameras */}
       {pending.length > 0 && (
         <section className="space-y-2">
@@ -175,7 +179,9 @@ export default function GameControl() {
             <CameraCard key={c.key} camera={c} gameId={gameId} onAir={bc.program_camera_no === c.no} streamer={streamers[c.no]}
               inLayout={slots > 0 && extras.slice(0, slots).includes(c.no)}
               onToggleLayout={slots > 0 && bc.program_camera_no !== c.no ? () => toggleExtra(c.no) : null}
-              onPutOnAir={() => save({ program_camera_no: c.no, layout_cameras: extras.filter((n) => n !== c.no) })}
+              // A hand-picked camera ends the auto-director (it would cut away again a second later).
+              onPutOnAir={() => save({ program_camera_no: c.no, layout_cameras: extras.filter((n) => n !== c.no),
+                ...(bc.auto_director ? { auto_director: false } : {}) })}
               onHide={() => act(async () => {
                 await setCameraHidden(gameId, c.no, true)
                 if (bc.program_camera_no === c.no) await save({ program_camera_no: null })
@@ -215,6 +221,71 @@ export default function GameControl() {
         </Row>
       </section>
     </div>
+  )
+}
+
+// בימוי אוטומטי — two (or more) phones with "מעקב אוטומטי", each on part of the rink, report
+// how many players they see; the server puts the one with the play on air, `auto_delay_s`
+// seconds behind real time so the cut reaches viewers (whose video lags) as the play crosses.
+function AutoDirector({ bc, cameras, gameId, save }) {
+  const [counts, setCounts] = useState({})
+  useEffect(() => {
+    if (!gameId) return
+    let alive = true, timer = null
+    const tick = async () => {
+      try { const c = await getCameraActivity(gameId); if (alive) setCounts(c) } catch { /* admin read; ignore */ }
+      if (alive) timer = setTimeout(tick, 2000)
+    }
+    tick()
+    return () => { alive = false; clearTimeout(timer) }
+  }, [gameId])
+  const reporting = cameras.filter((c) => counts[c.no] != null)
+  const chosen = bc.auto_cameras || []
+  const inAuto = (no) => !chosen.length || chosen.includes(no)
+  const toggleCam = (no) => {
+    const base = chosen.length ? chosen : cameras.map((c) => c.no)
+    const next = base.includes(no) ? base.filter((n) => n !== no) : [...base, no]
+    // Everyone selected again = back to "all" (new cameras join automatically).
+    save({ auto_cameras: next.length === cameras.length ? [] : next.slice(0, 4) })
+  }
+  return (
+    <section className="card p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-bold text-sm"><Wand2 className="w-4 h-4 text-brand" /> בימוי אוטומטי</h2>
+        <Toggle on={bc.auto_director} onChange={(v) => save({ auto_director: v })} />
+      </div>
+      <p className="text-xs text-slate-500">
+        לשתי מצלמות (אחת לכל חצי מגרש) עם "מעקב אוטומטי" באפליקציה: המצלמה שרואה הכי הרבה שחקנים עולה לאוויר.
+        בחירה ידנית של מצלמה מכבה את הבימוי האוטומטי.
+      </p>
+      {cameras.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {cameras.map((c) => (
+            <button key={c.key} onClick={() => toggleCam(c.no)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${inAuto(c.no)
+                ? "border-brand bg-brand/10 text-slate-900 dark:text-white" : "border-slate-200 dark:border-slate-700 text-slate-400"}`}>
+              {inAuto(c.no) && <Check className="w-3.5 h-3.5" />} {c.label}
+              <span className="font-medium tabular-nums text-slate-500">
+                {counts[c.no] != null ? `· ${counts[c.no]} שחקנים` : "· לא מדווחת"}
+              </span>
+              {bc.program_camera_no === c.no && <span className="w-2 h-2 rounded-full bg-red-500" aria-label="באוויר" />}
+            </button>
+          ))}
+        </div>
+      )}
+      {bc.auto_director && reporting.length < 2 && (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          צריך לפחות שתי מצלמות שמדווחות (מעקב אוטומטי + מצב "חצי מגרש" באפליקציה).
+        </p>
+      )}
+      <Row label="השהיית החלפה" hint="כמה שניות הצופים מאחורי המגרש (בדרך כלל 10–20)">
+        <div className="flex items-center gap-2">
+          <IconBtn label="פחות" disabled={bc.auto_delay_s <= 0} onClick={() => save({ auto_delay_s: bc.auto_delay_s - 1 })}><Minus className="w-4 h-4" /></IconBtn>
+          <span className="w-8 text-center font-bold tabular-nums">{bc.auto_delay_s}″</span>
+          <IconBtn label="יותר" disabled={bc.auto_delay_s >= 60} onClick={() => save({ auto_delay_s: bc.auto_delay_s + 1 })}><Plus className="w-4 h-4" /></IconBtn>
+        </div>
+      </Row>
+    </section>
   )
 }
 

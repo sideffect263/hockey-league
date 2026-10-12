@@ -371,9 +371,16 @@ export default function GameVideo({ game, home, away, players = [] }) {
   const video = (!broadcasting && parts.find(v => v.id === selectedId)) || [...parts].reverse().find(isLiveRow) || parts[0] || null
   // Multi-view: the director's layout around the camera on air. Extras = approved cameras
   // the director added, on air now.
-  const layoutExtras = broadcast.layout === "single" ? [] : (broadcast.layout_cameras || [])
-    .map(no => cameras.find(c => c.no === no && !c.hidden))
-    .filter(c => c && c.key !== autoCamera?.key)
+  // Auto-director with one camera on screen: the other auto cameras play hidden ("cut"), so
+  // the server's cut to the half with the play is instant on every screen.
+  const cutMode = broadcast.auto_director && broadcast.layout === "single"
+  const viewLayout = cutMode ? "cut" : broadcast.layout
+  const layoutExtras = cutMode
+    ? cameras.filter(c => c.no != null && c.key !== autoCamera?.key
+        && (!broadcast.auto_cameras?.length || broadcast.auto_cameras.includes(c.no))).slice(0, 3)
+    : broadcast.layout === "single" ? [] : (broadcast.layout_cameras || [])
+      .map(no => cameras.find(c => c.no === no && !c.hidden))
+      .filter(c => c && c.key !== autoCamera?.key)
   const tiles = useLiveTiles(autoCamera && layoutExtras.length ? [autoCamera, ...layoutExtras] : [])
   // Not gated on game.status: cameras go up before kick-off (warm-up, a test game that was
   // never started on the board), and useLiveTiles already drops any camera not on air.
@@ -472,7 +479,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
               <PartTabs videos={parts} selected={video} onSelect={(v) => { setSelectedId(v.id); setPlayer(null); setDuration(0) }} />
             )}
             {multi ? (
-              <LiveMultiView layout={broadcast.layout} tiles={multi} onLatency={setMultiLatency} overlayPosition={broadcast.overlay_position}>
+              <LiveMultiView layout={viewLayout} tiles={multi} onLatency={setMultiLatency} overlayPosition={broadcast.overlay_position}>
                 {broadcast.overlay_score && (
                   <ScoreOverlay gameId={gameId} home={home} away={away} latencyMs={multiLatency?.ms ?? 0} position={broadcast.overlay_position} />
                 )}

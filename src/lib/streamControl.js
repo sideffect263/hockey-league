@@ -16,12 +16,17 @@ export const BROADCAST_DEFAULTS = {
   // Multi-view (2026-10-12): how extra cameras are shown with the program camera.
   layout: 'single',          // single | pip | side | grid
   layout_cameras: [],        // camera_no of the extras, in order (max 3)
+  // Auto-director (2026-10-12): phones with "מעקב אוטומטי" report their player count; the
+  // server cuts to the camera with the play, `auto_delay_s` behind real time (≈ stream lag).
+  auto_director: false,
+  auto_delay_s: 15,
+  auto_cameras: [],          // which cameras take part; empty = every approved one reporting
 }
 
 // How many extra cameras each layout shows next to the program camera.
 export const LAYOUT_SLOTS = { single: 0, pip: 1, side: 1, grid: 3 }
 
-const COLS = 'game_id, program_camera_no, overlay_score, overlay_position, max_cameras, streaming_locked, layout, layout_cameras, updated_at'
+const COLS = 'game_id, program_camera_no, overlay_score, overlay_position, max_cameras, streaming_locked, layout, layout_cameras, auto_director, auto_delay_s, auto_cameras, updated_at'
 
 // A game's settings, or the defaults when the director never touched them.
 export async function getBroadcast(gameId) {
@@ -84,5 +89,18 @@ export async function getCameraStreamers(gameId) {
   const nameOf = Object.fromEntries((profiles || []).map(p => [p.id, p.display_name]))
   const out = {}
   for (const r of rows || []) if (r.created_by && out[r.camera_no] == null) out[r.camera_no] = nameOf[r.created_by] || null
+  return out
+}
+
+// Admin: the player count each camera reported in the last few seconds — { [camera_no]: n }
+// (auto-director). Cameras that stopped reporting are left out.
+export async function getCameraActivity(gameId) {
+  const since = new Date(Date.now() - 5000).toISOString()
+  const { data, error } = await supabase
+    .from('game_camera_activity').select('camera_no, players, at')
+    .eq('game_id', gameId).gte('at', since).order('at', { ascending: false })
+  if (error) throw error
+  const out = {}
+  for (const r of data || []) if (out[r.camera_no] == null) out[r.camera_no] = r.players
   return out
 }

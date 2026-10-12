@@ -11,6 +11,10 @@ import { useCameraOnAir } from "@/lib/useCameraOnAir"
 //   pip  — main full size, the second camera inset in the bottom corner away from the score
 //   side — main and the second camera side by side
 //   grid — 2x2, main top-right (RTL reading order) + up to three more
+//   cut  — the auto-director (game_broadcast.auto_director): ONE camera on screen, but every
+//          auto camera keeps playing in a 1px box at its lowest rendition, so when the server
+//          cuts to another half the picture changes at once instead of reloading a stream
+//          (hls.js raises the quality as soon as the tile is full size again).
 //
 // Every tile plays the lowest rendition that fits its size (LiveHlsPlayer `preview`), so a
 // viewer on mobile data pays for one picture's worth of pixels, not one per camera, except
@@ -48,6 +52,28 @@ export default function LiveMultiView({ layout, tiles, children, onLatency, over
       {t.label}
     </span>
   )
+
+  if (layout === "cut") {
+    // Stable order (by key) so React keeps every player mounted across cuts.
+    const all = [...tiles].sort((a, b) => String(a.key).localeCompare(String(b.key)))
+    return (
+      <div ref={boxRef} className="relative w-full aspect-video bg-black rounded-xl overflow-hidden [container-type:inline-size]">
+        {all.map((t) => {
+          const on = t.key === main.key
+          return (
+            <div key={t.key} className={on ? "absolute inset-0 grid place-items-center" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
+              aria-hidden={!on}>
+              <div className="relative w-full">
+                <LiveHlsPlayer preview src={t.src} onLatency={on ? onLatency : undefined} muted={on ? muted : true} />
+              </div>
+            </div>
+          )
+        })}
+        <div className="absolute inset-0 pointer-events-none">{children}</div>
+        {controls}
+      </div>
+    )
+  }
 
   if (layout === "pip" && extras[0]) {
     // The inset sits in the bottom corner on the same side as the buttons (away from the
