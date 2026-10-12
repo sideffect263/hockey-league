@@ -257,12 +257,12 @@ export default function Layout({ children }) {
     { title: "סטטיסטיקות", url: "/statistics", icon: NavStats },
     { title: "קבוצות", url: "/teams", icon: NavTeams },
     { title: "שחקנים", url: "/players", icon: NavPlayers },
+    // Shown to everyone — the page itself tells a visitor who it is for.
+    // Short label: the header row has to fit a 1024px laptop next to a signed-in avatar cluster.
+    { title: "השאלות", url: "/loans", icon: Handshake },
   ]
 
   const moreNav = [
-    // First in the list: it is the one entry here that asks a player to DO something.
-    // Shown to everyone — the page itself tells a visitor who it is for.
-    { title: "השאלות למשחקים", url: "/loans", icon: Handshake },
     { title: "טורנירים", url: "/tournaments", icon: Swords },
     // Media entry: content editors get the /creators workspace in the role menu
     // instead, so "מדיה" is hidden for them unless they are also an admin.
@@ -337,7 +337,9 @@ export default function Layout({ children }) {
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {/* Icons only from xl: with eight slots, the labels alone are what fits a
+                      1024px laptop beside the signed-in avatar cluster. */}
+                  <item.icon className="w-4 h-4 shrink-0 hidden xl:block" aria-hidden="true" />
                   {item.title}
                 </Link>
               ))}
