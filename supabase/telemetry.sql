@@ -114,7 +114,7 @@ begin
       -- after a reconnect would otherwise all land at the same instant. Accept a
       -- client timestamp only when it is sane: not in the future, not older than a day.
       case when (e ->> 'at') ~ '^\d{4}-' then
-        greatest(least((e ->> 'at')::timestamptz, now()), now() - interval '1 day')
+        greatest(least((e ->> 'at')::timestamptz, now()), now() - interval '7 days')  -- 7d: queued offline events + next-launch crash reports (2026-10-12)
       else now() end                                               as created_at
     from jsonb_array_elements(p_events) e
   )
