@@ -205,6 +205,12 @@ function ClipEditor({ id, onBack }) {
     if (advance && f < nFrames - 1) seek(f + 1)
   }, [persist, autoAdvance, nFrames, seek])
 
+  // Most clips hold the play AND the broadcast's zoomed replay of the same goal, split by an edit cut.
+  // Angle 2 = after the first cut; S/G set the marks of the angle the current frame is in.
+  const cuts = Array.isArray(clip?.cuts) ? clip.cuts : []
+  const angleOf = useCallback((f) => (cuts.length && f >= cuts[0] ? 2 : 1), [cuts])
+  const markField = (kind) => (angleOf(frame) === 2 ? `${kind}2_frame` : `${kind}_frame`)
+
   // frames that still need a person: the AI had no clean detection there and nobody labelled it yet
   const needsLook = useCallback((f) => !labels.has(f) && !(track[f] && track[f][3] === "det"), [labels, track])
   const nextToCheck = () => {
@@ -277,7 +283,10 @@ function ClipEditor({ id, onBack }) {
       if (l) { ctx.fillStyle = LABEL_COLOR[l.kind]; ctx.fillRect(f * cw, 22, Math.max(1, cw), 16) }
     }
     const mark = (f, col) => { if (f == null) return; ctx.fillStyle = col; ctx.fillRect(f * cw - 1, 0, 3, H) }
+    ctx.fillStyle = "rgba(255,255,255,.9)"
+    for (const c of (Array.isArray(clip.cuts) ? clip.cuts : [])) for (let yy = 0; yy < H; yy += 6) ctx.fillRect(c * cw - 1, yy, 2, 3)
     mark(clip.strike_frame, "#fb923c"); mark(clip.goal_frame, "#ef4444")
+    mark(clip.strike2_frame, "#f0abfc"); mark(clip.goal2_frame, "#c026d3")
     ctx.fillStyle = "#3b4fc4"; ctx.fillRect(frame * cw - 1, 0, 2, H)
   }, [clip, frame, labels, nFrames, track])
   useEffect(drawTimeline, [drawTimeline])
@@ -308,8 +317,8 @@ function ClipEditor({ id, onBack }) {
       else if (k === "u" || k === "ו") setLabel(frame, { kind: "unsure" })
       else if (k === "a" || k === "ש") acceptAI()
       else if (e.key === "Delete" || e.key === "Backspace") setLabel(frame, null, false)
-      else if (k === "g" || k === "ע") setClipField({ goal_frame: frame })
-      else if (k === "s" || k === "ד") setClipField({ strike_frame: frame })
+      else if (k === "g" || k === "ע") setClipField({ [markField("goal")]: frame })
+      else if (k === "s" || k === "ד") setClipField({ [markField("strike")]: frame })
       else if (k === "j" || k === "ח") nextToCheck()
     }
     window.addEventListener("keydown", onKey)
@@ -409,14 +418,26 @@ function ClipEditor({ id, onBack }) {
                 <input type="checkbox" checked={autoAdvance} onChange={e => setAutoAdvance(e.target.checked)} /> התקדם לפריים הבא אחרי תיוג
               </label>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <button className={act} onClick={() => setClipField({ strike_frame: frame })}><Zap className="w-4 h-4 text-orange-500" /> רגע הבעיטה כאן <kbd className="text-[10px] opacity-60">S</kbd></button>
-              <button className={act} onClick={() => setClipField({ goal_frame: frame })}><Goal className="w-4 h-4 text-red-500" /> רגע הגול כאן <kbd className="text-[10px] opacity-60">G</kbd></button>
-              {clip.strike_frame != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip.strike_frame)}>בעיטה: #{clip.strike_frame}</button>}
-              {clip.goal_frame != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip.goal_frame)}>גול: #{clip.goal_frame}</button>}
-            </div>
+            {[1, ...(cuts.length ? [2] : [])].map(ang => {
+              const sf = ang === 2 ? "strike2_frame" : "strike_frame", gf = ang === 2 ? "goal2_frame" : "goal_frame"
+              const here = angleOf(frame) === ang
+              return (
+                <div key={ang} className={`flex flex-wrap gap-2 items-center rounded-xl p-2 ${here ? "bg-brand/5 ring-1 ring-brand/30" : "opacity-70"}`}>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 w-full sm:w-auto">
+                    {ang === 1 ? "זווית 1 — המהלך" : `זווית 2 — הריפליי / זום (מפריים #${cuts[0]})`}
+                    {!here && <button className="ms-2 text-xs underline font-normal text-slate-500" onClick={() => seek(ang === 2 ? cuts[0] : 0)}>מעבר לזווית</button>}
+                  </span>
+                  <button className={act} disabled={!here} onClick={() => setClipField({ [sf]: frame })}><Zap className={`w-4 h-4 ${ang === 2 ? "text-fuchsia-400" : "text-orange-500"}`} /> רגע הבעיטה כאן <kbd className="text-[10px] opacity-60">S</kbd></button>
+                  <button className={act} disabled={!here} onClick={() => setClipField({ [gf]: frame })}><Goal className={`w-4 h-4 ${ang === 2 ? "text-fuchsia-600" : "text-red-500"}`} /> רגע הגול כאן <kbd className="text-[10px] opacity-60">G</kbd></button>
+                  {clip[sf] != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip[sf])}>בעיטה: #{clip[sf]}</button>}
+                  {clip[gf] != null && <button className="text-xs underline text-slate-500" onClick={() => seek(clip[gf])}>גול: #{clip[gf]}</button>}
+                  {clip[sf] != null || clip[gf] != null ? <button className="text-xs text-slate-400 hover:text-red-500" onClick={() => setClipField({ [sf]: null, [gf]: null })}>ניקוי</button> : null}
+                </div>
+              )
+            })}
+            {cuts.length > 0 && <p className="text-[11px] text-slate-500">בקליפ יש {cuts.length === 1 ? "חיתוך" : `${cuts.length} חיתוכים`} (קו מקווקו בציר הזמן). אם סימנתם בעיטה וגול גם בזווית 2 — ההילוך האיטי ייבנה ממנה.</p>}
             <Legend />
-            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו.</p>
+            <p className="text-[11px] text-slate-400">מקשים: ←/→ פריים, Shift+חץ 10 פריימים, רווח ניגון, Delete מחיקה, J הפריים הבא שה-AI לא בטוח בו, S/G בעיטה/גול בזווית שבה אתם נמצאים.</p>
           </div>
         </>
       )}

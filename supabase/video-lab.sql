@@ -86,3 +86,11 @@ alter table public.video_lab_clips
   add column if not exists feed_replaced_at timestamptz,
   add column if not exists feed_note text check (char_length(feed_note) <= 500);
 create index if not exists video_lab_clips_post_id_idx on public.video_lab_clips(post_id);
+
+-- 2026-10-12: most clips hold the play AND the broadcast's own zoomed replay of the same goal (a second camera
+-- angle after an edit cut). Angle 2 gets its own strike/goal marks; our slow-mo replay is built from it.
+-- cuts = frame numbers where the clip switches shot (computed on the Mac), drawn on the editor timeline.
+alter table public.video_lab_clips
+  add column if not exists goal2_frame int,
+  add column if not exists strike2_frame int,
+  add column if not exists cuts jsonb;
