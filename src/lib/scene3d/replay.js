@@ -179,13 +179,30 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     ball: { pos: [focusX + 4, 5, 8], tgt: [focusX, 0, 0] },
   }
   let camFrom = null, camTo = null, camT = 1
+  // "real": the calibrated venue camera itself, frame by frame (scene.camera from camera_path.py) — the 3D then
+  // lines up with the video next to it. Orbit controls are off in this view; any other view turns them back on.
+  const CP = D.camera?.path?.length ? D.camera : null
+  function realCam(t) {
+    const path = CP.path; let i = 0; while (i < path.length - 1 && path[i + 1][0] < t) i++
+    const a = path[i], b = path[Math.min(i + 1, path.length - 1)], u = b[0] > a[0] ? Math.min(1, Math.max(0, (t - a[0]) / (b[0] - a[0]))) : 0
+    const L = (k) => a[k] + (b[k] - a[k]) * u
+    const [x, y, z] = CP.pos
+    cam.position.set(x, z, -y)
+    cam.up.set(L(4), L(6), -L(5)).normalize()
+    cam.lookAt(x + L(1), z + L(3), -y - L(2))
+    if (Math.abs(cam.fov - L(7)) > 0.01) { cam.fov = L(7); cam.updateProjectionMatrix() }
+  }
   function setView(v, instant) {
+    if (v === "real" && !CP) v = "stand"
+    controls.enabled = v !== "real"
+    if (v !== "real") { cam.up.set(0, 1, 0); if (cam.fov !== 48) { cam.fov = 48; cam.updateProjectionMatrix() } }
     state.view = v; lamps.forEach(l => { l.visible = v !== "top" })
+    if (v === "real") { realCam(state.t); camT = 1; return }
     camFrom = { pos: cam.position.clone(), tgt: controls.target.clone() }
     camTo = { pos: new THREE.Vector3(...VIEWS[v].pos), tgt: new THREE.Vector3(...VIEWS[v].tgt) }; camT = instant ? 1 : 0
     if (instant) { cam.position.copy(camTo.pos); controls.target.copy(camTo.tgt) }
   }
-  setView("stand", true)
+  setView(CP ? "real" : "stand", true)
 
   function resize() {
     const r = container.getBoundingClientRect()
@@ -249,14 +266,15 @@ export function createReplay({ container, scene: D, onTick, clock }) {
       callout.style.opacity = v.z < 1 ? "1" : "0"
     } else callout.style.opacity = "0"
 
-    if (camT < 1) {
+    if (state.view === "real") realCam(t)
+    else if (camT < 1) {
       camT = Math.min(1, camT + dt * 1.6); const k = 1 - Math.pow(1 - camT, 3)
       cam.position.lerpVectors(camFrom.pos, camTo.pos, k); controls.target.lerpVectors(camFrom.tgt, camTo.tgt, k)
     } else if (state.view === "ball" && b) {
       const off = cam.position.clone().sub(controls.target)
       controls.target.lerp(new THREE.Vector3(b.x, 0, -b.y), Math.min(1, dt * 2.5)); cam.position.copy(controls.target).add(off)
     }
-    controls.update()
+    if (state.view !== "real") controls.update()
     renderer.render(scene, cam)
     if (now - lastTick > 100) {
       lastTick = now
@@ -271,6 +289,7 @@ export function createReplay({ container, scene: D, onTick, clock }) {
   return {
     state,
     posed,
+    hasRealCamera: !!CP,
     play() { state.playing = true },
     pause() { state.playing = false },
     seek(t) { state.t = Math.max(0, Math.min(DUR, t)) },

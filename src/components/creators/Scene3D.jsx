@@ -11,7 +11,7 @@ import { loadYouTubeApi } from "@/lib/youtubeApi"
 const TEAM_NAME = { red: "רמת ישי", blue: "גבעת עדה נוער" }
 const TEAM_DOT = { red: "bg-red-500", blue: "bg-blue-500" }
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`
-const VIEWS = [["stand", "יציע"], ["top", "מלמעלה"], ["goal", "מאחורי השער"], ["ball", "עוקב כדור"]]
+const VIEWS = [["real", "מצלמה אמיתית"], ["stand", "יציע"], ["top", "מלמעלה"], ["goal", "מאחורי השער"], ["ball", "עוקב כדור"]]
 const SPEEDS = [[0.25, "×¼"], [0.5, "×½"], [1, "×1"]]
 
 export default function Scene3DTab() {
@@ -85,7 +85,7 @@ function SceneViewer({ id, onBack }) {
   const [active, setActive] = useState(-1)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
-  const [view, setView] = useState("stand")
+  const [view, setView] = useState("real")
   const [showMeta, setShowMeta] = useState(false)
   const [tags, setTags] = useState(true)
   const stageRef = useRef(null)
@@ -115,6 +115,7 @@ function SceneViewer({ id, onBack }) {
     })
     e.onLoop = () => { try { yt.current?.seekTo(t0, true) } catch { /* not ready */ } }
     eng.current = e
+    setView(e.hasRealCamera ? "real" : "stand")
     return () => { e.dispose(); eng.current = null }
   }, [row, yt])
 
@@ -169,7 +170,7 @@ function SceneViewer({ id, onBack }) {
                 className={`px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur ${tags ? "bg-white text-slate-900 border-white" : "bg-slate-900/70 text-white border-slate-600"}`}>
                 שמות
               </button>
-              {VIEWS.map(([v, label]) => (
+              {VIEWS.filter(([v]) => v !== "real" || row.scene.camera?.path?.length).map(([v, label]) => (
                 <button key={v} onClick={() => pickView(v)} aria-pressed={view === v}
                   className={`px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur ${view === v ? "bg-white text-slate-900 border-white" : "bg-slate-900/70 text-white border-slate-600"}`}>
                   {label}
