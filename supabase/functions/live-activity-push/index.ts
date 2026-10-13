@@ -32,6 +32,7 @@
 // ============================================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { type AndroidCtx, androidCtx, androidData, sendAndroid } from "./android.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -291,8 +292,22 @@ async function apnsJwt(): Promise<string> {
 
 type TokenRow = { id: string; token: string; environment: string | null; platform: string; device_id: string };
 type SendResult = { id: string; status: number; reason?: string; prune: boolean };
-async function sendLA(row: TokenRow, body: unknown, priority: 5 | 10): Promise<SendResult> {
-  if (row.platform !== "ios") return { id: row.id, status: 0, reason: "platform not wired yet", prune: false };
+/** Lazily loads what an Android row needs (team logos etc.) — at most once per pass. */
+type AndroidThunk = () => Promise<AndroidCtx>;
+// deno-lint-ignore no-explicit-any
+function androidThunk(d: any): AndroidThunk {
+  let p: Promise<AndroidCtx> | null = null;
+  return () => (p ??= androidCtx(admin, d));
+}
+
+async function sendLA(row: TokenRow, body: unknown, priority: 5 | 10, android?: AndroidThunk): Promise<SendResult> {
+  // Android: the same rows with platform 'android' + an FCM token → a data-only FCM message
+  // the app turns into its Live Update notification (android.ts, LIVE-PAYLOAD.md).
+  if (row.platform === "android") {
+    if (!android) return { id: row.id, status: 0, reason: "no android context", prune: false };
+    return sendAndroid(row, androidData(await android(), body), priority);
+  }
+  if (row.platform !== "ios") return { id: row.id, status: 0, reason: "unknown platform", prune: false };
   const jwt = await apnsJwt();
   const hosts = row.environment === "sandbox" ? ["api.sandbox.push.apple.com"] : ["api.push.apple.com", "api.sandbox.push.apple.com"];
   let last: SendResult = { id: row.id, status: 0, prune: false };
@@ -367,9 +382,9 @@ function apsBody(kind: "update" | "end" | "start", state: GameState, alert?: { t
   return { aps };
 }
 
-async function deliver(gameId: string, rows: TokenRow[], body: unknown, priority: 5 | 10, dry: boolean) {
+async function deliver(gameId: string, rows: TokenRow[], body: unknown, priority: 5 | 10, dry: boolean, android?: AndroidThunk) {
   if (dry) return [];
-  const results = await Promise.all(rows.map((r) => sendLA(r, body, priority).catch((e) => ({ id: r.id, status: -1, reason: String(e?.message ?? e), prune: false }))));
+  const results = await Promise.all(rows.map((r) => sendLA(r, body, priority, android).catch((e) => ({ id: r.id, status: -1, reason: String(e?.message ?? e), prune: false }))));
   const dead = results.filter((r) => r.prune).map((r) => r.id);
   if (dead.length) await admin.from("live_activity_tokens").delete().in("id", dead);
   await admin.from("live_activity_games").update({ last_payload: body, last_result: results, updated_at: new Date().toISOString() }).eq("game_id", gameId);
@@ -395,7 +410,8 @@ async function pushToStart(gameId: string, d: any, state: GameState, dry: boolea
   const rows = (starts ?? []).filter((r: any) => !have.has(r.device_id)) as TokenRow[];
   const body = apsBody("start", state, { title: `${d.t.homeName} נגד ${d.t.awayName}`, body: "המשחק התחיל — עקבו בזמן אמת" }, d.attributes);
   if (dry) return { start: rows.length, body };
-  const results = await Promise.all(rows.map((r) => sendLA(r, body, 10).catch(() => ({ id: r.id, status: -1, prune: false }))));
+  const android = androidThunk(d);
+  const results = await Promise.all(rows.map((r) => sendLA(r, body, 10, android).catch(() => ({ id: r.id, status: -1, prune: false }))));
   const dead = results.filter((r) => r.prune).map((r) => r.id);
   if (dead.length) await admin.from("live_activity_start_tokens").delete().in("id", dead);
   return { start: rows.length, results };
@@ -409,6 +425,7 @@ async function runPass(gameId: string, op: string, tokenId: string | null, dry: 
   for (let attempt = 0; attempt < 3; attempt++) {
     const d = await loadAll(gameId);
     if (!d) return { skipped: "no game" };
+    const android = androidThunk(d);
     const prev: GameState | null = d.book?.last_state ?? null;
     let state = buildState(d.game, d.live, d.events, prev);
     const newestId = d.events.length ? String(d.events[d.events.length - 1].id ?? "") : null;
@@ -417,7 +434,7 @@ async function runPass(gameId: string, op: string, tokenId: string | null, dry: 
     if ((op === "deleted") && d.game.status !== "completed") {
       const { data: rows } = await admin.from("live_activity_tokens").select("id,token,environment,platform,device_id").eq("game_id", gameId);
       const body = { aps: { timestamp: nowS(), event: "end", "content-state": state, "dismissal-date": nowS() } };
-      const results = await deliver(gameId, (rows ?? []) as TokenRow[], body, 10, dry);
+      const results = await deliver(gameId, (rows ?? []) as TokenRow[], body, 10, dry, android);
       if (!dry) {
         await admin.from("live_activity_tokens").delete().eq("game_id", gameId);
         // The game went back to scheduled: forget what was pushed, so a restart is a
@@ -434,7 +451,7 @@ async function runPass(gameId: string, op: string, tokenId: string | null, dry: 
       if (!row) return { skipped: "no start token" };
       const body = apsBody("start", state, { title: `${d.t.homeName} נגד ${d.t.awayName}`, body: "המשחק התחיל — עקבו בזמן אמת" }, d.attributes);
       if (dry) return { dry: true, body };
-      const results = [await sendLA(row as TokenRow, body, 10)];
+      const results = [await sendLA(row as TokenRow, body, 10, android)];
       return { probe: true, results, body };
     }
 
@@ -443,7 +460,7 @@ async function runPass(gameId: string, op: string, tokenId: string | null, dry: 
       const { data: row } = await admin.from("live_activity_tokens").select("id,token,environment,platform,device_id").eq("id", tokenId ?? "").maybeSingle();
       if (!row) return { skipped: "no token" };
       const body = state.phase === "final" ? apsBody("end", state) : apsBody("update", state);
-      const results = await deliver(gameId, [row as TokenRow], body, 10, dry);
+      const results = await deliver(gameId, [row as TokenRow], body, 10, dry, android);
       return { registered: true, results, body };
     }
 
@@ -489,7 +506,7 @@ async function runPass(gameId: string, op: string, tokenId: string | null, dry: 
 
     const { data: rows } = await admin.from("live_activity_tokens").select("id,token,environment,platform,device_id").eq("game_id", gameId);
     const body = apsBody(push.event, state, push.alert);
-    const results = await deliver(gameId, (rows ?? []) as TokenRow[], body, push.priority, false);
+    const results = await deliver(gameId, (rows ?? []) as TokenRow[], body, push.priority, false, android);
     if (push.event === "end") await admin.from("live_activity_tokens").delete().eq("game_id", gameId);
     return { sent: results.length, priority: push.priority, event: push.event, results, start: startInfo };
   }
