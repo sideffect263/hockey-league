@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Link } from "react-router-dom"
-import { Send, Trash2, Loader2, Check, Video, Plus, X, StickyNote, ExternalLink } from "lucide-react"
+import { Send, Trash2, Loader2, Check, Video, Plus, X, StickyNote, ExternalLink, Clapperboard, Download, AlertTriangle } from "lucide-react"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
-import { getFeedDrafts, createFeedDraft, updateFeedDraft, deleteFeedDraft, publishFeedDraft } from "@/lib/feedDrafts"
+import { getFeedDrafts, createFeedDraft, updateFeedDraft, deleteFeedDraft, publishFeedDraft, requestGoalReel, getLatestGoalReel, goalReelDownloadUrl } from "@/lib/feedDrafts"
 import { uploadFeedVideo, MAX_FEED_VIDEO_MB } from "@/lib/feedVideo"
 import { getGames, getTeams } from "@/lib/api"
 import { youTubeInText } from "@/lib/video"
@@ -52,12 +52,15 @@ export default function FeedDrafts({ onCountChange }) {
             {drafts?.length ? `${drafts.length} טיוטות ממתינות לאישור · "פרסם" מעלה לפיד בשמך` : "אין טיוטות ממתינות"}
           </p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+        <GoalReelButton onReady={load} />
         {!adding && (
           <button onClick={() => setAdding(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
             <Plus className="w-4 h-4" /> טיוטה חדשה
           </button>
         )}
+        </div>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {adding && (
@@ -194,6 +197,66 @@ function NewDraft({ games, nextSort, onDone }) {
         </button>
       </div>
       {err && <p className="text-xs text-red-600">{err}</p>}
+    </div>
+  )
+}
+
+/**
+ * "תקציר גולים": one tap queues a top-5-goals reel of the latest game day in the video lab. The Mac
+ * worker picks + ranks the goals itself (shot speed and distance), renders a 9:16 countdown with
+ * names, crests and music (~1-2 min), and drops it in this list as a draft. Shows the live status
+ * of the newest reel, and a download link (for Instagram / TikTok) once it is done.
+ */
+function GoalReelButton({ onReady }) {
+  const [reel, setReel] = useState(null)
+  const [err, setErr] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const prev = useRef(null)
+
+  const poll = useCallback(async () => {
+    try {
+      const r = await getLatestGoalReel()
+      if (prev.current && prev.current !== "done" && r?.status === "done") onReady?.()
+      prev.current = r?.status ?? null
+      setReel(r)
+    } catch { /* keep the last state */ }
+  }, [onReady])
+  useEffect(() => { poll() }, [poll])
+  const running = reel && (reel.status === "queued" || reel.status === "processing")
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(poll, 5000)
+    return () => clearInterval(t)
+  }, [running, poll])
+
+  const start = async () => {
+    setBusy(true); setErr(null)
+    try { const r = await requestGoalReel(); prev.current = r.status; setReel(r) }
+    catch { setErr("לא הצלחנו להתחיל את התקציר") }
+    finally { setBusy(false) }
+  }
+  const fresh = reel && Date.now() - new Date(reel.updated_at).getTime() < 3 * 864e5
+  const dl = reel?.status === "done" && goalReelDownloadUrl(reel.video_path)
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <button onClick={start} disabled={busy || running}
+        title="5 הגולים של יום המשחקים האחרון במעבדת הווידאו — נבחרים, מדורגים ונערכים אוטומטית"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold bg-amber-400 text-slate-900 hover:bg-amber-300 disabled:opacity-60">
+        {busy || running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clapperboard className="w-4 h-4" />}
+        {running ? "יוצר תקציר…" : "תקציר גולים"}
+      </button>
+      {running && reel.note && <span className="text-xs text-slate-500 dark:text-slate-400">{reel.note}</span>}
+      {!running && fresh && reel.status === "done" && (
+        <span className="inline-flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+          <Check className="w-3.5 h-3.5" /> {reel.note}
+          {dl && <a href={dl} download className="inline-flex items-center gap-1 font-semibold underline hover:text-emerald-800"><Download className="w-3.5 h-3.5" /> הורדה</a>}
+        </span>
+      )}
+      {!running && fresh && reel.status === "error" && (
+        <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400"><AlertTriangle className="w-3.5 h-3.5" /> {reel.note}</span>
+      )}
+      {err && <span className="text-xs text-red-600">{err}</span>}
     </div>
   )
 }
