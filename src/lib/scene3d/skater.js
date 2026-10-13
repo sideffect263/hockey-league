@@ -61,6 +61,21 @@ export function bodyHeading(P) {
   return Math.atan2(rx, rz)
 }
 
+// Goalkeeper ready stance (local frame): knees wide and bent, stick blade flat on the floor in front, glove up.
+export function keeperStance(phase = 0) {
+  const sway = 0.03 * Math.sin(phase * 0.5), p = new Array(13), hipY = 0.62
+  p[J.lH] = V(0, hipY, -0.14 + sway); p[J.rH] = V(0, hipY, 0.14 + sway)
+  p[J.lA] = V(0.05, 0.09, -0.42); p[J.rA] = V(0.05, 0.09, 0.42)
+  p[J.lK] = ik(p[J.lH], p[J.lA], 0.42, 0.44, V(1, 0, -0.5)); p[J.rK] = ik(p[J.rH], p[J.rA], 0.42, 0.44, V(1, 0, 0.5))
+  const chest = V(0.22, hipY + 0.45, sway)
+  p[J.lS] = chest.clone().add(V(0, 0, -0.22)); p[J.rS] = chest.clone().add(V(0, 0, 0.22))
+  p[J.nose] = chest.clone().add(V(0.16, 0.24, 0))
+  p[J.lW] = V(0.45, 0.85, -0.38)                                   // catching glove up and out
+  p[J.rW] = V(0.5, 0.45, 0.22)                                     // stick hand low, blade on the floor
+  p[J.lE] = ik(p[J.lS], p[J.lW], 0.3, 0.28, V(-0.2, -1, -0.8)); p[J.rE] = ik(p[J.rS], p[J.rW], 0.3, 0.28, V(-0.2, -1, 0.6))
+  return p
+}
+
 export function localToWorld(pts, x, y, heading) {
   const c = Math.cos(heading), s = Math.sin(heading)
   // local (fx, up, rz): forward = (c, s) in rink, right = (s, -c) in rink → three (rx, up, -ry)
@@ -100,10 +115,12 @@ const helmetGeo = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI
 const bootGeo = new THREE.BoxGeometry(0.28, 0.11, 0.1)
 const wheelGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.025, 10)
 const bladeGeo = new THREE.BoxGeometry(0.3, 0.05, 0.02)
+const keeperBladeGeo = new THREE.BoxGeometry(0.36, 0.09, 0.03)
 const Y = V(0, 1, 0)
 
 export class Skater {
-  constructor({ shirt, shorts = 0x161b24, socks, helmet = 0x1d2433, skin = 0xd9a77f }) {
+  constructor({ shirt, shorts = 0x161b24, socks, helmet = 0x1d2433, skin = 0xd9a77f, keeper = false }) {
+    this.keeper = keeper
     const m = (color, rough = 0.6) => new THREE.MeshStandardMaterial({ color, roughness: rough, transparent: true })
     this.mats = { shirt: m(shirt, 0.55), shorts: m(shorts, 0.8), socks: m(socks ?? shirt, 0.7), skin: m(skin, 0.7),
       dark: m(0x101318, 0.5), helmet: m(helmet, 0.35), pad: m(0xe9ecf1, 0.6), stick: m(0x2b2b2b, 0.5), wheel: m(0x9aa3ad, 0.4) }
@@ -123,6 +140,16 @@ export class Skater {
     this.joints = [[J.lS, 0.09, M.shirt], [J.rS, 0.09, M.shirt], [J.lE, 0.06, M.shirt], [J.rE, 0.06, M.shirt],
       [J.lW, 0.065, M.dark], [J.rW, 0.065, M.dark], [J.lK, 0.085, M.pad], [J.rK, 0.085, M.pad], [J.lH, 0.11, M.shorts], [J.rH, 0.11, M.shorts]]
       .map(([j, r, mat]) => { const o = add(ball, mat); o.scale.setScalar(r); return [j, o] })
+    if (keeper) {                                                   // leg pads, chest protector, blocker + catcher
+      for (const b of this.bones) {
+        if (b[0] === J.lK || b[0] === J.rK) { b[2] = 0.13; b[3].material = M.pad }
+        if (b[0] === "pelvis") b[2] = 0.22
+      }
+      for (const [j, o] of this.joints) if (j === J.lW || j === J.rW) o.scale.setScalar(0.12)
+      this.mask = add(new THREE.SphereGeometry(1, 12, 8, -Math.PI / 2, Math.PI, Math.PI * 0.25, Math.PI * 0.5),
+        new THREE.MeshStandardMaterial({ color: 0xd9dde3, wireframe: true, transparent: true }))
+      this.mats.mask = this.mask.material; this.mask.scale.setScalar(0.14)
+    }
     this.head = add(ball, M.skin); this.head.scale.setScalar(0.115)
     this.helmet = add(helmetGeo, M.helmet); this.helmet.scale.setScalar(0.13)
     this.skates = [J.lA, J.rA].map(() => {
@@ -131,7 +158,7 @@ export class Skater {
       this.group.add(g); return g
     })
     this.stick = add(unitCyl, M.stick)
-    this.blade = add(bladeGeo, M.stick)
+    this.blade = add(keeper ? keeperBladeGeo : bladeGeo, M.stick)
   }
   // shirt number on the back (+ small on the chest) and a name tag over the head. label = player_ids.py label
   // ("r14", "b7", "bgk", "ref"), name = from the league roster when the number matches one player.
@@ -168,6 +195,7 @@ export class Skater {
     for (const [a, b, r, mesh] of this.bones) place(mesh, pt(a), pt(b), r)
     for (const [j, o] of this.joints) o.position.copy(P[j])
     this.head.position.copy(head); this.helmet.position.copy(head).add(V(0, 0.01, 0))
+    if (this.mask) { this.mask.position.copy(head); this.mask.rotation.set(0, heading + Math.PI / 2, 0) }
     if (this.back) {                                                 // number patches follow the chest, facing back / front
       const f = V(Math.cos(heading), 0, -Math.sin(heading))
       const chest = pelvis.clone().lerp(neck, 0.62)

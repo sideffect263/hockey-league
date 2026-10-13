@@ -1,6 +1,6 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { Skater, stridePose, localToWorld, poseToWorld, samplePose, bodyHeading } from "./skater"
+import { Skater, stridePose, keeperStance, localToWorld, poseToWorld, samplePose, bodyHeading } from "./skater"
 
 // 3D replay of one play (video_lab_scenes.scene, written by video-analysis/scene3d/export_scene.py).
 // Rink coords are metres: x along the length (+ = right as the venue camera sees it), y across (+ = far side),
@@ -117,8 +117,11 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     ref: { shirt: 0xff8a2a, shorts: 0x14171d, socks: 0x14171d, helmet: 0x14171d },
   }
   const ringGeo = new THREE.RingGeometry(0.34, 0.4, 32)
+  // goalkeepers (player_ids labels rgk / bgk): own kit (the opener's red keeper wore dark navy), pads, ready stance
+  const KEEPER_KIT = { red: { shirt: 0x1d2a4a, shorts: 0x14171d, socks: 0x1d2a4a }, blue: { shirt: 0x1f3c8a, shorts: 0x14171d, socks: 0x1f3c8a } }
   const players = D.players.map(p => {
-    const sk = new Skater(KIT[p.team] ?? { shirt: 0x888888 })
+    const keeper = /gk$/.test(p.label || "")
+    const sk = new Skater({ ...(keeper ? KEEPER_KIT[p.team] : KIT[p.team]) ?? { shirt: 0x888888 }, keeper })
     if (p.team === "ref") { sk.stick.visible = false; sk.blade.visible = false; sk.noStick = true }
     sk.setIdentity(p.label, p.name, KIT[p.team] ?? { shirt: 0x888888 })
     const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: COL[p.team] ?? 0x888888, transparent: true, opacity: 0.8, depthWrite: false }))
@@ -229,7 +232,11 @@ export function createReplay({ container, scene: D, onTick, clock }) {
       pl.speed += (Math.min(sp, 9) - pl.speed) * Math.min(1, dt * 4)
       if (sp > 0.6) { let d = Math.atan2(s.vy, s.vx) - pl.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); pl.heading += d * Math.min(1, dt * 8) }
       if (state.playing) pl.phase += dt * state.speed * 2 * Math.PI * (0.55 + 0.14 * pl.speed)
-      const stride = localToWorld(stridePose(pl.phase, pl.speed), s.x, s.y, pl.heading)
+      if (pl.sk.keeper && !(pl.pose && samplePose(pl.pose, t)) && pl.speed < 1.5) {
+        // no video pose: a keeper faces out of his own net (the nearer goal), not his drift direction
+        const out = s.x < 0 ? 0 : Math.PI; let d = out - pl.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); pl.heading += d * Math.min(1, dt * 4)
+      }
+      const stride = localToWorld(pl.sk.keeper && pl.speed < 2.5 ? keeperStance(pl.phase) : stridePose(pl.phase, pl.speed), s.x, s.y, pl.heading)
       const row = pl.pose && samplePose(pl.pose, t)
       const P = row ? poseToWorld(row, s.x, s.y, stride) : stride
       if (row) {                                    // the body says where the player faces (89–96% agree with motion)
