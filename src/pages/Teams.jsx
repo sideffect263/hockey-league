@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { getTeams, getPlayers, getMyTeamRequests } from "@/lib/api"
-import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
+import { getTeams, getMyTeamRequests } from "@/lib/api"
 import { standingsComparator } from "@/lib/utils"
 import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf, ageGroupsOf } from "@/lib/ageGroups"
 import { useAuth } from "@/lib/AuthContext"
 import CreateTeamModal from "@/components/CreateTeamModal"
-import { Users, Trophy, Target, Shield, ChevronDown, ChevronUp, Star, RefreshCw, ArrowLeft, Plus, Clock } from "lucide-react"
+import { RefreshCw, ArrowLeft, Plus, Clock } from "lucide-react"
 import { Teams as TeamsIcon } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
@@ -19,11 +18,8 @@ export default function Teams() {
   const seasonName = useSeasonName()
   const isLinkedPlayer = !!profile?.player_id
   const [teams, setTeams] = useState([])
-  const [players, setPlayers] = useState([])
-  const [playerTeams, setPlayerTeams] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [expandedTeam, setExpandedTeam] = useState(null)
   const [ageTab, setAgeTab] = useState(DEFAULT_AGE)
   const [showCreate, setShowCreate] = useState(false)
   const [myPending, setMyPending] = useState([])
@@ -39,8 +35,7 @@ export default function Teams() {
   const loadData = async () => {
     try {
       setLoading(true); setError(null)
-      const [t, p, pt] = await Promise.all([getTeams(), getPlayers(), getPlayerTeams().catch(() => [])])
-      setTeams(t); setPlayers(p); setPlayerTeams(pt)
+      setTeams(await getTeams())
     } catch (err) { console.error(err); setError("שגיאה בטעינת הנתונים") }
     finally { setLoading(false) }
   }
@@ -61,7 +56,6 @@ export default function Teams() {
   }
 
   const isSenior = ageTab === DEFAULT_AGE
-  const { byTeam: membersByTeam } = buildMemberMaps(playerTeams, players)
   const countByAge = teams.reduce((acc, t) => { for (const a of ageGroupsOf(t)) acc[a] = (acc[a] || 0) + 1; return acc }, {})
   const visible = teams.filter(t => ageGroupsOf(t).includes(ageTab))
   const sorted = isSenior
@@ -108,7 +102,7 @@ export default function Teams() {
         {AGE_GROUPS.map(a => {
           const on = ageTab === a.value
           return (
-            <button key={a.value} onClick={() => { setAgeTab(a.value); setExpandedTeam(null) }}
+            <button key={a.value} onClick={() => setAgeTab(a.value)}
               className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-bold transition-colors ${on ? "bg-brand text-white shadow-sm shadow-brand/25" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
               {a.label}
               <span className={`text-[11px] tabular-nums ${on ? "text-white/80" : "text-slate-400"}`}>{countByAge[a.value] || 0}</span>
@@ -126,14 +120,11 @@ export default function Teams() {
       ) : (
       <div className="space-y-3">
         {sorted.map((team, index) => {
-          const tp = players.filter(p => membersByTeam.get(team.id)?.has(p.id))
-          const open = expandedTeam === team.id
-          const topScorer = tp.filter(p => p.position === 'Field Player' && (p.goals || 0) > 0).sort((a, b) => (b.goals || 0) - (a.goals || 0))[0]
-
           return (
             <motion.div key={team.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>
               <div className="card-hover overflow-hidden">
-                <button onClick={() => setExpandedTeam(open ? null : team.id)} className="w-full p-4 sm:p-5 text-right" aria-expanded={open}>
+                {/* One tap opens the team page — the row used to expand inline first. */}
+                <Link to={entityPath('teams', team)} className="block w-full p-4 sm:p-5 text-right">
                   <div className="flex items-center gap-4">
                     <TeamLogo team={team} size={12} />
                     <div className="flex-1 min-w-0">
@@ -156,7 +147,7 @@ export default function Teams() {
                         <div><p className="text-sm font-bold text-red-500">{team.losses || 0}</p><p className="text-[10px] text-slate-400">ה</p></div>
                       </div>
                     </div>}
-                    <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                    <ArrowLeft className="w-5 h-5 text-slate-400 shrink-0" />
                   </div>
                   {isSenior && (
                     <div className="sm:hidden flex gap-3 mt-2">
@@ -164,63 +155,7 @@ export default function Teams() {
                       <span className="text-xs text-slate-400">{team.wins}נ {team.ties}ת {team.losses}ה</span>
                     </div>
                   )}
-                </button>
-
-                {open && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-4 sm:px-5 pb-5 border-t border-slate-100 dark:border-slate-700">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 mb-5">
-                      {(isSenior ? [
-                        { icon: Trophy, val: team.points || 0, label: "נקודות", color: "text-brand" },
-                        { icon: Target, val: team.goals_for || 0, label: "שערי זכות", color: "text-emerald-500" },
-                        { icon: Shield, val: team.goals_against || 0, label: "שערי חובה", color: "text-red-500" },
-                        { icon: Users, val: tp.length, label: "שחקנים", color: "text-blue-500" },
-                      ] : [
-                        { icon: Users, val: tp.length, label: "שחקנים", color: "text-blue-500" },
-                      ]).map(({ icon: Icon, val, label, color }) => (
-                        <div key={label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
-                          <Icon className={`w-4 h-4 ${color} mx-auto mb-1`} />
-                          <p className="text-lg font-extrabold text-slate-900 dark:text-white">{val}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {topScorer && (
-                      <div className="mb-4 flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40 rounded-xl">
-                        <Star className="w-4 h-4 text-amber-500 shrink-0" />
-                        <div>
-                          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">מלך שערים</p>
-                          <p className="font-bold text-sm text-slate-900 dark:text-white">{topScorer.first_name} {topScorer.last_name} — {topScorer.goals} שערים</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">סגל ({tp.length})</h4>
-                    <div className="space-y-1">
-                      {tp.sort((a, b) => (b.goals || 0) - (a.goals || 0)).map(player => (
-                        <div key={player.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-sm">
-                          <div className="flex items-center gap-2">
-                            {player.is_core && <span className="w-1.5 h-1.5 rounded-full bg-brand" />}
-                            <span className="font-medium text-slate-900 dark:text-white">{player.first_name} {player.last_name}</span>
-                            {player.jersey_number && <span className="text-[10px] text-slate-400 font-mono">#{player.jersey_number}</span>}
-                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${player.position === 'Goalkeeper' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
-                              {player.position === 'Goalkeeper' ? 'GK' : 'FP'}
-                            </span>
-                            {player.is_referee && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">REF</span>}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs">
-                            {(player.goals || 0) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{player.goals}</span><span>⚽</span></span>}
-                            <span className="text-slate-400">{player.games_played || 0} מש׳</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <Link to={entityPath('teams', team)} className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-brand dark:text-brand-light hover:text-brand-hover dark:hover:text-brand-light py-2.5 border border-brand/10 dark:border-brand/25 rounded-lg transition-colors">
-                      עמוד הקבוצה המלא <ArrowLeft className="w-3.5 h-3.5" />
-                    </Link>
-                  </motion.div>
-                )}
+                </Link>
               </div>
             </motion.div>
           )
