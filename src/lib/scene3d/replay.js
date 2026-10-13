@@ -7,7 +7,8 @@ import { Skater, stridePose, keeperStance, localToWorld, poseToWorld, samplePose
 // centre spot (0, 0). Three coords: (x, height, -y). Everything drawn comes from the scene data; nothing is invented
 // except the body shape around each tracked floor point.
 //
-// createReplay({ container, scene, onTick, clock }) -> { play, pause, seek, setSpeed, setView, dispose, state }
+// createReplay({ container, scene, onTick, clock, onViewChange }) -> { play, pause, seek, setSpeed, setView, dispose, state }
+//   onViewChange(view) fires when the engine itself changes view (a drag in "real" frees the camera: view "free").
 //   onTick(t, activeEventIndex) ~10×/s for the UI; clock() -> seconds or null lets an external player (YouTube)
 //   drive the time while it is playing.
 
@@ -22,7 +23,7 @@ export function whoLabel(e) {
   return e.by_name ? `${e.by_name} (${num})` : `#${num}`
 }
 
-export function createReplay({ container, scene: D, onTick, clock }) {
+export function createReplay({ container, scene: D, onTick, clock, onViewChange }) {
   const R = D.rink, L = R.L, W = R.W, DUR = D.dur
   const GX = L / 2 - R.goal_line
   const P = (x, y, h = 0) => new THREE.Vector3(x, h, -y)
@@ -193,7 +194,10 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     cam.position.set(x, z, -y)
     cam.up.set(L(4), L(6), -L(5)).normalize()
     cam.lookAt(x + L(1), z + L(3), -y - L(2))
-    if (Math.abs(cam.fov - L(7)) > 0.01) { cam.fov = L(7); cam.updateProjectionMatrix() }
+    // the video is 16:9; on a narrower screen (phones) keep its full WIDTH in view, not its height
+    let fov = L(7)
+    if (cam.aspect < 16 / 9) fov = 2 * Math.atan(Math.tan(fov * Math.PI / 360) * (16 / 9) / cam.aspect) * 180 / Math.PI
+    if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix() }
   }
   function setView(v, instant) {
     if (v === "real" && !CP) v = "stand"
@@ -206,6 +210,20 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     if (instant) { cam.position.copy(camTo.pos); controls.target.copy(camTo.tgt) }
   }
   setView(CP ? "real" : "stand", true)
+
+  // Dragging (mouse or finger) in "מצלמה אמיתית" frees the camera instead of doing nothing (phones had no way to look
+  // around): orbit starts exactly where the real camera stands, around the floor point it looks at.
+  function freeFromReal() {
+    if (state.view !== "real") return
+    const dir = new THREE.Vector3(); cam.getWorldDirection(dir)
+    const k = dir.y < -0.05 ? cam.position.y / -dir.y : 20                // distance to the floor along the view
+    controls.target.copy(cam.position).addScaledVector(dir, Math.min(k, 40))
+    cam.up.set(0, 1, 0); cam.fov = 48; cam.updateProjectionMatrix()
+    state.view = "free"; controls.enabled = true; camT = 1
+    onViewChange?.("free")
+  }
+  canvas.addEventListener("pointerdown", freeFromReal, { capture: true })
+  canvas.addEventListener("wheel", freeFromReal, { capture: true, passive: true })
 
   function resize() {
     const r = container.getBoundingClientRect()
@@ -317,6 +335,7 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     set onLoop(fn) { onLoop = fn },
     dispose() {
       dead = true; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()
+      canvas.removeEventListener("pointerdown", freeFromReal, { capture: true }); canvas.removeEventListener("wheel", freeFromReal, { capture: true })
       players.forEach(p => p.sk.dispose())
       scene.traverse(o => { o.geometry?.dispose?.(); const m = o.material; (Array.isArray(m) ? m : m ? [m] : []).forEach(x => x.dispose?.()) })
       renderer.dispose(); canvas.remove(); callout.remove()

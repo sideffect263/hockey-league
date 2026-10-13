@@ -104,6 +104,7 @@ function SceneViewer({ id, onBack }) {
     const e = createReplay({
       container: stageRef.current, scene: row.scene,
       onTick: (tt, ai) => { setT(tt); setActive(ai) },
+      onViewChange: (v) => setView(v),
       clock: () => {
         const p = yt.current
         if (!p?.getPlayerState) return null
