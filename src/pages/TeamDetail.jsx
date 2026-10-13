@@ -28,20 +28,32 @@ import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import TeamMedia, { TeamMediaEmpty } from "@/components/TeamMedia"
 import { getTeamMedia } from "@/lib/teamMedia"
 
-// Header gradient from the team's own colours, darkened so white text always
-// reads (a raw #15f919 would not). Falls back to the brand navy.
-function shade(hex, k) {
+// Header gradient from the team's own colours. Its text and buttons are white, so
+// every stop is darkened until white reads on it (WCAG luminance cap), whatever a
+// coach picks — #ffffff turns charcoal, #15f919 a deep green. A grey/white primary
+// hands the lead to a saturated secondary (white + orange → orange).
+const hex2rgb = (hex) => {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || "")
   if (!m) return null
   const n = parseInt(m[1], 16)
-  const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * (1 - k)))
-  return `rgb(${c.join(",")})`
+  return [n >> 16, (n >> 8) & 255, n & 255]
+}
+const saturation = ([r, g, b]) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx ? (mx - mn) / mx : 0 }
+const luminance = (rgb) => {
+  const [r, g, b] = rgb.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+// Darken by `k`, then keep darkening until luminance ≤ max (0.06 ≈ 10:1 against white).
+function deepen(rgb, k, max = 0.06) {
+  let c = rgb.map(v => v * (1 - k))
+  while (luminance(c) > max) c = c.map(v => v * 0.9)
+  return `rgb(${c.map(Math.round).join(",")})`
 }
 function heroBackground(team) {
-  const a = shade(team.primary_color, 0.35) || "#1E2A78"
-  const b = shade(team.primary_color, 0.68) || "#141b4d"
-  const c = shade(team.secondary_color, 0.6) || "#0b1024"
-  return `linear-gradient(135deg, ${a} 0%, ${b} 55%, ${c} 100%)`
+  let p = hex2rgb(team.primary_color), s = hex2rgb(team.secondary_color)
+  if (p && s && saturation(p) < 0.15 && saturation(s) >= 0.15) [p, s] = [s, p]
+  if (!p) return "linear-gradient(135deg, #1E2A78 0%, #141b4d 55%, #0b1024 100%)"
+  return `linear-gradient(135deg, ${deepen(p, 0.3)} 0%, ${deepen(p, 0.6)} 55%, ${deepen(s || p, 0.6, 0.05)} 100%)`
 }
 const SHOW_GAMES = 3
 
@@ -209,7 +221,7 @@ export default function TeamDetail() {
       {/* Header — the transparent crest on the team's own colours */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl p-5 sm:p-6 text-white shadow-lg" style={{ background: heroBackground(team) }}>
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_10%,rgba(255,255,255,0.16),transparent_60%)]" />
+        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_10%,rgba(255,255,255,0.10),transparent_60%)]" />
         <div className="relative flex items-center gap-4">
           {team.logo_url
             ? <img src={team.logo_url} alt={team.name} className="w-20 h-20 sm:w-24 sm:h-24 object-contain shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]" />
@@ -233,8 +245,8 @@ export default function TeamDetail() {
           ) : null}
         </div>
         <div className="relative mt-4 flex items-center gap-2 flex-wrap">
-          <FollowButton targetType="team" targetId={team.id} size="sm" />
-          <ShareFollowButton targetType="team" name={team.name} />
+          <FollowButton targetType="team" targetId={team.id} size="sm" onDark />
+          <ShareFollowButton targetType="team" name={team.name} onDark />
           {!canEdit && isLinkedPlayer && <TeamCoachRequest teamId={team.id} />}
         </div>
       </motion.div>
