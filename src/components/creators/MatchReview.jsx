@@ -16,10 +16,28 @@ export const EVENT_TYPES = {
   goal: { label: "גול", window: [4, 3] },
   save: { label: "הצלת שוער", window: [3, 2] },
   foul: { label: "עבירה", window: [3, 3] },
+  screen: { label: "חסימה", window: [3, 2] },
+  out: { label: "כדור יצא", window: [3, 2] },
+}
+
+// What an event means FOR WHICH TEAM, as a full phrase — the bare "team" of a turnover was read both ways
+// (who lost it vs who won it) in the first review, 2026-10-13. Ball-loss types always name the team that LOST it.
+const TEAM_ROLE = {
+  pass: "מסירה של", pass_lost: "איבדה את הכדור במסירה —", steal: "חטפה את הכדור —", interception: "יירטה את הכדור —",
+  shot: "בעיטה של", goal: "גול של", save: "הצלה של השוער של", foul: "עבירה של", screen: "חסימה של שחקן של",
+  out: "הכדור יצא — נגע אחרון:",
+}
+export function phrase(type, team, teams) {
+  const n = teams?.[team] || team || ""
+  if (!type) return ""
+  if (type === "nothing") return "לא היה כלום"
+  if (type === "steal" || type === "interception" || type === "pass_lost") {
+    const verb = type === "steal" ? "חטפה את הכדור" : type === "interception" ? "יירטה את הכדור" : "איבדה את הכדור במסירה"
+    return `${n} ${verb}`
+  }
+  return `${TEAM_ROLE[type] || EVENT_TYPES[type]?.label || type} ${n}`.trim()
 }
 const OUTCOME = { goal: "גול", saved: "נעצרה", blocked: "נחסמה", wide: "החטיאה" }
-const ACTUAL = [...Object.keys(EVENT_TYPES), "nothing"]
-const actualLabel = (t) => (t === "nothing" ? "לא היה כלום" : EVENT_TYPES[t]?.label || t)
 const VERDICT = {
   correct: { label: "נכון", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" },
   wrong: { label: "שגוי", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
@@ -184,8 +202,9 @@ export function MatchReviewEditor({ id, onBack }) {
             <div className="card p-3 space-y-2">
               <div className="flex items-center gap-2 flex-wrap text-sm">
                 <span className="tabular-nums text-slate-500" dir="ltr">{mmss(cur.t)}</span>
-                <b className="text-slate-900 dark:text-white">{EVENT_TYPES[cur.type]?.label || cur.type}</b>
-                {cur.team && <span className="flex items-center gap-1"><span className={`w-2.5 h-2.5 rounded-full ${TEAM_DOT[cur.team]}`} />{teams[cur.team]}</span>}
+                {cur.team && <span className={`w-2.5 h-2.5 rounded-full ${TEAM_DOT[cur.team]}`} />}
+                <b className="text-slate-900 dark:text-white">{phrase(cur.type, cur.team, teams)}</b>
+                {cur.verdict === "wrong" && cur.actual_type && <span className="text-xs text-red-600">← תוקן ל: {phrase(cur.actual_type, cur.actual_team, teams)}</span>}
                 {cur.data?.outcome && <span className="text-slate-500">· {OUTCOME[cur.data.outcome] || cur.data.outcome}</span>}
                 {cur.data?.len != null && <span className="text-slate-500">· {cur.data.len} מ׳</span>}
                 {cur.source === "human" && <span className="text-xs text-slate-400">(נוסף ידנית)</span>}
@@ -194,15 +213,19 @@ export function MatchReviewEditor({ id, onBack }) {
               {cur.source === "engine" ? (
                 wrongFor === cur.id ? (
                   <div className="space-y-2">
-                    <div className="text-sm text-slate-700 dark:text-slate-200">מה זה היה באמת?</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ACTUAL.map(a => (
-                        <button key={a} onClick={() => verdict(cur, "wrong", { actual_type: a, actual_team: a === "nothing" ? null : cur.team })}
-                          className="px-2.5 py-1 rounded-lg text-sm bg-slate-100 dark:bg-slate-800 hover:ring-2 hover:ring-brand/40">{actualLabel(a)}</button>
-                      ))}
-                      {cur.team && <button onClick={() => verdict(cur, "wrong", { actual_type: cur.type, actual_team: cur.team === "red" ? "blue" : "red" })}
-                        className="px-2.5 py-1 rounded-lg text-sm bg-slate-100 dark:bg-slate-800 hover:ring-2 hover:ring-brand/40">אותו דבר, הקבוצה השנייה</button>}
-                    </div>
+                    <div className="text-sm text-slate-700 dark:text-slate-200">מה קרה באמת? כל כפתור אומר גם <b>מי</b>.</div>
+                    <button onClick={() => verdict(cur, "wrong", { actual_type: "nothing", actual_team: null })}
+                      className="px-2.5 py-1 rounded-lg text-sm bg-slate-100 dark:bg-slate-800 hover:ring-2 hover:ring-brand/40">לא היה כלום</button>
+                    {["red", "blue"].map(tm => (
+                      <div key={tm} className="flex flex-wrap items-center gap-1.5">
+                        <span className="flex items-center gap-1 text-xs font-semibold w-24 shrink-0"><span className={`w-2.5 h-2.5 rounded-full ${TEAM_DOT[tm]}`} />{teams[tm]}</span>
+                        {Object.keys(EVENT_TYPES).map(a => (
+                          <button key={a} onClick={() => verdict(cur, "wrong", { actual_type: a, actual_team: tm })}
+                            className="px-2 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-800 hover:ring-2 hover:ring-brand/40">{phrase(a, tm, teams)}</button>
+                        ))}
+                      </div>
+                    ))}
+                    <button onClick={() => setWrongFor(null)} className="text-xs underline text-slate-500">ביטול</button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
@@ -227,7 +250,7 @@ export function MatchReviewEditor({ id, onBack }) {
                   <div key={tm} className="flex flex-wrap items-center gap-1.5">
                     <span className="flex items-center gap-1 text-sm w-28 shrink-0"><span className={`w-2.5 h-2.5 rounded-full ${TEAM_DOT[tm]}`} />{teams[tm]}</span>
                     {Object.keys(EVENT_TYPES).map(tp => (
-                      <button key={tp} onClick={() => addMiss(tp, tm)} className="px-2 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-800 hover:ring-2 hover:ring-brand/40">{EVENT_TYPES[tp].label}</button>
+                      <button key={tp} onClick={() => addMiss(tp, tm)} className="px-2 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-800 hover:ring-2 hover:ring-brand/40">{phrase(tp, tm, teams)}</button>
                     ))}
                   </div>
                 ))}
@@ -260,7 +283,7 @@ export function MatchReviewEditor({ id, onBack }) {
                 className={`w-full text-start px-2 py-1.5 rounded-lg flex items-center gap-2 text-sm ${e.id === sel ? "bg-brand/10" : "hover:bg-slate-50 dark:hover:bg-slate-800/60"}`}>
                 <span className="tabular-nums text-xs text-slate-400 w-10 shrink-0" dir="ltr">{mmss(e.t)}</span>
                 {e.team && <span className={`w-2 h-2 rounded-full shrink-0 ${TEAM_DOT[e.team]}`} />}
-                <span className="truncate">{EVENT_TYPES[e.type]?.label || e.type}{e.data?.outcome ? ` · ${OUTCOME[e.data.outcome] || e.data.outcome}` : ""}</span>
+                <span className="truncate">{phrase(e.type, e.team, teams)}{e.data?.outcome ? ` · ${OUTCOME[e.data.outcome] || e.data.outcome}` : ""}</span>
                 {e.source === "human" && <Plus className="w-3 h-3 text-slate-400 shrink-0" />}
                 {e.verdict && <span className={`ms-auto text-[10px] font-bold px-1.5 rounded-full ${VERDICT[e.verdict].cls}`}>{VERDICT[e.verdict].label}</span>}
               </button>
