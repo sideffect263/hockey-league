@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import { getPendingPlayerSubmissions, approvePlayerSubmission, rejectPlayerSubmission } from "@/lib/playerSubmissions"
-import { Check, X, UserCheck, RefreshCw } from "lucide-react"
+import { Check, X, UserCheck, RefreshCw, AlertTriangle, Link2 } from "lucide-react"
+import { useAuth } from "@/lib/AuthContext"
+import { findLikelyDuplicates, linkToExistingCard } from "@/lib/duplicatePlayers"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
@@ -31,9 +33,17 @@ export default function PlayerSubmissionsReview({ teamsMap = {}, coachTeamIds = 
   const [error, setError] = useState(null)
   const [rejectingId, setRejectingId] = useState(null)   // which row is asking for a reason
   const [rejectText, setRejectText] = useState({})
+  const [dups, setDups] = useState({})                   // submission id -> likely existing cards
+  const { isAdmin, isLeagueManager } = useAuth()
+  const canLink = isAdmin || isLeagueManager             // admin_link_player is admin / LM only
 
   const load = async () => {
-    try { setLoading(true); setError(null); setItems(await getPendingPlayerSubmissions()) }
+    try {
+      setLoading(true); setError(null)
+      const rows = await getPendingPlayerSubmissions()
+      setItems(rows)
+      findLikelyDuplicates(rows).then(setDups).catch(() => setDups({}))
+    }
     catch { setError("שגיאה בטעינת הבקשות") }
     finally { setLoading(false) }
   }
@@ -66,6 +76,22 @@ export default function PlayerSubmissionsReview({ teamsMap = {}, coachTeamIds = 
         : submissionError(e, "שגיאה בדחיית הבקשה"))
     }
     finally { setBusyId(null) }
+  }
+
+  const doLink = async (s, player) => {
+    setBusyId(s.id); setError(null)
+    try { await linkToExistingCard(s, player); await load() }
+    catch (e) {
+      setError(e?.message === "player-already-linked"
+        ? "הכרטיס הקיים כבר משויך לחשבון אחר — בדקו מי מחובר אליו לפני שמאשרים"
+        : submissionError(e, "שגיאה בשיוך לכרטיס הקיים"))
+    }
+    finally { setBusyId(null) }
+  }
+  // Coaches can't link accounts: they reject with a ready reason that sends the player to claim his existing card.
+  const rejectAsDuplicate = (s, player) => {
+    setRejectingId(s.id)
+    setRejectText(t => ({ ...t, [s.id]: `כבר קיים כרטיס שלך בקבוצה: ${player.first_name} ${player.last_name}. במקום כרטיס חדש — היכנס/י לכרטיס הקיים ולחצ/י "זה אני" כדי לשייך אותו לחשבון` }))
   }
 
   // Non-admin coach: show only submissions for their own team(s).
@@ -140,6 +166,41 @@ export default function PlayerSubmissionsReview({ teamsMap = {}, coachTeamIds = 
                   </button>
                 </div>
                </div>
+
+                {/* Likely duplicate: an existing card with (loosely) the same name on this team — approving would create a
+                    second card for the same person (גיא ישראלי, 2026-10-05). */}
+                {dups[s.id]?.length > 0 && (
+                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-2">
+                    <p className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> ייתכן שכבר יש כרטיס לשחקן הזה — אישור ייצור כפילות
+                    </p>
+                    {dups[s.id].map(({ player: p, reason }) => (
+                      <div key={p.id} className="flex flex-wrap items-center gap-2 text-xs">
+                        <a href={`/players/${p.slug || p.id}`} target="_blank" rel="noreferrer" className="font-semibold text-slate-900 dark:text-white underline decoration-amber-400 underline-offset-2">
+                          {p.first_name} {p.last_name}
+                        </a>
+                        <span className="text-slate-500 dark:text-slate-400">
+                          {[p.jersey_number != null ? `#${p.jersey_number}` : null,
+                            reason === "same-name-other-team" ? (teamsMap[p.team_id]?.name || "קבוצה אחרת") : "אותה קבוצה",
+                            `${p.games_played || 0} משחקים`,
+                            reason === "same-number" ? "אותו שם פרטי ואותו מספר" : null].filter(Boolean).join(" · ")}
+                        </span>
+                        <span className="ms-auto flex gap-1.5">
+                          {canLink && reason !== "same-name-other-team" && (
+                            <button onClick={() => doLink(s, p)} disabled={busy}
+                              className="flex items-center gap-1 font-semibold px-2.5 py-1 rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50">
+                              <Link2 className="w-3.5 h-3.5" /> שיוך לכרטיס הזה
+                            </button>
+                          )}
+                          <button onClick={() => rejectAsDuplicate(s, p)} disabled={busy}
+                            className="font-semibold px-2.5 py-1 rounded-md border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 disabled:opacity-50">
+                            דחייה עם הסבר
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Row 30 — the reason is required and is sent to the submitter and the
                     coach, so the refusal says what to fix rather than just "נדחה". */}
