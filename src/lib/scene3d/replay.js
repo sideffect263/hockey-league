@@ -1,0 +1,269 @@
+import * as THREE from "three"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+
+// 3D replay of one play (video_lab_scenes.scene, written by video-analysis/scene3d/export_scene.py).
+// Rink coords are metres: x along the length (+ = right as the venue camera sees it), y across (+ = far side),
+// centre spot (0, 0). Three coords: (x, height, -y). Everything drawn comes from the scene data; nothing is invented
+// except the body shape around each tracked floor point.
+//
+// createReplay({ container, scene, onTick, clock }) -> { play, pause, seek, setSpeed, setView, dispose, state }
+//   onTick(t, activeEventIndex) ~10×/s for the UI; clock() -> seconds or null lets an external player (YouTube)
+//   drive the time while it is playing.
+
+const COL = { red: 0xf0393e, blue: 0x3c6ff0, ref: 0xff8a2a }
+const GOLD = 0xd9b45a
+export const EVENT_NAME = { pass: "מסירה", shot: "בעיטה", pass_lost: "מסירה שאבדה", interception: "יירוט", steal: "חטיפה", out: "כדור יצא" }
+export const SHOT_OUTCOME = { saved: "השוער עצר", wide: "החטיאה", blocked: "נחסמה", goal: "גול" }
+
+export function createReplay({ container, scene: D, onTick, clock }) {
+  const R = D.rink, L = R.L, W = R.W, DUR = D.dur
+  const GX = L / 2 - R.goal_line
+  const P = (x, y, h = 0) => new THREE.Vector3(x, h, -y)
+  const state = { t: 0, playing: false, speed: 1, view: "stand" }
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  const canvas = renderer.domElement
+  canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none"
+  container.appendChild(canvas)
+  const callout = document.createElement("div")
+  callout.style.cssText = "position:absolute;pointer-events:none;transform:translate(-50%,-130%);background:rgba(11,18,32,.9);color:#e8edf6;border:1px solid #24314d;border-radius:6px;padding:3px 8px;font-weight:700;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .2s"
+  container.appendChild(callout)
+
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x0b1220)
+  scene.fog = new THREE.Fog(0x0b1220, 40, 90)
+  const cam = new THREE.PerspectiveCamera(48, 1, 0.1, 200)
+  const controls = new OrbitControls(cam, canvas)
+  controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 - 0.03; controls.minDistance = 3; controls.maxDistance = 60
+
+  scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x223044, 1.3))
+  const sun = new THREE.DirectionalLight(0xffffff, 2.3)
+  sun.position.set(-6, 22, 8); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048)
+  Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 12, bottom: -12, near: 1, far: 50 })
+  scene.add(sun)
+  const lamps = []
+  for (let i = -2; i <= 2; i++) for (const zz of [-4, 4]) {
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.4), new THREE.MeshBasicMaterial({ color: 0xfff6e0 }))
+    lamp.position.set(i * 7, 9, zz); scene.add(lamp); lamps.push(lamp)
+  }
+
+  // ---- rink: floor, paint, boards, goals ----
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(L, W), new THREE.MeshStandardMaterial({ color: 0x6f7984, roughness: 0.42, metalness: 0.05 }))
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor)
+  const apron = new THREE.Mesh(new THREE.PlaneGeometry(L + 14, W + 14), new THREE.MeshStandardMaterial({ color: 0x141d2e, roughness: 1 }))
+  apron.rotation.x = -Math.PI / 2; apron.position.y = -0.01; scene.add(apron)
+  const paint = (geo, color, op = 1) => {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: op < 1, opacity: op }))
+    m.rotation.x = -Math.PI / 2; m.position.y = 0.004; scene.add(m); return m
+  }
+  const BLUE_PAINT = 0x3f6fb8, WHITE_PAINT = 0xf2f4f8, T = 0.07
+  paint(new THREE.PlaneGeometry(T, W), BLUE_PAINT)
+  paint(new THREE.RingGeometry(R.circle_r - T, R.circle_r, 96), BLUE_PAINT)
+  for (const s of [-1, 1]) {
+    paint(new THREE.PlaneGeometry(T, W), WHITE_PAINT, 0.7).position.x = s * GX
+    const bx = s * (GX - R.box_d / 2)
+    paint(new THREE.PlaneGeometry(R.box_d, T), WHITE_PAINT).position.set(bx, 0.004, -R.box_w / 2)
+    paint(new THREE.PlaneGeometry(R.box_d, T), WHITE_PAINT).position.set(bx, 0.004, R.box_w / 2)
+    paint(new THREE.PlaneGeometry(T, R.box_w), WHITE_PAINT).position.set(s * (GX - R.box_d), 0.004, 0)
+    paint(new THREE.CircleGeometry(0.09, 20), WHITE_PAINT).position.set(s * (GX - 5.4), 0.004, 0)
+  }
+  const boardMat = new THREE.MeshStandardMaterial({ color: 0xf1f3f6, roughness: 0.6 })
+  const nearMat = new THREE.MeshStandardMaterial({ color: 0xf1f3f6, roughness: 0.6, transparent: true, opacity: 0.16, depthWrite: false })
+  const kick = new THREE.MeshStandardMaterial({ color: 0xc9933f, roughness: 0.7 })
+  const board = (w, x, z, rot, near) => {
+    const g = new THREE.Group()
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1, 0.08), near ? nearMat : boardMat)
+    m.position.y = 0.5; m.castShadow = !near; m.receiveShadow = true; g.add(m)
+    if (!near) { const k = new THREE.Mesh(new THREE.BoxGeometry(w, 0.16, 0.085), kick); k.position.y = 0.08; g.add(k) }
+    g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g)
+  }
+  board(L, 0, -W / 2 - 0.04, 0, false); board(L, 0, W / 2 + 0.04, 0, true)
+  board(W + 0.16, -L / 2 - 0.04, 0, Math.PI / 2, false); board(W + 0.16, L / 2 + 0.04, 0, Math.PI / 2, false)
+  const goalMat = new THREE.MeshStandardMaterial({ color: 0xff6a1a, roughness: 0.45 })
+  for (const s of [-1, 1]) {
+    const g = new THREE.Group(), r = 0.04, gw = R.goal_w, gh = R.goal_h, dp = 0.9
+    const tube = (len) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 10), goalMat)
+    for (const zz of [-gw / 2, gw / 2]) {
+      const p = tube(gh); p.position.set(0, gh / 2, zz); p.castShadow = true; g.add(p)
+      const back = tube(Math.hypot(dp, gh)); back.position.set(-dp / 2, gh / 2, zz); back.rotation.z = -Math.atan2(dp, gh); g.add(back)
+      const base = tube(dp); base.rotation.z = Math.PI / 2; base.position.set(-dp / 2, r, zz); g.add(base)
+    }
+    const bar = tube(gw); bar.rotation.x = Math.PI / 2; bar.position.set(0, gh, 0); bar.castShadow = true; g.add(bar)
+    const v = []
+    for (let i = 0; i <= 10; i++) { const z = -gw / 2 + gw * i / 10; v.push(0, gh, z, -dp, 0, z) }
+    for (let j = 0; j <= 7; j++) {
+      const u = j / 7; v.push(-dp * u, gh * (1 - u), -gw / 2, -dp * u, gh * (1 - u), gw / 2)
+      for (const zz of [-gw / 2, gw / 2]) v.push(-dp * u, gh * (1 - u), zz, -dp * u, 0, zz)
+    }
+    const ng = new THREE.BufferGeometry(); ng.setAttribute("position", new THREE.Float32BufferAttribute(v, 3))
+    g.add(new THREE.LineSegments(ng, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 })))
+    g.position.set(s * GX, 0, 0); g.rotation.y = s < 0 ? 0 : Math.PI; scene.add(g)
+  }
+
+  // ---- players: one figure per track; opacity drops when the track is not freshly observed ----
+  const skin = new THREE.MeshStandardMaterial({ color: 0xd9a77f, roughness: 0.7 })
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.8 })
+  const stickMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5 })
+  const geo = {
+    legs: new THREE.CylinderGeometry(0.17, 0.13, 0.82, 12), skates: new THREE.BoxGeometry(0.34, 0.08, 0.3),
+    torso: new THREE.CapsuleGeometry(0.22, 0.38, 6, 14), head: new THREE.SphereGeometry(0.13, 16, 12),
+    stick: new THREE.CylinderGeometry(0.018, 0.018, 1.25, 6), ring: new THREE.RingGeometry(0.34, 0.4, 32),
+  }
+  const players = D.players.map(p => {
+    const shirt = new THREE.MeshStandardMaterial({ color: COL[p.team] ?? 0x888888, roughness: 0.55, transparent: true })
+    const mats = [shirt, skin.clone(), dark.clone(), stickMat.clone()]; mats.forEach(m => { m.transparent = true })
+    const g = new THREE.Group()
+    const add = (gm, m, x, y, z) => { const o = new THREE.Mesh(gm, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o }
+    add(geo.legs, mats[2], 0, 0.47, 0); add(geo.skates, mats[2], 0.04, 0.04, 0)
+    add(geo.torso, shirt, 0, 1.15, 0); add(geo.head, mats[1], 0, 1.62, 0)
+    add(geo.stick, mats[3], 0.42, 0.55, 0.18).rotation.z = -1.0
+    const ring = new THREE.Mesh(geo.ring, new THREE.MeshBasicMaterial({ color: COL[p.team] ?? 0x888888, transparent: true, opacity: 0.8, depthWrite: false }))
+    ring.rotation.x = -Math.PI / 2
+    scene.add(g); scene.add(ring)
+    return { g, ring, mats, obs: p.obs, heading: 0 }
+  })
+  function sampleTrack(obs, t) {
+    if (t < obs[0][0] - 0.15 || t > obs[obs.length - 1][0] + 0.8) return null
+    let i = 0; while (i < obs.length - 1 && obs[i + 1][0] < t) i++
+    const a = obs[i], b = obs[Math.min(i + 1, obs.length - 1)]
+    if (t <= a[0] || a === b) return { x: a[1], y: a[2], fresh: Math.abs(t - a[0]) < 0.3, vx: 0, vy: 0 }
+    const gap = b[0] - a[0], u = Math.min(1, (t - a[0]) / gap)
+    return { x: a[1] + (b[1] - a[1]) * u, y: a[2] + (b[2] - a[2]) * u, fresh: gap < 0.6, vx: (b[1] - a[1]) / gap, vy: (b[2] - a[2]) / gap }
+  }
+
+  // ---- ball: black, thin dim-gold outline ring, short trail ----
+  const B = D.ball
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.11, 20, 14), new THREE.MeshStandardMaterial({ color: 0x0c0c0c, roughness: 0.3 }))
+  ball.castShadow = true; scene.add(ball)
+  const ballRing = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.235, 40), new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.85, depthWrite: false }))
+  ballRing.rotation.x = -Math.PI / 2; scene.add(ballRing)
+  const TRAIL_N = 40, trailPos = new Float32Array(TRAIL_N * 3)
+  const trailGeo = new THREE.BufferGeometry(); trailGeo.setAttribute("position", new THREE.BufferAttribute(trailPos, 3))
+  scene.add(new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: GOLD, transparent: true, opacity: 0.6 })))
+  function sampleBall(t) {
+    if (!B.length || t < B[0][0] || t > B[B.length - 1][0]) return null
+    let i = 0; while (i < B.length - 1 && B[i + 1][0] < t) i++
+    const a = B[i], b = B[Math.min(i + 1, B.length - 1)]
+    if (a === b) return { x: a[1], y: a[2] }
+    if (b[0] - a[0] > 0.8) return Math.abs(t - a[0]) < 0.1 ? { x: a[1], y: a[2] } : null
+    const u = (t - a[0]) / (b[0] - a[0])
+    return { x: a[1] + (b[1] - a[1]) * u, y: a[2] + (b[2] - a[2]) * u, filled: a[3] && b[3] }
+  }
+
+  // ---- events: shot lines to the attacked goal, pulses for the rest ----
+  const attackX = team => (D.attack?.[team] ?? (team === "red" ? -1 : 1)) * GX
+  const shotFx = D.events.filter(e => e.type === "shot" && e.x != null).map(e => {
+    const gy = e.aim_y != null ? Math.max(-1.6, Math.min(1.6, e.aim_y)) : 0
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([P(e.x, e.y, 0.02), P(attackX(e.team), gy, 0.02)]),
+      new THREE.LineDashedMaterial({ color: e.outcome === "goal" ? GOLD : 0xffffff, dashSize: 0.35, gapSize: 0.2, transparent: true, opacity: 0 }))
+    line.computeLineDistances(); scene.add(line)
+    return { e, line }
+  })
+  const pulses = D.events.filter(e => e.x != null && e.type !== "shot").map(e => {
+    const m = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.58, 40), new THREE.MeshBasicMaterial({ color: COL[e.team] ?? 0xffffff, transparent: true, opacity: 0, depthWrite: false }))
+    m.rotation.x = -Math.PI / 2; m.position.copy(P(e.x, e.y, 0.01)); scene.add(m); return { e, m }
+  })
+
+  // ---- views ----
+  const side = D.events.find(e => e.type === "shot" && e.x != null)
+  const focusX = side ? attackX(side.team) * 0.55 : 0                      // look toward where the play happens
+  const VIEWS = {
+    stand: { pos: [focusX * 0.4, 6.5, 13.5], tgt: [focusX, 0, 0] },
+    top: { pos: [0, 36, 0.8], tgt: [0, 0, 0] },
+    goal: { pos: [Math.sign(focusX || -1) * (GX + 4.5), 3.2, 0], tgt: [Math.sign(focusX || -1) * (GX - 8), 0.4, 0] },
+    ball: { pos: [focusX + 4, 5, 8], tgt: [focusX, 0, 0] },
+  }
+  let camFrom = null, camTo = null, camT = 1
+  function setView(v, instant) {
+    state.view = v; lamps.forEach(l => { l.visible = v !== "top" })
+    camFrom = { pos: cam.position.clone(), tgt: controls.target.clone() }
+    camTo = { pos: new THREE.Vector3(...VIEWS[v].pos), tgt: new THREE.Vector3(...VIEWS[v].tgt) }; camT = instant ? 1 : 0
+    if (instant) { cam.position.copy(camTo.pos); controls.target.copy(camTo.tgt) }
+  }
+  setView("stand", true)
+
+  function resize() {
+    const r = container.getBoundingClientRect()
+    renderer.setSize(r.width, r.height, false); cam.aspect = r.width / Math.max(1, r.height); cam.updateProjectionMatrix()
+  }
+  const ro = new ResizeObserver(resize); ro.observe(container); resize()
+
+  let raf = 0, last = performance.now(), lastTick = 0, dead = false
+  function frame(now) {
+    if (dead) return
+    const dt = Math.min(0.1, (now - last) / 1000); last = now
+    if (state.playing) {
+      const ext = clock?.()
+      state.t = ext != null ? ext : state.t + dt * state.speed
+      if (state.t >= DUR) { state.t = 0; onLoop?.() }
+    }
+    const t = state.t
+
+    for (const pl of players) {
+      const s = sampleTrack(pl.obs, t)
+      pl.g.visible = pl.ring.visible = !!s
+      if (!s) continue
+      pl.g.position.copy(P(s.x, s.y)); pl.ring.position.set(s.x, 0.006, -s.y)
+      if (Math.hypot(s.vx, s.vy) > 0.6) { let d = Math.atan2(s.vy, s.vx) - pl.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); pl.heading += d * Math.min(1, dt * 8) }
+      pl.g.rotation.y = pl.heading
+      const op = s.fresh ? 1 : 0.3; pl.mats.forEach(m => { m.opacity = op }); pl.ring.material.opacity = 0.8 * op
+    }
+    const b = sampleBall(t)
+    ball.visible = ballRing.visible = !!b
+    if (b) { ball.position.copy(P(b.x, b.y, 0.11)); ballRing.position.set(b.x, 0.008, -b.y); ballRing.material.opacity = b.filled ? 0.4 : 0.85 }
+    let n = 0
+    for (const s of B) if (s[0] > t - 1.2 && s[0] <= t && n < TRAIL_N) { trailPos[n * 3] = s[1]; trailPos[n * 3 + 1] = 0.05; trailPos[n * 3 + 2] = -s[2]; n++ }
+    trailGeo.setDrawRange(0, n); trailGeo.attributes.position.needsUpdate = true
+
+    let active = null
+    for (const s of shotFx) { const age = t - s.e.t; const on = age >= 0 && age < 2.5; s.line.material.opacity = on ? 1 - age / 2.5 : 0; if (on) active = s.e }
+    for (const p of pulses) {
+      const age = t - p.e.t, on = age >= 0 && age < 1.2
+      p.m.material.opacity = on ? 0.9 * (1 - age / 1.2) : 0; p.m.scale.setScalar(on ? 1 + age * 1.5 : 1)
+      if (on && (!active || active.t < p.e.t)) active = p.e
+    }
+    if (active && active.x != null) {
+      const v = P(active.x, active.y, 1.9).project(cam), r = canvas.getBoundingClientRect()
+      callout.style.left = ((v.x + 1) / 2 * r.width) + "px"; callout.style.top = ((1 - v.y) / 2 * r.height) + "px"
+      callout.textContent = active.type === "shot"
+        ? `בעיטה · ${SHOT_OUTCOME[active.outcome] || active.outcome} · ${active.dist} מ׳${active.speed ? ` · ${active.speed} קמ״ש` : ""}`
+        : (EVENT_NAME[active.type] || active.type)
+      callout.style.opacity = v.z < 1 ? "1" : "0"
+    } else callout.style.opacity = "0"
+
+    if (camT < 1) {
+      camT = Math.min(1, camT + dt * 1.6); const k = 1 - Math.pow(1 - camT, 3)
+      cam.position.lerpVectors(camFrom.pos, camTo.pos, k); controls.target.lerpVectors(camFrom.tgt, camTo.tgt, k)
+    } else if (state.view === "ball" && b) {
+      const off = cam.position.clone().sub(controls.target)
+      controls.target.lerp(new THREE.Vector3(b.x, 0, -b.y), Math.min(1, dt * 2.5)); cam.position.copy(controls.target).add(off)
+    }
+    controls.update()
+    renderer.render(scene, cam)
+    if (now - lastTick > 100) {
+      lastTick = now
+      let ai = -1; D.events.forEach((e, i) => { if (e.t <= t + 0.01) ai = i })
+      onTick?.(t, ai)
+    }
+    raf = requestAnimationFrame(frame)
+  }
+  raf = requestAnimationFrame(frame)
+
+  let onLoop = null
+  return {
+    state,
+    play() { state.playing = true },
+    pause() { state.playing = false },
+    seek(t) { state.t = Math.max(0, Math.min(DUR, t)) },
+    setSpeed(s) { state.speed = s },
+    setView,
+    set onLoop(fn) { onLoop = fn },
+    dispose() {
+      dead = true; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()
+      scene.traverse(o => { o.geometry?.dispose?.(); const m = o.material; (Array.isArray(m) ? m : m ? [m] : []).forEach(x => x.dispose?.()) })
+      renderer.dispose(); canvas.remove(); callout.remove()
+    },
+  }
+}

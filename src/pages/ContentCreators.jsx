@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, lazy, Suspense } from "react"
 import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import {
   Images, Camera, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, FlaskConical, BookOpen
+  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, FlaskConical, BookOpen, Box
 } from "lucide-react"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import { getPlayers } from "@/lib/api"
@@ -16,11 +16,14 @@ import FeedDrafts from "@/components/creators/FeedDrafts"
 import VideoLab from "@/components/creators/VideoLab"
 import GameStoriesReview from "@/components/creators/GameStoriesReview"
 import { countStoryDrafts } from "@/lib/gameStories"
+// three.js is big — only this tab loads it
+const Scene3DTab = lazy(() => import("@/components/creators/Scene3D"))
 
 const tabs = [
   { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
   { id: "stories", label: "סיפורי משחקים", icon: BookOpen },
   { id: "lab", label: "מעבדת וידאו", icon: FlaskConical },
+  { id: "scene3d", label: "שחזור תלת-ממד", icon: Box },
   { id: "media", label: "מדיה", icon: Camera },
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
   { id: "reports", label: "דיווחים", icon: Flag },
@@ -66,7 +69,7 @@ export default function ContentCreators() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, מעבדת וידאו, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, מעבדת וידאו, שחזור תלת-ממד, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -100,6 +103,11 @@ export default function ContentCreators() {
           {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
           {activeTab === "stories" && <GameStoriesReview onCountChange={setStoryCount} />}
           {activeTab === "lab" && <VideoLab />}
+          {activeTab === "scene3d" && (
+            <Suspense fallback={<div className="card p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>}>
+              <Scene3DTab />
+            </Suspense>
+          )}
           {activeTab === "media" && <MediaClusters />}
           {activeTab === "clusters" && <ClustersAdmin players={players} />}
           {activeTab === "reports" && <ReportsReview />}
