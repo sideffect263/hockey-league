@@ -1,5 +1,5 @@
-import { FILES, SHEET } from './template'
-import { sheetXml, zip } from './xlsx'
+import { FILES, SHEET } from './template.js'
+import { sheetXml, zip } from './xlsx.js'
 
 /**
  * Fill the league's blank refereeing form with a played game and return it as .xlsx
