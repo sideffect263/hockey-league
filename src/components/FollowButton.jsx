@@ -11,7 +11,9 @@ import { follow, unfollow, setFollowNotify, getMyFollows, getFollowerCounts } fr
  * signs you up for a push on every goal — the fastest way to make people unfollow.
  * Following is cheap; being buzzed is not.
  */
-export default function FollowButton({ targetType, targetId, size = "md", showCount = true }) {
+// onDark: sits on a dark coloured surface (the team page header) — a solid white
+// "follow" and glass for the rest, readable whatever the team's colours are.
+export default function FollowButton({ targetType, targetId, size = "md", showCount = true, onDark = false }) {
   const { user, openAuth } = useAuth()
   const [following, setFollowing] = useState(false)
   const [notify, setNotify] = useState(false)
@@ -70,9 +72,13 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
       <button onClick={toggleFollow} disabled={busy || !ready}
         aria-pressed={following}
         className={`inline-flex items-center gap-1.5 font-bold rounded-xl transition-colors disabled:opacity-50 ${pad} ${
-          following
-            ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-            : "bg-brand text-brand-fg hover:bg-brand-hover"
+          onDark
+            ? following
+              ? "bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25"
+              : "bg-white text-slate-900 hover:bg-white/90"
+            : following
+              ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+              : "bg-brand text-brand-fg hover:bg-brand-hover"
         }`}>
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
           : following ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
@@ -89,9 +95,11 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
           title={notify ? "כיבוי התראות על הקבוצה" : "קבלת התראות על משחקים ואירועים"}
           aria-label={notify ? "כיבוי התראות" : "הפעלת התראות"}
           className={`inline-flex items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${sm ? "p-1" : "p-1.5"} ${
-            notify
-              ? "bg-brand/10 text-brand"
-              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+            onDark
+              ? notify ? "bg-white/20 text-white" : "text-white/70 hover:text-white hover:bg-white/15"
+              : notify
+                ? "bg-brand/10 text-brand"
+                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
           }`}>
           {notify ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
         </button>

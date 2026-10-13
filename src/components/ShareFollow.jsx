@@ -10,7 +10,7 @@ import { follow } from "@/lib/follows"
  * what was missing is the invitation: a link that lands on this page with ?follow=1,
  * where the friend gets ONE button that follows with notifications on.
  */
-export function ShareFollowButton({ targetType, name }) {
+export function ShareFollowButton({ targetType, name, onDark = false }) {
   const [copied, setCopied] = useState(false)
   const share = async () => {
     const url = new URL(window.location.href)
@@ -29,7 +29,9 @@ export function ShareFollowButton({ targetType, name }) {
   }
   return (
     <button onClick={share}
-      className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors ${onDark
+        ? "border-white/25 bg-white/10 text-white hover:bg-white/20"
+        : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
       {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Share2 className="w-3.5 h-3.5" />} שיתוף לחברים
     </button>
   )
