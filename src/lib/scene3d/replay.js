@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { Skater, stridePose, localToWorld, poseToWorld, samplePose } from "./skater"
 
 // 3D replay of one play (video_lab_scenes.scene, written by video-analysis/scene3d/export_scene.py).
 // Rink coords are metres: x along the length (+ = right as the venue camera sees it), y across (+ = far side),
@@ -102,28 +103,23 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     g.position.set(s * GX, 0, 0); g.rotation.y = s < 0 ? 0 : Math.PI; scene.add(g)
   }
 
-  // ---- players: one figure per track; opacity drops when the track is not freshly observed ----
-  const skin = new THREE.MeshStandardMaterial({ color: 0xd9a77f, roughness: 0.7 })
-  const dark = new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.8 })
-  const stickMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5 })
-  const geo = {
-    legs: new THREE.CylinderGeometry(0.17, 0.13, 0.82, 12), skates: new THREE.BoxGeometry(0.34, 0.08, 0.3),
-    torso: new THREE.CapsuleGeometry(0.22, 0.38, 6, 14), head: new THREE.SphereGeometry(0.13, 16, 12),
-    stick: new THREE.CylinderGeometry(0.018, 0.018, 1.25, 6), ring: new THREE.RingGeometry(0.34, 0.4, 32),
+  // ---- players: a jointed skater per track (skater.js), driven by the video pose where there is one, else a stride;
+  //      opacity drops when the track is not freshly observed ----
+  const KIT = {
+    red: { shirt: 0xe3262d, shorts: 0x14171d, socks: 0xe3262d },
+    blue: { shirt: 0x2f63e8, shorts: 0x18213a, socks: 0x2f63e8 },
+    ref: { shirt: 0xff8a2a, shorts: 0x14171d, socks: 0x14171d, helmet: 0x14171d },
   }
+  const ringGeo = new THREE.RingGeometry(0.34, 0.4, 32)
   const players = D.players.map(p => {
-    const shirt = new THREE.MeshStandardMaterial({ color: COL[p.team] ?? 0x888888, roughness: 0.55, transparent: true })
-    const mats = [shirt, skin.clone(), dark.clone(), stickMat.clone()]; mats.forEach(m => { m.transparent = true })
-    const g = new THREE.Group()
-    const add = (gm, m, x, y, z) => { const o = new THREE.Mesh(gm, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o }
-    add(geo.legs, mats[2], 0, 0.47, 0); add(geo.skates, mats[2], 0.04, 0.04, 0)
-    add(geo.torso, shirt, 0, 1.15, 0); add(geo.head, mats[1], 0, 1.62, 0)
-    add(geo.stick, mats[3], 0.42, 0.55, 0.18).rotation.z = -1.0
-    const ring = new THREE.Mesh(geo.ring, new THREE.MeshBasicMaterial({ color: COL[p.team] ?? 0x888888, transparent: true, opacity: 0.8, depthWrite: false }))
+    const sk = new Skater(KIT[p.team] ?? { shirt: 0x888888 })
+    if (p.team === "ref") { sk.stick.visible = false; sk.blade.visible = false; sk.noStick = true }
+    const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: COL[p.team] ?? 0x888888, transparent: true, opacity: 0.8, depthWrite: false }))
     ring.rotation.x = -Math.PI / 2
-    scene.add(g); scene.add(ring)
-    return { g, ring, mats, obs: p.obs, heading: 0 }
+    scene.add(sk.group); scene.add(ring)
+    return { sk, ring, obs: p.obs, pose: p.pose, heading: 0, speed: 0, phase: Math.random() * 6.28 }
   })
+  const posed = players.some(p => p.pose?.length)
   function sampleTrack(obs, t) {
     if (t < obs[0][0] - 0.15 || t > obs[obs.length - 1][0] + 0.8) return null
     let i = 0; while (i < obs.length - 1 && obs[i + 1][0] < t) i++
@@ -203,12 +199,18 @@ export function createReplay({ container, scene: D, onTick, clock }) {
 
     for (const pl of players) {
       const s = sampleTrack(pl.obs, t)
-      pl.g.visible = pl.ring.visible = !!s
+      pl.sk.visible = pl.ring.visible = !!s
       if (!s) continue
-      pl.g.position.copy(P(s.x, s.y)); pl.ring.position.set(s.x, 0.006, -s.y)
-      if (Math.hypot(s.vx, s.vy) > 0.6) { let d = Math.atan2(s.vy, s.vx) - pl.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); pl.heading += d * Math.min(1, dt * 8) }
-      pl.g.rotation.y = pl.heading
-      const op = s.fresh ? 1 : 0.3; pl.mats.forEach(m => { m.opacity = op }); pl.ring.material.opacity = 0.8 * op
+      const sp = Math.hypot(s.vx, s.vy)
+      pl.speed += (Math.min(sp, 9) - pl.speed) * Math.min(1, dt * 4)
+      if (sp > 0.6) { let d = Math.atan2(s.vy, s.vx) - pl.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); pl.heading += d * Math.min(1, dt * 8) }
+      if (state.playing) pl.phase += dt * state.speed * 2 * Math.PI * (0.55 + 0.14 * pl.speed)
+      const stride = localToWorld(stridePose(pl.phase, pl.speed), s.x, s.y, pl.heading)
+      const row = pl.pose && samplePose(pl.pose, t)
+      pl.sk.update(row ? poseToWorld(row, s.x, s.y, stride) : stride, pl.heading)
+      if (pl.sk.noStick) { pl.sk.stick.visible = false; pl.sk.blade.visible = false }
+      pl.ring.position.set(s.x, 0.006, -s.y)
+      const op = s.fresh ? 1 : 0.3; pl.sk.setOpacity(op); pl.ring.material.opacity = 0.8 * op
     }
     const b = sampleBall(t)
     ball.visible = ballRing.visible = !!b
@@ -254,6 +256,7 @@ export function createReplay({ container, scene: D, onTick, clock }) {
   let onLoop = null
   return {
     state,
+    posed,
     play() { state.playing = true },
     pause() { state.playing = false },
     seek(t) { state.t = Math.max(0, Math.min(DUR, t)) },
@@ -262,6 +265,7 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     set onLoop(fn) { onLoop = fn },
     dispose() {
       dead = true; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()
+      players.forEach(p => p.sk.dispose())
       scene.traverse(o => { o.geometry?.dispose?.(); const m = o.material; (Array.isArray(m) ? m : m ? [m] : []).forEach(x => x.dispose?.()) })
       renderer.dispose(); canvas.remove(); callout.remove()
     },

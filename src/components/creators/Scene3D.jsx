@@ -177,6 +177,7 @@ function SceneViewer({ id, onBack }) {
               <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-orange-500" />שופט</span>
               <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full border-2 border-[#d9b45a]" />כדור</span>
               <span>שקוף = מחוץ לפריים</span>
+              <span>{row.scene.players.some(p => p.pose?.length) ? "תנוחות גוף מהווידאו" : "תנועת החלקה מחושבת"}</span>
             </div>
           </div>
           <div className="p-3 space-y-2 border-t border-slate-200 dark:border-slate-700">
@@ -265,7 +266,9 @@ function MetaPanel({ meta }) {
     ["כיול המגרש", `סט ${String(c.set).slice(0, 8)} · ${c.points} נקודות · שגיאה ${c.rms_m} מ׳ (חציון ${c.median_err_m}) · מגרש ${c.rink_m?.join("×")} מ׳ · גובה מצלמה ${c.cam_height_m} מ׳`],
     ["מעקב שחקנים", `${en.tracking?.name}: ${en.tracking?.method}`],
     ["אירועים", en.events?.name],
-    ["במהלך הזה", `${sc.players_tracks} קטעי מעקב · ${sc.ball_samples} דגימות כדור (${sc.ball_filled} מילוי בין זיהויים) · ${sc.events} אירועים`],
+    ...(en.pose ? [["תנוחת גוף", `${en.pose.model} · ${en.pose.lift} · ${en.pose.lift_test}`]] : []),
+    ["במהלך הזה", `${sc.players_tracks} קטעי מעקב · ${sc.ball_samples} דגימות כדור (${sc.ball_filled} מילוי בין זיהויים) · ${sc.events} אירועים`
+      + (sc.pose_samples ? ` · ${sc.pose_samples} תנוחות גוף ב-${sc.pose_tracks} קטעים` : " · אין עדיין תנוחות גוף (תנועת החלקה מחושבת)")],
   ]
   return (
     <div className="mt-3 space-y-3">
