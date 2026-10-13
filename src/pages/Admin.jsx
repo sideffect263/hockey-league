@@ -51,6 +51,7 @@ import UserAnalyticsAdmin from "@/components/admin/UserAnalyticsAdmin"
 import FeedAnalyticsAdmin from "@/components/admin/FeedAnalyticsAdmin"
 import CalendarSubscribersAdmin from "@/components/admin/CalendarSubscribersAdmin"
 import AppUsersAdmin from "@/components/admin/AppUsersAdmin"
+import AndroidTestersAdmin from "@/components/admin/AndroidTestersAdmin"
 import HiddenFeaturesAdmin from "@/components/admin/HiddenFeaturesAdmin"
 import SuggestionsReview from "@/components/admin/SuggestionsReview"
 import RolesAdmin from "@/components/admin/RolesAdmin"
@@ -61,7 +62,7 @@ import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import SurveysAdmin from "@/components/admin/SurveysAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2 } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -91,6 +92,8 @@ const tabs = [
   { id: "calendar_subs", label: "מנויי יומן", icon: CalendarCheck },
   { id: "telemetry", label: "טלמטריה", icon: Activity },
   { id: "app_users", label: "משתמשי אפליקציה", icon: Smartphone },
+  // admin-only (admin_android_testers RPC): Google Play closed-test candidates
+  { id: "android_testers", label: "בודקי אפליקציה", icon: TestTube2 },
   // admin-only: no role's scopedTabIds lists it (docs/HIDDEN-FEATURES-SPEC.md)
   { id: "hidden_features", label: "תכונות מוסתרות", icon: ToggleRight },
   { id: "roles", label: "תפקידים", icon: Award },
@@ -276,6 +279,7 @@ export default function Admin() {
               {currentTab === "calendar_subs" && <CalendarSubscribersAdmin />}
               {currentTab === "telemetry" && <TelemetryAdmin />}
               {currentTab === "app_users" && <AppUsersAdmin />}
+              {currentTab === "android_testers" && <AndroidTestersAdmin />}
               {currentTab === "hidden_features" && isAdmin && <HiddenFeaturesAdmin teams={teams} />}
               {currentTab === "coaches" && <CoachesAdmin teamsMap={teamsMap} players={players} />}
               {currentTab === "roles" && <RolesAdmin teamsMap={teamsMap} players={players} />}

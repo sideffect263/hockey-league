@@ -66,3 +66,14 @@ export async function mergeAccounts(keepId, dropId) {
   }
   return data
 }
+
+/**
+ * Google Play closed-test candidates: accounts that use the Android app AND have a
+ * Google address (play_email = the one to paste into Play Console). Admin-only RPC,
+ * see supabase/android-testers.sql.
+ */
+export async function getAndroidTesters() {
+  const { data, error } = await supabase.rpc('admin_android_testers')
+  if (error) throw error
+  return data || []
+}
