@@ -15,12 +15,18 @@ const COL = { red: 0xf0393e, blue: 0x3c6ff0, ref: 0xff8a2a }
 const GOLD = 0xd9b45a
 export const EVENT_NAME = { pass: "מסירה", shot: "בעיטה", pass_lost: "מסירה שאבדה", interception: "יירוט", steal: "חטיפה", out: "כדור יצא" }
 export const SHOT_OUTCOME = { saved: "השוער עצר", wide: "החטיאה", blocked: "נחסמה", goal: "גול" }
+// "נבו כהן (14)" / "#7" / null — who the engine credits with an event (export_scene.py: nearest named player)
+export function whoLabel(e) {
+  const num = /^[rb](\d+)$/.exec(e?.by || "")?.[1]
+  if (!num) return /gk$/.test(e?.by || "") ? "השוער" : null
+  return e.by_name ? `${e.by_name} (${num})` : `#${num}`
+}
 
 export function createReplay({ container, scene: D, onTick, clock }) {
   const R = D.rink, L = R.L, W = R.W, DUR = D.dur
   const GX = L / 2 - R.goal_line
   const P = (x, y, h = 0) => new THREE.Vector3(x, h, -y)
-  const state = { t: 0, playing: false, speed: 1, view: "stand" }
+  const state = { t: 0, playing: false, speed: 1, view: "stand", tags: true }
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
@@ -114,6 +120,7 @@ export function createReplay({ container, scene: D, onTick, clock }) {
   const players = D.players.map(p => {
     const sk = new Skater(KIT[p.team] ?? { shirt: 0x888888 })
     if (p.team === "ref") { sk.stick.visible = false; sk.blade.visible = false; sk.noStick = true }
+    sk.setIdentity(p.label, p.name, KIT[p.team] ?? { shirt: 0x888888 })
     const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: COL[p.team] ?? 0x888888, transparent: true, opacity: 0.8, depthWrite: false }))
     ring.rotation.x = -Math.PI / 2
     scene.add(sk.group); scene.add(ring)
@@ -209,6 +216,7 @@ export function createReplay({ container, scene: D, onTick, clock }) {
       const row = pl.pose && samplePose(pl.pose, t)
       pl.sk.update(row ? poseToWorld(row, s.x, s.y, stride) : stride, pl.heading)
       if (pl.sk.noStick) { pl.sk.stick.visible = false; pl.sk.blade.visible = false }
+      pl.sk.showTag(state.tags)
       pl.ring.position.set(s.x, 0.006, -s.y)
       const op = s.fresh ? 1 : 0.3; pl.sk.setOpacity(op); pl.ring.material.opacity = 0.8 * op
     }
@@ -229,9 +237,10 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     if (active && active.x != null) {
       const v = P(active.x, active.y, 1.9).project(cam), r = canvas.getBoundingClientRect()
       callout.style.left = ((v.x + 1) / 2 * r.width) + "px"; callout.style.top = ((1 - v.y) / 2 * r.height) + "px"
-      callout.textContent = active.type === "shot"
+      const who = whoLabel(active)
+      callout.textContent = (active.type === "shot"
         ? `בעיטה · ${SHOT_OUTCOME[active.outcome] || active.outcome} · ${active.dist} מ׳${active.speed ? ` · ${active.speed} קמ״ש` : ""}`
-        : (EVENT_NAME[active.type] || active.type)
+        : (EVENT_NAME[active.type] || active.type)) + (who ? ` · ${who}` : "")
       callout.style.opacity = v.z < 1 ? "1" : "0"
     } else callout.style.opacity = "0"
 
@@ -262,6 +271,7 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     seek(t) { state.t = Math.max(0, Math.min(DUR, t)) },
     setSpeed(s) { state.speed = s },
     setView,
+    setTags(v) { state.tags = v },
     set onLoop(fn) { onLoop = fn },
     dispose() {
       dead = true; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()

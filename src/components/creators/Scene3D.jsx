@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowRight, Box, Loader2, Play, Pause, Info } from "lucide-react"
 import { getScenes, getScene } from "@/lib/scene3d/scenes"
-import { createReplay, EVENT_NAME, SHOT_OUTCOME } from "@/lib/scene3d/replay"
+import { createReplay, EVENT_NAME, SHOT_OUTCOME, whoLabel } from "@/lib/scene3d/replay"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 
 // /creators "שחזור תלת-ממד": a play rebuilt in 3D from the match-stats engine (players + ball in rink metres,
@@ -87,6 +87,7 @@ function SceneViewer({ id, onBack }) {
   const [speed, setSpeed] = useState(1)
   const [view, setView] = useState("stand")
   const [showMeta, setShowMeta] = useState(false)
+  const [tags, setTags] = useState(true)
   const stageRef = useRef(null)
   const ytBox = useRef(null)
   const eng = useRef(null)
@@ -164,6 +165,10 @@ function SceneViewer({ id, onBack }) {
         <div className="card overflow-hidden p-0">
           <div ref={stageRef} className="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-[#0b1220]">
             <div className="absolute top-2 start-2 z-10 flex flex-wrap gap-1.5">
+              <button onClick={() => { setTags(!tags); eng.current?.setTags(!tags) }} aria-pressed={tags}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur ${tags ? "bg-white text-slate-900 border-white" : "bg-slate-900/70 text-white border-slate-600"}`}>
+                שמות
+              </button>
               {VIEWS.map(([v, label]) => (
                 <button key={v} onClick={() => pickView(v)} aria-pressed={view === v}
                   className={`px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur ${view === v ? "bg-white text-slate-900 border-white" : "bg-slate-900/70 text-white border-slate-600"}`}>
@@ -221,7 +226,7 @@ function SceneViewer({ id, onBack }) {
                       <i className={`inline-block w-2 h-2 rounded-full me-1.5 ${TEAM_DOT[e.team] || "bg-slate-400"}`} />
                       <b className="font-semibold">{EVENT_NAME[e.type] || e.type}</b>{" "}
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {TEAM_NAME[e.team] || ""}
+                        {whoLabel(e) || TEAM_NAME[e.team] || ""}
                         {e.type === "shot" && <> · {SHOT_OUTCOME[e.outcome] || e.outcome} · {e.dist} מ׳{e.speed ? ` · ${e.speed} קמ״ש` : ""}</>}
                         {e.type !== "shot" && e.len ? ` · ${e.len} מ׳` : ""}
                       </span>

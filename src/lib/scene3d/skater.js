@@ -125,7 +125,28 @@ export class Skater {
     this.stick = add(unitCyl, M.stick)
     this.blade = add(bladeGeo, M.stick)
   }
-  setOpacity(op) { Object.values(this.mats).forEach(m => { m.opacity = op; m.depthWrite = op > 0.9 }) }
+  // shirt number on the back (+ small on the chest) and a name tag over the head. label = player_ids.py label
+  // ("r14", "b7", "bgk", "ref"), name = from the league roster when the number matches one player.
+  setIdentity(label, name, kit) {
+    this.tagText = null
+    if (!label) return
+    const num = /^[rb](\d+)$/.exec(label)?.[1]
+    if (num) {
+      const tex = numberTexture(num, kit.shirt)
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide })
+      this.mats.num = mat
+      this.back = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), mat); this.group.add(this.back)
+      this.front = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.14), mat); this.group.add(this.front)
+    }
+    this.tagText = num ? (name ? `${num} · ${name}` : `#${num}`) : label === "ref" ? "שופט" : /gk$/.test(label) ? "שוער" : null
+    if (this.tagText) {
+      const { tex, aspect } = tagTexture(this.tagText, kit.shirt)
+      this.mats.tag = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })
+      this.tag = new THREE.Sprite(this.mats.tag); this.tag.scale.set(0.32 * aspect, 0.32, 1); this.group.add(this.tag)
+    }
+  }
+  showTag(v) { if (this.tag) this.tag.visible = v }
+  setOpacity(op) { Object.values(this.mats).forEach(m => { m.opacity = op; m.depthWrite = op > 0.9 && m.type !== "SpriteMaterial" && m !== this.mats.num }) }
   set visible(v) { this.group.visible = v }
 
   // P = 13 world points (THREE.Vector3), heading = rink-angle the player faces (for the skates)
@@ -139,6 +160,13 @@ export class Skater {
     for (const [a, b, r, mesh] of this.bones) place(mesh, pt(a), pt(b), r)
     for (const [j, o] of this.joints) o.position.copy(P[j])
     this.head.position.copy(head); this.helmet.position.copy(head).add(V(0, 0.01, 0))
+    if (this.back) {                                                 // number patches follow the chest, facing back / front
+      const f = V(Math.cos(heading), 0, -Math.sin(heading))
+      const chest = pelvis.clone().lerp(neck, 0.62)
+      this.back.position.copy(chest).addScaledVector(f, -0.2); this.back.rotation.set(0, Math.atan2(-f.x, -f.z), 0)
+      this.front.position.copy(chest).addScaledVector(f, 0.19).add(V(0, 0.06, 0)); this.front.rotation.set(0, Math.atan2(f.x, f.z), 0)
+    }
+    if (this.tag) this.tag.position.copy(head).add(V(0, 0.42, 0))
     this.skates.forEach((g, i) => {
       const a = P[i ? J.rA : J.lA]; g.position.set(a.x, Math.max(0, a.y - 0.09), a.z); g.rotation.y = heading
     })
@@ -151,7 +179,7 @@ export class Skater {
     this.blade.position.set(foot.x + fl.x * 0.12, 0.03, foot.z + fl.z * 0.12)
     this.blade.rotation.set(0, Math.atan2(-fl.z, fl.x), 0)
   }
-  dispose() { Object.values(this.mats).forEach(m => m.dispose()) }
+  dispose() { Object.values(this.mats).forEach(m => { m.map?.dispose(); m.dispose() }) }
 }
 
 const _q = new THREE.Quaternion()
@@ -162,4 +190,24 @@ function place(mesh, a, b, r) {
   mesh.position.copy(a).add(b).multiplyScalar(0.5)
   mesh.quaternion.copy(_q.setFromUnitVectors(Y, d.divideScalar(len)))
   mesh.scale.set(r, len, r)
+}
+
+function numberTexture(num, shirt) {
+  const c = document.createElement("canvas"); c.width = c.height = 128
+  const g = c.getContext("2d")
+  g.font = "900 92px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"
+  g.lineWidth = 10; g.strokeStyle = "#" + new THREE.Color(shirt).multiplyScalar(0.35).getHexString(); g.strokeText(num, 64, 68)
+  g.fillStyle = "#ffffff"; g.fillText(num, 64, 68)
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t
+}
+function tagTexture(text, shirt) {
+  const c = document.createElement("canvas"), g = c.getContext("2d"), font = "700 44px system-ui, sans-serif"
+  g.font = font; const w = Math.ceil(g.measureText(text).width) + 44
+  c.width = w; c.height = 64
+  g.font = font; g.direction = "rtl"; g.textAlign = "center"; g.textBaseline = "middle"
+  g.fillStyle = "rgba(11,18,32,0.82)"; g.beginPath(); g.roundRect(0, 0, w, 64, 18); g.fill()
+  g.fillStyle = "#" + new THREE.Color(shirt).getHexString(); g.fillRect(0, 0, 10, 64)
+  g.fillStyle = "#ffffff"; g.fillText(text, w / 2 + 4, 34)
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
+  return { tex: t, aspect: w / 64 }
 }
