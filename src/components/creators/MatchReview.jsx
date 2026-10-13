@@ -15,7 +15,8 @@ export const EVENT_TYPES = {
   shot: { label: "בעיטה", window: [3, 3] },
   goal: { label: "גול", window: [4, 3] },
   save: { label: "הצלת שוער", window: [3, 2] },
-  foul: { label: "עבירה", window: [3, 3] },
+  foul: { label: "עבירה על שחקן", window: [3, 3] },
+  hold: { label: "שמירה על הכדור", window: [2, 3] },
   screen: { label: "חסימה", window: [3, 2] },
   out: { label: "כדור יצא", window: [3, 2] },
 }
@@ -24,7 +25,7 @@ export const EVENT_TYPES = {
 // (who lost it vs who won it) in the first review, 2026-10-13. Ball-loss types always name the team that LOST it.
 const TEAM_ROLE = {
   pass: "מסירה של", pass_lost: "איבדה את הכדור במסירה —", steal: "חטפה את הכדור —", interception: "יירטה את הכדור —",
-  shot: "בעיטה של", goal: "גול של", save: "הצלה של השוער של", foul: "עבירה של", screen: "חסימה של שחקן של",
+  shot: "בעיטה של", goal: "גול של", save: "הצלה של השוער של", foul: "עבירה של שחקן של", hold: "שמירה על הכדור —", screen: "חסימה של שחקן של",
   out: "הכדור יצא — נגע אחרון:",
 }
 export function phrase(type, team, teams) {
@@ -145,6 +146,12 @@ export function MatchReviewEditor({ id, onBack }) {
   const verdict = async (e, v, extra = {}) => {
     if (!e) return
     if (v === "wrong" && !("actual_type" in extra)) { setWrongFor(e.id); return }
+    if (v === "wrong" && extra.actual_type && extra.actual_type !== "nothing") {
+      const twin = events.find(x => x.id !== e.id && Math.abs(x.t - e.t) <= 1.5 &&
+        (x.verdict === "wrong" ? x.actual_type : x.type) === extra.actual_type && (x.verdict === "wrong" ? x.actual_team : x.team) === extra.actual_team && x.verdict && x.verdict !== "unsure")
+      if (twin && window.confirm(`האירוע הזה כבר מסומן ב-${mmss(twin.t)} ("${phrase(extra.actual_type, extra.actual_team, teams)}"). לסמן את זה כ"לא היה כלום" כדי שלא ייספר פעמיים?`))
+        extra = { actual_type: "nothing", actual_team: null }
+    }
     const patch = { verdict: v, actual_type: null, actual_team: null, ...extra }
     setEvents(prev => prev.map(x => x.id === e.id ? { ...x, ...patch, reviewed_at: new Date().toISOString() } : x))
     setWrongFor(null)
@@ -152,8 +159,14 @@ export function MatchReviewEditor({ id, onBack }) {
     next(e.id)
   }
 
+  // Same event twice = double-counted stats. Before adding, look for one of the same type + team within 1.5 s
+  // (first review, 2026-10-13: a steal was marked 3 times, a shot added on top of a corrected engine shot).
+  const twinOf = (t, type, team) => events.find(e => Math.abs(e.t - t) <= 1.5 &&
+    ((e.verdict === "wrong" ? e.actual_type : e.type) === type) && ((e.verdict === "wrong" ? e.actual_team : e.team) === team) && e.verdict !== "unsure")
   const addMiss = async (type, team) => {
     if (!adding) return
+    const twin = twinOf(adding.t, type, team)
+    if (twin && !window.confirm(`כבר יש "${phrase(type, team, teams)}" ב-${mmss(twin.t)} (${Math.abs(twin.t - adding.t).toFixed(1)} שנ׳ מכאן). להוסיף בכל זאת אירוע נפרד?`)) { setAdding(null); select(twin); return }
     try {
       const ev = await addMissedEvent(id, adding.t, type, team)
       setEvents(prev => [...prev, ev].sort((a, b) => a.t - b.t)); setAdding(null)
