@@ -12,6 +12,7 @@
 //        "register"  a device just registered an activity token (send it the current
 //                    state, to that token only)
 //        "deferred"  internal: a coalesced low-priority push whose 10 s window passed
+//        "start_probe" QA: push-to-start the one start token `token_id` for this game
 //
 // What it does: maps games + live_game_state (+ the full play-by-play in game_reports)
 // to the app's ActivityKit ContentState (`GameState` in the iOS app,
@@ -415,10 +416,26 @@ async function runPass(gameId: string, op: string, tokenId: string | null, dry: 
     // Abandoned / expired: the live row is gone and the game did not finish → close it now.
     if ((op === "deleted") && d.game.status !== "completed") {
       const { data: rows } = await admin.from("live_activity_tokens").select("id,token,environment,platform,device_id").eq("game_id", gameId);
-      const body = { aps: { timestamp: nowS(), event: "end", "content-state": prev ?? state, "dismissal-date": nowS() } };
+      const body = { aps: { timestamp: nowS(), event: "end", "content-state": state, "dismissal-date": nowS() } };
       const results = await deliver(gameId, (rows ?? []) as TokenRow[], body, 10, dry);
-      if (!dry) await admin.from("live_activity_tokens").delete().eq("game_id", gameId);
+      if (!dry) {
+        await admin.from("live_activity_tokens").delete().eq("game_id", gameId);
+        // The game went back to scheduled: forget what was pushed, so a restart is a
+        // fresh game (first push, kickoff alert, push-to-start) rather than a diff.
+        await admin.from("live_activity_games").delete().eq("game_id", gameId);
+      }
       return { ended: "abandoned", results, body };
+    }
+
+    // QA: push-to-start ONE device (a start-token row id) for this game — how a real
+    // device's push-to-start is tested without following a team. Secret-gated like all ops.
+    if (op === "start_probe") {
+      const { data: row } = await admin.from("live_activity_start_tokens").select("id,token,environment,platform,device_id").eq("id", tokenId ?? "").maybeSingle();
+      if (!row) return { skipped: "no start token" };
+      const body = apsBody("start", state, { title: `${d.t.homeName} נגד ${d.t.awayName}`, body: "המשחק התחיל — עקבו בזמן אמת" }, d.attributes);
+      if (dry) return { dry: true, body };
+      const results = [await sendLA(row as TokenRow, body, 10)];
+      return { probe: true, results, body };
     }
 
     // A device just registered: bring it up to date, to that token only.
