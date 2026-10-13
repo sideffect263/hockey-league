@@ -695,6 +695,13 @@ function MarkStyle({ clip, onChange }) {
           ))}
         </div>
       )}
+      <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 ms-auto cursor-pointer">
+        <span>סימן מים (לוגו הליגה)</span>
+        <button role="switch" aria-checked={clip.watermark !== false} onClick={() => onChange({ watermark: clip.watermark === false })}
+          className={`relative w-10 h-6 rounded-full transition ${clip.watermark !== false ? "bg-brand" : "bg-slate-300 dark:bg-slate-600"}`}>
+          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${clip.watermark !== false ? "start-[18px]" : "start-0.5"}`} />
+        </button>
+      </label>
       <span className="text-xs text-slate-500 w-full">השינוי ייכנס לתוקף בלחיצה על "עבד מחדש עם התיקונים".</span>
     </div>
   )
