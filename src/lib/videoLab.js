@@ -163,3 +163,54 @@ export async function getGameSides(gameId) {
     return { ...t, roster }
   })
 }
+
+// ── Rink points (supabase/video-lab-rink.sql): tap rink landmarks on sharp frames of one venue camera;
+// video-analysis/rink_points.py fits the floor + rink size from them and writes `fit` back.
+export async function getRinkSets() {
+  const { data, error } = await supabase.from('video_lab_rink_sets')
+    .select('id,title,venue,status,fit,worker_note,fitted_at,created_at,video_lab_rink_frames(count)')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function getRinkSet(id) {
+  const { data, error } = await supabase.from('video_lab_rink_sets')
+    .select('id,title,venue,source_note,status,fit,worker_note,fitted_at,video_lab_rink_frames(id,image_path,width,height,sort)')
+    .eq('id', id).single()
+  if (error) throw error
+  data.frames = (data.video_lab_rink_frames || []).sort((a, b) => a.sort - b.sort)
+  delete data.video_lab_rink_frames
+  return data
+}
+
+export async function getRinkSetStatus(id) {
+  const { data, error } = await supabase.from('video_lab_rink_sets')
+    .select('status,fit,worker_note,fitted_at').eq('id', id).single()
+  if (error) throw error
+  return data
+}
+
+export async function getRinkPoints(frameIds) {
+  if (!frameIds.length) return []
+  const { data, error } = await supabase.from('video_lab_rink_points')
+    .select('frame_id,landmark,x,y').in('frame_id', frameIds)
+  if (error) throw error
+  return data || []
+}
+
+export async function saveRinkPoint(frameId, landmark, x, y) {
+  const { error } = await supabase.from('video_lab_rink_points')
+    .upsert({ frame_id: frameId, landmark, x, y, labelled_at: new Date().toISOString() }, { onConflict: 'frame_id,landmark' })
+  if (error) throw error
+}
+
+export async function deleteRinkPoint(frameId, landmark) {
+  const { error } = await supabase.from('video_lab_rink_points').delete().eq('frame_id', frameId).eq('landmark', landmark)
+  if (error) throw error
+}
+
+export async function requestRinkFit(id) {
+  const { error } = await supabase.from('video_lab_rink_sets').update({ status: 'queued', worker_note: null }).eq('id', id)
+  if (error) throw error
+}

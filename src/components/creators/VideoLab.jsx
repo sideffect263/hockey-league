@@ -8,6 +8,7 @@ import {
   getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions, getLabShots, getGameSides,
 } from "@/lib/videoLab"
 import { ShotsPanel, ShotsSummary, RESULTS as SHOT_RESULTS } from "./LabShots"
+import { RinkSetsCard, RinkPointsEditor } from "./RinkPoints"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { useAuth } from "@/lib/AuthContext"
 import { surveysForPost, setPostInSurvey } from "@/lib/videoSurveys"
@@ -43,6 +44,7 @@ export default function VideoLab() {
   }, [clips, sortBy])
   const [error, setError] = useState(null)
   const [openId, setOpenId] = useState(() => new URLSearchParams(window.location.search).get("clip"))
+  const [rinkId, setRinkId] = useState(() => new URLSearchParams(window.location.search).get("rink"))
 
   const load = useCallback(() => {
     setError(null)
@@ -57,7 +59,15 @@ export default function VideoLab() {
     window.history.replaceState(null, "", u)
   }
 
+  const openRink = (id) => {
+    setRinkId(id)
+    const u = new URL(window.location.href)
+    if (id) u.searchParams.set("rink", id); else u.searchParams.delete("rink")
+    window.history.replaceState(null, "", u)
+  }
+
   if (openId) return <ClipEditor id={openId} onBack={() => { open(null); load() }} />
+  if (rinkId) return <RinkPointsEditor id={rinkId} onBack={() => openRink(null)} />
 
   return (
     <div className="space-y-4">
@@ -79,6 +89,7 @@ export default function VideoLab() {
 
       <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />
       <ShotsSummary />
+      <RinkSetsCard onOpen={openRink} />
 
       {error ? (
         <div className="card p-6 text-center text-sm text-red-600">
