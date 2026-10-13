@@ -1,6 +1,9 @@
 import { decode, Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
+import { cutWhiteBackground } from "./cutout.ts";
 
 export const MAX_SIDE = 256;
+/** Cutting runs on at most this size — enough for clean edges, cheap on edge-function CPU. */
+const CUT_SIDE = 512;
 
 /** Area-average downscale (premultiplied alpha), so edges stay smooth — imagescript only does nearest-neighbour. */
 export function downscale(src: Image, w: number, h: number): Image {
@@ -28,16 +31,25 @@ export function downscale(src: Image, w: number, h: number): Image {
   return out;
 }
 
-/** Bytes → a crest no larger than MAX_SIDE: JPEG when fully opaque (smallest), PNG otherwise. Null = already small. */
-export async function shrinkCrest(bytes: Uint8Array): Promise<{ data: Uint8Array; ext: "jpg" | "png"; type: string } | null> {
+function fit(img: Image, side: number): Image {
+  const k = Math.min(1, side / Math.max(img.width, img.height));
+  return k < 1 ? downscale(img, Math.max(1, Math.round(img.width * k)), Math.max(1, Math.round(img.height * k))) : img;
+}
+
+/**
+ * Bytes → a crest no larger than MAX_SIDE, its white background cut away when it
+ * has one (see cutout.ts): JPEG when fully opaque (smallest), PNG otherwise.
+ * Null = nothing to do (already small and nothing to cut).
+ */
+export async function shrinkCrest(bytes: Uint8Array): Promise<{ data: Uint8Array; ext: "jpg" | "png"; type: string; cut: boolean } | null> {
   const img = await decode(bytes);
   if (!(img instanceof Image)) throw new Error("not a still image");
-  if (Math.max(img.width, img.height) <= MAX_SIDE && bytes.length <= 80_000) return null;
-  const k = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
-  const small = k < 1 ? downscale(img, Math.max(1, Math.round(img.width * k)), Math.max(1, Math.round(img.height * k))) : img;
+  const cutout = cutWhiteBackground(fit(img, CUT_SIDE));
+  if (!cutout && Math.max(img.width, img.height) <= MAX_SIDE && bytes.length <= 80_000) return null;
+  const small = fit(cutout ?? img, MAX_SIDE);
   let opaque = true;
   for (let i = 3; i < small.bitmap.length; i += 4) if (small.bitmap[i] < 255) { opaque = false; break; }
   return opaque
-    ? { data: await small.encodeJPEG(90), ext: "jpg", type: "image/jpeg" }
-    : { data: await small.encode(9), ext: "png", type: "image/png" };
+    ? { data: await small.encodeJPEG(90), ext: "jpg", type: "image/jpeg", cut: !!cutout }
+    : { data: await small.encode(9), ext: "png", type: "image/png", cut: !!cutout };
 }
