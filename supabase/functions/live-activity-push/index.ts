@@ -23,8 +23,9 @@
 //     blue cards, timeouts — rink hockey is stop-time, a push per whistle would burn the
 //     Live Activity budget, and the clock ticks on the device without pushes anyway;
 //   • `event: end` at full time with a 30-minute dismissal date, then the tokens go;
-//   • push-to-start (iOS 17.2+): the first time the clock runs, every follower of either
-//     team who has a start token and no activity for the game yet gets one.
+//   • push-to-start (iOS 17.2+; Android: the FCM live notification): the first time the
+//     clock runs, every follower of either team whose per-team live switch is ON
+//     (follows.live_updates) and who has a start token and no activity for the game yet.
 // Dead tokens (410 / Unregistered / BadDeviceToken) are deleted, like send-push does.
 //
 // Dates in content-state / attributes are seconds since 2001-01-01 (Swift's default
@@ -238,7 +239,10 @@ function signature(s: GameState): string {
 function scoreLine(t: any, s: GameState) {
   return `${t.homeName} ${s.homeScore} · ${t.awayName} ${s.awayScore}`;
 }
-type Push = { event: "update" | "end"; priority: 5 | 10; alert?: { title: string; body: string } };
+// `buzz`: the moments a phone should sound + vibrate for (iOS gets them through aps.alert;
+// Android's data-only message carries it as `alert`, LIVE-PAYLOAD.md).
+type Buzz = "goal" | "redCard";
+type Push = { event: "update" | "end"; priority: 5 | 10; alert?: { title: string; body: string }; buzz?: Buzz };
 function classify(s: GameState, prev: GameState | null, newEventId: string | null, prevEventId: string | null, t: any): Push {
   if (s.phase === "final") {
     const w = s.homeScore === s.awayScore ? null : s.homeScore > s.awayScore ? t.homeName : t.awayName;
@@ -251,13 +255,13 @@ function classify(s: GameState, prev: GameState | null, newEventId: string | nul
     const who = s.lastEvent?.kind === "goal" && s.lastEvent.side === side
       ? ` · ${s.lastEvent.player ?? ""}${s.lastEvent.minute ? ` ${s.lastEvent.minute}'` : ""}` : "";
     if (s.homeScore + s.awayScore > prev.homeScore + prev.awayScore) {
-      return { event: "update", priority: 10, alert: { title: `גול! ${team}`, body: `${scoreLine(t, s)}${who}` } };
+      return { event: "update", priority: 10, alert: { title: `גול! ${team}`, body: `${scoreLine(t, s)}${who}` }, buzz: "goal" };
     }
     return { event: "update", priority: 10 }; // a goal taken back: correct it, quietly
   }
   if (s.lastEvent?.kind === "redCard" && newEventId && newEventId !== prevEventId) {
     const team = s.lastEvent.side === "away" ? t.awayName : t.homeName;
-    return { event: "update", priority: 10, alert: { title: `כרטיס אדום · ${team}`, body: `${s.lastEvent.player ?? ""} · משחק בחסר`.trim() } };
+    return { event: "update", priority: 10, alert: { title: `כרטיס אדום · ${team}`, body: `${s.lastEvent.player ?? ""} · משחק בחסר`.trim() }, buzz: "redCard" };
   }
   if (s.phase !== prev.phase || s.period !== prev.period) {
     const title = s.phase === "halftime" ? "מחצית" : prev.phase === "pregame" ? "שריקת פתיחה" : `${PERIOD_LABEL[s.period]} יצאה לדרך`;
@@ -300,12 +304,12 @@ function androidThunk(d: any): AndroidThunk {
   return () => (p ??= androidCtx(admin, d));
 }
 
-async function sendLA(row: TokenRow, body: unknown, priority: 5 | 10, android?: AndroidThunk): Promise<SendResult> {
+async function sendLA(row: TokenRow, body: unknown, priority: 5 | 10, android?: AndroidThunk, buzz?: Buzz): Promise<SendResult> {
   // Android: the same rows with platform 'android' + an FCM token → a data-only FCM message
   // the app turns into its Live Update notification (android.ts, LIVE-PAYLOAD.md).
   if (row.platform === "android") {
     if (!android) return { id: row.id, status: 0, reason: "no android context", prune: false };
-    return sendAndroid(row, androidData(await android(), body), priority);
+    return sendAndroid(row, androidData(await android(), body, Date.now(), buzz), priority);
   }
   if (row.platform !== "ios") return { id: row.id, status: 0, reason: "unknown platform", prune: false };
   const jwt = await apnsJwt();
@@ -382,9 +386,9 @@ function apsBody(kind: "update" | "end" | "start", state: GameState, alert?: { t
   return { aps };
 }
 
-async function deliver(gameId: string, rows: TokenRow[], body: unknown, priority: 5 | 10, dry: boolean, android?: AndroidThunk) {
+async function deliver(gameId: string, rows: TokenRow[], body: unknown, priority: 5 | 10, dry: boolean, android?: AndroidThunk, buzz?: Buzz) {
   if (dry) return [];
-  const results = await Promise.all(rows.map((r) => sendLA(r, body, priority, android).catch((e) => ({ id: r.id, status: -1, reason: String(e?.message ?? e), prune: false }))));
+  const results = await Promise.all(rows.map((r) => sendLA(r, body, priority, android, buzz).catch((e) => ({ id: r.id, status: -1, reason: String(e?.message ?? e), prune: false }))));
   const dead = results.filter((r) => r.prune).map((r) => r.id);
   if (dead.length) await admin.from("live_activity_tokens").delete().in("id", dead);
   await admin.from("live_activity_games").update({ last_payload: body, last_result: results, updated_at: new Date().toISOString() }).eq("game_id", gameId);
@@ -392,6 +396,8 @@ async function deliver(gameId: string, rows: TokenRow[], body: unknown, priority
 }
 
 // ---- Push-to-start: followers of either team, once per game ----------------
+// "Followers" = team follows with the per-team live switch ON (follows.live_updates,
+// "התראה חיה במשחקים", default ON; supabase/live-activity-team-switch.sql) — not the bell.
 async function pushToStart(gameId: string, d: any, state: GameState, dry: boolean) {
   if (!dry) {
     const { data: claimed } = await admin.from("live_activity_games")
@@ -399,7 +405,7 @@ async function pushToStart(gameId: string, d: any, state: GameState, dry: boolea
     if (!claimed?.length) return { start: "already" };
   }
   const { data: fans } = await admin.from("follows").select("user_id")
-    .eq("target_type", "team").eq("notify", true).in("target_id", [d.game.home_team_id, d.game.away_team_id]);
+    .eq("target_type", "team").eq("live_updates", true).in("target_id", [d.game.home_team_id, d.game.away_team_id]);
   const users = [...new Set((fans ?? []).map((f: any) => f.user_id))];
   if (!users.length) return { start: 0 };
   const [{ data: starts }, { data: running }] = await Promise.all([
@@ -499,14 +505,15 @@ async function runPass(gameId: string, op: string, tokenId: string | null, dry: 
     }).eq("game_id", gameId);
     claim = d.book?.last_sig == null ? claim.is("last_sig", null) : claim.eq("last_sig", d.book.last_sig);
     if (dry) {
-      return { dry: true, state, push, body: apsBody(push.event, state, push.alert), start: startInfo };
+      return { dry: true, state, push, body: apsBody(push.event, state, push.alert), start: startInfo,
+        android: androidData(await android(), apsBody(push.event, state, push.alert), Date.now(), push.buzz) };
     }
     const { data: won } = await claim.select("game_id");
     if (!won?.length) continue; // someone else moved it: re-read and recompute
 
     const { data: rows } = await admin.from("live_activity_tokens").select("id,token,environment,platform,device_id").eq("game_id", gameId);
     const body = apsBody(push.event, state, push.alert);
-    const results = await deliver(gameId, (rows ?? []) as TokenRow[], body, push.priority, false, android);
+    const results = await deliver(gameId, (rows ?? []) as TokenRow[], body, push.priority, false, android, push.buzz);
     if (push.event === "end") await admin.from("live_activity_tokens").delete().eq("game_id", gameId);
     return { sent: results.length, priority: push.priority, event: push.event, results, start: startInfo };
   }

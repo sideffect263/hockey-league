@@ -116,3 +116,16 @@ if (Deno.env.get("PRINT_PAYLOAD")) {
   const d = androidData(ctx(), liveBody({ suspension: s, lastEvent: { kind: "redCard", side: "home", player: "בודק 1", minute: 30 }, highlight: false }, t), t);
   console.log(JSON.stringify(d));
 }
+
+Deno.test("goal and red card updates carry alert (sound + vibration); other updates do not", () => {
+  assertEquals(androidData(ctx(), liveBody(), NOW, "goal").alert, "goal");
+  const red = liveBody({ lastEvent: { kind: "redCard", side: "home", player: "בודק 1", minute: 30 }, highlight: false });
+  assertEquals(androidData(ctx(), red, NOW, "redCard").alert, "redCard");
+  // No buzz → no key (a clock / foul / later re-post of the same red card stays silent).
+  assertEquals("alert" in androidData(ctx(), red, NOW), false);
+  // Never on a final / abandoned message.
+  const fin = { aps: { timestamp: NOW / 1000, event: "end", "content-state": { phase: "final", period: "second", homeScore: 2, awayScore: 1, clockRemaining: 0, highlight: false, homeFouls: 0, awayFouls: 0, attending: false } } };
+  assertEquals("alert" in androidData(ctx(), fin, NOW, "goal"), false);
+  // A red card is a HIGH FCM message, like a goal.
+  assertEquals(fcmMessage("tok", androidData(ctx(), red, NOW, "redCard"), 10).message.android.priority, "HIGH");
+});

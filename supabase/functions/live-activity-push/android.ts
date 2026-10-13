@@ -92,10 +92,11 @@ const appleToMs = (s?: number | null) => (s == null ? null : Math.round((Number(
 /**
  * The FCM data map (all strings) for one APNs-shaped body this pass built. `aps.event`:
  * update / start → the content-state; end → "final" (full time) or "ended" (abandoned:
- * dismissal-date ≤ timestamp, the game went back to scheduled).
+ * dismissal-date ≤ timestamp, the game went back to scheduled). `buzz` = this update is a
+ * new goal / red card (index.ts classify) → `alert` = "goal" | "redCard".
  */
 // deno-lint-ignore no-explicit-any
-export function androidData(ctx: AndroidCtx, body: any, now = Date.now()): Record<string, string> {
+export function androidData(ctx: AndroidCtx, body: any, now = Date.now(), buzz?: "goal" | "redCard"): Record<string, string> {
   const aps = body?.aps ?? {};
   // deno-lint-ignore no-explicit-any
   const cs: any = aps["content-state"] ?? {};
@@ -151,6 +152,9 @@ export function androidData(ctx: AndroidCtx, body: any, now = Date.now()): Recor
       if (running) out.suspEndsAt = String(susEnds);
     }
   }
+  // The moments that sound + vibrate (the iOS aps.alert ones a fan must not miss): a new
+  // goal or a new red card. Every other update re-posts the notification silently.
+  if (buzz && status === "live") out.alert = buzz;
   const goals = goalsString(ctx.events, periodMS);
   if (goals) out.goals = goals;
   return out;
