@@ -1,6 +1,6 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { Skater, stridePose, localToWorld, poseToWorld, samplePose } from "./skater"
+import { Skater, stridePose, localToWorld, poseToWorld, samplePose, bodyHeading } from "./skater"
 
 // 3D replay of one play (video_lab_scenes.scene, written by video-analysis/scene3d/export_scene.py).
 // Rink coords are metres: x along the length (+ = right as the venue camera sees it), y across (+ = far side),
@@ -214,7 +214,12 @@ export function createReplay({ container, scene: D, onTick, clock }) {
       if (state.playing) pl.phase += dt * state.speed * 2 * Math.PI * (0.55 + 0.14 * pl.speed)
       const stride = localToWorld(stridePose(pl.phase, pl.speed), s.x, s.y, pl.heading)
       const row = pl.pose && samplePose(pl.pose, t)
-      pl.sk.update(row ? poseToWorld(row, s.x, s.y, stride) : stride, pl.heading)
+      const P = row ? poseToWorld(row, s.x, s.y, stride) : stride
+      if (row) {                                    // the body says where the player faces (89–96% agree with motion)
+        const bh = bodyHeading(P)
+        if (bh != null) { let d = bh - pl.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); pl.heading += d * Math.min(1, dt * 6) }
+      }
+      pl.sk.update(P, pl.heading)
       if (pl.sk.noStick) { pl.sk.stick.visible = false; pl.sk.blade.visible = false }
       pl.sk.showTag(state.tags)
       pl.ring.position.set(s.x, 0.006, -s.y)

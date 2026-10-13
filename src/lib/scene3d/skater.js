@@ -53,6 +53,14 @@ export function stridePose(phase, v, lefty = false) {
   return p
 }
 
+// the way the body faces (rink angle), from the shoulder + hip lines of 13 world points; null if they are unclear
+export function bodyHeading(P) {
+  const rx = (P[J.rS].x - P[J.lS].x) + (P[J.rH].x - P[J.lH].x), rz = (P[J.rS].z - P[J.lS].z) + (P[J.rH].z - P[J.lH].z)
+  if (Math.hypot(rx, rz) < 0.08) return null
+  // three coords: right = forward × up, so forward = up × right = (rz, 0, -rx); rink angle = atan2(-fz, fx)
+  return Math.atan2(rx, rz)
+}
+
 export function localToWorld(pts, x, y, heading) {
   const c = Math.cos(heading), s = Math.sin(heading)
   // local (fx, up, rz): forward = (c, s) in rink, right = (s, -c) in rink → three (rx, up, -ry)
@@ -167,8 +175,13 @@ export class Skater {
       this.front.position.copy(chest).addScaledVector(f, 0.19).add(V(0, 0.06, 0)); this.front.rotation.set(0, Math.atan2(f.x, f.z), 0)
     }
     if (this.tag) this.tag.position.copy(head).add(V(0, 0.42, 0))
+    // skates: RTMPose's "ankle" on an inline skate is the boot top (~0.17 m up), so the skate stands ON THE FLOOR
+    // and its boot reaches up to the ankle; only a clearly lifted foot (kick, stride recovery) leaves the floor.
     this.skates.forEach((g, i) => {
-      const a = P[i ? J.rA : J.lA]; g.position.set(a.x, Math.max(0, a.y - 0.09), a.z); g.rotation.y = heading
+      const a = P[i ? J.rA : J.lA], lift = Math.max(0, a.y - 0.3)
+      g.position.set(a.x, lift, a.z); g.rotation.y = heading
+      g.children[0].scale.y = Math.min(2.2, Math.max(0.8, (a.y - lift - 0.05) / 0.11))
+      g.children[0].position.y = 0.06 + 0.055 * g.children[0].scale.y
     })
     // stick: from the higher hand through the lower one, down to the floor; blade lies flat on the floor
     const [hi, lo] = P[J.lW].y > P[J.rW].y ? [P[J.lW], P[J.rW]] : [P[J.rW], P[J.lW]]
