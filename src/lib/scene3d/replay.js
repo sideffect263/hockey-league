@@ -224,6 +224,18 @@ export function createReplay({ container, scene: D, onTick, clock }) {
     }
     const t = state.t
 
+    // the ball first: the player on it (nearest fresh track within stick reach) puts his blade on it
+    const b = sampleBall(t)
+    let owner = null
+    if (b) {
+      let bestD = 1.3
+      for (const pl of players) {
+        const s = sampleTrack(pl.obs, t)
+        if (!s || !s.fresh || pl.sk.noStick) continue
+        const dd = Math.hypot(s.x - b.x, s.y - b.y)
+        if (dd < bestD) { bestD = dd; owner = pl }
+      }
+    }
     for (const pl of players) {
       const s = sampleTrack(pl.obs, t)
       pl.sk.visible = pl.ring.visible = !!s
@@ -243,13 +255,12 @@ export function createReplay({ container, scene: D, onTick, clock }) {
         const bh = bodyHeading(P)
         if (bh != null) { let d = bh - pl.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); pl.heading += d * Math.min(1, dt * 6) }
       }
-      pl.sk.update(P, pl.heading)
+      pl.sk.update(P, pl.heading, pl === owner ? new THREE.Vector3(b.x, 0, -b.y) : null)
       if (pl.sk.noStick) { pl.sk.stick.visible = false; pl.sk.blade.visible = false }
       pl.sk.showTag(state.tags)
       pl.ring.position.set(s.x, 0.006, -s.y)
       const op = s.fresh ? 1 : 0.3; pl.sk.setOpacity(op); pl.ring.material.opacity = 0.8 * op
     }
-    const b = sampleBall(t)
     ball.visible = ballRing.visible = !!b
     if (b) { ball.position.copy(P(b.x, b.y, 0.11)); ballRing.position.set(b.x, 0.008, -b.y); ballRing.material.opacity = b.filled ? 0.4 : 0.85 }
     let n = 0

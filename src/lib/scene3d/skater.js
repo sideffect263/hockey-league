@@ -185,7 +185,7 @@ export class Skater {
   set visible(v) { this.group.visible = v }
 
   // P = 13 world points (THREE.Vector3), heading = rink-angle the player faces (for the skates)
-  update(P, heading) {
+  update(P, heading, ballAt = null) {
     const pelvis = P[J.lH].clone().add(P[J.rH]).multiplyScalar(0.5)
     const neck = P[J.lS].clone().add(P[J.rS]).multiplyScalar(0.5)
     const fwd = P[J.nose].clone().sub(neck); fwd.y = 0
@@ -214,7 +214,11 @@ export class Skater {
     // stick: from the higher hand through the lower one, down to the floor; blade lies flat on the floor
     const [hi, lo] = P[J.lW].y > P[J.rW].y ? [P[J.lW], P[J.rW]] : [P[J.rW], P[J.lW]]
     let d = lo.clone().sub(hi); if (d.y > -0.15) d = d.setY(-Math.max(0.3, d.length())).normalize(); else d.normalize()
-    const s = Math.max(0.2, (hi.y - 0.03) / -d.y), foot = hi.clone().add(d.clone().multiplyScalar(Math.min(s, 1.6)))
+    let foot = hi.clone().add(d.clone().multiplyScalar(Math.min(Math.max(0.2, (hi.y - 0.03) / -d.y), 1.6)))
+    if (ballAt) {                                   // on the ball: the blade goes to the ball (shaft stays ~1.3 m)
+      const to = V(ballAt.x, 0.03, ballAt.z), dd = to.clone().sub(hi), len = dd.length()
+      if (len > 0.5 && len < 1.9) { d = dd.normalize(); foot = to }
+    }
     place(this.stick, hi.clone().sub(d.clone().multiplyScalar(0.12)), foot, 0.016)
     const fl = V(d.x, 0, d.z).normalize()
     this.blade.position.set(foot.x + fl.x * 0.12, 0.03, foot.z + fl.z * 0.12)
