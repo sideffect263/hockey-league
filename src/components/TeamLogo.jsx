@@ -31,6 +31,9 @@ export default function TeamLogo({ team, size = 8, className = "" }) {
     12: "w-12 h-12 text-base",
     14: "w-14 h-14 text-lg",
   }[size] || `w-8 h-8 text-xs`
+  // ~8% inset so round crests don't kiss the circle edge (percent padding would
+  // resolve against the PARENT's width, so it's fixed per size).
+  const pad = { 5: "p-px", 6: "p-px", 8: "p-0.5", 10: "p-[3px]", 12: "p-1", 14: "p-1" }[size] || "p-0.5"
 
   if (team?.logo_url && !imgError) {
     return (
@@ -38,7 +41,11 @@ export default function TeamLogo({ team, size = 8, className = "" }) {
         src={team.logo_url}
         alt={team.name}
         onError={() => setImgError(true)}
-        className={`${px.split(' ').slice(0, 2).join(' ')} rounded-full object-cover shrink-0 bg-white dark:bg-slate-700 ${className}`}
+        // Crests are transparent cutouts of any shape (round, shield, triangle):
+        // fit the whole crest inside a light circle — never cover-crop it. The
+        // circle stays light in dark mode too, because some crests have black
+        // parts (Sharks sticks, BLG Hebrew line) that vanish on a dark circle.
+        className={`${px.split(' ').slice(0, 2).join(' ')} rounded-full object-contain ${pad} shrink-0 bg-white ring-1 ring-black/5 dark:ring-white/10 ${className}`}
       />
     )
   }

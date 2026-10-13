@@ -161,8 +161,11 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
               <line x1={ex} y1={sy(s.points[s.points.length - 1].y)} x2={labelX - 2} y2={cy} stroke={s.color} strokeWidth="1" opacity="0.5" />
               <clipPath id={`lc-${s.id}`}><circle cx={cx} cy={cy} r="7" /></clipPath>
               {s.team?.logo_url && !crestFailed[s.id] ? (
-                <image href={s.team.logo_url} x={labelX} y={cy - 7} width="14" height="14" clipPath={`url(#lc-${s.id})`} preserveAspectRatio="xMidYMid slice"
-                       onError={() => setCrestFailed((f) => ({ ...f, [s.id]: true }))} />
+                <>
+                  <circle cx={cx} cy={cy} r="7" fill="#fff" />
+                  <image href={s.team.logo_url} x={labelX + 1} y={cy - 6} width="12" height="12" clipPath={`url(#lc-${s.id})`} preserveAspectRatio="xMidYMid meet"
+                         onError={() => setCrestFailed((f) => ({ ...f, [s.id]: true }))} />
+                </>
               ) : (
                 <>
                   <circle cx={cx} cy={cy} r="7" fill={s.color} />
