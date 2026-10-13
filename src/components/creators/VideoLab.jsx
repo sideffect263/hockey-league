@@ -9,6 +9,7 @@ import {
 } from "@/lib/videoLab"
 import { ShotsPanel, ShotsSummary, RESULTS as SHOT_RESULTS } from "./LabShots"
 import { RinkSetsCard, RinkPointsEditor } from "./RinkPoints"
+import { MatchRunsCard, MatchReviewEditor } from "./MatchReview"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { useAuth } from "@/lib/AuthContext"
 import { surveysForPost, setPostInSurvey } from "@/lib/videoSurveys"
@@ -45,6 +46,7 @@ export default function VideoLab() {
   const [error, setError] = useState(null)
   const [openId, setOpenId] = useState(() => new URLSearchParams(window.location.search).get("clip"))
   const [rinkId, setRinkId] = useState(() => new URLSearchParams(window.location.search).get("rink"))
+  const [matchId, setMatchId] = useState(() => new URLSearchParams(window.location.search).get("match"))
 
   const load = useCallback(() => {
     setError(null)
@@ -67,7 +69,15 @@ export default function VideoLab() {
   }
 
   if (openId) return <ClipEditor id={openId} onBack={() => { open(null); load() }} />
+  const openMatch = (id) => {
+    setMatchId(id)
+    const u = new URL(window.location.href)
+    if (id) u.searchParams.set("match", id); else u.searchParams.delete("match")
+    window.history.replaceState(null, "", u)
+  }
+
   if (rinkId) return <RinkPointsEditor id={rinkId} onBack={() => openRink(null)} />
+  if (matchId) return <MatchReviewEditor id={matchId} onBack={() => openMatch(null)} />
 
   return (
     <div className="space-y-4">
@@ -89,6 +99,7 @@ export default function VideoLab() {
 
       <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />
       <ShotsSummary />
+      <MatchRunsCard onOpen={openMatch} />
       <RinkSetsCard onOpen={openRink} />
 
       {error ? (
