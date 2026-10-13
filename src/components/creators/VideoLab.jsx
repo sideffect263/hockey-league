@@ -512,6 +512,7 @@ function ClipEditor({ id, onBack }) {
           <DeleteClip clip={clip} onDone={onBack} />
         </div>
         {clip.worker_note && <p className="text-xs text-slate-500 w-full">{clip.worker_note}</p>}
+        <ProcessPlan clip={clip} stats={stats} />
         <textarea defaultValue={clip.note || ""} onBlur={e => e.target.value !== (clip.note || "") && setClipField({ note: e.target.value || null })}
           placeholder="הערות (למשל: הכדור נכנס בפינה הימנית, השוער מסתיר)" rows={2} maxLength={1000} className="filter-input w-full text-sm" />
       </div>
@@ -745,5 +746,36 @@ function Versions({ clip }) {
         ))}
       </div>
     </div>
+  )
+}
+
+// "What will 'עבד מחדש' do to THIS clip?" — the Mac worker's steps, written for the clip's current settings.
+function ProcessPlan({ clip, stats }) {
+  const goal = !clip.no_replay && clip.goal_frame != null
+  const angle2 = goal && clip.goal2_frame != null
+  const lowRes = clip.width && clip.width < 1280
+  const style = clip.mark_style || "paint"
+  const steps = [
+    stats.ball + stats.none > 0
+      ? `התיוגים שלכם (${stats.ball} כדור, ${stats.none} "אין כדור") מחליפים את הניחוש של ה-AI; פערים קצרים (עד 12 פריימים) בין תיוגים מושלמים, ובפריימים של "אין כדור" לא יופיע סימון.`
+      : "אין תיוגים — מסלול הכדור הוא של ה-AI בלבד (כדאי לתייג כדי לדייק).",
+    "פריימים \"כפולים\" מהמקור (שחקן שמופיע פעמיים בהילוך החוזר של השידור) נבנים מחדש בבינה מלאכותית (RIFE).",
+    lowRes ? `הקליפ ברזולוציה נמוכה (${clip.width}px) — מוגדל פי 2 בבינה מלאכותית (Real-ESRGAN), ואז ניקוי רעש, ניגודיות, צבע וחידוד.` : "שיפור תמונה: ניקוי רעש, ניגודיות, צבע וחידוד.",
+    style === "none" ? "בלי סימון כדור." :
+      style === "outline" ? "סימון הכדור: טבעת דקה סביב הכדור + קו מסלול." :
+      "סימון הכדור: מסגרת דקה ומילוי שקוף למחצה על הכדור עצמו, בגודל שמשתנה לפי המרחק, ונקודות מסלול כשהכדור זז.",
+    goal ? `קו הבעיטה: קו ישר מרגע הבעיטה לשער${angle2 ? ", בשתי הזוויות" : ""}.` : null,
+    goal ? `הילוך חוזר בסוף הקליפ: זום על הבעיטה והשער, איטי פי 2 עם פריימי ביניים חלקים (RIFE)${angle2 ? ", נבנה מזווית 2 (הריפליי / זום)" : ""}${lowRes ? " והגדלה פי 4 בבינה מלאכותית" : ""}.`
+         : clip.no_replay ? "בלי הילוך חוזר (הקליפ מסומן \"לא גול\")." : "הילוך חוזר ייווצר רק אחרי שתסמנו את רגע הגול.",
+    clip.watermark !== false ? "לוגו הליגה בפינה הימנית העליונה." : "בלי לוגו (סימן המים כבוי).",
+    "נוצרות שתי גרסאות (16:9 לפיד, 9:16 לרילס) ונשמרות כגרסה חדשה ברשימת הגרסאות — הפיד לא משתנה עד שתלחצו \"החלף בפיד\".",
+  ].filter(Boolean)
+  return (
+    <details className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm">
+      <summary className="cursor-pointer font-semibold text-slate-700 dark:text-slate-200">מה יקרה בעיבוד? (כ-2–5 דקות על המחשב של הליגה)</summary>
+      <ol className="list-decimal ps-5 mt-2 space-y-1 text-slate-600 dark:text-slate-300">
+        {steps.map((t, i) => <li key={i}>{t}</li>)}
+      </ol>
+    </details>
   )
 }
