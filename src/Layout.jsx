@@ -15,7 +15,8 @@ import {
   Gamepad2,
   ClipboardCheck,
   Clapperboard,
-  Handshake
+  Handshake,
+  Code2
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Rink, Standings, Crossed, Teams, Player, Whistle, Stats, Camera, Edit, Clipboard } from "./components/icons/HockeyIcons"
@@ -245,7 +246,7 @@ function AvatarMenu({ user, profile, roleNav, isActivePage, signOut }) {
 export default function Layout({ children }) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, profile, signOut, openAuth } = useAuth()
+  const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isDeveloper, profile, signOut, openAuth } = useAuth()
 
 
   // The header is split into three groups so its width no longer depends on how
@@ -266,9 +267,9 @@ export default function Layout({ children }) {
 
   const moreNav = [
     { title: "טורנירים", url: "/tournaments", icon: Swords },
-    // Media entry: content editors get the /creators workspace in the role menu
-    // instead, so "מדיה" is hidden for them unless they are also an admin.
-    ...((!isContentEditor || isAdmin) ? [{ title: "מדיה", url: "/media", icon: NavCamera }] : []),
+    // Shown to everyone again: the face-naming tool left /creators for /devs (2026-10-15),
+    // so content editors no longer have a copy of it in their workspace.
+    { title: "מדיה", url: "/media", icon: NavCamera },
     { title: "מדריך", url: "/guide", icon: BookOpen },
     // Unlike הוקי מרקט below, the career game is public: it needs no account,
     // touches no league data, and is the one page here a visitor who has never
@@ -288,6 +289,7 @@ export default function Layout({ children }) {
     // Results from the handwritten form: referees + league managers (never coaches).
     ...((isAdmin || isJudgeRole || isLeagueManager) ? [{ title: "הזנת תוצאות", url: "/results", icon: ClipboardCheck }] : []),
     ...((isContentEditor || isAdmin) ? [{ title: "יוצרי תוכן", url: "/creators", icon: NavEdit }] : []),
+    ...((isDeveloper || isAdmin) ? [{ title: "מפתחים", url: "/devs", icon: Code2 }] : []),
   ]
 
   // Flat list for the mobile sheet, which has the vertical room for everything.

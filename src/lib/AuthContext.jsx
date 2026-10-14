@@ -169,6 +169,8 @@ export function AuthProvider({ children }) {
 
   // Holds an actual medic role (RAW, does NOT pass for admins) — assignable to games.
   const isMedic = roles.some(r => r.role === 'medic')
+  // Raw 'developer' role (volunteer devs, /devs). Admins pass the page gate separately.
+  const isDeveloper = roles.some(r => r.role === 'developer')
 
   // Who may create feed posts: league staff only — coach / content_editor /
   // judge(=referee) / league_manager / admin. Regular linked players & guests cannot.
@@ -235,7 +237,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, isAdmin, roles, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isMedic, canPost, profile, refreshProfile, loading, authOpen,
+      user, isAdmin, roles, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isMedic, isDeveloper, canPost, profile, refreshProfile, loading, authOpen,
       signInWithGoogle, signUpWithEmail, signInWithEmail, resetPassword, updatePassword, signOut,
       openAuth, closeAuth,
     }}>

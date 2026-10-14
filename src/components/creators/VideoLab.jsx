@@ -30,7 +30,11 @@ function StatusPill({ status }) {
   return <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${s.cls}`}>{s.label}</span>
 }
 
-export default function VideoLab() {
+// `focus` narrows the list view to one task (the /devs topics embed it that way):
+// "clips" = ball tagging, "shots" = shot scouting, "match" = event review, "rink" = rink points.
+// Without it the whole lab shows. The editors (?clip / ?rink / ?match) open the same either way.
+export default function VideoLab({ focus = null }) {
+  const show = (part) => !focus || focus === part || (part === "clips" && focus === "shots")
   const [clips, setClips] = useState(null)
   const [sortBy, setSortBy] = useState(() => { try { return localStorage.getItem("lab_sort") || "processed" } catch { return "processed" } })
   const changeSort = (v) => { setSortBy(v); try { localStorage.setItem("lab_sort", v) } catch { /* private mode */ } }
@@ -81,7 +85,7 @@ export default function VideoLab() {
 
   return (
     <div className="space-y-4">
-      <div className="card p-4 sm:p-5">
+      {!focus && <div className="card p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <FlaskConical className="w-6 h-6 text-brand shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
@@ -95,14 +99,14 @@ export default function VideoLab() {
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      </div>}
 
-      <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />
-      <ShotsSummary />
-      <MatchRunsCard onOpen={openMatch} />
-      <RinkSetsCard onOpen={openRink} />
+      {show("clips") && <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />}
+      {show("shots") && <ShotsSummary />}
+      {show("match") && <MatchRunsCard onOpen={openMatch} />}
+      {show("rink") && <RinkSetsCard onOpen={openRink} />}
 
-      {error ? (
+      {!show("clips") ? null : error ? (
         <div className="card p-6 text-center text-sm text-red-600">
           {error} <button onClick={load} className="underline ms-2">נסו שוב</button>
         </div>

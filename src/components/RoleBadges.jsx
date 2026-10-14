@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, Gavel, PenSquare, ClipboardList, BadgeCheck, UserCircle, HeartPulse } from "lucide-react"
+import { Shield, ShieldCheck, Gavel, PenSquare, ClipboardList, BadgeCheck, UserCircle, HeartPulse, Code2 } from "lucide-react"
 
 // Single source of truth for how a league role renders as a badge, so /me, the
 // player page and feed post authors all show the same label/icon/color per role.
@@ -13,12 +13,13 @@ export const ROLE_BADGE = {
   medic:          { label: "חובש",      icon: HeartPulse,    cls: "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300" },
   coach:          { label: "מאמן",      icon: ClipboardList, cls: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
   content_editor: { label: "עורך תוכן", icon: PenSquare,     cls: "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-300" },
+  developer:      { label: "מפתח/ת",    icon: Code2,         cls: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300" },
   player:         { label: "שחקן/ית",   icon: BadgeCheck,    cls: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
   guest:          { label: "אורח/ת",    icon: UserCircle,    cls: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400" },
 }
 
 // The order badges appear in when a user holds several roles.
-const ORDER = ["admin", "league_manager", "judge", "medic", "coach", "content_editor", "player", "guest"]
+const ORDER = ["admin", "league_manager", "judge", "medic", "coach", "content_editor", "developer", "player", "guest"]
 
 /**
  * Turn a set of role signals into a de-duplicated, ordered list of badge items.
