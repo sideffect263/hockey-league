@@ -25,9 +25,14 @@ export default function Scene3DTab() {
   return openId ? <SceneViewer id={openId} onBack={() => open(null)} /> : <SceneList onOpen={open} />
 }
 
+// list filter: a scene is a goal / shot / other play by its title (make_goal_scenes / make_scenes / make_shot_scenes)
+const KIND = (title) => title.startsWith("גול") ? "goal" : /בעיט/.test(title) ? "shot" : "play"
+const FILTERS = [["all", "הכל"], ["goal", "גולים"], ["shot", "בעיטות"], ["play", "מהלכים"]]
+
 function SceneList({ onOpen }) {
   const [scenes, setScenes] = useState(null)
   const [err, setErr] = useState(null)
+  const [filter, setFilter] = useState("all")
   useEffect(() => { getScenes().then(setScenes).catch(e => setErr(e.message || "שגיאה בטעינה")) }, [])
   return (
     <div className="card p-4 space-y-3">
@@ -43,10 +48,25 @@ function SceneList({ onOpen }) {
       {err && <p className="text-sm text-red-600">{err}</p>}
       {!scenes && !err && <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>}
       {scenes?.length === 0 && <p className="text-sm text-slate-500">עדיין אין מהלכים. הם נוצרים עם scene3d/upload_scene.py.</p>}
+      {scenes?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map(([k, label]) => {
+            const n = k === "all" ? scenes.length : scenes.filter(s => KIND(s.title) === k).length
+            return (
+              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border ${filter === k ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white" : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"}`}>
+                {label} <span className="opacity-60">{n}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <div className="grid sm:grid-cols-2 gap-2">
-        {scenes?.map(s => (
+        {scenes?.filter(s => filter === "all" || KIND(s.title) === filter).map(s => (
           <button key={s.id} onClick={() => onOpen(s.id)} className="text-start rounded-xl border border-slate-200 dark:border-slate-700 p-3 hover:ring-2 hover:ring-brand/40">
-            <span className="font-semibold text-sm text-slate-900 dark:text-white block">{s.title}</span>
+            <span className="font-semibold text-sm text-slate-900 dark:text-white block">
+              {KIND(s.title) === "goal" && <i className="inline-block w-2 h-2 rounded-full bg-[#d9b45a] me-1.5 align-middle" aria-hidden />}{s.title}
+            </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">
               <span dir="ltr">{mmss(s.t0)}</span> בסרטון · {Math.round(s.dur)} שניות
               {s.score && <> · {TEAM_NAME.red} {s.score.red}, {TEAM_NAME.blue} {s.score.blue}</>}

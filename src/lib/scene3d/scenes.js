@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 export async function getScenes() {
   const { data, error } = await supabase.from('video_lab_scenes')
     .select('id,title,youtube_id,t0,dur,score,created_at,game_id')
-    .order('created_at', { ascending: false })
+    .order('t0', { ascending: true })                 // game order — the list reads like the match
   if (error) throw error
   return data
 }
