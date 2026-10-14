@@ -82,7 +82,7 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
         }`}>
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
           : following ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
-        {following ? "עוקב/ת" : "עקוב/י"}
+        {following ? "אוהד/ת ✓" : "אוהד/ת"}
         {showCount && count != null && count > 0 && (
           <span className="tabular-nums opacity-70">{count}</span>
         )}
