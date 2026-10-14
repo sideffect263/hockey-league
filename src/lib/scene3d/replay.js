@@ -45,6 +45,20 @@ export function createReplay({ container, scene: D, onTick, clock, onViewChange 
   const cam = new THREE.PerspectiveCamera(48, 1, 0.1, 200)
   const controls = new OrbitControls(cam, canvas)
   controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 - 0.03; controls.minDistance = 3; controls.maxDistance = 60
+  controls.screenSpacePanning = false                     // pan slides along the rink floor, never up into the roof
+  // arrow keys move the scene once it has focus (click it / Tab to it) — not on the window, so page keys keep working
+  canvas.tabIndex = 0; canvas.style.outline = "none"; controls.keyPanSpeed = 25; controls.listenToKeyEvents(canvas)
+  // keep the look-at point on (and near) the rink so panning can't lose the scene
+  controls.addEventListener("change", () => {
+    const t = controls.target; t.y = Math.max(0, Math.min(2, t.y))
+    t.x = Math.max(-R.L / 2 - 6, Math.min(R.L / 2 + 6, t.x)); t.z = Math.max(-R.W / 2 - 6, Math.min(R.W / 2 + 6, t.z))
+  })
+  // "move" mode: a plain drag / one finger PANS instead of rotating (the default needs right-drag / two fingers)
+  function setMoveMode(on) {
+    controls.mouseButtons = on ? { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
+                               : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
+    controls.touches = on ? { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE } : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }
+  }
 
   scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x223044, 1.3))
   const sun = new THREE.DirectionalLight(0xffffff, 2.3)
@@ -332,6 +346,8 @@ export function createReplay({ container, scene: D, onTick, clock, onViewChange 
     setSpeed(s) { state.speed = s },
     setView,
     setTags(v) { state.tags = v },
+    setMoveMode,
+    resetView() { const v = state.view === "free" ? "stand" : state.view; setView(v); onViewChange?.(v) },
     set onLoop(fn) { onLoop = fn },
     dispose() {
       dead = true; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()

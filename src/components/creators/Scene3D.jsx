@@ -108,6 +108,7 @@ function SceneViewer({ id, onBack }) {
   const [view, setView] = useState("real")
   const [showMeta, setShowMeta] = useState(false)
   const [tags, setTags] = useState(true)
+  const [moveMode, setMoveMode] = useState(false)
   const stageRef = useRef(null)
   const ytBox = useRef(null)
   const eng = useRef(null)
@@ -187,6 +188,15 @@ function SceneViewer({ id, onBack }) {
         <div className="card overflow-hidden p-0">
           <div ref={stageRef} className="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-[#0b1220]">
             <div className="absolute top-2 start-2 z-10 flex flex-wrap gap-1.5">
+              <button onClick={() => { setMoveMode(!moveMode); eng.current?.setMoveMode(!moveMode) }} aria-pressed={moveMode}
+                title="גרירה מזיזה את המגרש (במקום לסובב). חיצי המקלדת מזיזים תמיד"
+                className={`px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur ${moveMode ? "bg-white text-slate-900 border-white" : "bg-slate-900/70 text-white border-slate-600"}`}>
+                הזזה
+              </button>
+              <button onClick={() => eng.current?.resetView()} title="חזרה לזווית ההתחלתית"
+                className="px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur bg-slate-900/70 text-white border-slate-600">
+                איפוס
+              </button>
               <button onClick={() => { setTags(!tags); eng.current?.setTags(!tags) }} aria-pressed={tags}
                 className={`px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur ${tags ? "bg-white text-slate-900 border-white" : "bg-slate-900/70 text-white border-slate-600"}`}>
                 שמות
@@ -204,6 +214,8 @@ function SceneViewer({ id, onBack }) {
               <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-orange-500" />שופט</span>
               <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full border-2 border-[#d9b45a]" />כדור</span>
               <span>שקוף = מחוץ לפריים</span>
+              <span className="hidden sm:inline">גרירה: סיבוב · ימני/הזזה: הזזה · גלגלת: זום</span>
+              <span className="sm:hidden">אצבע: סיבוב · שתי אצבעות: זום והזזה</span>
               <span>{row.scene.players.some(p => p.pose?.length) ? "תנוחות גוף מהווידאו" : "תנועת החלקה מחושבת"}</span>
             </div>
           </div>
