@@ -10,8 +10,8 @@ const APK_URL = "/rinkhockeyIL.apk"
 // This drifted three versions behind once (the page still offered 1.4.4 while 1.4.5 was
 // live), so it is only the label — the in-app update banner reads the real versionCode
 // that deploy-public.sh pulls out of the APK itself and writes to league_settings.
-const APK_VERSION = "1.4.7 (22)"
-const APK_SIZE = "‎17MB"
+const APK_VERSION = "1.4.26 (46)"
+const APK_SIZE = "‎25MB"
 
 // iOS: LIVE on the App Store since 2026-07-16 (v1.0, build 15 — READY_FOR_SALE).
 // Set IOS_LIVE=false to fall back to the "coming soon" state if ever pulled.
