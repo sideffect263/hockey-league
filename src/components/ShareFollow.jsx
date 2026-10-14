@@ -74,7 +74,7 @@ export function FollowInvite({ targetType, targetId, name }) {
       <div className="min-w-0 flex-1">
         {state === "done" ? (
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
-            ✓ את/ה עוקב/ת אחרי {name} — נעדכן על כל גול
+            ✓ את/ה אוהד/ת של {name} — נעדכן על כל גול
           </p>
         ) : (
           <>
@@ -88,7 +88,7 @@ export function FollowInvite({ targetType, targetId, name }) {
         <button onClick={accept} disabled={state === "busy"}
           className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity disabled:opacity-50">
           {state === "busy" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-3.5 h-3.5" />}
-          עקוב + התראות
+          אוהד/ת + התראות
         </button>
       )}
       <button onClick={dismiss} aria-label="סגירה" className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
