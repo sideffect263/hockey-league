@@ -52,7 +52,7 @@ const admin = createClient(SB_URL, SB_SERVICE_ROLE, {
 // them — so an official_* push for a חובש rendered "שובצת כundefined למשחק".
 const ROLE_LABEL: Record<string, string> = {
   player: "שחקן", coach: "מאמן", content_editor: "עורך תוכן", judge: "שופט",
-  league_manager: "מנהל ליגה", medic: "חובש",
+  league_manager: "מנהל ליגה", medic: "חובש", developer: "מפתח/ת",
 };
 
 function bodyPreview(n: NotificationRow): string {

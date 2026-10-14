@@ -86,6 +86,7 @@ const ROUTES = [
   [/^\/notifications\/?$/, NotificationsSkeleton],
   [/^\/media\/?$/, MediaSkeleton],
   [/^\/creators\/?$/, CreatorsSkeleton],
+  [/^\/devs\/?$/, CreatorsSkeleton],
   [/^\/admin\/?$/, AdminSkeleton],
   [/^\/me\/?$/, ProfileSkeleton],
   [/^\/career\/?$/, CareerSkeleton],

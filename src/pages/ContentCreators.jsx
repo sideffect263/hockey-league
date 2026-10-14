@@ -1,31 +1,26 @@
-import { useState, useEffect, lazy, Suspense } from "react"
+import { useState, useEffect } from "react"
+import { Navigate } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import {
-  Images, Camera, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, FlaskConical, BookOpen, Box
+  Images, Flag, FolderPlus, Send, ExternalLink,
+  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, BookOpen
 } from "lucide-react"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
-import { getPlayers } from "@/lib/api"
-import { MediaClusters } from "@/pages/Media"
-import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
 import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import FeedDrafts from "@/components/creators/FeedDrafts"
-import VideoLab from "@/components/creators/VideoLab"
 import GameStoriesReview from "@/components/creators/GameStoriesReview"
 import { countStoryDrafts } from "@/lib/gameStories"
-// three.js is big — only this tab loads it
-const Scene3DTab = lazy(() => import("@/components/creators/Scene3D"))
+
+// The lab, 3D replay, media (face naming) and photo clusters moved to /devs (2026-10-15).
+// Old links (/creators?tab=lab&clip=…) keep working: they redirect with the query intact.
+const MOVED_TO_DEVS = new Set(["lab", "scene3d", "media", "clusters"])
 
 const tabs = [
   { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
   { id: "stories", label: "סיפורי משחקים", icon: BookOpen },
-  { id: "lab", label: "מעבדת וידאו", icon: FlaskConical },
-  { id: "scene3d", label: "שחזור תלת-ממד", icon: Box },
-  { id: "media", label: "מדיה", icon: Camera },
-  { id: "clusters", label: "קבוצות תמונות", icon: Images },
   { id: "reports", label: "דיווחים", icon: Flag },
   { id: "albums", label: "אלבומים חדשים", icon: FolderPlus },
 ]
@@ -33,11 +28,17 @@ const tabs = [
 /**
  * Content-editors workspace. Gated to `isContentEditor || isAdmin` (raw editor
  * role OR admin — admins are not content editors via the flag, so both are
- * checked). Mirrors Admin.jsx's side-nav tab layout. All four tabs act through
- * the moderation / photo-override / cluster / album_submissions RLS policies that
- * now allow `is_admin() OR is_content_editor()`.
+ * checked). Mirrors Admin.jsx's side-nav tab layout. Post work only — the lab, 3D,
+ * media and photo-cluster tools live on /devs. The tabs act through the feed-draft /
+ * story / moderation / album_submissions RLS policies (`is_admin() OR is_content_editor()`).
  */
 export default function ContentCreators() {
+  const moved = new URLSearchParams(window.location.search).get("tab")
+  if (MOVED_TO_DEVS.has(moved)) return <Navigate to={`/devs${window.location.search}`} replace />
+  return <CreatorsWorkspace />
+}
+
+function CreatorsWorkspace() {
   const { user, isAdmin, isContentEditor, loading: authLoading } = useAuth()
   // ?tab=drafts deep-links straight to the review queue.
   const [activeTab, setActiveTab] = useState(() => {
@@ -46,14 +47,11 @@ export default function ContentCreators() {
   })
   const [draftCount, setDraftCount] = useState(null)
   const [storyCount, setStoryCount] = useState(null)
-  const [players, setPlayers] = useState([])
 
   const canAccess = isContentEditor || isAdmin
 
-  // ClustersAdmin needs the roster to assign faces to players.
   useEffect(() => {
     if (authLoading || !canAccess) return
-    getPlayers().then(setPlayers).catch(() => setPlayers([]))
     countStoryDrafts().then(setStoryCount).catch(() => {})
   }, [authLoading, canAccess])
 
@@ -69,7 +67,7 @@ export default function ContentCreators() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, מעבדת וידאו, שחזור תלת-ממד, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -102,14 +100,6 @@ export default function ContentCreators() {
         <div className="min-w-0">
           {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
           {activeTab === "stories" && <GameStoriesReview onCountChange={setStoryCount} />}
-          {activeTab === "lab" && <VideoLab />}
-          {activeTab === "scene3d" && (
-            <Suspense fallback={<div className="card p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>}>
-              <Scene3DTab />
-            </Suspense>
-          )}
-          {activeTab === "media" && <MediaClusters />}
-          {activeTab === "clusters" && <ClustersAdmin players={players} />}
           {activeTab === "reports" && <ReportsReview />}
           {activeTab === "albums" && <AlbumSubmissions />}
         </div>
