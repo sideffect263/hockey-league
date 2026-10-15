@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { listenTopic } from './realtimeTopics'
 
 /**
  * The director's control room state for one game (table game_broadcast) and the
@@ -37,15 +38,13 @@ export async function getBroadcast(gameId) {
 }
 
 // Realtime: cb(settings) on every change, so viewers switch cameras / overlay at once.
+// Broadcast topic bcast:<game> (supabase/realtime-broadcast.sql) carries the row, or a ping
+// for test games — refetch through RLS then.
 export function subscribeBroadcast(gameId, cb) {
   if (!gameId) return () => {}
-  const channel = supabase
-    .channel(`game_broadcast:${gameId}`)
-    .on('postgres_changes',
-      { event: '*', schema: 'public', table: 'game_broadcast', filter: `game_id=eq.${gameId}` },
-      (payload) => cb({ ...BROADCAST_DEFAULTS, ...(payload.eventType === 'DELETE' ? {} : payload.new) }))
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  const refetch = () => getBroadcast(gameId).then(cb).catch(() => {})
+  return listenTopic(`bcast:${gameId}`, 'settings',
+    (p) => ('row' in p ? cb({ ...BROADCAST_DEFAULTS, ...(p.row || {}) }) : refetch()), refetch)
 }
 
 // Admin: change some settings (creates the row on first use).

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { listenTopic } from './realtimeTopics'
 import { TeamSide, CardType, Half, BreakKind, GameRules } from './game/rules'
 
 /**
@@ -148,18 +149,11 @@ export async function getLiveGames() {
 }
 
 // Realtime for ANY live-game change (start / score / finish / abandon). The cb
-// takes no args — callers just refetch getLiveGames(). No-op-safe if Realtime
-// isn't reachable. Returns an unsubscribe fn.
+// takes no args — callers just refetch getLiveGames(). Broadcast topic live:all
+// (supabase/realtime-broadcast.sql); no-op-safe if Realtime isn't reachable.
+// Returns an unsubscribe fn.
 export function subscribeLiveGames(cb) {
-  const channel = supabase
-    .channel('live_games:all')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'live_game_state' },
-      () => cb(),
-    )
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  return listenTopic('live:all', 'change', () => cb(), () => cb())
 }
 
 // Current live row for a game, or null. Public SELECT — safe for anon spectators.
@@ -175,20 +169,16 @@ export async function getLiveGame(gameId) {
 }
 
 // Realtime subscription for one game's live row. Invokes cb(row|null) on every
-// change; a DELETE (game abandoned / finished) delivers null. Returns an
-// unsubscribe fn. No-op-safe if Realtime isn't reachable — mirrors
-// notifications.js subscribeToNotifications.
+// change; a DELETE (game abandoned / finished) delivers null. Broadcast topic
+// live:<game>: the message carries the row, except for test games (hidden by RLS)
+// and oversized rows, which send a ping — refetch through RLS then. Returns an
+// unsubscribe fn. No-op-safe if Realtime isn't reachable.
 export function subscribeLiveGame(gameId, cb) {
   if (!gameId) return () => {}
-  const channel = supabase
-    .channel(`live_game:${gameId}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'live_game_state', filter: `game_id=eq.${gameId}` },
-      (payload) => cb(payload.eventType === 'DELETE' ? null : (payload.new || null)),
-    )
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  // Not getLiveGame: it maps an error to null, and a dropped request must not blank the board.
+  const refetch = () => supabase.from('live_game_state').select('*').eq('game_id', gameId).maybeSingle()
+    .then(({ data, error }) => { if (!error) cb(data || null) })
+  return listenTopic(`live:${gameId}`, 'state', (p) => ('row' in p ? cb(p.row) : refetch()), refetch)
 }
 
 // Judge/admin only. status ∈ scheduled | in_progress | waiting_result.

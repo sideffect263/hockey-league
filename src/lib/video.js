@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { listenTopic } from './realtimeTopics'
 import { sessionUser } from './sessionUser'
 
 /**
@@ -218,17 +219,10 @@ export async function deleteMarker(id) {
 
 // Realtime: a spectator already on /games/:id should see a video pop in the
 // moment the streamer goes live, without reloading. Invokes cb() on any change
-// to this game's videos; caller re-fetches via getGameVideo. No-op-safe if
-// Realtime is unreachable. Mirrors subscribeLiveGame in lib/live.js.
+// to this game's videos; caller re-fetches via getGameVideo (RLS hides hidden
+// cameras, so the broadcast video:<game> is a bare ping). No-op-safe if
+// Realtime is unreachable.
 export function subscribeGameVideo(gameId, cb) {
   if (!gameId) return () => {}
-  const channel = supabase
-    .channel(`game_video:${gameId}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'game_videos', filter: `game_id=eq.${gameId}` },
-      () => cb(),
-    )
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  return listenTopic(`video:${gameId}`, 'change', () => cb(), () => cb())
 }

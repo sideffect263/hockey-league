@@ -129,8 +129,12 @@ export default function VideoLab({ focus = null }) {
           {sorted.map(c => (
             <button key={c.id} onClick={() => open(c.id)}
               className="card overflow-hidden text-start hover:ring-2 hover:ring-brand/40 transition">
-              <div className="aspect-video bg-slate-900">
-                <video src={`${labUrl(c.processed_path || c.source_path)}#t=1`} preload="metadata" muted playsInline className="w-full h-full object-cover pointer-events-none" />
+              {/* No <video> per tile: iOS Safari pulls each ~12 MB clip in full, and 20 tiles per visit
+                  blew the Supabase egress quota. Cloudflare's thumbnail when the clip is in the feed. */}
+              <div className="aspect-video bg-slate-900 grid place-items-center">
+                {c.feed_uid
+                  ? <img src={`https://videodelivery.net/${c.feed_uid}/thumbnails/thumbnail.jpg?time=1s&height=360`} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  : <Play className="w-8 h-8 text-white/40" />}
               </div>
               <div className="p-3 space-y-1.5">
                 <div className="flex items-start gap-2">
