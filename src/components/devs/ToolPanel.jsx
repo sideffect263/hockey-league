@@ -6,12 +6,12 @@ import VideoLab from "@/components/creators/VideoLab"
 import { MediaClusters } from "@/pages/Media"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import { getPlayers } from "@/lib/api"
-import { LAB_FOCUS } from "@/lib/devTopics"
+import { LAB_FOCUS } from "@/lib/stageWork"
 
 // three.js is big — only the 3D tool loads it.
 const Scene3DTab = lazy(() => import("@/components/creators/Scene3D"))
 
-/** lucide icons referenced by name in src/lib/devTopics.js. */
+/** lucide icons referenced by name in src/lib/stageWork.js (TOOLS). */
 export const ICONS = { Film, BrainCircuit, Box, Video, Sparkles, BarChart3, Images, Smartphone, FlaskConical, Camera }
 
 const spinner = <div className="card p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>

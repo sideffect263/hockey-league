@@ -3,7 +3,7 @@ import { he } from 'date-fns/locale'
 import { supabase } from './supabase'
 
 // /devs (supabase/developer-role.sql): who joined which topic + each topic's thread.
-// The topic catalog itself is code (src/lib/devTopics.js). RLS: developers (and admins) read
+// topic_id = a map stage id (src/lib/pipelineMap.js + stageWork.js). RLS: developers (and admins) read
 // everything, insert as themselves; a note is deleted by its author or an admin.
 //
 // Structured notes: widgets on a topic page post into the same thread with a leading tag,

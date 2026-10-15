@@ -1,4 +1,4 @@
-// מפת המערכת: the real video-AI pipeline, stage by stage, for /devs?tab=map.
+// מפת המערכת: everything we build (video-AI pipeline, site, apps, data), stage by stage, for /devs.
 //
 // Every number and method here comes from video-analysis/ (HANDOFF-2026-10-13-match-engine.md,
 // MORNING-REPORT-2026-10-14.md, the scripts' docstrings) — measured, not hoped. When a default
@@ -16,13 +16,14 @@
 //   weak      known weak spots
 //   next      open directions
 //   files     paths (video-analysis/… or hockey-league src/…)
-//   topic     /devs topic id to join / discuss
+//   (what a developer can DO on a stage — action, tasks, thread — lives in stageWork.js)
 
 export const LANES = [
   { id: 'input',      label: 'מקור הווידאו',  desc: 'מאיפה מגיעים הסרטונים' },
   { id: 'perception', label: 'רואים',          desc: 'מה יש בכל פריים: שחקנים, כדור, מגרש, תנוחות' },
   { id: 'understand', label: 'מבינים',         desc: 'מפריימים למשחק: מסלול כדור, מי זה, מה קרה' },
   { id: 'output',     label: 'תוצרים',         desc: 'מה הליגה מקבלת בסוף' },
+  { id: 'platform',   label: 'האתר, האפליקציות והנתונים', desc: 'איפה כל זה פוגש את השחקנים והאוהדים' },
   { id: 'support',    label: 'איך משפרים',     desc: 'אימון המודלים ומדידה — הלולאה שמשפרת את כל השאר' },
 ]
 
@@ -44,7 +45,7 @@ export const RUNS_ON = {
 export const STAGES = [
   // ── input ──────────────────────────────────────────────────────────────────
   {
-    id: 'sources', lane: 'input', title: 'מקורות וידאו', status: 'stable', runsOn: ['cloud', 'phone'], from: [],
+    id: 'sources', lane: 'input', title: 'שידורים ומקורות וידאו', status: 'stable', runsOn: ['cloud', 'phone'], from: [],
     short: 'שידור היוטיוב, שידורי טלפון והעלאות למעבדה',
     method: [
       'מצלמת היוטיוב: מצלמה מוגבהת בצד המגרש שמסתובבת וזזה מנקודה קבועה, 1080p ב-25 פריימים לשנייה.',
@@ -63,7 +64,6 @@ export const STAGES = [
     weak: ['רוב המשחקים בלי וידאו בכלל', 'מצלמה אחת — שחקנים מחוץ לפריים לא נראים'],
     next: ['מצלמה עוקבת אוטומטית בכל משחק', 'שתי מצלמות לכל משחק (במאי אוטומטי)'],
     files: ['video-analysis/lab_upload.py', 'supabase/functions/stream-golive/'],
-    topic: 'broadcast',
   },
 
   // ── perception ─────────────────────────────────────────────────────────────
@@ -83,7 +83,6 @@ export const STAGES = [
     weak: ['לא נבדק בשידור ארוך בטלפון אמיתי (חום, סוללה)'],
     next: ['מדידה אם השיפור עוזר לזיהוי הכדור (לא רק לעין)'],
     files: ['video-analysis/goal_fx.py', 'video-analysis/upscale.py'],
-    topic: 'goal-highlights',
   },
   {
     id: 'players', lane: 'perception', title: 'זיהוי ומעקב שחקנים', status: 'stable', runsOn: ['gpu', 'mac'], from: ['sources'],
@@ -103,7 +102,6 @@ export const STAGES = [
     weak: ['מסלולים נקטעים (אין re-attach) — כל קטיעה היא "שחקן חדש"', 'שוערים בתלבושת כהה מתבלבלים בין הקבוצות'],
     next: ['חיבור מסלולים לפי מראה (embedding) מעל פערים'],
     files: ['video-analysis/game_detect.py', 'video-analysis/player_tracks.py'],
-    topic: 'player-id',
   },
   {
     id: 'ball', lane: 'perception', title: 'זיהוי הכדור', status: 'bottleneck', runsOn: ['gpu'], from: ['sources'],
@@ -133,7 +131,6 @@ export const STAGES = [
     ],
     next: ['imgsz 960 ו-YOLO11m (עוד לא הורצו)', 'אימון רב-מגרשי', 'tnet לציור בלבד (3D, סימון כדור)'],
     files: ['video-analysis/train_ball.py', 'video-analysis/ball_track2.py', 'video-analysis/tnet.py', 'video-analysis/eval_holdout_img.py'],
-    topic: 'ball-detection',
   },
   {
     id: 'rink', lane: 'perception', title: 'כיול מגרש ומצלמה', status: 'improving', runsOn: ['mac', 'web'], from: ['sources'],
@@ -154,7 +151,6 @@ export const STAGES = [
     weak: ['כל מגרש וכל מיקום מצלמה צריכים ערכה משלהם', 'קנה המידה נשען על השער בלבד'],
     next: ['ערכה למגרש נוסף', 'מיני-מפה מלמעלה לבדיקה ויזואלית'],
     files: ['video-analysis/rink_points.py', 'video-analysis/rink_geom.py', 'video-analysis/game_camera.py', 'src/lib/rinkLandmarks.js'],
-    topic: 'rink-calibration',
   },
   {
     id: 'pose', lane: 'perception', title: 'תנוחות ומקל', status: 'improving', runsOn: ['gpu'], from: ['players'],
@@ -176,7 +172,6 @@ export const STAGES = [
     weak: ['אין מודל למקל עצמו — רק הערכה מהידיים'],
     next: ['גלאי מקל אמיתי (keypoints של הלהב)'],
     files: ['video-analysis/pose_detect.py', 'video-analysis/stick.py', 'video-analysis/scene3d/pose_lift.py'],
-    topic: 'scene3d',
   },
 
   // ── understand ─────────────────────────────────────────────────────────────
@@ -203,7 +198,6 @@ export const STAGES = [
     weak: ['5 פעמים: מסלול מדויק יותר ← פחות אירועים נכונים. האירועים תלויים בכדור ליד שחקנים, לא בדיוק כללי'],
     next: ['מדד מסלול שמתמקד ברגעי מגע עם המקל'],
     files: ['video-analysis/game_events.py', 'video-analysis/ballpath_exp.py'],
-    topic: 'match-stats',
   },
   {
     id: 'identity', lane: 'understand', title: 'מי זה? זהות שחקנים', status: 'improving', runsOn: ['gpu', 'mac'], from: ['players'],
@@ -228,7 +222,6 @@ export const STAGES = [
     weak: ['מספרים ברוסטר לא תואמים לווידאו (גבעת עדה נוער)', 'מודל לכל משחק בנפרד — לא לומד בין משחקים'],
     next: ['זהות שעוברת בין משחקים (אותו שחקן, משחק הבא)'],
     files: ['video-analysis/player_embed.py', 'video-analysis/player_ids.py', 'video-analysis/jersey_track.py', 'video-analysis/identity_link.py'],
-    topic: 'player-id',
   },
   {
     id: 'events', lane: 'understand', title: 'מנוע האירועים', status: 'improving', runsOn: ['mac'], from: ['ballpath', 'identity', 'pose', 'rink'],
@@ -257,7 +250,6 @@ export const STAGES = [
     weak: ['חטיפות בסקראם', 'האמת מוטה להצעות של המנוע הישן (רק 11 אירועים נוספו ע״י אדם)', 'מחצית שנייה: 217 אירועים מחכים לסקירה'],
     next: ['סקירה הוגנת של המחצית השנייה', 'מודל נלמד במקום כללים כשיהיו מספיק אירועים מתויגים'],
     files: ['video-analysis/game_events.py', 'video-analysis/eval_review.py', 'video-analysis/sweep_v4.py', 'src/components/creators/MatchReview.jsx'],
-    topic: 'match-stats',
   },
   {
     id: 'audio', lane: 'understand', title: 'גולים מהאודיו', status: 'improving', runsOn: ['mac'], from: ['sources'],
@@ -273,7 +265,6 @@ export const STAGES = [
     weak: ['טלפון שמסתובב לחגיגה מבלבל', 'שריקות וצעקות שלא קשורות לגול'],
     next: ['מסווג קול קטן (גול / שריקה / רעש) במקום סף'],
     files: ['video-analysis/goal_worker.py', 'video-analysis/audio_2026.py', 'video-analysis/audio_events.py'],
-    topic: 'goal-highlights',
   },
 
   // ── output ─────────────────────────────────────────────────────────────────
@@ -290,7 +281,20 @@ export const STAGES = [
     weak: ['רק משחק אחד', 'נגיעות בלי שם = 31%'],
     next: ['עמוד דו״ח משחק באתר'],
     files: ['video-analysis/build_report.py', 'video-analysis/player_stats.py'],
-    topic: 'match-stats',
+  },
+  {
+    id: 'shots', lane: 'output', title: 'סקאוטינג בעיטות', status: 'improving', runsOn: ['web'], from: ['rink'],
+    short: 'מאיפה בועטים, לאן, ואיך השוער עמד — מתויג ביד',
+    method: [
+      'במעבדת הווידאו: מגיעים לרגע הבעיטה ולוחצים S — כרטיס בעיטה.',
+      'הכרטיס שומר יורה, נקודת מוצא על תרשים המגרש, נקודה בשער, תוצאה ועמידת השוער (טבלת video_lab_shots).',
+    ],
+    current: 'תיוג ידני בלבד',
+    metrics: [],
+    tried: [],
+    weak: ['רוב הקליפים הם רק גולים — אחוזי הצלה לפי אזור עוד לא בעלי משמעות', 'אין עדיין עמוד שמציג את הנתונים'],
+    next: ['בעיטות אוטומטיות ממנוע האירועים (מיקום על המגרש כבר קיים)', 'עמוד שוער ומפת בעיטות לשחקן'],
+    files: ['supabase/video-lab-shots.sql', 'src/components/creators/LabShots.jsx'],
   },
   {
     id: 'highlights', lane: 'output', title: 'תקצירי גולים', status: 'untested', runsOn: ['mac', 'cloud'], from: ['enhance', 'ball', 'audio'],
@@ -308,7 +312,6 @@ export const STAGES = [
     weak: ['המסלול החי (שידור ← טיוטה) לא נבדק במשחק אמיתי', 'סימון כדור כבוי במגרש עם כדור כהה'],
     next: ['התקנת goal_worker אחרי בדיקה בשידור אמיתי', 'התראה לעורכים כשטיוטה נוחתת'],
     files: ['video-analysis/goal_fx.py', 'video-analysis/goal_worker.py', 'video-analysis/highlight_reel.py'],
-    topic: 'goal-highlights',
   },
   {
     id: 'scene3d', lane: 'output', title: 'שחזור תלת-ממד', status: 'improving', runsOn: ['mac', 'web'], from: ['pose', 'identity', 'ballpath', 'rink'],
@@ -326,7 +329,6 @@ export const STAGES = [
     weak: ['מצלמה אחת: שחקן שיוצא מהפריים נעלם', 'הכדור תמיד על הרצפה'],
     next: ['גובה כדור', 'חיזוי שחקנים מחוץ לפריים'],
     files: ['video-analysis/scene3d/export_scene.py', 'src/lib/scene3d/replay.js', 'src/lib/scene3d/skater.js'],
-    topic: 'scene3d',
   },
   {
     id: 'autofollow', lane: 'output', title: 'מצלמה עוקבת + במאי', status: 'untested', runsOn: ['phone', 'cloud'], from: ['sources'],
@@ -345,7 +347,6 @@ export const STAGES = [
     weak: ['לא נבדק במגרש: חום, סוללה, 50 דקות', 'סימולטור iOS מחזיר אפסים במודל fp16'],
     next: ['בדיקת שטח ראשונה', 'quantization ל-int8 ומדידת השהיה לכל מכשיר'],
     files: ['MOBILE-BUILD/AUTO-FOLLOW-SPEC.md', 'video-analysis/models/auto-follow/'],
-    topic: 'auto-camera',
   },
   {
     id: 'faces', lane: 'output', title: 'פנים בתמונות', status: 'stable', runsOn: ['mac'], from: [],
@@ -363,7 +364,82 @@ export const STAGES = [
     weak: ['רק חלק קטן מהקבוצות קיבל שם', 'קבוצות כפולות לאותו אדם'],
     next: ['להריץ על אלבומי העונה החדשה', 'הצעות איחוד אוטומטיות'],
     files: ['hockey-photos/cluster.py', 'src/components/admin/ClustersAdmin.jsx'],
-    topic: 'face-matching',
+  },
+
+  // ── platform ───────────────────────────────────────────────────────────────
+  {
+    id: 'web', lane: 'platform', title: 'האתר', status: 'stable', runsOn: ['web', 'cloud'], from: [],
+    short: 'rinkhockeyil.com — React, Vite, Supabase, בעברית ומימין לשמאל',
+    method: [
+      'React + Vite + Tailwind, פריסה ב-Vercel; Supabase (Postgres + RLS + Edge Functions + Realtime) כשרת.',
+      'ענף dev ← אתר בדיקות; ענף main ← rinkhockeyil.com, ופריסה רק בלחיצת כפתור.',
+      'גוגל ובוטים מקבלים HTML מוכן (api/seo.js) כדי שעמודי שחקנים ומשחקים יופיעו בחיפוש.',
+      'טלמטריה עצמית: שגיאות וכשלים מהדפדפן נאספים בבסיס הנתונים.',
+    ],
+    current: 'Supabase Pro, api.rinkhockeyil.com',
+    metrics: [],
+    tried: [],
+    weak: ['פרויקט Supabase אחד משרת גם את אתר הבדיקות וגם את האמיתי'],
+    next: ['מעבר נגישות', 'שיפור טעינה ראשונה בטלפון'],
+    files: ['CLAUDE.md', 'src/App.jsx', 'src/lib/api.js'],
+  },
+  {
+    id: 'apps', lane: 'platform', title: 'אפליקציות iOS ו-Android', status: 'improving', runsOn: ['phone'], from: [],
+    short: 'SwiftUI ו-Kotlin native — באותה גרסה, עם שידור ופיד',
+    method: [
+      'iOS ב-SwiftUI, Android ב-Kotlin / Jetpack Compose — שתיהן native, מול אותו Supabase כמו האתר.',
+      'מספר גרסה ו-build משותפים לשתיהן.',
+      'שידור מהטלפון (RTMP), התראות push (APNs / FCM), פיד, עמודי משחק.',
+    ],
+    current: 'iOS ב-App Store (ישראל), Android בבדיקה סגורה בגוגל פליי',
+    metrics: [],
+    tried: [],
+    weak: ['כל פיצ׳ר נבנה פעמיים (+ באתר) — פערים בין הפלטפורמות', 'Android צריך 12+ בודקים ל-14 יום לפני פרסום'],
+    next: ['רשימת פערים בין האתר לאפליקציות'],
+    files: [],
+  },
+  {
+    id: 'leaguedata', lane: 'platform', title: 'נתוני הליגה', status: 'stable', runsOn: ['cloud'], from: [],
+    short: 'רוסטרים, משחקים, סטטיסטיקה — הבסיס של כל השאר',
+    method: [
+      'Postgres ב-Supabase עם RLS לכל טבלה; players היא הטבלה היחידה עם הרשאות עמודה.',
+      'סיכומי שחקנים וקבוצות מתוחזקים בטריגרים, לא בחישוב בכל טעינה.',
+      'טופס שיפוט מצולם ← תוצאה במערכת; סנכרון רפואי מ-Podium.',
+    ],
+    current: '',
+    metrics: [],
+    tried: [],
+    weak: ['שחקנים בלי מספר, בלי עמדה ובלי תמונה', 'נתוני קטינים ונתונים רפואיים — הכל עובר דרך הרשאות'],
+    next: ['בדיקות איכות לילית', 'ארכיון עונות קודמות'],
+    files: ['supabase/player-season-totals.sql', 'src/lib/api.js'],
+  },
+  {
+    id: 'stories', lane: 'platform', title: 'סיפורי משחק ב-AI', status: 'improving', runsOn: ['cloud'], from: ['leaguedata'],
+    short: 'Claude כותב את סיפור המשחק מהתוצאה, מהסטטיסטיקה ומהסרטונים',
+    method: [
+      'רוטינה שבועית בונה חבילת נתונים: תוצאה, טבלה לפני ואחרי, MVP, פריימים מסרטונים.',
+      'Claude כותב טיוטה; עורכים מאשרים לפני פרסום.',
+      'כללים: רק עובדות שאפשר לאמת, בלי זיהוי פנים, בלי גילאים.',
+    ],
+    current: '',
+    metrics: [],
+    tried: [],
+    weak: ['לרוב המשחקים אין וידאו — הסיפור נשען רק על מספרים'],
+    next: ['בדיקה אוטומטית של כל מספר בסיפור'],
+    files: ['scripts/game-story/ROUTINE.md', 'supabase/functions/game-story/index.ts'],
+  },
+  {
+    id: 'ideas', lane: 'platform', title: 'רעיונות חדשים', status: 'improving', runsOn: [], from: [],
+    short: 'יש לכם רעיון שלא מופיע במפה? זה המקום',
+    method: [
+      'רעיונות פתוחים: חיזוי תוצאות מבוסס נתונים, מאמן AI לשחקני נוער, תרגום שידורים לאנגלית, ניתוח שיפוט (עבירות לפי מצב משחק).',
+    ],
+    current: '',
+    metrics: [],
+    tried: [],
+    weak: [],
+    next: [],
+    files: [],
   },
 
   // ── support ────────────────────────────────────────────────────────────────
@@ -385,7 +461,6 @@ export const STAGES = [
     weak: ['רוב התוויות ממשחק אחד וממגרש אחד'],
     next: ['תיוג ממגרשים נוספים'],
     files: ['video-analysis/README.md', 'video-analysis/round9_build.py', 'video-analysis/round9_run.py', 'video-analysis/selftrain_build.py'],
-    topic: 'ball-detection',
   },
   {
     id: 'measure', lane: 'support', title: 'מדידה', status: 'stable', runsOn: ['mac'], from: [],
@@ -407,7 +482,6 @@ export const STAGES = [
     weak: ['אמת מוטה: הסקירה נבנתה מהצעות המנוע הישן', 'רק משחק אחד מתויג'],
     next: ['סקירה עיוורת (בלי הצעות של מנוע)', 'אמת ממשחק שני'],
     files: ['video-analysis/eval_review.py', 'video-analysis/ballpath_exp.py', 'video-analysis/eval_holdout_img.py', 'video-analysis/scene3d/eval_scene.py'],
-    topic: 'match-stats',
   },
 ]
 

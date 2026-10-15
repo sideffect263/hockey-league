@@ -4,6 +4,8 @@
 // hockey-photos/README.md and the dated project memory notes. Only measured facts; no invented numbers.
 // Rules: every string starts with a Hebrew word; "A ← B" = went from A to B.
 
+import { PLATFORM_STORIES } from './platformStories'
+
 export const STORIES = {
   sources: {
     problem: 'רוב משחקי הליגה לא מצולמים בכלל. מה שכן מצולם מגיע ממקורות שונים: מצלמה מוגבהת אחת בצד המגרש שמסתובבת ומזמזמת, טלפון של הצוות על הדופן, וקליפים של אוהדים מוואטסאפ ב-480p. אין מצלמה רחבה קבועה שרואה את כל המגרש, ולכן שחקנים יוצאים מהפריים כל הזמן. כל שלב אחר במערכת תלוי בחומר הגלם הזה.',
@@ -388,4 +390,16 @@ export const STORIES = {
       'כמה אירועים צריך כדי שהבדל של 0.02–0.03 ב-F1 יהיה מובהק?',
     ],
   },
+}
+
+// The site / apps / data stages (2026-10-15, when the old topic catalog merged into the map) live in
+// platformStories.js; the broadcast steps extend the video-sources story.
+{
+  const { sources_broadcast: b, ...platform } = PLATFORM_STORIES
+  Object.assign(STORIES, platform)
+  STORIES.sources = {
+    ...STORIES.sources,
+    journey: [...(STORIES.sources.journey || []), ...(b?.journey || [])],
+    askExperts: [...(STORIES.sources.askExperts || []), ...(b?.askExperts || [])],
+  }
 }
