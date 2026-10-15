@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { FlaskConical, Plus, Loader2, ArrowRight, RotateCcw, Check, X, ChevronDown, Cpu, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
+import Standings from "./Standings"
+import { stageById } from "@/lib/pipelineMap"
 import { getExperiments, getExperiment, createExperiment, cancelExperiment, decideExperiment, getProfilesByIds, relTime } from "@/lib/devs"
 import { EXPERIMENT_STAGES, STAGE_GROUPS, STAGE_PARAMS, paramDefaults, paramByKey, changedParams, EXP_STATUS, EVENT_TYPE_LABELS } from "@/lib/experimentSpec"
 
@@ -116,6 +118,7 @@ function NewExperiment({ initialStage, onBack, onCreated }) {
   const groups = Object.keys(G).map(g => [g, STAGE_PARAMS[stage].filter(p => p.group === g)]).filter(([, ps]) => ps.length)
   const pathV4 = values.ball_path === "v4"
   const setInvalid = STAGE_PARAMS[stage].some(p => p.kind === "set" && (values[p.key].length < p.min || values[p.key].length > p.max))
+    || (values.engine_test && values.checker === "none")
 
   return (
     <form onSubmit={submit} className="space-y-4 max-w-3xl">
@@ -131,6 +134,11 @@ function NewExperiment({ initialStage, onBack, onCreated }) {
         <p className="text-sm text-slate-600 dark:text-slate-400">{st.desc}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400"><b>המבחן:</b> {st.bench} · <b>זמן ריצה:</b> {st.runtime}</p>
         {st.caveat && <p className="text-xs rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 p-2.5">{st.caveat}</p>}
+      </div>
+
+      <Standings data={stageById(st.mapStage)?.standings} compact />
+
+      <div className="card p-4 space-y-3">
         <label className="block space-y-1">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">שם הניסוי</span>
           <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} className="filter-input w-full text-sm" placeholder={stage === "ball" ? "למשל: r9 במקום r7 עם בודק v10" : "למשל: טווח שליטה רחב יותר בסקראמים"} />
@@ -161,6 +169,7 @@ function NewExperiment({ initialStage, onBack, onCreated }) {
         <span className="text-sm text-slate-600 dark:text-slate-300 flex-1 min-w-0">
           {nChanged ? <>שיניתם {nChanged} {nChanged === 1 ? "הגדרה" : "הגדרות"}</> : "לא שיניתם כלום — זה יריץ את ברירת המחדל"}
         </span>
+        {values.engine_test && values.checker === "none" && <p className="w-full text-xs text-red-600 dark:text-red-400">בדיקת מנוע דורשת בודק — בחרו בודק או כבו את בדיקת המנוע.</p>}
         {nChanged > 0 && <button type="button" onClick={() => setValues(paramDefaults(stage))} className="btn-secondary btn-sm gap-1"><RotateCcw className="w-3.5 h-3.5" /> איפוס</button>}
         <button type="submit" disabled={busy || setInvalid} className="btn-primary btn-sm gap-1.5">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />} הרצה על kookisnooki
@@ -297,6 +306,15 @@ function ExperimentView({ id, onBack, onNew, onStage }) {
       )}
 
       {exp.status === "done" && exp.metrics && (exp.stage === "ball" ? <BallResults exp={exp} /> : <Results exp={exp} />)}
+      {exp.status === "done" && exp.stage === "ball" && exp.result?.engine && (
+        <Results exp={{ ...exp, metrics: exp.result.engine.metrics, baseline: exp.result.engine.baseline,
+          result: { per_type: exp.result.engine.per_type, baseline_per_type: exp.result.engine.baseline_per_type } }}
+          title="בדיקת מנוע מלאה — האם זה מתורגם לאירועים?"
+          sub={`הכדור זוהה מחדש ב-5 הקטעים שנסקרו עם ${(exp.params?.detectors || ["black", "black_r3", "r7"]).join(" + ")} · בודק ${exp.params?.checker || "v7"}, ומנוע האירועים של היום רץ עליו מול ${exp.result.engine.metrics.truth_events} אירועים שאדם סימן. ההשוואה: אותו מנוע עם הגלאים של היום.${exp.result.engine.reused ? " (הזיהוי מחדש היה שמור — סט המודלים הזה כבר נבדק.)" : ""}`} />
+      )}
+      {exp.status === "running" && exp.stage === "ball" && exp.params?.engine_test && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">בדיקת מנוע מלאה לסט מודלים חדש לוקחת כשעה. אפשר לסגור את הדף — התוצאה תחכה כאן.</p>
+      )}
 
       {exp.status === "done" && <Decision exp={exp} isAdmin={isAdmin} names={names} onChanged={load} />}
 
@@ -314,7 +332,7 @@ function ExperimentView({ id, onBack, onNew, onStage }) {
   )
 }
 
-function Results({ exp }) {
+function Results({ exp, title = "התוצאה מול המצב היום", sub }) {
   const m = exp.metrics, b = exp.baseline || {}
   const rows = useMemo(() => {
     const base = Object.fromEntries((exp.result?.baseline_per_type || []).map(r => [r.type, r]))
@@ -323,9 +341,9 @@ function Results({ exp }) {
   return (
     <div className="card p-4 space-y-4">
       <div>
-        <h3 className="font-bold text-slate-900 dark:text-white">התוצאה מול המצב היום</h3>
+        <h3 className="font-bold text-slate-900 dark:text-white">{title}</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          {exp.result?.bench?.span} · {m.truth_events} אירועים אמיתיים שאדם סימן. ברירת המחדל נמדדה באותה ריצה, מול אותה אמת.
+          {sub || <>{exp.result?.bench?.span} · {m.truth_events} אירועים אמיתיים שאדם סימן. ברירת המחדל נמדדה באותה ריצה, מול אותה אמת.</>}
         </p>
       </div>
       <div className="grid grid-cols-3 gap-2">

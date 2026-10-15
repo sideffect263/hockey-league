@@ -10,6 +10,7 @@ import { getNotes, addNote, deleteNote, getProfilesByIds, joinTopic, leaveTopic 
 import { useAuth } from "@/lib/AuthContext"
 import ToolPanel from "./ToolPanel"
 import TopicThread, { Avatar } from "./TopicThread"
+import Standings from "./Standings"
 import { ProposalForm, TaskBoard, RateOutputs, DataGaps } from "./Widgets"
 
 // One stage of מפת המערכת as a full page: what it is and how we got here (pipelineMap.js + stageStories.js),
@@ -136,6 +137,8 @@ export default function StagePage({ stageId, members, onBack, onOpen, onExperime
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         <div className="space-y-4 min-w-0">
+          <Standings data={stage.standings} />
+
           {story.problem && (
             <Card icon={Mountain} title="למה זה קשה אצלנו">
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{story.problem}</p>
