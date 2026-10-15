@@ -53,13 +53,13 @@
   <body>
     <!-- Opening animation, installed web app only (src/components/LaunchSplash.jsx).
          Decided here, before the bundle, so the blue covers the very first paint and a
-         normal browser visit never waits. Hosts: dev + localhost until Ariel approves it
-         for rinkhockeyil.com. ?splash=1 forces it in a browser tab on those hosts. -->
+         normal browser visit never waits. Live on rinkhockeyil.com since 2026-10-15
+         (Ariel approved). ?splash=1 forces it in a browser tab on these hosts. -->
     <script>
       (function () {
         try {
           var h = location.hostname, q = location.search.indexOf('splash=1') !== -1;
-          var host = h === 'localhost' || h === '127.0.0.1' || /^hockey-league-dev.*\.vercel\.app$/.test(h);
+          var host = h === 'localhost' || h === '127.0.0.1' || h === 'rinkhockeyil.com' || h === 'www.rinkhockeyil.com' || /^hockey-league-dev.*\.vercel\.app$/.test(h);
           var app = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
           var bot = /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|preview/i.test(navigator.userAgent);
           var seen = sessionStorage.getItem('launch-splash') === '1';
