@@ -70,12 +70,16 @@ export default function LaunchSplash({ reducedMotion, onDone }) {
 
   useEffect(() => {
     document.getElementById("boot-splash")?.remove() // our own blue takes over, same colour
+    // A blue screen that never lifts is the one failure this must not have. Opened straight
+    // into the background (no frames run there): skip it. And whatever happens, lift by 6 s.
+    if (document.hidden) { finish(); return }
+    const safety = setTimeout(finish, 6000)
     const target = headerCrest()
     if (reducedMotion) {
       const el = root.current
       requestAnimationFrame(() => el?.classList.add("fade"))
       const t = setTimeout(finish, 320)
-      return () => clearTimeout(t)
+      return () => { clearTimeout(t); clearTimeout(safety) }
     }
     // Land on the header crest: centre-to-centre offset and size ratio.
     let fx = 0, fy = -window.innerHeight / 2 + 32, fs = 40 / crest
@@ -94,7 +98,7 @@ export default function LaunchSplash({ reducedMotion, onDone }) {
       root.current?.classList.add("run")
       t = setTimeout(finish, T + 30)
     })
-    return () => { cancelAnimationFrame(raf); clearTimeout(t) }
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); clearTimeout(safety) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
