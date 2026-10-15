@@ -1,5 +1,5 @@
 // The settings a /devs experiment may change, with what each one does in the engine.
-// MIRROR of video-analysis/devlab/spec.py (the worker validates against that file — it is the
+// MIRROR of video-analysis/devlab/spec.py (EVENTS and BALL) (the worker validates against that file — it is the
 // authority; this one only drives the form). Same keys, defaults and ranges; change both together.
 
 export const EXPERIMENT_STAGES = {
@@ -10,9 +10,17 @@ export const EXPERIMENT_STAGES = {
     bench: 'פתיחת העונה 10-10 · 5 קטעים שנסקרו במחצית הראשונה · כל ריצות הסקירה של המחצית',
     runtime: 'כדקה',
   },
+  ball: {
+    label: 'זיהוי הכדור',
+    mapStage: 'ball',
+    desc: 'בוחרים אילו גלאים רצים יחד, איזה בודק (checker) מאשר כל מועמד, ואת הספים. kookisnooki מריץ על פריימים שמורים מפתיחת העונה — אף גלאי ברשימה לא אומן עליהם — ומשווה למצב היום.',
+    bench: 'פתיחת העונה · 155 פריימים שמורים (96 עם כדור, 59 בלי) · 6 קטעים',
+    runtime: 'כדקה (GPU)',
+    caveat: 'זכרו את השיעור מהמפה: גלאי שמנצח כאן לא בהכרח משפר את מנוע האירועים (r8 ו-r9 ניצחו כאן והפסידו שם). תוצאה טובה כאן = מועמד לבדיקת מנוע מלאה, לא ברירת מחדל אוטומטית.',
+  },
 }
 
-export const PARAM_GROUPS = {
+export const PARAM_GROUPS_EVENTS = {
   analyse: { label: 'מי שולט בכדור', desc: 'כל אירוע נבנה מ"רצפי שליטה": שחקן אחד ליד כדור איטי לאורך כמה פריימים. מעבר בין רצפים = אירוע.' },
   rules:   { label: 'כללי האירועים', desc: 'מתי מעבר שליטה נספר כמסירה, איבוד או בעיטה.' },
   ball:    { label: 'מסלול הכדור', desc: 'איך מחברים את מועמדי הכדור בכל פריים למסלול אחד.' },
@@ -65,13 +73,55 @@ export const EVENT_PARAMS = [
     label: 'להשתמש בתנוחות (RTMPose)', help: 'בלי תנוחות אין להב מקל — שליטה רק לפי הרגליים.' },
 ]
 
-export const paramDefaults = () => Object.fromEntries(EVENT_PARAMS.map(p => [p.key, p.def]))
-export const paramByKey = (k) => EVENT_PARAMS.find(p => p.key === k)
+// Ball detector (devlab/bench_ball.py). Model values are keys, never paths (spec.DETECTORS / CHECKERS).
+export const PARAM_GROUPS_BALL = {
+  model:      { label: 'אילו מודלים', desc: 'כמה גלאים רצים יחד (המועמדים של כולם מתאחדים), ובודק שנותן לכל מועמד ציון "זה באמת כדור".' },
+  thresholds: { label: 'ספים', desc: 'איזה מועמד שורד. ציון סופי = ביטחון הגלאי × ציון הבודק × 1.3.' },
+}
+
+export const BALL_PARAMS = [
+  { key: 'detectors', group: 'model', kind: 'set', def: ['black', 'black_r3', 'r7'], min: 1, max: 4,
+    label: 'גלאים (1–4)', help: 'כל גלאי הוא YOLO11s שאומן אצלנו בסבב אחר. ברירת המחדל היום: black + black_r3 + r7.',
+    options: [
+      ['black', 'סבב 1 — הכדור השחור במגרש שלנו, בטוח בכדורים רגילים'],
+      ['black_r3', 'סבב 3 — אומן עם טשטוש תנועה מלאכותי, תופס בעיטות מהירות'],
+      ['r4', 'סבב 4 — תוויות אנושיות ראשונות; הראשון שרואה את הכדור האדום של מוצקין'],
+      ['r5', 'סבב 5 — כל התוויות האנושיות עד אז'],
+      ['r6', 'סבב 6 — כוונון על תוויות מעבדת הווידאו'],
+      ['r7', 'סבב 7 — כל תוויות המעבדה (2.1k פריימים); ברירת המחדל'],
+      ['r8', 'סבב 8 — +3 קטעים מתויגים מהפתיחה; ניצח כאן, הפסיד במנוע'],
+      ['r9', 'סבב 9 — כל 6 הקטעים המתויגים'],
+      ['r9s', 'self-training — 647 תוויות אוטומטיות שנבדקו בעין'],
+    ] },
+  { key: 'checker', group: 'model', kind: 'enum', def: 'v7',
+    options: [['v7', 'v7 — ברירת המחדל, בודק אחד לשני המגרשים'], ['v8', 'v8 — סבב 7, פחות טעויות במגרש שלנו'], ['v9', 'v9 — סבב 8'],
+      ['v10', 'v10 — סבב 9'], ['multivenue', 'multivenue — מקבל את הכדור האדום של מוצקין'], ['none', 'בלי בודק']],
+    label: 'בודק (checker)', help: 'מסווג תמונה קטן (64px) שרואה חיתוך סביב כל מועמד ואומר כמה הוא כדור — מול מקל, גלגילית או כפפה.' },
+  { key: 'imgsz', group: 'model', kind: 'enum', def: 640, options: [[640, '640 — כמו באימון'], [960, '960 — מגדיל כל אריח (איטי יותר)']],
+    label: 'רזולוציית הרצה', help: 'כל פריים נחתך לאריחים של 640px; כאן קובעים לאיזה גודל כל אריח מוגדל לפני הגלאי.' },
+  { key: 'det_conf', group: 'thresholds', kind: 'float', def: 0.15, min: 0.02, max: 0.6, step: 0.01,
+    label: 'ביטחון מינימלי של הגלאי', help: 'מועמד מתחת לסף הזה לא נכנס בכלל. נמוך = יותר מועמדים לבודק.' },
+  { key: 'topk', group: 'thresholds', kind: 'int', def: 5, min: 1, max: 10, step: 1,
+    label: 'מועמדים לפריים', help: 'כמה מהמועמדים החזקים ביותר עוברים לבודק.' },
+  { key: 'checker_min', group: 'thresholds', kind: 'float', def: 0.35, min: 0, max: 0.9, step: 0.05,
+    label: 'ציון מינימלי מהבודק', help: 'מועמד שהבודק נתן לו פחות מזה נזרק.' },
+  { key: 'final_min', group: 'thresholds', kind: 'float', def: 0.35, min: 0.05, max: 0.95, step: 0.05,
+    label: 'ציון סופי מינימלי', help: 'הסף האחרון. גבוה = פחות כדורים שגויים, אבל גם פחות כדורים שנמצאים.' },
+  { key: 'tile_overlap', group: 'thresholds', kind: 'float', def: 0.2, min: 0, max: 0.5, step: 0.05,
+    label: 'חפיפה בין אריחים', help: 'כמה האריחים חופפים, כדי שכדור על הקו בין שניים לא ייחתך.' },
+]
+
+export const STAGE_PARAMS = { events: EVENT_PARAMS, ball: BALL_PARAMS }
+export const STAGE_GROUPS = { events: PARAM_GROUPS_EVENTS, ball: PARAM_GROUPS_BALL }
+
+const same = (a, b) => Array.isArray(a) ? Array.isArray(b) && a.length === b.length && a.every(x => b.includes(x)) : a === b
+export const paramDefaults = (stage = 'events') => Object.fromEntries((STAGE_PARAMS[stage] || []).map(p => [p.key, p.def]))
+export const paramByKey = (stage, k) => (STAGE_PARAMS[stage] || []).find(p => p.key === k)
 
 /** Only the settings that differ from today's default — what gets stored. */
-export function changedParams(values) {
+export function changedParams(stage, values) {
   const out = {}
-  for (const p of EVENT_PARAMS) if (values[p.key] !== undefined && values[p.key] !== p.def) out[p.key] = values[p.key]
+  for (const p of STAGE_PARAMS[stage] || []) if (values[p.key] !== undefined && !same(values[p.key], p.def)) out[p.key] = values[p.key]
   return out
 }
 

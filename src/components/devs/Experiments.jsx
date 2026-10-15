@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { FlaskConical, Plus, Loader2, ArrowRight, RotateCcw, Check, X, ChevronDown, Cpu, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { getExperiments, getExperiment, createExperiment, cancelExperiment, decideExperiment, getProfilesByIds, relTime } from "@/lib/devs"
-import { EXPERIMENT_STAGES, PARAM_GROUPS, EVENT_PARAMS, paramDefaults, paramByKey, changedParams, EXP_STATUS, EVENT_TYPE_LABELS } from "@/lib/experimentSpec"
+import { EXPERIMENT_STAGES, STAGE_GROUPS, STAGE_PARAMS, paramDefaults, paramByKey, changedParams, EXP_STATUS, EVENT_TYPE_LABELS } from "@/lib/experimentSpec"
 
 // ניסויים: change a pipeline setting → kookisnooki runs it on the benchmark → numbers next to today's
 // default. Data: supabase/dev-experiments.sql; worker: video-analysis/devlab/worker.py.
 
 const live = (e) => e.status === "queued" || e.status === "running"
 
-export default function Experiments({ expId, isNew, onOpen, onNew, onBack, onStage }) {
-  if (isNew) return <NewExperiment onBack={onBack} onCreated={onOpen} />
+export default function Experiments({ expId, isNew, newStage, onOpen, onNew, onBack, onStage }) {
+  if (isNew) return <NewExperiment initialStage={EXPERIMENT_STAGES[newStage] ? newStage : "events"} onBack={onBack} onCreated={onOpen} />
   if (expId) return <ExperimentView id={expId} onBack={onBack} onNew={onNew} onStage={onStage} />
   return <ExperimentList onOpen={onOpen} onNew={onNew} />
 }
@@ -51,10 +51,12 @@ function ExperimentList({ onOpen, onNew }) {
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                   {names[e.created_by]?.display_name || "מפתח/ת"} · {EXPERIMENT_STAGES[e.stage]?.label} · {relTime(e.created_at)}
-                  {Object.keys(e.params || {}).length > 0 && <> · {Object.keys(e.params).map(k => paramByKey(k)?.label || k).join(", ")}</>}
+                  {Object.keys(e.params || {}).length > 0 && <> · {Object.keys(e.params).map(k => paramByKey(e.stage, k)?.label || k).join(", ")}</>}
                 </div>
               </div>
-              {e.status === "done" && <Delta value={e.metrics?.f1} base={e.baseline?.f1} label="F1" compact />}
+              {e.status === "done" && (e.stage === "ball"
+                ? <Delta value={e.metrics?.found_pct} base={e.baseline?.found_pct} label="נמצאו" pct compact />
+                : <Delta value={e.metrics?.f1} base={e.baseline?.f1} label="F1" compact />)}
             </button>
           ))}
         </div>
@@ -90,14 +92,15 @@ function HowItWorks({ onNew }) {
 }
 
 // ── new ───────────────────────────────────────────────────────────────────────────────────────
-function NewExperiment({ onBack, onCreated }) {
-  const [stage] = useState("events")
+function NewExperiment({ initialStage, onBack, onCreated }) {
+  const [stage, setStage] = useState(initialStage)
   const [title, setTitle] = useState("")
   const [hypothesis, setHypothesis] = useState("")
-  const [values, setValues] = useState(paramDefaults)
+  const [values, setValues] = useState(() => paramDefaults(initialStage))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
-  const changed = changedParams(values)
+  const pickStage = (k) => { setStage(k); setValues(paramDefaults(k)) }
+  const changed = changedParams(stage, values)
   const nChanged = Object.keys(changed).length
   const st = EXPERIMENT_STAGES[stage]
 
@@ -109,33 +112,44 @@ function NewExperiment({ onBack, onCreated }) {
     catch (err) { setError(err.message || "שגיאה"); setBusy(false) }
   }
 
-  const groups = Object.keys(PARAM_GROUPS).map(g => [g, EVENT_PARAMS.filter(p => p.group === g)]).filter(([, ps]) => ps.length)
+  const G = STAGE_GROUPS[stage]
+  const groups = Object.keys(G).map(g => [g, STAGE_PARAMS[stage].filter(p => p.group === g)]).filter(([, ps]) => ps.length)
   const pathV4 = values.ball_path === "v4"
+  const setInvalid = STAGE_PARAMS[stage].some(p => p.kind === "set" && (values[p.key].length < p.min || values[p.key].length > p.max))
 
   return (
     <form onSubmit={submit} className="space-y-4 max-w-3xl">
       <BackLink onBack={onBack} label="כל הניסויים" />
       <div className="card p-4 space-y-3">
+        <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 w-fit max-w-full overflow-x-auto" role="tablist" aria-label="על מה הניסוי">
+          {Object.entries(EXPERIMENT_STAGES).map(([k, v]) => (
+            <button key={k} type="button" role="tab" aria-selected={stage === k} onClick={() => pickStage(k)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap ${stage === k ? "bg-white dark:bg-slate-900 text-brand shadow-sm" : "text-slate-600 dark:text-slate-300"}`}>{v.label}</button>
+          ))}
+        </div>
         <h2 className="font-black text-lg text-slate-900 dark:text-white">ניסוי חדש · {st.label}</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">{st.desc}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400"><b>המבחן:</b> {st.bench} · <b>זמן ריצה:</b> {st.runtime}</p>
+        {st.caveat && <p className="text-xs rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 p-2.5">{st.caveat}</p>}
         <label className="block space-y-1">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">שם הניסוי</span>
-          <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} className="filter-input w-full text-sm" placeholder="למשל: טווח שליטה רחב יותר בסקראמים" />
+          <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} className="filter-input w-full text-sm" placeholder={stage === "ball" ? "למשל: r9 במקום r7 עם בודק v10" : "למשל: טווח שליטה רחב יותר בסקראמים"} />
         </label>
         <label className="block space-y-1">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">ההשערה — מה אתם מצפים שיקרה ולמה?</span>
           <textarea value={hypothesis} onChange={e => setHypothesis(e.target.value)} maxLength={2000} rows={3} className="filter-input w-full text-sm"
-            placeholder="למשל: בסקראם הלהב רחוק מהכדור יותר מ-1.3 מ׳, אז חטיפות לא נספרות. הגדלה ל-1.6 תמצא יותר חטיפות, אולי על חשבון דיוק המסירות." />
+            placeholder={stage === "ball"
+              ? "למשל: r9 אומן על כל 6 הקטעים המתויגים, אז הוא אמור למצוא יותר כדורים בפתיחה. v10 אומן איתו, אז הוא יפסול פחות כדורים אמיתיים."
+              : "למשל: בסקראם הלהב רחוק מהכדור יותר מ-1.3 מ׳, אז חטיפות לא נספרות. הגדלה ל-1.6 תמצא יותר חטיפות, אולי על חשבון דיוק המסירות."} />
         </label>
       </div>
 
       {groups.map(([g, ps]) => (
         <fieldset key={g} className={`card p-4 space-y-3 ${g === "phys" && pathV4 ? "opacity-50" : ""}`}>
-          <legend className="sr-only">{PARAM_GROUPS[g].label}</legend>
+          <legend className="sr-only">{G[g].label}</legend>
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white">{PARAM_GROUPS[g].label}</h3>
-            {PARAM_GROUPS[g].desc && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{PARAM_GROUPS[g].desc}</p>}
+            <h3 className="font-bold text-slate-900 dark:text-white">{G[g].label}</h3>
+            {G[g].desc && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{G[g].desc}</p>}
           </div>
           <div className="space-y-4">
             {ps.map(p => <ParamInput key={p.key} p={p} value={values[p.key]} onChange={v => setValues(s => ({ ...s, [p.key]: v }))} />)}
@@ -147,8 +161,8 @@ function NewExperiment({ onBack, onCreated }) {
         <span className="text-sm text-slate-600 dark:text-slate-300 flex-1 min-w-0">
           {nChanged ? <>שיניתם {nChanged} {nChanged === 1 ? "הגדרה" : "הגדרות"}</> : "לא שיניתם כלום — זה יריץ את ברירת המחדל"}
         </span>
-        {nChanged > 0 && <button type="button" onClick={() => setValues(paramDefaults())} className="btn-secondary btn-sm gap-1"><RotateCcw className="w-3.5 h-3.5" /> איפוס</button>}
-        <button type="submit" disabled={busy} className="btn-primary btn-sm gap-1.5">
+        {nChanged > 0 && <button type="button" onClick={() => setValues(paramDefaults(stage))} className="btn-secondary btn-sm gap-1"><RotateCcw className="w-3.5 h-3.5" /> איפוס</button>}
+        <button type="submit" disabled={busy || setInvalid} className="btn-primary btn-sm gap-1.5">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />} הרצה על kookisnooki
         </button>
         {error && <p className="w-full text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -158,7 +172,7 @@ function NewExperiment({ onBack, onCreated }) {
 }
 
 function ParamInput({ p, value, onChange }) {
-  const changed = value !== p.def
+  const changed = Array.isArray(p.def) ? !(value.length === p.def.length && value.every(x => p.def.includes(x))) : value !== p.def
   const id = `exp-${p.key}`
   return (
     <div className="space-y-1.5">
@@ -171,13 +185,28 @@ function ParamInput({ p, value, onChange }) {
         )}
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400">{p.help}</p>
-      {p.kind === "bool" ? (
+      {p.kind === "set" ? (
+        <div className="space-y-1.5">
+          {p.options.map(([v, l]) => {
+            const on = value.includes(v)
+            const full = !on && value.length >= p.max
+            return (
+              <label key={v} className={`flex items-start gap-2 text-sm cursor-pointer ${full ? "opacity-40" : ""}`}>
+                <input type="checkbox" checked={on} disabled={full} className="w-4 h-4 mt-0.5 accent-brand shrink-0"
+                  onChange={e => onChange(e.target.checked ? [...value, v] : value.filter(x => x !== v))} />
+                <span><b dir="ltr">{v}</b> <span className="text-slate-500 dark:text-slate-400">— {l.split(" — ").slice(1).join(" — ") || l}</span></span>
+              </label>
+            )
+          })}
+          {value.length < p.min && <p className="text-xs text-red-600 dark:text-red-400">בחרו לפחות {p.min}</p>}
+        </div>
+      ) : p.kind === "bool" ? (
         <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
           <input id={id} type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)} className="w-4 h-4 accent-brand" />
           {value ? "פעיל" : "כבוי"}
         </label>
       ) : p.kind === "enum" ? (
-        <select id={id} value={value} onChange={e => onChange(e.target.value)} className="filter-input text-sm">
+        <select id={id} value={value} onChange={e => onChange(p.options.find(([v]) => String(v) === e.target.value)?.[0] ?? e.target.value)} className="filter-input text-sm">
           {p.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       ) : (
@@ -193,7 +222,7 @@ function ParamInput({ p, value, onChange }) {
 }
 
 const round = (v, step) => { const d = String(step).split(".")[1]?.length || 0; return Number(v.toFixed(d)) }
-const fmt = (p, v) => p.kind === "bool" ? (v ? "פעיל" : "כבוי") : p.kind === "enum" ? v : `${v}${p.unit ? ` ${p.unit}` : ""}`
+const fmt = (p, v) => p.kind === "bool" ? (v ? "פעיל" : "כבוי") : p.kind === "set" ? (v || []).join(" + ") : p.kind === "enum" ? String(v) : `${v}${p.unit ? ` ${p.unit}` : ""}`
 
 // ── one experiment ────────────────────────────────────────────────────────────────────────────
 function ExperimentView({ id, onBack, onNew, onStage }) {
@@ -242,8 +271,8 @@ function ExperimentView({ id, onBack, onNew, onStage }) {
           {changed.length === 0 ? <p className="text-sm text-slate-500">כלום — ברירת המחדל של היום</p> : (
             <div className="flex flex-wrap gap-1.5">
               {changed.map(([k, v]) => {
-                const p = paramByKey(k)
-                return <span key={k} className="text-xs px-2 py-1 rounded-lg bg-brand/10 text-slate-800 dark:text-slate-200"><b>{p?.label || k}</b>: {p && (p.kind === "bool" || p.kind === "enum") ? <>{fmt(p, p.def)} ← {fmt(p, v)}</> : <><span dir="ltr">{p ? p.def : "?"} → {String(v)}</span>{p?.unit && ` ${p.unit}`}</>}</span>
+                const p = paramByKey(exp.stage, k)
+                return <span key={k} className="text-xs px-2 py-1 rounded-lg bg-brand/10 text-slate-800 dark:text-slate-200"><b>{p?.label || k}</b>: {p && (p.kind === "bool" || p.kind === "enum") ? <>{fmt(p, p.def)} ← {fmt(p, v)}</> : p?.kind === "set" ? <span dir="ltr">{fmt(p, p.def)} → {fmt(p, v)}</span> : <><span dir="ltr">{p ? p.def : "?"} → {String(v)}</span>{p?.unit && ` ${p.unit}`}</>}</span>
               })}
             </div>
           )}
@@ -267,7 +296,7 @@ function ExperimentView({ id, onBack, onNew, onStage }) {
         </div>
       )}
 
-      {exp.status === "done" && exp.metrics && <Results exp={exp} />}
+      {exp.status === "done" && exp.metrics && (exp.stage === "ball" ? <BallResults exp={exp} /> : <Results exp={exp} />)}
 
       {exp.status === "done" && <Decision exp={exp} isAdmin={isAdmin} names={names} onChanged={load} />}
 
@@ -339,21 +368,71 @@ function Results({ exp }) {
   )
 }
 
-function Frac({ a, b, vs }) {
+function BallResults({ exp }) {
+  const m = exp.metrics, b = exp.baseline || {}
+  const base = Object.fromEntries((exp.result?.baseline_per_type || []).map(r => [r.block, r]))
+  const label = (blk) => { const t = /_(\d{2})(\d{2})$/.exec(blk); return t ? `${t[1]}:${t[2]}` : blk }
+  return (
+    <div className="card p-4 space-y-4">
+      <div>
+        <h3 className="font-bold text-slate-900 dark:text-white">התוצאה מול המצב היום</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          {m.ball} פריימים עם כדור ו-{m.none} בלי, שאדם תייג ושאף גלאי לא אומן עליהם. ברירת המחדל נמדדה על אותם פריימים.
+        </p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Delta value={m.found_pct} base={b.found_pct} label={`נמצאו — ${m.found}/${m.ball} כדורים`} pct />
+        <Delta value={m.false_pct} base={b.false_pct} label={`כדור שגוי בפריים ריק — ${m.false}/${m.none}`} pct lowerBetter />
+        <Delta value={m.wrong_pct} base={b.wrong_pct} label={`כדור במקום הלא נכון — ${m.wrong}/${m.ball}`} pct lowerBetter />
+      </div>
+      <div className="overflow-x-auto -mx-4 px-4">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
+              <th className="text-start py-2 font-semibold">קטע</th>
+              <th className="text-start py-2 font-semibold">נמצאו</th>
+              <th className="text-start py-2 font-semibold">שגוי בפריים ריק</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(exp.result?.per_type || []).map(r => {
+              const o = base[r.block]
+              return (
+                <tr key={r.block} className="border-b border-slate-50 dark:border-slate-800/60">
+                  <td className="py-2 font-semibold text-slate-800 dark:text-slate-200" dir="ltr">{label(r.block)}</td>
+                  <td className="py-2 tabular-nums"><Frac a={r.found} b={r.ball} vs={o && o.found / Math.max(1, o.ball)} />
+                    <div className="text-[11px] text-slate-400">היום <Frac a={o?.found} b={o?.ball} /></div></td>
+                  <td className="py-2 tabular-nums"><Frac a={r.false} b={r.none} vs={o && o.false / Math.max(1, o.none)} lowerBetter />
+                    <div className="text-[11px] text-slate-400">היום <Frac a={o?.false} b={o?.none} /></div></td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 p-2.5">
+        {EXPERIMENT_STAGES.ball.caveat}
+      </p>
+    </div>
+  )
+}
+
+function Frac({ a, b, vs, lowerBetter }) {
   if (a == null || b == null) return <span>—</span>
   const v = b ? a / b : 0
-  const cls = vs == null || !b ? "" : v > vs + 0.005 ? "text-emerald-600 dark:text-emerald-400 font-bold" : v < vs - 0.005 ? "text-rose-600 dark:text-rose-400 font-bold" : ""
+  const up = lowerBetter ? v < vs - 0.005 : v > vs + 0.005, down = lowerBetter ? v > vs + 0.005 : v < vs - 0.005
+  const cls = vs == null || !b ? "" : up ? "text-emerald-600 dark:text-emerald-400 font-bold" : down ? "text-rose-600 dark:text-rose-400 font-bold" : ""
   return <span className={cls} dir="ltr">{a}/{b}</span>
 }
 
-function Delta({ value, base, label, pct, raw, small, compact }) {
+function Delta({ value, base, label, pct, raw, small, compact, lowerBetter }) {
   if (value == null) return null
   const d = base == null ? null : value - base
   const f = (x) => raw ? `${Math.round(x * 10) / 10}%` : pct ? `${Math.round(x * 100)}%` : x.toFixed(3)
   const fd = (x) => raw ? `${x > 0 ? "+" : ""}${Math.round(x * 10) / 10}` : pct ? `${x > 0 ? "+" : ""}${Math.round(x * 100)}` : `${x > 0 ? "+" : ""}${x.toFixed(3)}`
   const tol = raw ? 0.5 : 0.005
-  const tone = d == null || Math.abs(d) < tol ? "neutral" : d > 0 ? "up" : "down"
-  const Icon = tone === "up" ? TrendingUp : tone === "down" ? TrendingDown : Minus
+  const tone = d == null || Math.abs(d) < tol ? "neutral" : (d > 0) !== !!lowerBetter ? "up" : "down"
+  const Icon = tone === "neutral" ? Minus : d > 0 ? TrendingUp : TrendingDown
   const toneCls = { up: "text-emerald-600 dark:text-emerald-400", down: "text-rose-600 dark:text-rose-400", neutral: "text-slate-400" }[tone]
   if (compact) return (
     <span className={`shrink-0 text-xs font-bold inline-flex items-center gap-1 ${toneCls}`} dir="ltr">

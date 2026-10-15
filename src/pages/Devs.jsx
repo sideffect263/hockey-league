@@ -18,7 +18,7 @@ import Experiments from "@/components/devs/Experiments"
 // kookisnooki. Gate: the 'developer' role or admin (supabase/developer-role.sql, developer-access.sql,
 // dev-experiments.sql).
 //
-// URL: (none) = the map · ?stage=<id> = a stage page · ?tab=exp[&exp=<id>|&new=1] = experiments ·
+// URL: (none) = the map · ?stage=<id> = a stage page · ?tab=exp[&exp=<id>|&new=1[&for=events|ball]] = experiments ·
 // ?tab=tools = the tools list · ?tab=lab|scene3d|media|clusters = a tool (old /creators?tab=… links redirect
 // here) · ?topic=<old topic id> → its stage (the "נושאים" catalog was merged into the map 2026-10-15).
 
@@ -53,7 +53,7 @@ export default function Devs() {
   }, [authLoading, canAccess, loadMembers])
 
   // New view → top of the page (stage pages are long).
-  useEffect(() => { window.scrollTo({ top: 0 }) }, [stageId, view, params.get("exp"), params.get("new")])
+  useEffect(() => { window.scrollTo({ top: 0 }) }, [stageId, view, params.get("exp"), params.get("new"), params.get("for")])
 
   if (authLoading) return <CreatorsSkeleton />
   if (!user || !canAccess) return <AccessDenied signedIn={!!user} email={user?.email} />
@@ -90,7 +90,7 @@ export default function Devs() {
 
       {view === "stage" && (
         <StagePage key={stage.id} stageId={stage.id} members={membersOf(stage.id)}
-          onBack={() => go({})} onOpen={(id) => go({ stage: id })} onExperiment={() => go({ tab: "exp", new: "1" })}
+          onBack={() => go({})} onOpen={(id) => go({ stage: id })} onExperiment={(k) => go({ tab: "exp", new: "1", ...(k ? { for: k } : {}) })}
           onMembersChange={loadMembers}
           onNotesChange={(d) => setNoteStats(s => ({
             mine: s.mine + d, perTopic: { ...s.perTopic, [stage.id]: (s.perTopic[stage.id] || 0) + d },
@@ -100,7 +100,7 @@ export default function Devs() {
         <PipelineMap members={members} noteStats={noteStats} myStages={myStages} onOpen={(id) => go({ stage: id })} />
       )}
       {view === "exp" && (
-        <Experiments expId={params.get("exp")} isNew={params.get("new") === "1"}
+        <Experiments expId={params.get("exp")} isNew={params.get("new") === "1"} newStage={params.get("for")}
           onOpen={(id) => go({ tab: "exp", exp: id })} onNew={() => go({ tab: "exp", new: "1" })}
           onBack={() => go({ tab: "exp" })} onStage={(id) => go({ stage: id })} />
       )}

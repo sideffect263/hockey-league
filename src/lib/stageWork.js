@@ -7,7 +7,8 @@
 //   action     the one thing to do on the page:
 //                { kind: 'tool', tool: <TOOLS id | LAB_FOCUS id> }   an embedded tool (video lab, 3D, faces…)
 //                { kind: 'widget', widget: 'proposal'|'rate-stories'|'rate-videos'|'data-gaps', … }
-//                { kind: 'experiment', stage: <experimentSpec stage> } → /devs?tab=exp&new=1
+//                { kind: 'experiment', stage: <experimentSpec stage> } → /devs?tab=exp&new=1&for=<stage>
+//   experiment an experimentSpec stage → a side card "ניסוי חדש" on the stage page
 //   steps      how to start
 //   tasks      open items a developer can claim (claims are thread notes "[claim:<id>]")
 //
@@ -56,10 +57,12 @@ export const WORK = {
     helpWanted: true,
     skills: ['Python', 'PyTorch', 'YOLO', 'OpenCV', 'תיוג נתונים'],
     action: { kind: 'tool', tool: 'lab-clips', label: 'תייגו כדור בקליפ', hint: 'פותחים קליפ, עוברים פריים-פריים ולוחצים על הכדור האמיתי (או "אין כדור"). כל תיקון נשמר כתווית אימון.' },
+    experiment: 'ball',
     steps: [
       'פתחו קליפ מסטטוס "לבדיקה" ותקנו 50–100 פריימים שבהם ה-AI טעה.',
       'קראו את video-analysis/README.md — סבבי האימון (harvest ← crops ← train ← eval).',
-      'רוצים לאמן? כתבו בשרשור — האימון רץ על kookisnooki (RTX 4050), לא צריך GPU משלכם.',
+      'רוצים להשוות גלאים, בודקים וספים? הריצו ניסוי (בצד) — דקה על ה-GPU של kookisnooki.',
+      'רוצים לאמן מודל חדש? כתבו בשרשור — האימון רץ על kookisnooki (RTX 4050), לא צריך GPU משלכם.',
     ],
     tasks: [
       { id: 'tag-dark-ball', title: 'לתייג קליפים ממגרש עם כדור כהה (קריית מוצקין)' },

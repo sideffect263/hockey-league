@@ -221,7 +221,7 @@ export default function StagePage({ stageId, members, onBack, onOpen, onExperime
                 </div>
               </div>
               {a.kind === "experiment" ? (
-                <button onClick={onExperiment} className="btn-primary btn-sm gap-1.5"><FlaskConical className="w-4 h-4" /> ניסוי חדש על kookisnooki</button>
+                <button onClick={() => onExperiment(a.stage)} className="btn-primary btn-sm gap-1.5"><FlaskConical className="w-4 h-4" /> ניסוי חדש על kookisnooki</button>
               ) : isTool ? <ToolPanel tool={a.tool} /> :
                 notes === null ? <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div> :
                 a.widget === "proposal" ? <ProposalForm kinds={a.kinds} onPost={post} /> :
@@ -255,8 +255,8 @@ export default function StagePage({ stageId, members, onBack, onOpen, onExperime
           )}
           {w.experiment && a?.kind !== "experiment" && (
             <Card icon={FlaskConical} title="ניסוי על המערכת האמיתית">
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">משנים הגדרה במנוע, kookisnooki מריץ, ותוך דקה רואים אם זה טוב או גרוע מהיום.</p>
-              <button onClick={onExperiment} className="btn-primary btn-sm gap-1.5"><Plus className="w-4 h-4" /> ניסוי חדש</button>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">משנים הגדרה, kookisnooki מריץ על מבחן קבוע, ותוך דקה רואים אם זה טוב או גרוע מהיום.</p>
+              <button onClick={() => onExperiment(w.experiment)} className="btn-primary btn-sm gap-1.5"><Plus className="w-4 h-4" /> ניסוי חדש</button>
             </Card>
           )}
           {(w.steps?.length > 0 || w.skills?.length > 0) && (
