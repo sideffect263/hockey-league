@@ -14,11 +14,9 @@ import {
   MoreHorizontal,
   Gamepad2,
   ClipboardCheck,
-  Clapperboard,
   Handshake,
   Code2
 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { Rink, Standings, Crossed, Teams, Player, Whistle, Stats, Camera, Edit, Clipboard } from "./components/icons/HockeyIcons"
 import { useAuth } from "./lib/AuthContext"
 import AuthModal from "./components/AuthModal"
@@ -61,32 +59,14 @@ function useDismissable(open, setOpen, wrapRef) {
   useEffect(() => { setOpen(false) }, [location.pathname, setOpen])
 }
 
-/**
- * Header shortcut to /creators for content editors + admins, badged with the number of feed
- * drafts waiting for review (feed_drafts is RLS-limited to exactly these roles). Re-counts on
- * every navigation so publishing a draft clears the badge without a reload.
- */
-function CreatorsButton({ active }) {
-  const location = useLocation()
-  const [count, setCount] = useState(0)
-  useEffect(() => {
-    let alive = true
-    // Feed drafts + game stories waiting for review — both land on this one desk.
-    Promise.all([
-      supabase.from("feed_drafts").select("id", { count: "exact", head: true }),
-      supabase.from("game_stories").select("game_id", { count: "exact", head: true }).eq("status", "draft"),
-    ]).then(([a, b]) => { if (alive) setCount((a.count || 0) + (b.count || 0)) })
-    return () => { alive = false }
-  }, [location.pathname, location.search])
+/** Header shortcut to the /devs lab for developers + admins. */
+function DevsButton({ active }) {
   return (
-    <Link to="/creators?tab=drafts" title="יוצרי תוכן · טיוטות לפיד"
-      className={`relative inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-sm font-semibold transition-colors ${
+    <Link to="/devs" title="מפתחים"
+      className={`inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-sm font-semibold transition-colors ${
         active ? "bg-brand/10 text-brand" : "text-fg-muted hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-fg-strong"}`}>
-      <Clapperboard className="w-5 h-5" />
-      <span className="hidden xl:inline">יוצרי תוכן</span>
-      {count > 0 && (
-        <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center">{count}</span>
-      )}
+      <Code2 className="w-5 h-5" />
+      <span className="hidden xl:inline">מפתחים</span>
     </Link>
   )
 }
@@ -290,7 +270,6 @@ export default function Layout({ children }) {
     // Results from the handwritten form: referees + league managers (never coaches).
     ...((isAdmin || isJudgeRole || isLeagueManager) ? [{ title: "הזנת תוצאות", url: "/results", icon: ClipboardCheck }] : []),
     ...((isContentEditor || isAdmin) ? [{ title: "יוצרי תוכן", url: "/creators", icon: NavEdit }] : []),
-    ...((isDeveloper || isAdmin) ? [{ title: "מפתחים", url: "/devs", icon: Code2 }] : []),
   ]
 
   // Flat list for the mobile sheet, which has the vertical room for everything.
@@ -358,8 +337,8 @@ export default function Layout({ children }) {
           {/* RTL end (left): auth (desktop) / hamburger (mobile).
               Dark-mode toggle lives on the profile page (/me), not here. */}
           <div className="flex items-center gap-1.5 ms-auto lg:ms-0">
-            {/* Content workspace — visible for editors/admins, with the drafts waiting for review. */}
-            {(isContentEditor || isAdmin) && <CreatorsButton active={isActivePage("/creators")} />}
+            {/* Dev lab — the only role tool with a header button; it is not repeated in the menus. */}
+            {(isDeveloper || isAdmin) && <DevsButton active={isActivePage("/devs")} />}
             {/* Notifications bell — visible on all sizes for signed-in users, next to the avatar */}
             {user && <NotificationBell />}
 
