@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus, LayoutGrid, Wand2 } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus, LayoutGrid, Wand2, Hand, X } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useSlugId } from "@/lib/slugs"
 import { getGameById, getTeams } from "@/lib/api"
 import { getGameVideos, subscribeGameVideo, groupCameras } from "@/lib/video"
 import {
   getBroadcast, subscribeBroadcast, saveBroadcast, setCameraHidden, renameCamera, getCameraStreamers, BROADCAST_DEFAULTS,
-  LAYOUT_SLOTS, getCameraActivity,
+  LAYOUT_SLOTS, getCameraActivity, getStreamRequests, decideStreamRequest,
 } from "@/lib/streamControl"
 import { useCameraOnAir } from "@/lib/useCameraOnAir"
 import { useStreamViewers } from "@/lib/useStreamViewers"
@@ -41,6 +41,7 @@ export default function GameControl() {
   const [videos, setVideos] = useState([])
   const [bc, setBc] = useState(BROADCAST_DEFAULTS)
   const [streamers, setStreamers] = useState({}) // camera_no -> who streams it
+  const [requests, setRequests] = useState([]) // fans asking to stream (stream_requests)
   const [error, setError] = useState(null)
   // The director watches the viewer count without being counted.
   const viewers = useStreamViewers(gameId, !!gameId, false)
@@ -50,6 +51,7 @@ export default function GameControl() {
     try {
       setVideos(await getGameVideos(gameId))
       setStreamers(await getCameraStreamers(gameId).catch(() => ({})))
+      setRequests(await getStreamRequests(gameId).catch(() => []))
     } catch (e) { setError(e?.message || "טעינת המצלמות נכשלה") }
   }, [gameId])
 
@@ -157,6 +159,9 @@ export default function GameControl() {
       </section>
 
       <AutoDirector bc={bc} cameras={approved} gameId={gameId} save={save} />
+
+      <StreamRequests requests={requests}
+        onDecide={(id, approve) => act(() => decideStreamRequest(id, approve))} />
 
       {/* Cameras */}
       {pending.length > 0 && (
@@ -420,5 +425,58 @@ function IconBtn({ label, children, ...props }) {
       className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40">
       {children}
     </button>
+  )
+}
+
+// Fans who pressed "שדר" in the app. Nothing is created on Cloudflare (and nothing is paid
+// for) until one is approved here; the fan then presses "שדר" again and is on air, visible.
+// The app can't tell them it's waiting — it shows its "the admin locked new streams" message —
+// so tell them to press again once approved.
+function StreamRequests({ requests, onDecide }) {
+  const waiting = requests.filter((r) => r.status === "pending")
+  const decided = requests.filter((r) => r.status !== "pending")
+  if (!requests.length) return null
+  const when = (t) => new Date(t).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
+  return (
+    <section className="card p-4 space-y-3">
+      <h2 className="flex items-center gap-2 font-bold text-sm">
+        <Hand className="w-4 h-4 text-amber-500" /> בקשות שידור
+        {waiting.length > 0 && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">{waiting.length} ממתינות</span>}
+      </h2>
+      {waiting.length > 0 && (
+        <p className="text-xs text-slate-500">אין עלות עד שמאשרים. אחרי אישור — הצלם לוחץ שוב "שדר" באפליקציה והמצלמה עולה גלויה לצופים.</p>
+      )}
+      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        {[...waiting, ...decided].map((r) => (
+          <li key={r.id} className="flex items-center gap-2 py-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold truncate">{r.name || "משתמש ללא שם"}{r.camera_label && <span className="font-normal text-slate-500"> · {r.camera_label}</span>}</div>
+              <div className="text-[11px] text-slate-400">
+                <span dir="ltr">{when(r.updated_at)}</span>{r.attempts > 1 && ` · ${r.attempts} ניסיונות`}
+              </div>
+            </div>
+            {r.status === "pending" ? (
+              <>
+                <button onClick={() => onDecide(r.id, true)} className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+                  <Check className="w-3.5 h-3.5" /> אשר
+                </button>
+                <button onClick={() => onDecide(r.id, false)} className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200">
+                  <X className="w-3.5 h-3.5" /> דחה
+                </button>
+              </>
+            ) : (
+              <>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${r.status === "approved" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>
+                  {r.status === "approved" ? "אושר" : "נדחה"}
+                </span>
+                <button onClick={() => onDecide(r.id, r.status !== "approved")} className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+                  {r.status === "approved" ? "בטל אישור" : "אשר בכל זאת"}
+                </button>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

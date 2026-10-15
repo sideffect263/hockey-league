@@ -91,6 +91,26 @@ export async function getCameraStreamers(gameId) {
   return out
 }
 
+// Admin: fans' requests to stream this game (supabase/stream-requests.sql). A fan's "שדר"
+// in the app files one and is refused; nothing exists on Cloudflare until it's approved.
+// Newest first, with the requester's display name.
+export async function getStreamRequests(gameId) {
+  const { data: rows, error } = await supabase.from('stream_requests')
+    .select('id, user_id, camera_label, status, attempts, created_at, updated_at')
+    .eq('game_id', gameId).order('updated_at', { ascending: false })
+  if (error) throw error
+  const ids = [...new Set((rows || []).map(r => r.user_id))]
+  if (!ids.length) return []
+  const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', ids)
+  const nameOf = Object.fromEntries((profiles || []).map(p => [p.id, p.display_name]))
+  return (rows || []).map(r => ({ ...r, name: nameOf[r.user_id] || null }))
+}
+
+export async function decideStreamRequest(id, approve) {
+  const { error } = await supabase.rpc('decide_stream_request', { p_id: id, p_approve: approve })
+  if (error) throw error
+}
+
 // Admin: the player count each camera reported in the last few seconds — { [camera_no]: n }
 // (auto-director). Cameras that stopped reporting are left out.
 export async function getCameraActivity(gameId) {

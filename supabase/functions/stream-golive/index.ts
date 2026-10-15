@@ -10,7 +10,11 @@
 // admin) on any game, and ANY signed-in user around a game that isn't over
 // (can_broadcast_game, supabase/fan-streaming.sql). Staff rows are inserted as the user
 // (RLS write policy); a fan has no write policy, so their row is inserted with the
-// service role on their behalf — the hidden-until-approved trigger applies either way.
+// service role on their behalf.
+// Fans need the admin's approval FIRST (2026-10-15, supabase/stream-requests.sql): a fan's
+// press files a stream_requests row and gets 423 -- the shipped apps already show that as
+// "the admin locked new streams" -- with nothing created on Cloudflare. Once the admin
+// approves it in the control room, the next press goes live, visible straight away.
 // Non-admins get at most 10 go-live attempts per game per hour (429).
 //
 // RTMP only (body `ingest: "rtmp"`). The native apps publish over RTMPS; Cloudflare
@@ -127,9 +131,33 @@ Deno.serve(async (req) => {
   }
   if (canBroadcast !== true) return json({ error: "forbidden" }, 403);
   const { data: isStaff } = await asUser.rpc("can_stream_game", { p_game_id: gameId });
+  const svc = createClient(SB_URL, SB_SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  // ---- Fans: the admin approves BEFORE any Cloudflare cost. One request row per fan per game.
+  if (isStaff !== true) {
+    const { data: request, error: reqErr } = await svc.from("stream_requests")
+      .select("id, status, attempts").eq("game_id", gameId).eq("user_id", user.id).maybeSingle();
+    if (reqErr) {
+      console.log("stream_requests read failed", reqErr.message);
+      return json({ error: "gate check failed" }, 500);
+    }
+    if (!request) {
+      const { error } = await svc.from("stream_requests")
+        .insert({ game_id: gameId, user_id: user.id, camera_label: cameraLabel });
+      if (error) console.log("stream_requests insert failed", error.message);
+      return json({ error: "pending approval" }, 423);
+    }
+    if (request.status === "rejected") return json({ error: "forbidden" }, 403);
+    if (request.status !== "approved") {
+      await svc.from("stream_requests").update({
+        attempts: (request.attempts ?? 1) + 1, updated_at: new Date().toISOString(),
+        ...(cameraLabel ? { camera_label: cameraLabel } : {}),
+      }).eq("id", request.id);
+      return json({ error: "pending approval" }, 423);
+    }
+  }
 
   // ---- Director rules (game_broadcast): lock + cap, before any Cloudflare cost.
-  const svc = createClient(SB_URL, SB_SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: isAdmin } = await asUser.rpc("is_admin");
   const { data: bc } = await svc.from("game_broadcast")
     .select("max_cameras, streaming_locked").eq("game_id", gameId).maybeSingle();
@@ -201,8 +229,8 @@ Deno.serve(async (req) => {
 
   // ---- Insert the public row so every spectator sees the embed immediately.
   // Staff: AS the user -> the can_stream_game RLS write policy is the final gate. A fan
-  // has no write policy: the service role inserts it, created_by = the fan, and the
-  // trigger keeps the camera hidden until the admin approves it. If the insert fails,
+  // has no write policy: the service role inserts it, created_by = the fan (already
+  // approved via stream_requests, so it is un-hidden below). If the insert fails,
   // roll back the CF input so we don't leak a billable orphan.
   const { data: row, error: insErr } = await (isStaff === true ? asUser : svc)
     .from("game_videos")
@@ -229,6 +257,14 @@ Deno.serve(async (req) => {
       headers: { authorization: `Bearer ${CF_TOKEN}` },
     }).catch(() => {});
     return json({ error: "insert failed" }, 500);
+  }
+
+  // An approved fan was already vetted in the control room: their camera starts visible
+  // instead of waiting for a second approval (the guard trigger hides new fan cameras).
+  if (isStaff !== true && row.hidden === true) {
+    const { error } = await svc.from("game_videos").update({ hidden: false }).eq("id", row.id);
+    if (error) console.log("unhide approved fan camera failed", error.message);
+    else row.hidden = false;
   }
 
   // rtmpsUrl + streamKey -> the app's encoder publishes here (the key is the secret;
