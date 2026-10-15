@@ -9,11 +9,13 @@
 const OBJECT = '/storage/v1/object/public/'
 const RENDER = '/storage/v1/render/image/public/'
 const BUCKETS = [96, 192, 512]
+// Stored URLs name the project host; new uploads name the custom domain.
+const OUR_HOSTS = ['.supabase.co', 'api.rinkhockeyil.com']
 
 // css px → a resized URL drawn crisply at 2x. fit: 'cover' (square crop, avatars) or
 // 'contain' (whole image kept, transparent crests).
 export function sizedImage(url, cssPx, fit = 'cover') {
-  if (!url || typeof url !== 'string' || !url.includes('.supabase.co' + OBJECT)) return url
+  if (!url || typeof url !== 'string' || !OUR_HOSTS.some((h) => url.includes(h + OBJECT))) return url
   const want = Math.ceil(cssPx * 2)
   const px = BUCKETS.find((b) => b >= want) ?? BUCKETS[BUCKETS.length - 1]
   const [base, query] = url.split('?')

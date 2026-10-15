@@ -86,4 +86,9 @@ const instrumentedFetch = (input, init) => {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: { fetch: instrumentedFetch },
+  // supabase-js names the saved session after the URL's first label: on
+  // https://api.rinkhockeyil.com (our custom domain) that would be "sb-api-auth-token", and
+  // every signed-in user would be signed out the moment the URL changed. Pin the name the
+  // site has always used (from <ref>.supabase.co).
+  auth: { storageKey: 'sb-slpwwoupbbxcgjivcspv-auth-token' },
 })
