@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { listenPrivateTopic } from './realtimeTopics'
 import { sessionUser } from './sessionUser'
 import { ROLE_LABEL } from './roles'
 
@@ -75,20 +76,21 @@ export async function markRead(id) {
   if (error) throw error
 }
 
-// Live badge: invoke cb on every new notification for this user. Returns an
-// unsubscribe fn. No-op-safe if Realtime isn't reachable (the bell also
-// refreshes on window focus as a fallback).
-export function subscribeToNotifications(userId, cb) {
+// Live badge: invoke cb(row) on every new notification for this user, over the private
+// `user:<uid>` Broadcast topic (supabase/realtime-private-user.sql). onRejoin() fires after a
+// dropped socket comes back — anything sent meanwhile is lost, so refetch there. Returns an
+// unsubscribe fn. No-op-safe if Realtime isn't reachable (the bell also refreshes on window
+// focus as a fallback).
+export function subscribeToNotifications(userId, cb, onRejoin) {
   if (!userId) return () => {}
-  const channel = supabase
-    .channel(`notifications:${userId}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-      (payload) => cb(payload.new),
-    )
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  return listenPrivateTopic(`user:${userId}`, 'notification', async (p) => {
+    if (p.row) return cb(p.row)
+    // { ping }: the row was too big to broadcast — read the newest one through RLS.
+    const { data } = await supabase
+      .from('notifications').select('*').eq('user_id', userId)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (data) cb(data)
+  }, onRejoin)
 }
 
 // ---- presentation --------------------------------------------------------

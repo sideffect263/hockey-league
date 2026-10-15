@@ -10,6 +10,7 @@ import {
 } from '../lib/notifications'
 import { pushSupported, pushStatus, enablePush } from '../lib/push'
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
+import { sizedImage } from "@/lib/imageSize"
 
 function timeAgo(iso) {
   try { return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: he }) }
@@ -48,7 +49,7 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!user) { setUnread(0); setItems([]); return }
     refreshCount()
-    const unsub = subscribeToNotifications(user.id, () => setUnread((n) => n + 1))
+    const unsub = subscribeToNotifications(user.id, () => setUnread((n) => n + 1), refreshCount)
     const onFocus = () => refreshCount()
     window.addEventListener('focus', onFocus)
     return () => { unsub(); window.removeEventListener('focus', onFocus) }
@@ -141,7 +142,7 @@ export default function NotificationBell() {
                     }`}
                   >
                     {n.actor?.avatar_url && n.type !== 'announcement' ? (
-                      <img src={n.actor.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      <img src={sizedImage(n.actor.avatar_url, 32)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                     ) : (
                       <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
                         {notificationIcon(n)}
