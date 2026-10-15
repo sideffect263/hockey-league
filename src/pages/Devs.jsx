@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Code2, Search, Users, MessageSquare, Compass, Wrench, Star, X } from "lucide-react"
+import { Code2, Search, Users, MessageSquare, Compass, Wrench, Star, X, Workflow } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { TOPICS, AREAS, STATUSES, TOOLS, topicById } from "@/lib/devTopics"
 import { getAllMembers, getNoteStats } from "@/lib/devs"
@@ -9,6 +9,7 @@ import { CreatorsSkeleton } from "@/components/skeletons/PageSkeletons"
 import { Skeleton } from "@/components/ui/Skeleton"
 import ToolPanel, { ICONS } from "@/components/devs/ToolPanel"
 import TopicView from "@/components/devs/TopicView"
+import PipelineMap from "@/components/devs/PipelineMap"
 
 // מפתחים: volunteer developers browse everything we are building (video analysis, models, 3D,
 // cameras, AI, data, the apps), join a topic and do something real on it right here.
@@ -16,7 +17,8 @@ import TopicView from "@/components/devs/TopicView"
 // opens the moved lab / 3D / media tools to developers).
 //
 // URL: ?topic=<id> opens a topic; ?tab=lab|scene3d|media|clusters opens a tool directly
-// (old /creators?tab=… links redirect here); ?tab=tools = the tools list.
+// (old /creators?tab=… links redirect here); ?tab=tools = the tools list;
+// ?tab=map[&stage=<id>] = מפת המערכת, the video-AI pipeline (src/lib/pipelineMap.js).
 
 const TOOL_TABS = Object.keys(TOOLS)
 
@@ -27,7 +29,7 @@ export default function Devs() {
   const topicId = params.get("topic")
   const tab = params.get("tab")
   const topic = topicId ? topicById(topicId) : null
-  const view = topic ? "topic" : (tab === "tools" || TOOL_TABS.includes(tab)) ? "tools" : "browse"
+  const view = topic ? "topic" : tab === "map" ? "map" : (tab === "tools" || TOOL_TABS.includes(tab)) ? "tools" : "browse"
 
   const [members, setMembers] = useState(null)
   const [noteStats, setNoteStats] = useState({ perTopic: {}, mine: 0 })
@@ -43,6 +45,7 @@ export default function Devs() {
 
   // New view → top of the page (topic pages are long).
   useEffect(() => { window.scrollTo({ top: 0 }) }, [topicId, view])
+  const stageId = params.get("stage")
 
   if (authLoading) return <CreatorsSkeleton />
   if (!user || !canAccess) return <AccessDenied signedIn={!!user} email={user?.email} />
@@ -67,8 +70,9 @@ export default function Devs() {
             <Stat icon={MessageSquare} label="הודעות שלי" value={members ? noteStats.mine : null} />
             <Stat icon={Star} label="מחפשים עזרה" value={TOPICS.filter(t => t.status === "help_wanted").length} />
           </div>
-          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 w-fit" role="tablist">
+          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 w-fit max-w-full overflow-x-auto [scrollbar-width:none]" role="tablist">
             <TabBtn active={view === "browse"} onClick={() => go({})} icon={Compass}>נושאים</TabBtn>
+            <TabBtn active={view === "map"} onClick={() => go({ tab: "map" })} icon={Workflow}>מפת המערכת</TabBtn>
             <TabBtn active={view === "tools"} onClick={() => go({ tab: "tools" })} icon={Wrench}>כלים</TabBtn>
           </div>
         </motion.div>
@@ -85,6 +89,10 @@ export default function Devs() {
       )}
       {view === "browse" && (
         <Browse members={members} noteStats={noteStats} myTopics={myTopics} onOpen={(id) => go({ topic: id })} />
+      )}
+      {view === "map" && (
+        <PipelineMap stageId={stageId} onPick={(id) => setParams(id ? { tab: "map", stage: id } : { tab: "map" }, { replace: true })}
+          onTopic={(id) => go({ topic: id })} />
       )}
       {view === "tools" && <Tools tool={TOOL_TABS.includes(tab) ? tab : null} onPick={(t) => go(t ? { tab: t } : { tab: "tools" })} />}
     </div>
@@ -106,7 +114,7 @@ function Stat({ icon: Icon, label, value }) {
 function TabBtn({ active, onClick, icon: Icon, children }) {
   return (
     <button role="tab" aria-selected={active} onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${active ? "bg-white dark:bg-slate-900 text-brand shadow-sm" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"}`}>
+      className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${active ? "bg-white dark:bg-slate-900 text-brand shadow-sm" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"}`}>
       <Icon className="w-4 h-4" /> {children}
     </button>
   )
