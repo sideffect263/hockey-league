@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react"
-import { ChevronDown, Check, X, Cpu, FileCode2, ArrowLeft, Lightbulb, AlertTriangle, Compass, Gauge, Workflow } from "lucide-react"
+import { ChevronDown, Check, X, Cpu, FileCode2, ArrowLeft, Lightbulb, AlertTriangle, Compass, Gauge, Workflow, History, HelpCircle, Lock, Mountain } from "lucide-react"
 import { LANES, STAGES, STAGE_STATUS, RUNS_ON, stageById, stageOutputs } from "@/lib/pipelineMap"
 import { topicById } from "@/lib/devTopics"
+import { STORIES } from "@/lib/stageStories"
 
 // מפת המערכת: the video-AI pipeline as lanes of stages. Picking a stage highlights what feeds it
 // and what it feeds, and opens its sheet: method, measured numbers, experiments (kept or not),
@@ -32,7 +33,7 @@ export default function PipelineMap({ stageId, onPick, onTopic }) {
             </div>
           ))}
         </div>
-        <div ref={detailRef} className="order-1 lg:order-2 lg:sticky lg:top-20 scroll-mt-20">
+        <div ref={detailRef} className="order-1 lg:order-2 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto scroll-mt-20 rounded-xl">
           {stage
             ? <StageSheet stage={stage} onPick={onPick} onTopic={onTopic} />
             : <div className="card p-5 text-sm text-slate-500 dark:text-slate-400 hidden lg:block">בחרו שלב במפה כדי לראות איך הוא עובד, מה המספרים שלו היום ומה כבר ניסינו.</div>}
@@ -111,6 +112,7 @@ function StageSheet({ stage, onPick, onTopic }) {
   const st = STAGE_STATUS[stage.status]
   const outs = stageOutputs(stage.id)
   const topic = stage.topic ? topicById(stage.topic) : null
+  const story = STORIES[stage.id]
   return (
     <article className="card p-4 space-y-4">
       <header className="space-y-1.5">
@@ -130,7 +132,27 @@ function StageSheet({ stage, onPick, onTopic }) {
         {stage.current && <p className="text-xs text-slate-500 dark:text-slate-400"><b className="text-slate-700 dark:text-slate-300">רץ היום:</b> {stage.current}</p>}
       </header>
 
-      <Section icon={Workflow} title="איך זה עובד">
+      {story?.problem && (
+        <Section icon={Mountain} title="למה זה קשה אצלנו">
+          <p className="text-sm text-slate-700 dark:text-slate-300">{story.problem}</p>
+        </Section>
+      )}
+
+      {story?.journey?.length > 0 && (
+        <Section icon={History} title="איך הגענו לכאן">
+          <ol className="relative border-s-2 border-slate-200 dark:border-slate-700 ms-1.5 space-y-3">
+            {story.journey.map((j, i) => (
+              <li key={i} className="ps-4 relative">
+                <span className={`absolute -start-[7px] top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${i === story.journey.length - 1 ? "bg-brand" : "bg-slate-300 dark:bg-slate-600"}`} />
+                <div className="font-semibold text-sm text-slate-800 dark:text-slate-200">{j.title}</div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{j.text}</p>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
+
+      <Section icon={Workflow} title="איך זה עובד היום">
         <ul className="space-y-1.5">
           {stage.method.map((m, i) => <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex gap-2"><span className="text-brand font-bold shrink-0">·</span><span className="min-w-0">{m}</span></li>)}
         </ul>
@@ -172,6 +194,20 @@ function StageSheet({ stage, onPick, onTopic }) {
         <Section icon={AlertTriangle} title="איפה זה נשבר">
           <ul className="space-y-1">{stage.weak.map((w, i) => <li key={i} className="text-sm text-slate-700 dark:text-slate-300">• {w}</li>)}</ul>
         </Section>
+      )}
+
+      {story?.constraints?.length > 0 && (
+        <Section icon={Lock} title="מגבלות שכל פתרון צריך לכבד">
+          <ul className="space-y-1">{story.constraints.map((w, i) => <li key={i} className="text-sm text-slate-700 dark:text-slate-300">• {w}</li>)}</ul>
+        </Section>
+      )}
+
+      {story?.askExperts?.length > 0 && (
+        <section className="rounded-lg bg-brand/5 dark:bg-brand/10 border border-brand/20 p-3 space-y-2">
+          <h3 className="text-xs font-black uppercase tracking-wide text-brand flex items-center gap-1.5"><HelpCircle className="w-3.5 h-3.5" />שאלות פתוחות — כאן אתם נכנסים</h3>
+          <ol className="space-y-1.5 list-decimal ps-4">{story.askExperts.map((q, i) => <li key={i} className="text-sm text-slate-800 dark:text-slate-200">{q}</li>)}</ol>
+          {topic && <button onClick={() => onTopic(topic.id)} className="text-xs font-bold text-brand inline-flex items-center gap-1">יש לכם כיוון? כתבו בשרשור של "{topic.title}" <ArrowLeft className="w-3 h-3" /></button>}
+        </section>
       )}
 
       {stage.next.length > 0 && (
