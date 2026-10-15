@@ -31,6 +31,9 @@ import { streamPlayer } from './sitemap.js'
 
 class UpstreamError extends Error {}
 
+// Types whose old slugs live in entity_slug_history (same set as resolve.js).
+const SLUG_HISTORY_TYPES = new Set(['players', 'teams', 'games', 'tournaments'])
+
 async function sb(pathAndQuery, init = {}) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
     ...init,
@@ -572,6 +575,20 @@ export default async function handler(req, res) {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
       const match = isUuid ? `id=eq.${id}` : `slug=eq.${encodeURIComponent(id)}`
       data = await BUILDERS[DETAIL_BUILDERS[type]](id, match, { site })
+    }
+    // A superseded slug (renamed player/team, rescheduled game) — resolve.js redirects these
+    // for people, but bots are rewritten straight here, so without this an old link Google
+    // already knows would 404 and drop out instead of moving to the new URL.
+    if (!data && DETAIL_BUILDERS[type] && id && SLUG_HISTORY_TYPES.has(type)) {
+      const h = await sb(`entity_slug_history?entity_type=eq.${type}&slug=eq.${encodeURIComponent(id)}&select=entity_id`)
+      const row = h[0]?.entity_id
+        ? (await sb(`${type}?id=eq.${h[0].entity_id}&select=slug`))[0]
+        : null
+      if (row?.slug && row.slug !== id) {
+        res.setHeader('Location', `/${type}/${encodeURIComponent(row.slug)}`)
+        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400')
+        return res.status(308).end()
+      }
     }
     if (!data) {
       res.setHeader('Cache-Control', 's-maxage=300')
