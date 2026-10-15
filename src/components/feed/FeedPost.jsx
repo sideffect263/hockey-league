@@ -16,6 +16,7 @@ import ModerationMenu from "@/components/feed/ModerationMenu"
 import GameChip from "@/components/feed/GameChip"
 import GamePicker, { GamePickerModal } from "@/components/feed/GamePicker"
 import { RoleBadge, OgBadge, deriveRoleItems } from "@/components/RoleBadges"
+import CommentAuthorBadges, { useCommentBadges } from "@/components/feed/CommentAuthorBadges"
 import { TARGET_POST, TARGET_COMMENT } from "@/lib/moderation"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import { entityPath } from "@/lib/slugs"
@@ -672,6 +673,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   }
 
   const visibleComments = comments.filter(c => !blockedIds?.has?.(c.author_id))
+  useCommentBadges(visibleComments)
 
   const toggleLike = async () => {
     if (!user) { openAuth(); return }
@@ -925,9 +927,12 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
                         <Avatar url={c.author?.avatar_url} name={c.author?.display_name} className="w-8 h-8" />
                       </PlayerLink>
                       <div className="min-w-0 flex-1 bg-slate-50 dark:bg-slate-800/60 rounded-xl px-3 py-2">
-                        <PlayerLink playerId={c.author?.player_id} className="w-fit max-w-full">
-                          <p className={`text-xs font-bold text-slate-900 dark:text-white truncate ${c.author?.player_id ? "hover:text-brand transition-colors" : ""}`}>{c.author?.display_name || "חבר/ת הליגה"}</p>
-                        </PlayerLink>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <PlayerLink playerId={c.author?.player_id} className="w-fit max-w-full min-w-0">
+                            <p className={`text-xs font-bold text-slate-900 dark:text-white truncate ${c.author?.player_id ? "hover:text-brand transition-colors" : ""}`}>{c.author?.display_name || "חבר/ת הליגה"}</p>
+                          </PlayerLink>
+                          <CommentAuthorBadges authorId={c.author_id} playerId={c.author?.player_id} />
+                        </div>
                         {editingCommentId === c.id ? (
                           <div className="mt-1">
                             <MentionInput

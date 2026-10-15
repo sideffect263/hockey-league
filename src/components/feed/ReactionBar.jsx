@@ -9,6 +9,7 @@ import MentionInput from "@/components/feed/MentionInput"
 import MentionText, { useMentionViewer, untagItems } from "@/components/feed/MentionText"
 import { getMentions, setMentions, removeMention, MENTION_KIND } from "@/lib/mentionsApi"
 import { shareTarget } from "@/lib/shareItem"
+import CommentAuthorBadges, { useCommentBadges } from "@/components/feed/CommentAuthorBadges"
 
 /**
  * Reusable like + comment bar for SYNTHETIC feed cards (game results,
@@ -85,6 +86,7 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
   }
 
   const visibleComments = comments.filter(c => !blockedIds?.has?.(c.author_id))
+  useCommentBadges(visibleComments)
 
   // Feed loads item like/comment counts in a separate pass, so they can arrive
   // after this bar mounts. Sync when the (primitive) initial values resolve;
@@ -173,7 +175,10 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
                     <div key={c.id} className="flex items-start gap-2.5">
                       <CommentAvatar url={c.author?.avatar_url} name={c.author?.display_name} className="w-8 h-8" />
                       <div className="min-w-0 flex-1 bg-slate-50 dark:bg-slate-800/60 rounded-xl px-3 py-2">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{c.author?.display_name || "חבר/ת הליגה"}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">{c.author?.display_name || "חבר/ת הליגה"}</p>
+                          <CommentAuthorBadges authorId={c.author_id} playerId={c.author?.player_id} />
+                        </div>
                         {editingCommentId === c.id ? (
                           <div className="mt-1">
                             <MentionInput
