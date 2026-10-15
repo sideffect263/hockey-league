@@ -27,6 +27,7 @@ import OgCelebration from "./components/OgCelebration"
 import NotificationBell from "./components/NotificationBell"
 import ChatDrawer from "./components/ChatDrawer"
 import LiveEditPanel from "./components/liveedit/LiveEditPanel"
+import { sizedImage } from "@/lib/imageSize"
 
 // Nav uses the hockey icons in `mono`, so the brand-color ball accent becomes
 // currentColor and stays visible on the active tab's solid-brand background.
@@ -169,7 +170,7 @@ function NavAvatar({ profile, email, className = "w-8 h-8" }) {
   const initial = name.trim().charAt(0).toUpperCase()
 
   if (profile?.avatar_url) {
-    return <img src={profile.avatar_url} alt="" className={`${className} rounded-full object-cover shrink-0`} />
+    return <img src={sizedImage(profile.avatar_url, 48)} alt="" className={`${className} rounded-full object-cover shrink-0`} />
   }
   if (profile?.player_id) {
     return (

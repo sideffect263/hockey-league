@@ -4,6 +4,7 @@ import { Coins, Flame, TrendingUp, TrendingDown, Target, Trophy, ChevronLeft, Us
 import TeamLogo from "@/components/TeamLogo"
 import { SplitBar, useSideColors } from "@/components/market/MatchCard"
 import { pct, gameSides, matchdayLabel } from "@/lib/market"
+import { sizedImage } from "@/lib/imageSize"
 
 /**
  * הוקי מרקט cards in the feed. The data comes from the `market_feed` RPC, which
@@ -190,7 +191,7 @@ function PodiumCard({ item }) {
           <div key={u.user_id} className={`flex-1 max-w-[120px] flex flex-col items-center text-center ${lift[i]}`}>
             <span className="text-xl leading-none mb-1">{MEDALS[top.indexOf(u)]}</span>
             {u.avatar_url
-              ? <img src={u.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-gold/40" referrerPolicy="no-referrer" loading="lazy" />
+              ? <img src={sizedImage(u.avatar_url, 48)} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-gold/40" referrerPolicy="no-referrer" loading="lazy" />
               : <div className="w-12 h-12 rounded-full bg-surface-sunken ring-2 ring-gold/40 flex items-center justify-center text-lg font-black text-fg-muted">{(u.name || "?").trim().charAt(0)}</div>}
             <p className="mt-1.5 text-[12px] font-bold text-fg-strong line-clamp-2 leading-tight">{u.name}</p>
             <p className="mkt-coin text-[13px] mt-0.5">{Number(u.total).toLocaleString("he-IL")}</p>

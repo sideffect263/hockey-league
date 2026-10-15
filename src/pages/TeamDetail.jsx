@@ -27,6 +27,7 @@ import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import TeamMedia, { TeamMediaEmpty } from "@/components/TeamMedia"
 import { getTeamMedia } from "@/lib/teamMedia"
+import { sizedImage } from "@/lib/imageSize"
 
 // Header gradient from the team's own colours. Its text and buttons are white, so
 // every stop is darkened until white reads on it (WCAG luminance cap), whatever a
@@ -224,7 +225,7 @@ export default function TeamDetail() {
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_10%,rgba(255,255,255,0.10),transparent_60%)]" />
         <div className="relative flex items-center gap-4">
           {team.logo_url
-            ? <img src={team.logo_url} alt={team.name} className="w-20 h-20 sm:w-24 sm:h-24 object-contain shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]" />
+            ? <img src={sizedImage(team.logo_url, 96, 'contain')} alt={team.name} className="w-20 h-20 sm:w-24 sm:h-24 object-contain shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]" />
             : <TeamLogo team={team} size={14} />}
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl sm:text-3xl font-black leading-tight truncate">{team.name}</h1>

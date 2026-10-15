@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom"
 import { getGameById, getTeams } from "@/lib/api"
 import { getLiveGame, subscribeLiveGame } from "@/lib/live"
 import { useSlugId } from "@/lib/slugs"
+import { sizedImage } from "@/lib/imageSize"
 
 /**
  * Sheet row 21 — אפשר לחבר לטלוויזיה עם כבל ולשדר בטלוויזיה.
@@ -41,7 +42,7 @@ function Side({ team, score }) {
   return (
     <div className="flex-1 min-w-0 flex flex-col items-center gap-[2vh]">
       {team?.logo_url && !imgError
-        ? <img src={team.logo_url} alt="" onError={() => setImgError(true)} style={{ height: TV.crest, width: TV.crest }} className="object-contain" />
+        ? <img src={sizedImage(team.logo_url, 256, 'contain')} alt="" onError={() => setImgError(true)} style={{ height: TV.crest, width: TV.crest }} className="object-contain" />
         : <div style={{ height: TV.crest }} />}
       <p style={{ fontSize: TV.name }} className="font-bold text-white/80 truncate max-w-full px-2">{team?.name || "—"}</p>
       <p style={{ fontSize: TV.score }} className="leading-none font-extrabold text-white tabular-nums">{score}</p>

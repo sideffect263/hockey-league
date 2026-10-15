@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { APPLE_WEB_ENABLED, signInWithAppleWeb, AppleIcon } from "@/lib/appleWeb"
 import { X, Mail, Lock, User, Loader2, Clock, KeyRound } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
+import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
 
 function translateAuthError(msg = "") {
   const m = msg.toLowerCase()
@@ -99,7 +100,7 @@ export default function AuthModal() {
       }
     } catch (err) {
       if (isRateLimit(err)) setSent('ratelimit')
-      else setError(translateAuthError(err?.message))
+      else setError(isPwnedPasswordError(err) ? PWNED_PASSWORD_MSG : translateAuthError(err?.message))
     } finally {
       setBusy(false)
     }

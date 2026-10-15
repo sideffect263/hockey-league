@@ -3,11 +3,12 @@ import { Link } from "react-router-dom"
 import { MessageSquare, Send, Trash2, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { NOTE_KINDS, parseNote, relTime } from "@/lib/devs"
+import { sizedImage } from "@/lib/imageSize"
 
 export function Avatar({ profile, size = "w-8 h-8" }) {
   const name = profile?.display_name || "?"
   return profile?.avatar_url
-    ? <img src={profile.avatar_url} alt="" className={`${size} rounded-full object-cover shrink-0 bg-slate-200 dark:bg-slate-700`} />
+    ? <img src={sizedImage(profile.avatar_url, 48)} alt="" className={`${size} rounded-full object-cover shrink-0 bg-slate-200 dark:bg-slate-700`} />
     : <span className={`${size} rounded-full shrink-0 bg-brand/15 text-brand dark:text-brand-light text-xs font-bold flex items-center justify-center`}>{name.trim().charAt(0) || "?"}</span>
 }
 

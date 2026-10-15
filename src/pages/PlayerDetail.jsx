@@ -24,6 +24,7 @@ import FollowButton from "@/components/FollowButton"
 import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { PlayerDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { getPlayerMentions } from "@/lib/mentionsApi"
+import { sizedImage } from "@/lib/imageSize"
 
 export default function PlayerDetail() {
   // The route param is a Hebrew slug (/players/יואב-תורגמן) or, for every link
@@ -442,7 +443,7 @@ export default function PlayerDetail() {
               <li key={t.id}>
                 <Link to={t.href} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   {t.author_avatar
-                    ? <img src={t.author_avatar} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                    ? <img src={sizedImage(t.author_avatar, 32)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                     : <span className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0">{t.author_name.charAt(0)}</span>}
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-slate-500 dark:text-slate-400">

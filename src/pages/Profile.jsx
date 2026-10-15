@@ -21,6 +21,8 @@ import SignInMethodsCard from "@/components/SignInMethodsCard"
 import { RoleBadges, OgBadge, deriveRoleItems } from "@/components/RoleBadges"
 import { entityPath } from "@/lib/slugs"
 import { ProfileSkeleton } from "@/components/skeletons/PageSkeletons"
+import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
+import { sizedImage } from "@/lib/imageSize"
 
 const sizedUrl = (url, w = 600) => (url ? url.replace(/=w\d+(-h\d+)?.*$/, `=w${w}`) : url)
 
@@ -79,7 +81,8 @@ export default function Profile() {
       setTimeout(() => setPwDone(false), 4000)
     } catch (err) {
       const m = (err?.message || "").toLowerCase()
-      if (m.includes("invalid login") || m.includes("credentials")) setPwErr("הסיסמה הנוכחית שגויה")
+      if (isPwnedPasswordError(err)) setPwErr(PWNED_PASSWORD_MSG)
+      else if (m.includes("invalid login") || m.includes("credentials")) setPwErr("הסיסמה הנוכחית שגויה")
       else if (m.includes("different from the old") || m.includes("should be different") || m.includes("same")) setPwErr("בחרו סיסמה שונה מהסיסמה הנוכחית")
       else setPwErr(err?.message || "אירעה שגיאה. נסו שוב")
     } finally {
@@ -219,7 +222,7 @@ export default function Profile() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-5 sm:p-6">
         <div className="flex items-center gap-4">
           {avatar ? (
-            <img src={avatar} alt="" className="w-20 h-20 rounded-2xl object-cover shrink-0 bg-slate-100 dark:bg-slate-700" />
+            <img src={sizedImage(avatar, 80)} alt="" className="w-20 h-20 rounded-2xl object-cover shrink-0 bg-slate-100 dark:bg-slate-700" />
           ) : (
             <div className="w-20 h-20 rounded-2xl shrink-0 flex items-center justify-center bg-brand text-white text-2xl font-extrabold">
               {initial}
@@ -402,7 +405,7 @@ export default function Profile() {
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">תמונת פרופיל</label>
             <div className="flex items-center gap-3">
               {avatar ? (
-                <img src={avatar} alt="" className="w-16 h-16 rounded-2xl object-cover shrink-0 bg-slate-100 dark:bg-slate-700" />
+                <img src={sizedImage(avatar, 64)} alt="" className="w-16 h-16 rounded-2xl object-cover shrink-0 bg-slate-100 dark:bg-slate-700" />
               ) : (
                 <div className="w-16 h-16 rounded-2xl shrink-0 flex items-center justify-center bg-brand text-white text-xl font-extrabold">{initial}</div>
               )}

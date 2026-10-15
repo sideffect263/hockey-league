@@ -27,11 +27,12 @@ import MentionInput from "@/components/feed/MentionInput"
 import MentionText, { useMentionViewer, untagItems } from "@/components/feed/MentionText"
 import { getMentions, setMentions, removeMention, MENTION_KIND } from "@/lib/mentionsApi"
 import { FeedCard, FeedCardHeader, FeedIcon, INSET, fade } from "@/components/feed/FeedCardShell"
+import { sizedImage } from "@/lib/imageSize"
 
 function Avatar({ url, name, className = "w-9 h-9" }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase() || "?"
   return url
-    ? <img src={url} alt="" className={`${className} rounded-full object-cover shrink-0`} />
+    ? <img src={sizedImage(url, 48)} alt="" className={`${className} rounded-full object-cover shrink-0`} />
     : <div className={`${className} rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0`}>{initial}</div>
 }
 
