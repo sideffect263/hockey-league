@@ -141,3 +141,40 @@ export async function getRosterForGaps() {
   const teamName = Object.fromEntries((teams || []).map(t => [t.id, t.name]))
   return (players || []).map(p => ({ ...p, team_name: teamName[p.team_id] || '' }))
 }
+
+// ── experiments (supabase/dev-experiments.sql) ────────────────────────────────────────────────
+// A developer queues settings; the kookisnooki worker (video-analysis/devlab/worker.py) runs them on
+// the benchmark and writes metrics + today's baseline back. Cancel/decide go through RPCs.
+
+const EXP_COLS = 'id, created_by, stage, title, hypothesis, params, status, metrics, baseline, result, log, worker, decision, decision_note, decided_by, decided_at, created_at, started_at, finished_at'
+
+export async function getExperiments(limit = 200) {
+  const { data, error } = await supabase.from('dev_experiments').select(EXP_COLS)
+    .order('created_at', { ascending: false }).limit(limit)
+  if (error) throw error
+  return data || []
+}
+
+export async function getExperiment(id) {
+  const { data, error } = await supabase.from('dev_experiments').select(EXP_COLS).eq('id', id).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function createExperiment({ stage, title, hypothesis, params }) {
+  const { data, error } = await supabase.from('dev_experiments')
+    .insert({ stage, title: String(title || '').trim().slice(0, 120), hypothesis: String(hypothesis || '').trim().slice(0, 2000) || null, params })
+    .select(EXP_COLS).single()
+  if (error) throw error
+  return data
+}
+
+export async function cancelExperiment(id) {
+  const { error } = await supabase.rpc('dev_exp_cancel', { p_id: id })
+  if (error) throw error
+}
+
+export async function decideExperiment(id, decision, note) {
+  const { error } = await supabase.rpc('dev_exp_decide', { p_id: id, p_decision: decision, p_note: note || null })
+  if (error) throw error
+}
