@@ -17,7 +17,8 @@
 //   next      open directions
 //   files     paths (video-analysis/… or hockey-league src/…)
 //   standings optional "איפה אנחנו עומדים" table {title, note, columns, rows: [{cells, current?}]} — measured comparisons;
-//             a cell may be [ltr text, hebrew sub-line] (model names)
+//             a cell may be [ltr text, hebrew sub-line] (model names). live: 'ball'|'events' + row keys →
+//             kept current from finished experiments (src/lib/standingsLive.js)
 //   (what a developer can DO on a stage — action, tasks, thread — lives in stageWork.js)
 
 export const LANES = [
@@ -120,14 +121,15 @@ export const STAGES = [
     ],
     standings: {
       title: 'איפה אנחנו עומדים — הגלאים מול שני מבחנים',
-      columns: ['מודלים', 'נמצאו בפריימים שמורים (מתוך 96)', 'כדור שגוי בפריים ריק (מתוך 59)', 'מנוע האירועים F1 (176 אירועים)'],
+      live: 'ball',
+      columns: ['מודלים', 'נמצאו בפריימים שמורים (מתוך 96)', 'כדור שגוי בפריים ריק (מתוך 59)', 'מנוע האירועים F1 (כל הסקירות)'],
       rows: [
-        { cells: [['black + black_r3 + r7', 'בודק v7'], '71', '2', '0.554'], current: true },
-        { cells: [['black + black_r3 + r8', 'בודק v7'], '73', '1', '0.506'] },
-        { cells: [['black + black_r3 + r9', 'בודק v10'], '75', '0', '0.466'] },
-        { cells: [['black + black_r3 + r9s', 'בודק v10 · self-training'], '76', '0', '0.462'] },
+        { key: 'black+black_r3+r7__v7', cells: [['black + black_r3 + r7', 'בודק v7'], '71', '2', '0.554'], current: true },
+        { key: 'black+black_r3+r8__v7', cells: [['black + black_r3 + r8', 'בודק v7'], '73', '1', '0.506'] },
+        { key: 'black+black_r3+r9__v10', cells: [['black + black_r3 + r9', 'בודק v10'], '75', '0', '0.466'] },
+        { key: 'black+black_r3+r9s__v10', cells: [['black + black_r3 + r9s', 'בודק v10 · self-training'], '76', '0', '0.462'] },
       ],
-      note: 'נמדד ב-15/10 על אותם נתונים. הסדר בפריימים בודדים הפוך בדיוק לסדר במנוע: הגלאים החדשים מוצאים יותר כדורים, אבל המנוע מוצא איתם פחות מסירות, חטיפות ובעיטות נכונות. לכן גלאי נכנס רק אחרי "בדיקת מנוע מלאה" בניסויים. tnet לא בטבלה — הפריימים השמורים קרובים מדי לפריימי האימון שלו.',
+      note: 'השורות נמדדו לראשונה ב-15/10 על אותם נתונים. הסדר בפריימים בודדים הפוך בדיוק לסדר במנוע: הגלאים החדשים מוצאים יותר כדורים, אבל המנוע מוצא איתם פחות מסירות, חטיפות ובעיטות נכונות. לכן גלאי נכנס רק אחרי "בדיקת מנוע מלאה" בניסויים. tnet לא בטבלה — הפריימים השמורים קרובים מדי לפריימי האימון שלו.',
     },
     tried: [
       { what: 'גלאי r8 (+3 קטעים מתויגים)', result: 'ניצח ב-holdout (28/35) אבל המנוע ירד ל-F1 0.556; למד כדור שגוי קבוע ליד הדפנות', kept: false },
@@ -256,7 +258,8 @@ export const STAGES = [
     ],
     standings: {
       title: 'איפה אנחנו עומדים — גרסאות המנוע מול שתי אמיתות',
-      columns: ['גרסה', 'מה השתנה', 'F1 מול הסקירה הראשונה (121)', 'F1 מול כל הסקירות (176)'],
+      live: 'events',
+      columns: ['גרסה', 'מה השתנה', 'F1 מול הסקירה הראשונה (121)', 'F1 מול כל הסקירות'],
       rows: [
         { cells: ['v4', 'כללים על מסלול הכדור הישן', '0.596', '0.492'] },
         { cells: ['v6', 'עוקב כדור פיזיקלי + סינון חפצים קבועים', '0.617', '0.519'] },

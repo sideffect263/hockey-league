@@ -178,3 +178,12 @@ export async function decideExperiment(id, decision, note) {
   const { error } = await supabase.rpc('dev_exp_decide', { p_id: id, p_decision: decision, p_note: note || null })
   if (error) throw error
 }
+
+/** Finished experiments of some stages, light columns only — feeds the live "איפה אנחנו עומדים" tables. */
+export async function getFinishedExperiments(stages) {
+  const { data, error } = await supabase.from('dev_experiments')
+    .select('id, stage, title, params, metrics, baseline, result->engine, decision, decided_at, finished_at')
+    .in('stage', stages).eq('status', 'done').order('finished_at', { ascending: false }).limit(200)
+  if (error) throw error
+  return data || []
+}

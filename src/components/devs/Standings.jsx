@@ -1,4 +1,7 @@
-import { Trophy } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Trophy, RefreshCw } from "lucide-react"
+import { getFinishedExperiments } from "@/lib/devs"
+import { liveStandings } from "@/lib/standingsLive"
 
 // "איפה אנחנו עומדים": a measured comparison table from a map stage (pipelineMap.js `standings`).
 // Used on the stage page and above the new-experiment form, so a developer sees today's numbers before
@@ -15,10 +18,20 @@ function Cell({ c }) {
   )
 }
 
+// One fetch per page load for every live table on it.
+let finished = null
+/** Call after an experiment decision so the next table shows it. */
+export const refreshStandings = () => { finished = null }
+const loadFinished = () => (finished ||= getFinishedExperiments(["ball", "events"]).catch(() => { finished = null; return [] }))
+
+const Chosen = () => <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white align-middle">נבחר</span>
 const Today = () => <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-brand text-white align-middle">היום</span>
 
-export default function Standings({ data, compact = false }) {
-  if (!data) return null
+export default function Standings({ data: base, compact = false }) {
+  const [exps, setExps] = useState(null)
+  useEffect(() => { if (base?.live) loadFinished().then(setExps) }, [base?.live])
+  if (!base) return null
+  const data = exps ? liveStandings(base, exps) : base
   return (
     <section className={`card ${compact ? "p-4" : "p-4 sm:p-5"} space-y-3`}>
       <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white"><Trophy className="w-5 h-5 text-brand shrink-0" /> {data.title}</h2>
@@ -30,6 +43,7 @@ export default function Standings({ data, compact = false }) {
             <div className="flex items-start gap-2 font-semibold text-sm text-slate-800 dark:text-slate-200">
               <div className="min-w-0 flex-1"><Cell c={r.cells[0]} /></div>
               {r.current && <Today />}
+              {r.promoted && <Chosen />}
             </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
               {r.cells.slice(1).map((c, j) => (
@@ -58,6 +72,7 @@ export default function Standings({ data, compact = false }) {
                   <td key={j} className={`py-2 pe-3 align-top ${j === 0 ? "font-semibold text-slate-800 dark:text-slate-200" : "tabular-nums text-slate-700 dark:text-slate-300"}`}>
                     <Cell c={c} />
                     {j === 0 && r.current && <span className="ms-2"><Today /></span>}
+                    {j === 0 && r.promoted && <span className="ms-2"><Chosen /></span>}
                   </td>
                 ))}
               </tr>
@@ -65,6 +80,7 @@ export default function Standings({ data, compact = false }) {
           </tbody>
         </table>
       </div>
+      {data.liveNote && <p className="text-[11px] font-semibold text-brand inline-flex items-center gap-1"><RefreshCw className="w-3 h-3" /> {data.liveNote}</p>}
       {data.note && <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{data.note}</p>}
     </section>
   )

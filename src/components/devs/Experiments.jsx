@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { FlaskConical, Plus, Loader2, ArrowRight, RotateCcw, Check, X, ChevronDown, Cpu, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
-import Standings from "./Standings"
+import Standings, { refreshStandings } from "./Standings"
 import { stageById } from "@/lib/pipelineMap"
 import { getExperiments, getExperiment, createExperiment, cancelExperiment, decideExperiment, getProfilesByIds, relTime } from "@/lib/devs"
 import { EXPERIMENT_STAGES, STAGE_GROUPS, STAGE_PARAMS, paramDefaults, paramByKey, changedParams, EXP_STATUS, EVENT_TYPE_LABELS } from "@/lib/experimentSpec"
@@ -473,7 +473,7 @@ function Decision({ exp, isAdmin, names, onChanged }) {
   const [error, setError] = useState(null)
   const decide = async (d) => {
     setBusy(true); setError(null)
-    try { await decideExperiment(exp.id, d, note); await onChanged() } catch (e) { setError(e.message) } finally { setBusy(false) }
+    try { await decideExperiment(exp.id, d, note); refreshStandings(); await onChanged() } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
   if (!isAdmin && !exp.decision) return (
     <div className="card p-4 text-sm text-slate-500 dark:text-slate-400">מחכה להחלטה של מנהל הליגה: להפוך לברירת מחדל או לא.</div>
