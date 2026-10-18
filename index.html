@@ -49,6 +49,25 @@
     <meta name="twitter:description" content="ליגת הוקי הגלגיליות הישראלית — טבלת הליגה המעודכנת, תוצאות ולוח משחקים, סטטיסטיקות שחקנים וקבוצות, שידורים חיים, גלריית תמונות וטורנירים. כל מה שקורה במגרש, במקום אחד." />
     <meta name="twitter:image" content="https://rinkhockeyil.com/logos/main-logo.png" />
     <meta name="theme-color" content="#3B4FC4" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <!-- Logo + site name for Google. "/" is served THIS static file, even to search bots
+         (Vercel serves index.html before the bot rewrite to api/seo.js can fire), so the
+         league's identity has to be here, not only in the SPA. Organization data is valid
+         on every page. Keep in step with api/seo.js (LOGO_PATH, SAME_AS) and
+         organizationJsonLd() in src/lib/seo.js. -->
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@graph":[
+        {"@type":"SportsOrganization","@id":"https://rinkhockeyil.com/#league","name":"ליגת הוקי הגלגיליות הישראלית",
+         "alternateName":["ליגת הוקי גלגיליות","RinkHockeyIL"],"url":"https://rinkhockeyil.com/","sport":"Roller hockey",
+         "logo":{"@type":"ImageObject","url":"https://rinkhockeyil.com/logos/crest-full-512.png","width":512,"height":512},
+         "image":"https://rinkhockeyil.com/logos/crest-full-512.png",
+         "sameAs":["https://www.instagram.com/skateisrael_rinkhockey/"],
+         "location":{"@type":"Country","name":"Israel"}},
+        {"@type":"WebSite","@id":"https://rinkhockeyil.com/#site","name":"ליגת הוקי הגלגיליות הישראלית",
+         "alternateName":["ליגת הוקי גלגיליות","rinkhockeyil.com"],"url":"https://rinkhockeyil.com/","inLanguage":"he-IL",
+         "publisher":{"@id":"https://rinkhockeyil.com/#league"}}
+      ]}
+    </script>
   </head>
   <body>
     <!-- Opening animation, installed web app only (src/components/LaunchSplash.jsx).

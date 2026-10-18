@@ -517,7 +517,7 @@ function BirthdayBody({ player, team, fallbackPhoto, body }) {
 }
 
 /* ============ HUMAN POST (Stage B2 + likes/comments) ============ */
-function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap, share, mentions, initialShowComments = false, hideGameChip = false }) {
+function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap, share, mentions, initialShowComments = false, hideGameChip = false, startAt }) {
   const { user, openAuth } = useAuth()
   const viewer = useMentionViewer()
   const { post: p, author, team } = post.data
@@ -872,7 +872,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
             <FeedVideo videoId={bodyYt.id} poster={`https://i.ytimg.com/vi/${bodyYt.id}/hqdefault.jpg`} title={textBody.split("\n")[0]} />
           ) : (
             <ExperimentalVideo postId={p.id} provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
-                       poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} />
+                       poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} startAt={startAt} />
           )}
         </div>
       )}
@@ -1002,7 +1002,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 }
 
 /* ============ Dispatcher ============ */
-export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip }) {
+export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt }) {
   // Every card but הוקי מרקט (18+) gets a share target — see lib/shareLinks.js.
   const share = buildShare(post, { playersMap })
   const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
@@ -1020,7 +1020,7 @@ export default function FeedPost({ post, playersMap, teamsMap, roleBadges, liked
     case 'post':
     case 'external':
       return <PostCard post={post} likedPostIds={likedPostIds} blockedIds={blockedIds} roleBadges={roleBadges} playersMap={playersMap} teamsMap={teamsMap}
-        share={share} mentions={mentions} initialShowComments={initialShowComments} hideGameChip={hideGameChip} />
+        share={share} mentions={mentions} initialShowComments={initialShowComments} hideGameChip={hideGameChip} startAt={startAt} />
     default:
       return null
   }

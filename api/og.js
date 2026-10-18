@@ -20,6 +20,25 @@ export const POST_SELECT = 'id,body,image_url,link_url,source_name,external_guid
   'author:profiles!posts_author_id_fkey(display_name)'
 
 /**
+ * A post's own headline: its first non-empty line, YouTube links dropped — the same
+ * rule as src/lib/shareLinks.js firstLine(), which titles the SPA's /posts page, so the
+ * crawler page and the rendered page carry one title. Mirrored by postTitle() in
+ * src/lib/shareLinks.js — keep the two in step.
+ */
+export function postHeadline(body, max = 90) {
+  const lines = String(body || '').split('\n').map(l => l.replace(YT_URL, '').replace(/\s+/g, ' ').trim()).filter(Boolean)
+  // A first line that is only a score ("🔵 1–3") says nothing on its own — join the next one.
+  let line = lines[0] || ''
+  if (line.length < 24 && lines[1]) line = `${line} · ${lines[1]}`
+  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
+}
+
+/** The whole body as one text run (YouTube links dropped) — a video's description. */
+export function postText(body) {
+  return String(body || '').replace(YT_URL, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()
+}
+
+/**
  * Preview for /posts/<id> from a posts row (POST_SELECT). Pure, so it is unit-tested.
  * title: "<author> · ליגת הוקי הגלגיליות"; description: the body's first ~160 chars;
  * image: the post's photo, else its video's thumbnail, else the league card (null here).

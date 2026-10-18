@@ -57,6 +57,7 @@ async function main() {
   }
   const expectLd = (label, html, type) => ldTypes(html).includes(type) ? ok(`${label} has ${type} JSON-LD`) : fail(`${label}: no ${type} JSON-LD`)
   if (playerHtml) expectLd(decodeURIComponent(player), playerHtml, 'Person')
+  if (playerHtml) expectLd(decodeURIComponent(player), playerHtml, 'ProfilePage')
   if (teamHtml) expectLd(decodeURIComponent(team), teamHtml, 'SportsTeam')
 
   // Unknown slug → 404, so dead URLs leave the index instead of piling up as soft 404s.
@@ -87,6 +88,24 @@ async function main() {
     if (!oldGame) fail(`${decodeURIComponent(archiveLoc)}: no game links`)
     else sitemap.html.includes(oldGame) ? ok('sitemap.xml includes archived-season games') : fail(`sitemap.xml misses archived game ${decodeURIComponent(oldGame)}`)
   }
+
+  // Video watch pages (2026-10-18): Search Console had 0/7 videos indexed — "not on a watch
+  // page". A video post must give Google a file it may fetch (the Stream iframe is
+  // robots-blocked by Cloudflare) and show a real <video>.
+  const videoPost = sitemap.html.match(/<loc>[^<]*(\/posts\/[0-9a-f-]{36})<\/loc>[^\n]*<video:video>/)?.[1]
+  if (!videoPost) fail('sitemap.xml lists no video post')
+  else {
+    const vp = await checkBotPage(videoPost)
+    expectLd(videoPost, vp, 'VideoObject')
+    const vo = (() => { try { return JSON.parse(vp.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)?.[1])['@graph'].find(n => n['@type'] === 'VideoObject') } catch { return null } })()
+    vo?.contentUrl && !/\/iframe$/.test(vo.contentUrl) ? ok(`${videoPost} VideoObject.contentUrl is a file`) : fail(`${videoPost}: VideoObject has no fetchable contentUrl`)
+    ;/<video[\s>]/.test(vp) ? ok(`${videoPost} shows a <video>`) : fail(`${videoPost}: no <video> element — not a watch page`)
+    ;/<video:content_loc>/.test(sitemap.html) ? ok('sitemap.xml has video:content_loc') : fail('sitemap.xml lost video:content_loc')
+  }
+
+  // "/" is the static index.html even for bots: the league's logo + name must be in it.
+  const home = await get('/', GOOGLEBOT)
+  ;/"@type":"SportsOrganization"[\s\S]*"logo"/.test(home.html) ? ok('/ carries Organization logo JSON-LD') : fail('/: index.html lost its Organization (logo / sameAs) JSON-LD')
 
   const robots = await get('/robots.txt', BROWSER)
   ;/Disallow:\s*\/\s*$/m.test(robots.html) ? fail('robots.txt disallows the whole site') : ok('robots.txt allows crawling')

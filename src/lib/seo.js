@@ -18,6 +18,12 @@ export const SITE_URL = import.meta.env.VITE_SITE_URL || 'https://rinkhockeyil.c
 export const SITE_NAME = 'ליגת הוקי הגלגיליות הישראלית'
 export const DEFAULT_DESCRIPTION = 'ליגת הוקי הגלגיליות הישראלית — טבלת הליגה המעודכנת, תוצאות ולוח משחקים, סטטיסטיקות שחקנים וקבוצות, שידורים חיים, גלריית תמונות וטורנירים. כל מה שקורה במגרש, במקום אחד.'
 const DEFAULT_IMAGE = `${SITE_URL}/logos/main-logo.png`
+// The official crest, 512² — the league's logo in Google results. Same as api/seo.js LOGO_PATH.
+const LOGO = `${SITE_URL}/logos/crest-full-512.png`
+// The league's official profiles (Google knowledge panel). Same list as api/seo.js SAME_AS + index.html.
+export const SAME_AS = ['https://www.instagram.com/skateisrael_rinkhockey/']
+// Large image / video previews in Search and Discover.
+const ROBOTS_INDEX = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
 
 // Gated tooling: no public content, must never land in a search index.
 // `/reset-password` is a one-shot token landing page — indexing it only ever
@@ -77,7 +83,7 @@ export function useSeo({ title, description, path, image, noindex = false } = {}
   useEffect(() => {
     document.title = fullTitle
     upsertMeta('meta[name="description"]', 'name', 'description', desc)
-    upsertMeta('meta[name="robots"]', 'name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow')
+    upsertMeta('meta[name="robots"]', 'name', 'robots', noindex ? 'noindex, nofollow' : ROBOTS_INDEX)
     upsertLink('canonical', canonical)
 
     upsertMeta('meta[property="og:title"]', 'property', 'og:title', fullTitle)
@@ -104,10 +110,13 @@ export function organizationJsonLd() {
   return {
     '@context': 'https://schema.org',
     '@type': 'SportsOrganization',
+    '@id': `${SITE_URL}/#league`,
     name: SITE_NAME,
+    alternateName: ['ליגת הוקי גלגיליות', 'RinkHockeyIL'],
     sport: SPORT,
     url: `${SITE_URL}/`,
-    logo: DEFAULT_IMAGE,
+    logo: LOGO,
+    sameAs: SAME_AS,
   }
 }
 
