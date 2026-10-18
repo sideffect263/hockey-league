@@ -450,7 +450,7 @@ const BUILDERS = {
   },
 
   async game(key, match, { site }) {
-    let [g] = await sb(`games?${match}&select=${GAME_SELECT},home_team_id,away_team_id,home_logo:teams!games_home_team_id_fkey(logo_url),away_logo:teams!games_away_team_id_fkey(logo_url)`)
+    let [g] = await sb(`games?${match}&select=${GAME_SELECT},created_at,home_team_id,away_team_id,home_logo:teams!games_home_team_id_fkey(logo_url),away_logo:teams!games_away_team_id_fkey(logo_url)`)
     let stats
     if (!g) {
       const old = await archivedGame(key)
@@ -503,7 +503,8 @@ const BUILDERS = {
           competitor: teams, performer: teams,
           // League games are free to watch (Ariel, 2026-10-18).
           isAccessibleForFree: true,
-          offers: { '@type': 'Offer', price: 0, priceCurrency: 'ILS', availability: 'https://schema.org/InStock', url },
+          offers: { '@type': 'Offer', price: 0, priceCurrency: 'ILS', availability: 'https://schema.org/InStock', url,
+            ...(g.created_at ? { validFrom: g.created_at } : {}) },
           organizer: ORG_REF(site),
           ...(absImg(hLogo) ? { image: [hLogo, absImg(aLogo)].filter(Boolean) } : {}),
           description: played ? `תוצאה סופית: ${h} ${g.home_score}, ${a} ${g.away_score}` : `${h} נגד ${a}${when ? `, ${when}` : ''}` },
