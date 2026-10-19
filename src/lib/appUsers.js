@@ -77,3 +77,47 @@ export async function getAndroidTesters() {
   if (error) throw error
   return data || []
 }
+
+/**
+ * Per-user Android health from telemetry (last activity, version, device, installer,
+ * active days in Play's 14-day window, startup crashes on that device model) + a phone
+ * to reach them. Admin-only RPC, see supabase/android-tester-health.sql.
+ */
+export async function getAndroidTesterHealth() {
+  const { data, error } = await supabase.rpc('admin_android_tester_health')
+  if (error) throw error
+  return data || []
+}
+
+/** The hand-kept tester flags (on Play list / in WhatsApp group / opted in / note), by email. */
+export async function getAndroidTesterStatus() {
+  const { data, error } = await supabase
+    .from('android_tester_status')
+    .select('email, on_play_list, in_group, opted_in, note, updated_at')
+  if (error) throw error
+  return data || []
+}
+
+/** Upsert one tester's flags; fields left undefined stay as they are. */
+export async function setAndroidTesterStatus(email, { onPlayList, inGroup, optedIn, note } = {}) {
+  const { data, error } = await supabase.rpc('admin_set_android_tester_status', {
+    p_email: email,
+    p_on_play_list: onPlayList ?? null,
+    p_in_group: inGroup ?? null,
+    p_opted_in: optedIn ?? null,
+    p_note: note ?? null,
+  })
+  if (error) throw error
+  return data
+}
+
+/** The Android build the site serves (league_settings, public). */
+export async function getAndroidLatestVersion() {
+  const { data, error } = await supabase
+    .from('league_settings')
+    .select('key, value')
+    .in('key', ['android_latest_version', 'android_latest_name'])
+  if (error) throw error
+  const m = Object.fromEntries((data || []).map(r => [r.key, r.value]))
+  return { code: Number(m.android_latest_version) || null, name: m.android_latest_name || null }
+}
