@@ -28,6 +28,7 @@ import GameFormExport from "@/components/GameFormExport"
 import GameFormCard from "@/components/games/GameFormCard"
 import GameMvp from "@/components/GameMvp"
 import GameMarketCard from "@/components/games/GameMarketCard"
+import GameFans from "@/components/games/GameFans"
 import { usePinSeason } from "@/components/SeasonPicker"
 import GameStory from "@/components/games/GameStory"
 import GameMediaUpload from "@/components/games/GameMediaUpload"
@@ -450,6 +451,9 @@ export default function GameDetail() {
 
       {/* ===== ADD TO CALENDAR (upcoming games) ===== */}
       <AddToCalendar game={game} teamsMap={teamsMap} />
+
+      {/* ===== FANS: each side's fans + "אני בא/ה לצפות" (upcoming) ===== */}
+      <GameFans game={game} home={home} away={away} />
 
       {/* ===== OFFICIAL SELF-SUBMIT (judge/medic apply for an upcoming game) ===== */}
       <OfficialSelfSubmit game={game} />

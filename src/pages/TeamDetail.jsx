@@ -23,6 +23,7 @@ import { getTeamSubmissions } from "@/lib/playerSubmissions"
 import { setTeamCaptain } from "@/lib/gameFormData"
 import { getPlayerLoanGoals } from "@/lib/loans"
 import FollowButton from "@/components/FollowButton"
+import TeamFanStats from "@/components/TeamFanStats"
 import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import TeamMedia, { TeamMediaEmpty } from "@/components/TeamMedia"
@@ -335,6 +336,9 @@ export default function TeamDetail() {
           </div>
         )}
       </motion.div>
+
+      {/* Fans over time — coaches, league managers and admins only */}
+      {(canEdit || isLeagueManager) && <TeamFanStats teamId={team.id} />}
 
       {media && media.length === 0 && <TeamMediaEmpty team={team} nextGame={nextGame} teamsMap={teamsMap} />}
 

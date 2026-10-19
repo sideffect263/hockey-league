@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
-import { UserPlus, UserCheck, Bell, BellOff, Loader2 } from "lucide-react"
+import { UserPlus, UserCheck, Bell, BellOff, Loader2, Shirt } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
-import { follow, unfollow, setFollowNotify, getMyFollows, getFollowerCounts } from "@/lib/follows"
+import { follow, unfollow, setFollowNotify, getMyFollows, getFollowerCounts, getMyRosterTeamIds, fansLabel } from "@/lib/follows"
 
 /**
  * Follow a team or a player (P5 / sheet row 24).
@@ -10,11 +10,16 @@ import { follow, unfollow, setFollowNotify, getMyFollows, getFollowerCounts } fr
  * turns on notifications for it. Collapsing them into one would mean every follow
  * signs you up for a push on every goal — the fastest way to make people unfollow.
  * Following is cheap; being buzzed is not.
+ *
+ * A player is not a fan of his own team (or of himself): there the button turns into a
+ * plain "הקבוצה שלי" / "האוהדים שלך" chip with the count. The count itself already
+ * leaves the team's own players out (follower_counts, fans-v2.sql).
  */
 // onDark: sits on a dark coloured surface (the team page header) — a solid white
 // "follow" and glass for the rest, readable whatever the team's colours are.
-export default function FollowButton({ targetType, targetId, size = "md", showCount = true, onDark = false }) {
-  const { user, openAuth } = useAuth()
+export default function FollowButton({ targetType, targetId, size = "md", showCount = true, onDark = false, onChange }) {
+  const { user, openAuth, profile } = useAuth()
+  const [own, setOwn] = useState(false)
   const [following, setFollowing] = useState(false)
   const [notify, setNotify] = useState(false)
   const [count, setCount] = useState(null)
@@ -24,11 +29,13 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
   useEffect(() => {
     let alive = true
     const load = async () => {
-      const [rows, counts] = await Promise.all([
+      const [rows, counts, roster] = await Promise.all([
         user ? getMyFollows() : Promise.resolve([]),
         showCount ? getFollowerCounts(targetType, [targetId]) : Promise.resolve({}),
+        user && targetType === "team" ? getMyRosterTeamIds() : Promise.resolve(new Set()),
       ])
       if (!alive) return
+      setOwn(targetType === "team" ? roster.has(targetId) : !!user && profile?.player_id === targetId)
       const mine = rows.find(r => r.target_type === targetType && r.target_id === targetId)
       setFollowing(!!mine)
       setNotify(!!mine?.notify)
@@ -37,7 +44,7 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
     }
     load().catch(() => { if (alive) setReady(true) })
     return () => { alive = false }
-  }, [user, targetType, targetId, showCount])
+  }, [user, targetType, targetId, showCount, profile?.player_id])
 
   if (!targetId) return null
 
@@ -51,6 +58,7 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
       setFollowing(next)
       if (!next) setNotify(false)
       setCount(c => (c == null ? c : Math.max(0, c + (next ? 1 : -1))))
+      onChange?.(next)
     } catch { /* leave the previous state visible rather than lying about it */ }
     finally { setBusy(false) }
   }
@@ -66,6 +74,20 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
 
   const sm = size === "sm"
   const pad = sm ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-xs"
+
+  if (own) {
+    return (
+      <span title={targetType === "team" ? "את/ה משחק/ת בקבוצה — שחקנים לא נספרים כאוהדים שלה" : "שחקן לא נספר כאוהד של עצמו"}
+        className={`inline-flex items-center gap-1.5 font-bold rounded-xl ${pad} ${
+          onDark ? "bg-white/15 text-white ring-1 ring-white/25" : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200"}`}>
+        <Shirt className="w-3.5 h-3.5" />
+        {targetType === "team" ? "הקבוצה שלי" : "האוהדים שלך"}
+        {showCount && count != null && (
+          <span className="tabular-nums opacity-70">· {fansLabel(count)}</span>
+        )}
+      </span>
+    )
+  }
 
   return (
     <div className="inline-flex items-center gap-1.5">
