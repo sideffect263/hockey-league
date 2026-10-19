@@ -249,6 +249,7 @@ export async function updateKit(id, patch) {
 export function kitState(kit) {
   if (kit.status === 'error') return { id: 'error', label: 'שגיאה', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' }
   if (kit.status === 'queued' || kit.status === 'processing') return { id: 'working', label: kit.status === 'processing' ? 'בעיבוד' : 'ממתין לעיבוד', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' }
+  if (kit.assets?.vertical?.status === 'error') return { id: 'partial', label: 'הגרסה האנכית נכשלה', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' }
   if (kit.assets?.vertical && kit.assets.vertical.status !== 'ready') return { id: 'partial', label: 'גרסה אנכית בהכנה', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }
   return { id: 'ready', label: 'מוכן', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' }
 }

@@ -31,6 +31,13 @@ export default function Studio({ onCountChange }) {
   }, [])
   useEffect(() => { load() }, [load])
   useEffect(() => { onCountChange?.(kits?.length ?? 0) }, [kits, onCountChange])
+  // While the video worker is still making something (a 9:16 version, a game play), refresh quietly.
+  const working = (kits || []).some(k => ["queued", "processing"].includes(k.status) || ["queued", "processing"].includes(k.assets?.vertical?.status))
+  useEffect(() => {
+    if (!working || type) return
+    const t = setInterval(() => getKits().then(setKits).catch(() => {}), 20000)
+    return () => clearInterval(t)
+  }, [working, type])
   useEffect(() => {
     Promise.all([getGames("game_date", false), getTeams()]).then(([games, teams]) =>
       setCtx({ games: games || [], teams: Object.fromEntries((teams || []).map(t => [t.id, t])) })).catch(() => {})
@@ -633,6 +640,10 @@ function KitCard({ kit, game, gameLabel, teamName, onGone, onChange }) {
     try { await publishFeedDraft(kit.id); setPublished(true); setTimeout(onGone, 1800) }
     catch { setErr("הפרסום נכשל"); setBusy(null) }
   }
+  const retryVertical = async () => {
+    const assets = { ...(kit.assets || {}), vertical: { status: "queued" } }
+    try { await updateKit(kit.id, { assets }); onChange({ assets }) } catch { setErr("לא הצלחנו לנסות שוב") }
+  }
   const remove = async () => {
     if (!window.confirm("למחוק את הערכה?")) return
     setBusy("delete")
@@ -667,7 +678,13 @@ function KitCard({ kit, game, gameLabel, teamName, onGone, onChange }) {
           {hasVideo && view === "h" && (kit.video_uid
             ? <FeedVideo provider="cloudflare" videoId={kit.video_uid} cfCode={kit.video_cf_code} ratio={kit.video_ratio} poster={streamThumb(kit.video_cf_code, kit.video_uid)} title={firstLine(kit.body)} />
             : <video src={a.horizontal.url} controls playsInline preload="metadata" className="w-full rounded-xl bg-black aspect-video" />)}
-          {hasVideo && view === "v" && (vertical?.status === "ready" && vertical.url
+          {hasVideo && view === "v" && vertical?.status === "error" && (
+            <div className="mx-auto aspect-[9/16] w-48 rounded-xl bg-red-50 dark:bg-red-900/20 flex flex-col items-center justify-center text-center p-4 text-xs text-red-700 dark:text-red-300 gap-2">
+              <AlertTriangle className="w-5 h-5" /> הכנת הגרסה האנכית נכשלה
+              <button onClick={retryVertical} className="px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 font-semibold text-slate-700 dark:text-slate-200">נסו שוב</button>
+            </div>
+          )}
+          {hasVideo && view === "v" && vertical?.status !== "error" && (vertical?.status === "ready" && vertical.url
             ? <video src={vertical.url} controls playsInline preload="metadata" className="mx-auto max-h-[28rem] aspect-[9/16] rounded-xl bg-black" />
             : <div className="mx-auto max-h-[28rem] aspect-[9/16] w-48 rounded-xl bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center text-center p-4 text-xs text-slate-500 gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" /> הגרסה האנכית בהכנה — המצלמה תעקוב אחרי הכדור והשער יישאר בתמונה
