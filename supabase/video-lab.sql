@@ -118,3 +118,6 @@ create policy "Editors manage video lab versions" on public.video_lab_versions f
 revoke all on public.video_lab_versions from anon;
 grant select, insert, update, delete on public.video_lab_versions to authenticated;
 alter table public.video_lab_clips add column if not exists processed_at timestamptz;
+
+-- 2026-10-13: league logo watermark (top-right) per clip, on by default
+alter table public.video_lab_clips add column if not exists watermark boolean not null default true;

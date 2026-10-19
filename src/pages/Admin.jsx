@@ -36,7 +36,7 @@ import MedicalReview from "@/components/admin/MedicalReview"
 import MedicalRosterAdmin from "@/components/admin/MedicalRosterAdmin"
 import MedicalPodiumReview from "@/components/admin/MedicalPodiumReview"
 import PaymentsAdmin from "@/components/admin/PaymentsAdmin"
-import ReadinessAdmin from "@/components/admin/ReadinessAdmin"
+import NotificationsAdmin from "@/components/admin/NotificationsAdmin"
 import SuspensionsAdmin from "@/components/admin/SuspensionsAdmin"
 import BirthDatesAdmin from "@/components/admin/BirthDatesAdmin"
 import UnavailabilityAdmin from "@/components/admin/UnavailabilityAdmin"
@@ -78,7 +78,8 @@ const tabs = [
   { id: "game_requests", label: "בקשות משחקים", icon: CalendarClock },
   { id: "medical", label: "מעקב רפואי", icon: HeartPulse },
   { id: "payments", label: "תשלומים", icon: Wallet },
-  { id: "readiness", label: "מוכנות להתראות", icon: BellRing },
+  // Was "readiness" (מוכנות להתראות); the readiness list now lives inside it as a view.
+  { id: "notifications", label: "התראות", icon: BellRing },
   { id: "suspensions", label: "הרחקות", icon: Ban },
   { id: "unavailability", label: "היעדרויות", icon: CalendarOff },
   { id: "birthdates", label: "תאריכי לידה", icon: Cake },
@@ -117,19 +118,19 @@ export default function Admin() {
     // loan falls back to a manual vouch.
     // "unavailability" is the coach's own squad admin — he is the one a player's
     // self-report is addressed to, and the one who files an injury on his behalf.
-    // "medical" / "suspensions" / "readiness" are READ views of his own squad: the RPCs
+    // "medical" / "suspensions" / "notifications" (readiness only) are READ views of his own squad: the RPCs
     // (medical_roster, active_suspensions, notification_readiness) scope a coach through
     // is_coach_of_player; the write actions inside them stay admin / manager / judge.
     // NOT "telemetry": app_event_* answer admins and league managers only, so a coach
     // got an empty tab.
     ...(isCoach ? ["players", "claims", "tournaments", "games", "birthdates", "unavailability",
-        "medical", "suspensions", "readiness"] : []),
+        "medical", "suspensions", "notifications"] : []),
     ...(isJudgeRole ? ["games"] : []),
     // "claims" holds the player-card review queue — row 29 requires the league manager
     // to approve players, and approve_player_submission already permits him.
     // "calendar" is the league manager's — laying out the season's fixtures,
     // including a season that has not started yet, is their job.
-    ...(isLeagueManager ? ["tournaments", "teams", "claims", "game_requests", "medical", "payments", "readiness", "suspensions", "officials", "venues", "calendar", "birthdates", "unavailability"] : []),
+    ...(isLeagueManager ? ["tournaments", "teams", "claims", "game_requests", "medical", "payments", "notifications", "suspensions", "officials", "venues", "calendar", "birthdates", "unavailability"] : []),
   ])
   // Full tournament management (create/edit/delete + approve requests) vs. the
   // coach's request-only view of the same tab.
@@ -141,7 +142,8 @@ export default function Admin() {
   // A notification links to /admin?tab=<id> so it lands on the tab it is about.
   // Landing on the default tab and making the manager hunt is the whole complaint.
   const [searchParams, setSearchParams] = useSearchParams()
-  const requestedTab = searchParams.get('tab')
+  // ?tab=readiness predates the התראות tab that absorbed it — keep old links landing.
+  const requestedTab = searchParams.get('tab') === 'readiness' ? 'notifications' : searchParams.get('tab')
   const [activeTab, setActiveTab] = useState(requestedTab || firstTabId)
   // React to the param changing after mount too (clicking a second notification while
   // already on /admin) — but only when it names a tab this role can actually see.
@@ -265,7 +267,7 @@ export default function Admin() {
               {currentTab === "game_requests" && <GameChangeRequestsReview teamsMap={teamsMap} />}
               {currentTab === "medical" && <>{(isAdmin || isLeagueManager) && <div className="mb-8"><MedicalPodiumReview /></div>}<MedicalRosterAdmin canManage={isAdmin || isLeagueManager} /></>}
               {currentTab === "payments" && <PaymentsAdmin />}
-              {currentTab === "readiness" && <ReadinessAdmin />}
+              {currentTab === "notifications" && <NotificationsAdmin isAdmin={isAdmin} />}
               {currentTab === "suspensions" && <SuspensionsAdmin players={players} teamsMap={teamsMap} canManage={isAdmin || isLeagueManager || isJudgeRole} />}
               {currentTab === "unavailability" && <UnavailabilityAdmin players={players} teamsMap={teamsMap} membersByPlayer={membersByPlayer} coachTeamIds={coachScoped ? coachTeamIds : null} />}
               {currentTab === "birthdates" && <BirthDatesAdmin players={players} teamsMap={teamsMap} membersByPlayer={membersByPlayer} coachTeamIds={coachScoped ? coachTeamIds : null} />}

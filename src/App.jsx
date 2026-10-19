@@ -32,6 +32,7 @@ const StreamDebug = lazy(() => import('./pages/StreamDebug'))
 const ArchivePage = lazy(() => import('./pages/Archive'))
 const Media = lazy(() => import('./pages/Media'))
 const ContentCreators = lazy(() => import('./pages/ContentCreators'))
+const Devs = lazy(() => import('./pages/Devs'))
 const Market = lazy(() => import('./pages/Market'))
 const Loans = lazy(() => import('./pages/Loans'))
 const MarketDetail = lazy(() => import('./pages/MarketDetail'))
@@ -227,6 +228,7 @@ function App() {
             <Route path="/career" element={<Career />} />
             <Route path="/media" element={<Media />} />
             <Route path="/creators" element={<ContentCreators />} />
+            <Route path="/devs" element={<Devs />} />
             <Route path="/tournaments" element={<Tournaments />} />
             <Route path="/tournaments/:id" element={<TournamentDetail />} />
             <Route path="/results" element={<ResultsPending />} />

@@ -16,6 +16,7 @@ import ModerationMenu from "@/components/feed/ModerationMenu"
 import GameChip from "@/components/feed/GameChip"
 import GamePicker, { GamePickerModal } from "@/components/feed/GamePicker"
 import { RoleBadge, OgBadge, deriveRoleItems } from "@/components/RoleBadges"
+import CommentAuthorBadges, { useCommentBadges } from "@/components/feed/CommentAuthorBadges"
 import { TARGET_POST, TARGET_COMMENT } from "@/lib/moderation"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import { entityPath } from "@/lib/slugs"
@@ -26,11 +27,12 @@ import MentionInput from "@/components/feed/MentionInput"
 import MentionText, { useMentionViewer, untagItems } from "@/components/feed/MentionText"
 import { getMentions, setMentions, removeMention, MENTION_KIND } from "@/lib/mentionsApi"
 import { FeedCard, FeedCardHeader, FeedIcon, INSET, fade } from "@/components/feed/FeedCardShell"
+import { sizedImage } from "@/lib/imageSize"
 
 function Avatar({ url, name, className = "w-9 h-9" }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase() || "?"
   return url
-    ? <img src={url} alt="" className={`${className} rounded-full object-cover shrink-0`} />
+    ? <img src={sizedImage(url, 48)} alt="" className={`${className} rounded-full object-cover shrink-0`} />
     : <div className={`${className} rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0`}>{initial}</div>
 }
 
@@ -477,11 +479,12 @@ function MilestonePost({ post, onPhotoRefreshed, ...rx }) {
 }
 
 /* ============ BIRTHDAY (post_birthdays, supabase/birthday-celebrations.sql) ============
-   Only "today" — never a date or an age. Falls back to the post's own text/photo when the
-   player isn't in playersMap (e.g. archived). */
-function BirthdayBody({ player, team, fallbackPhoto, body }) {
+   Only "today" — never a date or an age. Text only unless league_settings.feed_ranking
+   turns birthday_photo on (off since 2026-10-19, Ariel). Falls back to the post's own
+   text/photo when the player isn't in playersMap (e.g. archived). */
+function BirthdayBody({ player, team, body, showPhoto = false, fallbackPhoto }) {
   const fullName = [player.first_name, player.last_name].filter(Boolean).join(" ")
-  const photo = player.photo_url || fallbackPhoto
+  const photo = showPhoto ? (player.photo_url || fallbackPhoto) : null
   const [imgError, setImgError] = useState(false)
   return (
     <>
@@ -515,7 +518,7 @@ function BirthdayBody({ player, team, fallbackPhoto, body }) {
 }
 
 /* ============ HUMAN POST (Stage B2 + likes/comments) ============ */
-function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap, share, mentions, initialShowComments = false, hideGameChip = false }) {
+function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, teamsMap, share, mentions, initialShowComments = false, hideGameChip = false, startAt }) {
   const { user, openAuth } = useAuth()
   const viewer = useMentionViewer()
   const { post: p, author, team } = post.data
@@ -672,6 +675,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   }
 
   const visibleComments = comments.filter(c => !blockedIds?.has?.(c.author_id))
+  useCommentBadges(visibleComments)
 
   const toggleLike = async () => {
     if (!user) { openAuth(); return }
@@ -814,7 +818,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           </div>
         </div>
       ) : bday ? (
-        <BirthdayBody player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} fallbackPhoto={p.image_url} body={postBody} />
+        <BirthdayBody player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} body={postBody} showPhoto={!!post.data?.showPhoto} fallbackPhoto={p.image_url} />
       ) : (
         <div className="px-4 sm:px-0">
           {/* News: the headline is the first line, the summary (ingest, 2026-10-08) the rest. */}
@@ -869,7 +873,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
             <FeedVideo videoId={bodyYt.id} poster={`https://i.ytimg.com/vi/${bodyYt.id}/hqdefault.jpg`} title={textBody.split("\n")[0]} />
           ) : (
             <ExperimentalVideo postId={p.id} provider="cloudflare" videoId={p.video_uid} cfCode={p.video_cf_code} ratio={p.video_ratio}
-                       poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} />
+                       poster={streamPoster(p.video_cf_code, p.video_uid)} title={postBody.split("\n")[0]} startAt={startAt} />
           )}
         </div>
       )}
@@ -925,9 +929,12 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
                         <Avatar url={c.author?.avatar_url} name={c.author?.display_name} className="w-8 h-8" />
                       </PlayerLink>
                       <div className="min-w-0 flex-1 bg-slate-50 dark:bg-slate-800/60 rounded-xl px-3 py-2">
-                        <PlayerLink playerId={c.author?.player_id} className="w-fit max-w-full">
-                          <p className={`text-xs font-bold text-slate-900 dark:text-white truncate ${c.author?.player_id ? "hover:text-brand transition-colors" : ""}`}>{c.author?.display_name || "חבר/ת הליגה"}</p>
-                        </PlayerLink>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <PlayerLink playerId={c.author?.player_id} className="w-fit max-w-full min-w-0">
+                            <p className={`text-xs font-bold text-slate-900 dark:text-white truncate ${c.author?.player_id ? "hover:text-brand transition-colors" : ""}`}>{c.author?.display_name || "חבר/ת הליגה"}</p>
+                          </PlayerLink>
+                          <CommentAuthorBadges authorId={c.author_id} playerId={c.author?.player_id} />
+                        </div>
                         {editingCommentId === c.id ? (
                           <div className="mt-1">
                             <MentionInput
@@ -996,7 +1003,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 }
 
 /* ============ Dispatcher ============ */
-export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip }) {
+export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt }) {
   // Every card but הוקי מרקט (18+) gets a share target — see lib/shareLinks.js.
   const share = buildShare(post, { playersMap })
   const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
@@ -1014,7 +1021,7 @@ export default function FeedPost({ post, playersMap, teamsMap, roleBadges, liked
     case 'post':
     case 'external':
       return <PostCard post={post} likedPostIds={likedPostIds} blockedIds={blockedIds} roleBadges={roleBadges} playersMap={playersMap} teamsMap={teamsMap}
-        share={share} mentions={mentions} initialShowComments={initialShowComments} hideGameChip={hideGameChip} />
+        share={share} mentions={mentions} initialShowComments={initialShowComments} hideGameChip={hideGameChip} startAt={startAt} />
     default:
       return null
   }

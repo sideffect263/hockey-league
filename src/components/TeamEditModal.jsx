@@ -3,6 +3,7 @@ import { X, Loader2, Pencil, Image as ImageIcon } from "lucide-react"
 import { updateTeamDetails, uploadTeamLogo } from "@/lib/api"
 import { isSafeImage, IMAGE_TYPE_MESSAGE, IMAGE_TYPE_ERROR } from "@/lib/imageType"
 import TeamLogo from "@/components/TeamLogo"
+import { REGISTER_LEAD_OPTIONS, setTeamRegisterLeadDays } from "@/lib/availability"
 
 const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
 const labelCls = "block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5"
@@ -20,6 +21,7 @@ export default function TeamEditModal({ team, onClose, onSaved }) {
   const [founded, setFounded] = useState(team.founded_year ? String(team.founded_year) : "")
   const [primary, setPrimary] = useState(team.primary_color || "#3B4FC4")
   const [secondary, setSecondary] = useState(team.secondary_color || "#1e2a78")
+  const [leadDays, setLeadDays] = useState(team.register_lead_days ?? null)
   const [logoFile, setLogoFile] = useState(null)
   const [logoPreview, setLogoPreview] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -50,6 +52,7 @@ export default function TeamEditModal({ team, onClose, onSaved }) {
         secondary_color: secondary,
         founded_year: founded ? parseInt(founded, 10) : null,
       })
+      if (leadDays !== (team.register_lead_days ?? null)) await setTeamRegisterLeadDays(team.id, leadDays)
       onSaved?.()
       onClose?.()
     } catch (e) {
@@ -131,6 +134,23 @@ export default function TeamEditModal({ team, onClose, onSaved }) {
                   <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{secondary}</span>
                 </div>
               </div>
+            </div>
+            <div>
+              <label className={labelCls}>תזכורת ראשונה להרשמה למשחק</label>
+              <div className="grid grid-cols-2 gap-2">
+                {REGISTER_LEAD_OPTIONS.map(o => (
+                  <button key={o.days ?? 'default'} type="button" onClick={() => setLeadDays(o.days)}
+                    aria-pressed={leadDays === o.days}
+                    className={`px-2 py-2 rounded-lg text-xs font-semibold border transition-colors ${leadDays === o.days
+                      ? 'bg-brand text-white border-brand'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-brand'}`}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                {leadDays ? 'מי שלא ענה יקבל תזכורת נוספת ביום ראשון של שבוע המשחק.' : 'השחקנים מקבלים את ההתראה ביום ראשון של שבוע המשחק.'}
+              </p>
             </div>
           </div>
 

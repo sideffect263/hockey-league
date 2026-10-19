@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 // (video-analysis/lab_worker.py on the Mac polls status='queued'|'new'). Admin / content editor only (RLS).
 
 const BUCKET = 'video-lab'
-const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at,post_id,feed_status,feed_uid,feed_prev_uid,feed_processed_path,feed_replaced_at,feed_note,goal2_frame,strike2_frame,cuts,mark_style,mark_color,processed_at'
+const CLIP_COLS = 'id,title,game_id,source_path,processed_path,fps,width,height,n_frames,goal_frame,strike_frame,no_replay,status,worker_note,note,sort,created_at,updated_at,post_id,feed_status,feed_uid,feed_prev_uid,feed_processed_path,feed_replaced_at,feed_note,goal2_frame,strike2_frame,cuts,mark_style,mark_color,processed_at,watermark,vertical_path'
 
 export function labUrl(path) {
   if (!path) return null
@@ -162,4 +162,106 @@ export async function getGameSides(gameId) {
       .sort((a, b) => (a.jersey_number ?? 999) - (b.jersey_number ?? 999))
     return { ...t, roster }
   })
+}
+
+// ── Rink points (supabase/video-lab-rink.sql): tap rink landmarks on sharp frames of one venue camera;
+// video-analysis/rink_points.py fits the floor + rink size from them and writes `fit` back.
+export async function getRinkSets() {
+  const { data, error } = await supabase.from('video_lab_rink_sets')
+    .select('id,title,venue,status,fit,worker_note,fitted_at,created_at,video_lab_rink_frames(count)')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function getRinkSet(id) {
+  const { data, error } = await supabase.from('video_lab_rink_sets')
+    .select('id,title,venue,source_note,status,fit,worker_note,fitted_at,video_lab_rink_frames(id,image_path,width,height,sort)')
+    .eq('id', id).single()
+  if (error) throw error
+  data.frames = (data.video_lab_rink_frames || []).sort((a, b) => a.sort - b.sort)
+  delete data.video_lab_rink_frames
+  return data
+}
+
+export async function getRinkSetStatus(id) {
+  const { data, error } = await supabase.from('video_lab_rink_sets')
+    .select('status,fit,worker_note,fitted_at').eq('id', id).single()
+  if (error) throw error
+  return data
+}
+
+export async function getRinkPoints(frameIds) {
+  if (!frameIds.length) return []
+  const { data, error } = await supabase.from('video_lab_rink_points')
+    .select('frame_id,landmark,x,y').in('frame_id', frameIds)
+  if (error) throw error
+  return data || []
+}
+
+export async function saveRinkPoint(frameId, landmark, x, y) {
+  const { error } = await supabase.from('video_lab_rink_points')
+    .upsert({ frame_id: frameId, landmark, x, y, labelled_at: new Date().toISOString() }, { onConflict: 'frame_id,landmark' })
+  if (error) throw error
+}
+
+export async function deleteRinkPoint(frameId, landmark) {
+  const { error } = await supabase.from('video_lab_rink_points').delete().eq('frame_id', frameId).eq('landmark', landmark)
+  if (error) throw error
+}
+
+export async function requestRinkFit(id) {
+  const { error } = await supabase.from('video_lab_rink_sets').update({ status: 'queued', worker_note: null }).eq('id', id)
+  if (error) throw error
+}
+
+// ── Match-event review (supabase/video-lab-match-events.sql): the match-stats engine's events for a full game,
+// reviewed against the YouTube video. verdict per event + human-added misses -> per-type precision / recall.
+export async function getMatchRuns() {
+  const { data, error } = await supabase.from('video_lab_match_runs')
+    .select('id,title,youtube_id,engine,teams,stats,created_at,video_lab_match_events(count)')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function getMatchRun(id) {
+  const { data, error } = await supabase.from('video_lab_match_runs')
+    .select('id,title,game_id,youtube_id,engine,teams,stats,meta,created_at').eq('id', id).single()
+  if (error) throw error
+  const events = []
+  for (let from = 0; ; from += 1000) {                     // PostgREST pages at 1000 rows
+    const { data: ev, error: e2 } = await supabase.from('video_lab_match_events')
+      .select('id,t,type,team,data,source,verdict,actual_type,actual_team,note,reviewed_at')
+      .eq('run_id', id).order('t').range(from, from + 999)
+    if (e2) throw e2
+    events.push(...ev)
+    if (ev.length < 1000) break
+  }
+  return { ...data, events }
+}
+
+async function myId() {
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.user?.id || null
+}
+
+export async function reviewMatchEvent(id, patch) {
+  const row = { ...patch, reviewed_at: patch.verdict ? new Date().toISOString() : null, reviewed_by: patch.verdict ? await myId() : null }
+  const { error } = await supabase.from('video_lab_match_events').update(row).eq('id', id)
+  if (error) throw error
+  return row
+}
+
+export async function addMissedEvent(runId, t, type, team) {
+  const { data, error } = await supabase.from('video_lab_match_events')
+    .insert({ run_id: runId, t, type, team, source: 'human', verdict: 'correct', reviewed_at: new Date().toISOString(), reviewed_by: await myId() })
+    .select('id,t,type,team,data,source,verdict,actual_type,actual_team,note,reviewed_at').single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteMatchEvent(id) {
+  const { error } = await supabase.from('video_lab_match_events').delete().eq('id', id).eq('source', 'human')
+  if (error) throw error
 }

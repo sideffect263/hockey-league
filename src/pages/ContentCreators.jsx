@@ -1,25 +1,28 @@
 import { useState, useEffect } from "react"
+import { Navigate } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import {
-  Images, Camera, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, FlaskConical
+  Images, Flag, FolderPlus, Send, ExternalLink,
+  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, BookOpen, Upload
 } from "lucide-react"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
-import { getPlayers } from "@/lib/api"
-import { MediaClusters } from "@/pages/Media"
-import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
 import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
-import FeedDrafts from "@/components/creators/FeedDrafts"
-import VideoLab from "@/components/creators/VideoLab"
+import Studio from "@/components/creators/Studio"
+import GameStoriesReview from "@/components/creators/GameStoriesReview"
+import { countStoryDrafts } from "@/lib/gameStories"
+import VideoIngest from "@/components/creators/VideoIngest"
+
+// The lab, 3D replay, media (face naming) and photo clusters moved to /devs (2026-10-15).
+// Old links (/creators?tab=lab&clip=…) keep working: they redirect with the query intact.
+const MOVED_TO_DEVS = new Set(["lab", "scene3d", "media", "clusters"])
 
 const tabs = [
-  { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
-  { id: "lab", label: "מעבדת וידאו", icon: FlaskConical },
-  { id: "media", label: "מדיה", icon: Camera },
-  { id: "clusters", label: "קבוצות תמונות", icon: Images },
+  { id: "drafts", label: "סטודיו", icon: Clapperboard },
+  { id: "stories", label: "סיפורי משחקים", icon: BookOpen },
+  { id: "ingest", label: "העלאת וידאו", icon: Upload },
   { id: "reports", label: "דיווחים", icon: Flag },
   { id: "albums", label: "אלבומים חדשים", icon: FolderPlus },
 ]
@@ -27,11 +30,17 @@ const tabs = [
 /**
  * Content-editors workspace. Gated to `isContentEditor || isAdmin` (raw editor
  * role OR admin — admins are not content editors via the flag, so both are
- * checked). Mirrors Admin.jsx's side-nav tab layout. All four tabs act through
- * the moderation / photo-override / cluster / album_submissions RLS policies that
- * now allow `is_admin() OR is_content_editor()`.
+ * checked). Mirrors Admin.jsx's side-nav tab layout. Post work only — the lab, 3D,
+ * media and photo-cluster tools live on /devs. The tabs act through the feed-draft /
+ * story / moderation / album_submissions RLS policies (`is_admin() OR is_content_editor()`).
  */
 export default function ContentCreators() {
+  const moved = new URLSearchParams(window.location.search).get("tab")
+  if (MOVED_TO_DEVS.has(moved)) return <Navigate to={`/devs${window.location.search}`} replace />
+  return <CreatorsWorkspace />
+}
+
+function CreatorsWorkspace() {
   const { user, isAdmin, isContentEditor, loading: authLoading } = useAuth()
   // ?tab=drafts deep-links straight to the review queue.
   const [activeTab, setActiveTab] = useState(() => {
@@ -39,14 +48,13 @@ export default function ContentCreators() {
     return tabs.some(x => x.id === t) ? t : "drafts"
   })
   const [draftCount, setDraftCount] = useState(null)
-  const [players, setPlayers] = useState([])
+  const [storyCount, setStoryCount] = useState(null)
 
   const canAccess = isContentEditor || isAdmin
 
-  // ClustersAdmin needs the roster to assign faces to players.
   useEffect(() => {
     if (authLoading || !canAccess) return
-    getPlayers().then(setPlayers).catch(() => setPlayers([]))
+    countStoryDrafts().then(setStoryCount).catch(() => {})
   }, [authLoading, canAccess])
 
   if (authLoading) return <CreatorsSkeleton />
@@ -61,7 +69,7 @@ export default function ContentCreators() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">טיוטות לפיד, מעבדת וידאו, זיהוי שחקנים בתמונות, ניהול קבוצות תמונות, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">סטודיו ליצירת תוכן, סיפורי משחקים, העלאת וידאו, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -79,6 +87,9 @@ export default function ContentCreators() {
                   }`}>
                   <tab.icon className="w-4 h-4 shrink-0" />
                   <span>{tab.label}</span>
+                  {tab.id === "stories" && storyCount > 0 && (
+                    <span className={`ms-auto text-[11px] font-bold px-1.5 rounded-full ${active ? "bg-white/25" : "bg-brand/10 text-brand"}`}>{storyCount}</span>
+                  )}
                   {tab.id === "drafts" && draftCount > 0 && (
                     <span className={`ms-auto text-[11px] font-bold px-1.5 rounded-full ${active ? "bg-white/25" : "bg-brand/10 text-brand"}`}>{draftCount}</span>
                   )}
@@ -89,10 +100,9 @@ export default function ContentCreators() {
         </aside>
 
         <div className="min-w-0">
-          {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
-          {activeTab === "lab" && <VideoLab />}
-          {activeTab === "media" && <MediaClusters />}
-          {activeTab === "clusters" && <ClustersAdmin players={players} />}
+          {activeTab === "drafts" && <Studio onCountChange={setDraftCount} />}
+          {activeTab === "stories" && <GameStoriesReview onCountChange={setStoryCount} />}
+          {activeTab === "ingest" && <VideoIngest />}
           {activeTab === "reports" && <ReportsReview />}
           {activeTab === "albums" && <AlbumSubmissions />}
         </div>

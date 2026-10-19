@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { KeyRound, Lock, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/AuthContext"
+import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
 
 // Landing page for the password-reset email link. Supabase's client parses the
 // recovery token from the URL hash on load and establishes a short-lived
@@ -49,7 +50,9 @@ export default function ResetPassword() {
       setTimeout(() => navigate("/me"), 1800)
     } catch (err) {
       const m = (err?.message || "").toLowerCase()
-      if (m.includes("different from the old") || m.includes("should be different") || m.includes("same")) {
+      if (isPwnedPasswordError(err)) {
+        setError(PWNED_PASSWORD_MSG)
+      } else if (m.includes("different from the old") || m.includes("should be different") || m.includes("same")) {
         setError("בחרו סיסמה שונה מהסיסמה הקודמת")
       } else if (err?.status === 401 || m.includes("session") || m.includes("expired") || m.includes("token")) {
         setStatus("invalid")

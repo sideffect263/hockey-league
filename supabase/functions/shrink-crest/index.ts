@@ -1,5 +1,7 @@
 // ============================================================================
-// shrink-crest — every newly set team crest is re-encoded to at most 256px.
+// shrink-crest — every newly set team crest is re-encoded to at most 256px,
+// and a crest uploaded on a white square/circle has that background cut away
+// (cutout.ts) so it sits on any background.
 //
 // Called by the `teams_shrink_crest` trigger (pg_net) whenever teams.logo_url
 // changes, NOT by end users. Web, iOS and Android all finish a crest upload with
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
     if (blob.size > MAX_BYTES) return Response.json({ ok: true, skipped: "too large" });
 
     const out = await shrinkCrest(new Uint8Array(await blob.arrayBuffer()));
-    if (!out) return Response.json({ ok: true, skipped: "already small" });
+    if (!out) return Response.json({ ok: true, skipped: "already small, nothing to cut" });
 
     const newPath = `${teamId}/crest-256-${Date.now()}.${out.ext}`;
     const { error: upErr } = await admin.storage.from(BUCKET)
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
       .update({ logo_url: newUrl }).eq("id", teamId).eq("logo_url", url).select("id");
     if (updErr) throw new Error(`update: ${updErr.message}`);
 
-    return Response.json({ ok: true, from: blob.size, to: out.data.length, url: newUrl, swapped: (rows ?? []).length === 1 });
+    return Response.json({ ok: true, from: blob.size, to: out.data.length, cut: out.cut, url: newUrl, swapped: (rows ?? []).length === 1 });
   } catch (e) {
     // Leave the original crest in place — it works, it is only big.
     console.error("shrink-crest", teamId, path, e);

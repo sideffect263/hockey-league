@@ -52,7 +52,7 @@ const admin = createClient(SB_URL, SB_SERVICE_ROLE, {
 // them — so an official_* push for a חובש rendered "שובצת כundefined למשחק".
 const ROLE_LABEL: Record<string, string> = {
   player: "שחקן", coach: "מאמן", content_editor: "עורך תוכן", judge: "שופט",
-  league_manager: "מנהל ליגה", medic: "חובש",
+  league_manager: "מנהל ליגה", medic: "חובש", developer: "מפתח/ת",
 };
 
 function bodyPreview(n: NotificationRow): string {
@@ -340,7 +340,7 @@ async function apnsAuthToken(): Promise<string> {
 async function sendApns(
   deviceToken: string, environment: string | null,
   title: string, body: string, url: string, badge: number, section: string | null,
-): Promise<{ ok: boolean; prune: boolean }> {
+): Promise<{ ok: boolean; prune: boolean; detail?: string }> {
   const jwt = await apnsAuthToken();
   const aps = {
     aps: { alert: { title, body }, sound: "default", badge, "thread-id": "rinkhockeyil" },
@@ -351,6 +351,7 @@ async function sendApns(
     ? ["api.sandbox.push.apple.com"]
     : ["api.push.apple.com", "api.sandbox.push.apple.com"]; // prod first, sandbox fallback
   let prune = false;
+  let detail = "";
   for (const host of hosts) {
     const res = await fetch(`https://${host}/3/device/${deviceToken}`, {
       method: "POST",
@@ -362,8 +363,9 @@ async function sendApns(
       },
       body: JSON.stringify(aps),
     });
-    if (res.ok) return { ok: true, prune: false };
+    if (res.ok) return { ok: true, prune: false, detail: host.includes("sandbox") ? "sandbox" : undefined };
     const reason = await res.text();
+    detail = `${res.status} ${reason}`.slice(0, 200);
     // 400 BadDeviceToken on prod usually means the token is a sandbox token → retry sandbox.
     if (res.status === 400 && reason.includes("BadDeviceToken") && host === "api.push.apple.com") {
       continue;
@@ -373,9 +375,9 @@ async function sendApns(
       prune = true;
     }
     console.log(`APNs ${host} -> ${res.status} ${reason}`);
-    return { ok: false, prune };
+    return { ok: false, prune, detail };
   }
-  return { ok: false, prune };
+  return { ok: false, prune, detail };
 }
 
 // ---- FCM HTTP v1 (Android) -------------------------------------------------
@@ -427,7 +429,7 @@ async function fcmAccessToken(): Promise<string> {
 
 async function sendFcm(
   deviceToken: string, title: string, body: string, url: string, section: string | null,
-): Promise<{ ok: boolean; prune: boolean }> {
+): Promise<{ ok: boolean; prune: boolean; detail?: string }> {
   const access = await fcmAccessToken();
   // notification + data: the `notification` block makes Android render it in the
   // tray even when the app is killed (reliable app-closed delivery); `data.url`
@@ -458,7 +460,7 @@ async function sendFcm(
   // rotated) is a 404; a malformed token is a 400 with INVALID_ARGUMENT.
   const prune = res.status === 404 || reason.includes("UNREGISTERED") ||
     reason.includes("SENDER_ID_MISMATCH");
-  return { ok: false, prune };
+  return { ok: false, prune, detail: `${res.status} ${reason}`.slice(0, 200) };
 }
 
 // ---- types -----------------------------------------------------------------
@@ -470,6 +472,31 @@ interface NotificationRow {
 interface PushSub {
   id: string; platform: "web" | "ios" | "android"; endpoint: string;
   keys: { p256dh: string; auth: string } | null; environment: string | null;
+  app_version_name: string | null; user_agent: string | null;
+}
+
+// ---- delivery log ----------------------------------------------------------
+// One public.push_deliveries row per device tried (or one row saying why nothing
+// was tried) — the /admin "התראות" tracker reads it. Best-effort: a failed log
+// write must never cost a push, so it is awaited only to keep the isolate alive.
+type Delivery = {
+  subscription_id?: string | null; platform: string; status: string;
+  detail?: string | null; app_version_name?: string | null; user_agent?: string | null;
+};
+async function logDeliveries(n: NotificationRow, rows: Delivery[]) {
+  if (!rows.length) return;
+  try {
+    const { error } = await admin.from("push_deliveries").insert(rows.map((r) => ({
+      notification_id: n.id ?? null, user_id: n.user_id,
+      subscription_id: r.subscription_id ?? null, platform: r.platform, status: r.status,
+      detail: r.detail ? String(r.detail).slice(0, 300) : null,
+      app_version_name: r.app_version_name ?? null,
+      user_agent: r.user_agent ? String(r.user_agent).slice(0, 300) : null,
+    })));
+    if (error) console.log("delivery log error", error.message);
+  } catch (e) {
+    console.log("delivery log threw", (e as Error)?.message ?? String(e));
+  }
 }
 
 
@@ -633,6 +660,7 @@ Deno.serve(async (req) => {
   // of them landed on two people in one evening. Market events keep their bell row and
   // never become a push.
   if (n.type.startsWith("market")) {
+    await logDeliveries(n, [{ platform: "none", status: "skipped", detail: "market" }]);
     return new Response(JSON.stringify({ sent: 0, skipped: "market" }), {
       status: 200, headers: { "content-type": "application/json" },
     });
@@ -673,7 +701,7 @@ Deno.serve(async (req) => {
 
   let subsQuery = admin
     .from("push_subscriptions")
-    .select("id, platform, endpoint, keys, environment, app_version")
+    .select("id, platform, endpoint, keys, environment, app_version, app_version_name, user_agent")
     .eq("user_id", n.user_id);
   if (wantPlatforms) subsQuery = subsQuery.in("platform", wantPlatforms);
   if (maxAppVersion !== null) {
@@ -687,6 +715,10 @@ Deno.serve(async (req) => {
   if (!subs?.length) {
     // nothing to push to — the digest is the one notification that still has to land
     const emailed = await emailDigestFallback(admin, n);
+    await logDeliveries(n, [
+      { platform: "none", status: "no_device", detail: wantPlatforms ? `platforms=${wantPlatforms.join(",")}` : null },
+      ...(emailed ? [{ platform: "email", status: "emailed" }] : []),
+    ]);
     return new Response(JSON.stringify({ sent: 0, emailed }), { status: 200 });
   }
 
@@ -696,12 +728,16 @@ Deno.serve(async (req) => {
     .eq("user_id", n.user_id).is("read_at", null);
 
   const toPrune: string[] = [];
+  const log: Delivery[] = [];
   let sent = 0;
 
   await Promise.all((subs as PushSub[]).map(async (s) => {
+    const dev = { subscription_id: s.id, platform: s.platform, app_version_name: s.app_version_name, user_agent: s.user_agent };
+    const record = (ok: boolean, prune: boolean, detail?: string | null) =>
+      log.push({ ...dev, status: ok ? "sent" : prune ? "pruned" : "failed", detail: detail ?? null });
     try {
       if (s.platform === "web") {
-        if (!s.keys) { toPrune.push(s.id); return; }
+        if (!s.keys) { toPrune.push(s.id); record(false, true, "no keys"); return; }
         const webPayload = JSON.stringify({ title, body, url: path, tag: n.type });
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: s.keys },
@@ -709,19 +745,24 @@ Deno.serve(async (req) => {
           { TTL: 60 * 60 * 24 },
         );
         sent++;
+        record(true, false);
       } else if (s.platform === "ios") {
         const r = await sendApns(s.endpoint, s.environment, title, body, path, badge ?? 0, section);
         if (r.ok) sent++;
         if (r.prune) toPrune.push(s.id);
+        record(r.ok, r.prune, r.detail);
       } else if (s.platform === "android") {
-        if (!FCM_CONFIGURED) return; // Firebase not provisioned yet → skip silently
+        if (!FCM_CONFIGURED) { log.push({ ...dev, status: "skipped", detail: "FCM not configured" }); return; }
         const r = await sendFcm(s.endpoint, title, body, path, section);
         if (r.ok) sent++;
         if (r.prune) toPrune.push(s.id);
+        record(r.ok, r.prune, r.detail);
       }
     } catch (e: any) {
       const code = e?.statusCode ?? e?.status;
-      if (code === 404 || code === 410) toPrune.push(s.id); // gone/expired web sub
+      const gone = code === 404 || code === 410;
+      if (gone) toPrune.push(s.id); // gone/expired web sub
+      record(false, gone, `${code ?? ""} ${e?.message ?? String(e)}`.trim().slice(0, 200));
       console.log(`push ${s.platform} err`, code ?? "", e?.message ?? String(e));
     }
   }));
@@ -732,6 +773,8 @@ Deno.serve(async (req) => {
 
   // every device failed (all pruned, or all errored) — same reasoning as above
   const emailed = sent === 0 ? await emailDigestFallback(admin, n) : false;
+  if (emailed) log.push({ platform: "email", status: "emailed" });
+  await logDeliveries(n, log);
 
   return new Response(JSON.stringify({ sent, pruned: toPrune.length, emailed }), {
     status: 200, headers: { "content-type": "application/json" },

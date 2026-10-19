@@ -25,6 +25,7 @@ const ROUTES = {
   '/app': { title: 'הורדת האפליקציה', description: 'אפליקציית הקהילה של הוקי הגלגיליות הישראלי — טבלה, משחקים וסטטיסטיקות ל-iOS ו-Android' },
   '/guide': { title: 'מדריך התכונות', description: 'כל התכונות של ליגת הוקי הגלגיליות — מסודרות לפי תפקיד ולפי פלטפורמה (אתר / אפליקציה)' },
   '/creators': { title: 'אזור יוצרי תוכן', description: 'אזור יוצרי התוכן של ליגת הוקי הגלגיליות הישראלית' },
+  '/devs': { title: 'מפתחים' },
   '/archive': { title: 'ארכיון', description: 'עונות קודמות של ליגת הוקי הגלגיליות הישראלית' },
   '/privacy': { title: 'מדיניות פרטיות' },
   // Private routes. They stay noindex (isNoindexPath) — these titles are for the

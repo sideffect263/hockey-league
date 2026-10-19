@@ -39,6 +39,18 @@ export function firstLine(body, max = 140) {
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
 }
 
+/**
+ * A post's page title: its first line, or — when that is only a score ("🔵 1–3") — the
+ * first two joined. Mirrors postHeadline() in api/og.js, which titles the crawler copy
+ * of the same page; keep the two in step.
+ */
+export function postTitle(body, max = 90) {
+  const lines = String(body || '').split('\n').map(l => l.replace(YT_URL, '').replace(/\s+/g, ' ').trim()).filter(Boolean)
+  let line = lines[0] || ''
+  if (line.length < 24 && lines[1]) line = `${line} · ${lines[1]}`
+  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
+}
+
 const fullName = (p) => [p?.first_name, p?.last_name].filter(Boolean).join(' ')
 
 /**

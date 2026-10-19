@@ -35,6 +35,34 @@ Deno.serve(async (req) => {
     if (error || !user) return json({ error: "unauthorized" }, 401);
     const uid = user.id;
 
+    // The App Store demo account. Apple's reviewer tests in-app deletion WITH it (rule
+    // 5.1.1(v)), and three reviews in a row it vanished — taking its sandbox row, roles
+    // and test-game judge assignment with it, so the NEXT review could not sign in.
+    // For this account only: drop its personal plumbing and end its sessions, so the
+    // app behaves exactly as after a real deletion, but keep the account and its
+    // review setup. Every other account is still deleted for real, below.
+    // Matched by email as well as sandbox_accounts, because the account has been
+    // recreated under new uids and the sandbox row can lag behind.
+    const PROTECTED_EMAILS = ["rinkhockeyiltestuser@gmail.com"];
+    const { data: sandboxRow } = await admin
+      .from("sandbox_accounts").select("user_id").eq("user_id", uid).maybeSingle();
+    if (sandboxRow || PROTECTED_EMAILS.includes((user.email ?? "").toLowerCase())) {
+      for (const [table, col] of [
+        ["feed_item_comments", "author_id"],
+        ["feed_item_likes", "user_id"],
+        ["post_likes", "user_id"],
+        ["comments", "author_id"],
+        ["posts", "author_id"],
+        ["push_subscriptions", "user_id"],
+        ["notifications", "user_id"],
+      ] as const) {
+        try { await admin.from(table).delete().eq(col, uid); } catch (_e) { /* ignore */ }
+      }
+      try { await admin.auth.admin.signOut(jwt, "global"); } catch (_e) { /* ignore */ }
+      console.log("delete-account: protected demo account — data cleared, account kept");
+      return json({ ok: true }, 200);
+    }
+
     // Best-effort cleanup of user-owned rows (children first). Ignore per-table errors.
     for (const [table, col] of [
       ["feed_item_comments", "author_id"],

@@ -9,7 +9,7 @@ import { RefreshCw, Smartphone } from "lucide-react"
 import { Rink } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import { useSeasonMode, useSeasonName } from "@/App"
-import { buildFeed } from "@/lib/feed"
+import { buildFeed, parseRanking } from "@/lib/feed"
 import { getMyFollowSets } from "@/lib/follows"
 import { getMarketFeed } from "@/lib/market"
 import { setFeedTracking, observeFeedItem, getFeedPersonalization } from "@/lib/feedImpressions"
@@ -26,7 +26,6 @@ import QuickActions from "@/components/feed/QuickActions"
 import LoanInvite from "@/components/LoanInvite"
 import VideoRail from "@/components/feed/VideoRail"
 import { StandingsWidget, NextGameWidget, LeadersWidget } from "@/components/feed/Widgets"
-import OnlinePresence from "@/components/OnlinePresence"
 import { FeedSkeleton, SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
 
 const PAGE_SIZE = 25
@@ -66,6 +65,8 @@ export default function Feed() {
   const [personalization, setPersonalization] = useState(null)
   const [marketItems, setMarketItems] = useState([])
   const [championId, setChampionId] = useState(null)
+  // league_settings.feed_ranking — the ranking knobs, tunable with no release (lib/feed.js).
+  const [rankingRaw, setRankingRaw] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState("all")
@@ -147,10 +148,11 @@ export default function Feed() {
   const loadData = async () => {
     try {
       setLoading(true); setError(null)
-      const [g, t, p, s, champ, po, likes] = await Promise.all([
+      const [g, t, p, s, champ, po, likes, rk] = await Promise.all([
         getGames(), getTeams(), getPlayers(), getGameStats(), getLeagueSetting('champion_team_id'), getPosts(), getMyLikes(),
+        getLeagueSetting('feed_ranking').catch(() => null),   // defaults if unreadable
       ])
-      setGames(g); setTeams(t); setPlayers(p); setGameStats(s); setChampionId(champ); setPosts(po); setLikedPostIds(new Set(likes))
+      setGames(g); setTeams(t); setPlayers(p); setGameStats(s); setChampionId(champ); setPosts(po); setLikedPostIds(new Set(likes)); setRankingRaw(rk)
     } catch (err) { console.error(err); setError("שגיאה בטעינת הנתונים") }
     finally { setLoading(false) }
   }
@@ -166,17 +168,18 @@ export default function Feed() {
   const liveGames = useLiveGames()
 
   // Rebuilds only when the underlying data changes — not on every scroll/like re-render.
+  const ranking = useMemo(() => parseRanking(rankingRaw), [rankingRaw])
   const feed = useMemo(() => attachEventPhotos(
     buildFeed({
       games, teams, players, gameStats,
       humanPosts: posts.filter(p => !blockedIds.has(p.author_id)),
       championId, seasonName, seasonMode,
       followedTeams: follows.teams, followedPlayers: follows.players,
-      personalization, marketItems,
+      personalization, marketItems, ranking,
     }),
     { photos: photoIndex.photos, photoPlayers: photoIndex.photoPlayers, players },
     photoOverrides
-  ), [games, teams, players, gameStats, posts, championId, seasonName, seasonMode, photoIndex, blockedIds, photoOverrides, follows, personalization, marketItems])
+  ), [games, teams, players, gameStats, posts, championId, seasonName, seasonMode, photoIndex, blockedIds, photoOverrides, follows, personalization, marketItems, ranking])
 
   const counts = useMemo(() => ({
     all: feed.length,
@@ -245,13 +248,9 @@ export default function Feed() {
           {/* Page header — title on the right (RTL), "download the app" banner on the left */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
             <div>
-              <div className="flex items-center gap-3">
-                <h1 className="page-title flex items-center gap-2.5">
-                  <Rink className="w-7 h-7 text-brand" /> המגרש
-                </h1>
-                {/* Live "who's skating" count (Realtime Presence), on the title's line */}
-                <OnlinePresence />
-              </div>
+              <h1 className="page-title flex items-center gap-2.5">
+                <Rink className="w-7 h-7 text-brand" /> המגרש
+              </h1>
               <p className="page-subtitle mt-1">כל מה שקורה בליגה</p>
             </div>
 

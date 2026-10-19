@@ -102,3 +102,16 @@ export async function getAvailabilityForGames(gameIds) {
   if (error) return []
   return data || []
 }
+
+/**
+ * When a team's players get the first "sign up for the game" reminder. null = the league
+ * default (the Sunday of game week); 13 = the Sunday two weeks before. Coach / LM / admin.
+ */
+export const REGISTER_LEAD_OPTIONS = [
+  { days: null, label: 'שבוע לפני המשחק (ברירת מחדל)' },
+  { days: 13, label: 'שבועיים לפני המשחק' },
+]
+export async function setTeamRegisterLeadDays(teamId, days) {
+  const { error } = await supabase.rpc('set_team_register_lead_days', { p_team_id: teamId, p_days: days })
+  if (error) throw error
+}

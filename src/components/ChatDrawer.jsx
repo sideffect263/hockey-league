@@ -9,10 +9,11 @@ import {
   listConversations, getThread, sendMessage, markThreadRead,
   getTotalUnread, getMessageableMembers, subscribeToMessages,
 } from '../lib/chat'
+import { sizedImage } from "@/lib/imageSize"
 
 function Avatar({ p, size = 'w-9 h-9' }) {
   const initial = (p?.display_name || '').trim().charAt(0).toUpperCase()
-  if (p?.avatar_url) return <img src={p.avatar_url} alt="" className={`${size} rounded-full object-cover shrink-0`} />
+  if (p?.avatar_url) return <img src={sizedImage(p.avatar_url, 48)} alt="" className={`${size} rounded-full object-cover shrink-0`} />
   return (
     <div className={`${size} rounded-full shrink-0 flex items-center justify-center text-white text-sm font-bold`} style={{ backgroundColor: BRAND_ORANGE }}>
       {initial || '?'}
@@ -90,6 +91,13 @@ export default function ChatDrawer() {
         setUnread((n) => n + 1)
       }
       if (openRef.current) loadConvs()
+    }, () => {
+      // Socket dropped and came back: messages sent meanwhile were never delivered — refetch.
+      getTotalUnread().then(setUnread).catch(() => {})
+      if (!openRef.current) return
+      loadConvs()
+      const other = activeRef.current
+      if (other) getThread(other).then((m) => { if (activeRef.current === other) setMessages(m) }).catch(() => {})
     })
     const onFocus = () => getTotalUnread().then(setUnread).catch(() => {})
     window.addEventListener('focus', onFocus)

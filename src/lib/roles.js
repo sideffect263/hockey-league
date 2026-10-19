@@ -7,7 +7,7 @@ import { supabase } from './supabase'
  * migration needed. Kept out of api.js to avoid collision with other workstreams.
  */
 
-export const ROLES = ['player', 'coach', 'content_editor', 'judge', 'league_manager', 'medic']
+export const ROLES = ['player', 'coach', 'content_editor', 'judge', 'league_manager', 'medic', 'developer']
 // Roles the admin can grant from the Roles tab. Excludes 'player': players are
 // defined in the Players tab and linked to an account by the "שייך שחקן" picker on
 // each user row (or by claim approval) — both set profiles.player_id AND the role.
@@ -20,6 +20,7 @@ export const ROLE_LABEL = {
   judge: 'שופט',
   league_manager: 'מנהל ליגה',
   medic: 'חובש',
+  developer: 'מפתח/ת',
 }
 // Roles that are scoped to a specific team.
 export const TEAM_SCOPED = new Set(['coach', 'player'])

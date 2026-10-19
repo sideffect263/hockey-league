@@ -4,8 +4,12 @@ Allow: /
 # Gated tooling — no public content.
 Disallow: /admin
 Disallow: /judge
-Disallow: /me
+# /me exactly (and below it) — a bare "/me" is a prefix and also blocked /media.
+Disallow: /me$
+Disallow: /me/
+Disallow: /me?
 Disallow: /creators
+Disallow: /devs
 Disallow: /notifications
 Disallow: /results
 Disallow: /reset-password

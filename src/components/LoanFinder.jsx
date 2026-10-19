@@ -271,7 +271,7 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
             <>
               {slotsForTab === 0 && (
                 <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                  {tab === "gk" ? "כבר הושאל שוער למשחק הזה." : `יש כבר ${LOAN_FIELD_TARGET} שחקני שדה — אין מקום לעוד השאלה.`}
+                  {tab === "gk" ? (summary.own_gk > 0 ? "שוער הקבוצה כבר אישר הגעה — אין צורך בשוער מושאל." : "כבר הושאל שוער למשחק הזה.") : `יש כבר ${LOAN_FIELD_TARGET} שחקני שדה — אין מקום לעוד השאלה.`}
                 </p>
               )}
               <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">יכולים לשחק ({available.length})</p>

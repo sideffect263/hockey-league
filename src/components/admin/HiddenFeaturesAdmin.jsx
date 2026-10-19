@@ -362,7 +362,7 @@ function BroadcastPanel({ teams }) {
           <select className={input} value={audience} onChange={(e) => setAudience(e.target.value)}>
             <option value="all_users">כל המשתמשים</option>
             <option value="app_users">משתמשי האפליקציה (עם מכשיר רשום)</option>
-            <option value="team">קבוצה — עוקבים + סגל</option>
+            <option value="team">קבוצה — אוהדים + סגל</option>
           </select>
         </div>
         {audience === "team" && (

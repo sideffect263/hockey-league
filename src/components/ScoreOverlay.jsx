@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak } from "@/lib/live"
+import { sizedImage } from "@/lib/imageSize"
 
 // Broadcast-style score bug drawn over the live video: crests, names, score, clock, period.
 //
@@ -98,7 +99,7 @@ function Side({ team, score, timeouts }) {
     <div className="flex items-center gap-[0.45em] ps-[0.5em] pe-0 bg-[#0E2350]/90 text-white">
       <span className="w-[0.25em] self-stretch" style={{ background: team?.primary_color || "#3B82F6" }} />
       {team?.logo_url && !imgError && (
-        <img src={team.logo_url} alt="" onError={() => setImgError(true)} className="h-[1.5em] w-[1.5em] object-contain" />
+        <img src={sizedImage(team.logo_url, 48, 'contain')} alt="" onError={() => setImgError(true)} className="h-[1.5em] w-[1.5em] object-contain" />
       )}
       <span className="font-bold truncate max-w-[9em] py-[0.35em]">{team?.name || "—"}</span>
       {/* timeouts taken this period — one pip per allowed timeout, filled = taken */}

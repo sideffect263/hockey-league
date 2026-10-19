@@ -541,6 +541,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* The featured carousel's next market fades in. */
+.mkt-fade { animation: mkt-fade 0.5s ease-out both; }
+@keyframes mkt-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mkt-fade { animation: none; } }
+
 /* Horizontal chip rails scroll by swipe; a scrollbar under a row of pills is noise. */
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/game-form.js": { "includeFiles": "public/logos/main-logo.png" }
+  },
   "headers": [
     {
       "source": "/rinkhockeyIL.apk",

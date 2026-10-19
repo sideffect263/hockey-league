@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Flame, Users, BarChart3, ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { coins as fmtCoins, pct } from '@/lib/market'
+import { coins as fmtCoins, pct, getTrades } from '@/lib/market'
 import { StatusChip, OutcomeFace } from '@/components/market/MarketCard'
 import PriceChart, { useSeriesColors } from '@/components/market/PriceChart'
 
@@ -50,7 +51,7 @@ export default function FeaturedMarket({ market, trades, activity }) {
   const href = `/market/${encodeURIComponent(market.slug || market.id)}`
 
   return (
-    <section className="mkt-card overflow-hidden mb-6 border-brand/30">
+    <section className="mkt-card overflow-hidden border-brand/30">
       <div className="p-4 sm:p-5 bg-gradient-to-bl from-brand/[0.07] to-transparent">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0">
@@ -109,5 +110,62 @@ export default function FeaturedMarket({ market, trades, activity }) {
         </Link>
       </div>
     </section>
+  )
+}
+
+const ROTATE_MS = 5000
+
+/**
+ * The featured slot with up to three markets taking turns, one every 5 s.
+ *
+ * Rotation stops while the pointer or keyboard focus is on the card (so it does
+ * not change under someone reading or about to tap) and while the tab is hidden;
+ * the dots underneath jump straight to a market. Each market's tape is fetched
+ * once, as it first comes up, and kept for the next lap.
+ */
+export function FeaturedCarousel({ markets, activity }) {
+  const [idx, setIdx] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [trades, setTrades] = useState({})
+  const count = markets.length
+  const i = idx < count ? idx : 0
+  const market = markets[i]
+
+  useEffect(() => {
+    if (count < 2 || paused) return
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') setIdx(n => (n + 1) % count)
+    }, ROTATE_MS)
+    return () => clearInterval(t)
+  }, [count, paused, i])
+
+  useEffect(() => {
+    if (!market || trades[market.id]) return
+    let alive = true
+    getTrades(market.id)
+      .then(t => { if (alive) setTrades(prev => ({ ...prev, [market.id]: t })) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [market?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!market) return null
+
+  return (
+    <div className="mb-6"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+      <div key={market.id} className="mkt-fade">
+        <FeaturedMarket market={market} trades={trades[market.id] || null} activity={activity.get(market.id)} />
+      </div>
+      {count > 1 && (
+        <div className="flex justify-center gap-1.5 mt-3" role="tablist" aria-label="שווקים מובילים">
+          {markets.map((m, n) => (
+            <button key={m.id} type="button" role="tab" aria-selected={n === i} aria-label={m.title}
+              onClick={() => setIdx(n)}
+              className={`h-1.5 rounded-full transition-all ${n === i ? 'w-6 bg-brand' : 'w-1.5 bg-fg-subtle/40 hover:bg-fg-subtle'}`} />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

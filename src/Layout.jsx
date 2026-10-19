@@ -14,10 +14,9 @@ import {
   MoreHorizontal,
   Gamepad2,
   ClipboardCheck,
-  Clapperboard,
-  Handshake
+  Handshake,
+  Code2
 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { Rink, Standings, Crossed, Teams, Player, Whistle, Stats, Camera, Edit, Clipboard } from "./components/icons/HockeyIcons"
 import { useAuth } from "./lib/AuthContext"
 import AuthModal from "./components/AuthModal"
@@ -26,6 +25,7 @@ import OgCelebration from "./components/OgCelebration"
 import NotificationBell from "./components/NotificationBell"
 import ChatDrawer from "./components/ChatDrawer"
 import LiveEditPanel from "./components/liveedit/LiveEditPanel"
+import { sizedImage } from "@/lib/imageSize"
 
 // Nav uses the hockey icons in `mono`, so the brand-color ball accent becomes
 // currentColor and stays visible on the active tab's solid-brand background.
@@ -59,29 +59,14 @@ function useDismissable(open, setOpen, wrapRef) {
   useEffect(() => { setOpen(false) }, [location.pathname, setOpen])
 }
 
-/**
- * Header shortcut to /creators for content editors + admins, badged with the number of feed
- * drafts waiting for review (feed_drafts is RLS-limited to exactly these roles). Re-counts on
- * every navigation so publishing a draft clears the badge without a reload.
- */
-function CreatorsButton({ active }) {
-  const location = useLocation()
-  const [count, setCount] = useState(0)
-  useEffect(() => {
-    let alive = true
-    supabase.from("feed_drafts").select("id", { count: "exact", head: true })
-      .then(({ count: n }) => { if (alive) setCount(n || 0) })
-    return () => { alive = false }
-  }, [location.pathname, location.search])
+/** Header shortcut to the /devs lab for developers + admins. */
+function DevsButton({ active }) {
   return (
-    <Link to="/creators?tab=drafts" title="יוצרי תוכן · טיוטות לפיד"
-      className={`relative inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-sm font-semibold transition-colors ${
+    <Link to="/devs" title="מפתחים"
+      className={`inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-sm font-semibold transition-colors ${
         active ? "bg-brand/10 text-brand" : "text-fg-muted hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-fg-strong"}`}>
-      <Clapperboard className="w-5 h-5" />
-      <span className="hidden xl:inline">יוצרי תוכן</span>
-      {count > 0 && (
-        <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center">{count}</span>
-      )}
+      <Code2 className="w-5 h-5" />
+      <span className="hidden xl:inline">מפתחים</span>
     </Link>
   )
 }
@@ -165,7 +150,7 @@ function NavAvatar({ profile, email, className = "w-8 h-8" }) {
   const initial = name.trim().charAt(0).toUpperCase()
 
   if (profile?.avatar_url) {
-    return <img src={profile.avatar_url} alt="" className={`${className} rounded-full object-cover shrink-0`} />
+    return <img src={sizedImage(profile.avatar_url, 48)} alt="" className={`${className} rounded-full object-cover shrink-0`} />
   }
   if (profile?.player_id) {
     return (
@@ -242,7 +227,7 @@ function AvatarMenu({ user, profile, roleNav, isActivePage, signOut }) {
 export default function Layout({ children }) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, profile, signOut, openAuth } = useAuth()
+  const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isDeveloper, profile, signOut, openAuth } = useAuth()
 
 
   // The header is split into three groups so its width no longer depends on how
@@ -263,9 +248,9 @@ export default function Layout({ children }) {
 
   const moreNav = [
     { title: "טורנירים", url: "/tournaments", icon: Swords },
-    // Media entry: content editors get the /creators workspace in the role menu
-    // instead, so "מדיה" is hidden for them unless they are also an admin.
-    ...((!isContentEditor || isAdmin) ? [{ title: "מדיה", url: "/media", icon: NavCamera }] : []),
+    // Shown to everyone again: the face-naming tool left /creators for /devs (2026-10-15),
+    // so content editors no longer have a copy of it in their workspace.
+    { title: "מדיה", url: "/media", icon: NavCamera },
     { title: "מדריך", url: "/guide", icon: BookOpen },
     // Unlike הוקי מרקט below, the career game is public: it needs no account,
     // touches no league data, and is the one page here a visitor who has never
@@ -306,7 +291,7 @@ export default function Layout({ children }) {
               home link rather than inside it — a control nested in a link is invalid. */}
           <div className="flex items-center gap-2.5 shrink-0">
             <Link to="/" className="shrink-0">
-              <img src="/logos/main-logo.png" alt="ליגת הוקי" className="size-10 rounded-xl object-cover ring-1 ring-line shadow-sm" />
+              <img src="/logos/crest-256.png" alt="ליגת הוקי" data-header-crest className="size-10 object-contain" />
             </Link>
             <div className="leading-none">
               {/* Not an <h1>: the site wordmark repeats on every route, so tagging it
@@ -352,8 +337,8 @@ export default function Layout({ children }) {
           {/* RTL end (left): auth (desktop) / hamburger (mobile).
               Dark-mode toggle lives on the profile page (/me), not here. */}
           <div className="flex items-center gap-1.5 ms-auto lg:ms-0">
-            {/* Content workspace — visible for editors/admins, with the drafts waiting for review. */}
-            {(isContentEditor || isAdmin) && <CreatorsButton active={isActivePage("/creators")} />}
+            {/* Dev lab — the only role tool with a header button; it is not repeated in the menus. */}
+            {(isDeveloper || isAdmin) && <DevsButton active={isActivePage("/devs")} />}
             {/* Notifications bell — visible on all sizes for signed-in users, next to the avatar */}
             {user && <NotificationBell />}
 

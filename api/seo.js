@@ -25,11 +25,23 @@ const SITE_NAME = 'ליגת הוקי הגלגיליות הישראלית'
 const DEFAULT_DESC = 'ליגת הוקי הגלגיליות הישראלית — טבלת הליגה המעודכנת, תוצאות ולוח משחקים, סטטיסטיקות שחקנים וקבוצות, שידורים חיים, גלריית תמונות וטורנירים. כל מה שקורה במגרש, במקום אחד.'
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+// The official crest (512², transparent) — Google's logo for the league in results.
+export const LOGO_PATH = '/logos/crest-full-512.png'
+// The league's official profiles. Google uses sameAs to tie them to the league (knowledge
+// panel). Keep in step with organizationJsonLd() in src/lib/seo.js and index.html.
+export const SAME_AS = ['https://www.instagram.com/skateisrael_rinkhockey/']
+// Big image / video previews in Search and Discover (the default is a small thumbnail).
+const ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+// A league game: 2 × 25 min + half-time and stoppages. Only an estimate for Event endDate.
+const GAME_LENGTH_MS = 90 * 60 * 1000
 
-import { postOg, POST_SELECT } from './og.js'
-import { streamPlayer } from './sitemap.js'
+import { postOg, postHeadline, postText, POST_SELECT } from './og.js'
+import { streamPlayer, streamThumb, streamHls, videoMetaFor, isoDuration } from './sitemap.js'
 
 class UpstreamError extends Error {}
+
+// Types whose old slugs live in entity_slug_history (same set as resolve.js).
+const SLUG_HISTORY_TYPES = new Set(['players', 'teams', 'games', 'tournaments'])
 
 async function sb(pathAndQuery, init = {}) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
@@ -88,16 +100,76 @@ const breadcrumbs = (site, trail) => ({
   '@type': 'BreadcrumbList',
   itemListElement: trail.map(([name, p], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${site}${p}` })),
 })
-/** VideoObject for a post's Cloudflare Stream video (Google video results). */
-function videoLd(site, p) {
+/** A video file Google may fetch: the MP4 once Cloudflare has made it, else the HLS
+ *  manifest. NOT the player iframe — Cloudflare's robots.txt disallows /*iframe$. */
+const videoFile = (code, uid, meta) => (meta?.mp4_status === 'ready' && meta.mp4_url) || streamHls(code, uid)
+
+/** Key moments: the reel's goals (video_seo_meta.chapters) as Clip, each with a ?t= link;
+ *  without chapters, SeekToAction lets Google find moments itself (videos ≥ 30 s). */
+function keyMoments(url, meta) {
+  const ch = Array.isArray(meta?.chapters) ? meta.chapters.filter(c => c?.name && c.start_s >= 0) : []
+  if (ch.length) {
+    return { hasPart: ch.map(c => ({ '@type': 'Clip', name: c.name, startOffset: Math.floor(c.start_s),
+      ...(c.end_s > c.start_s ? { endOffset: Math.ceil(c.end_s) } : {}), url: `${url}?t=${Math.floor(c.start_s)}` })) }
+  }
+  if (!(meta?.duration_s >= 30)) return {}
+  return { potentialAction: { '@type': 'SeekToAction', target: `${url}?t={seek_to_second_number}`, 'startOffset-input': 'required name=seek_to_second_number' } }
+}
+
+/** VideoObject for a post's Cloudflare Stream video (Google video results). `meta` is its
+ *  video_seo_meta row (duration, MP4, chapters) — absent until video-seo-sync has run. */
+function videoLd(site, p, meta, { gameUrl } = {}) {
   const og = postOg(p)
+  const url = `${site}/posts/${p.id}`
+  const name = postHeadline(p.body, 100) || og.title
+  const dur = isoDuration(meta?.duration_s)
   return {
-    '@type': 'VideoObject', '@id': `${site}/posts/${p.id}#video`, name: (og.desc || og.title).slice(0, 100),
-    description: og.desc || og.title, ...(og.image ? { thumbnailUrl: og.image } : {}),
-    ...(p.created_at ? { uploadDate: p.created_at } : {}), embedUrl: streamPlayer(p), url: `${site}/posts/${p.id}`,
-    publisher: ORG_REF(site),
+    '@type': 'VideoObject', '@id': `${url}#video`, name,
+    description: (postText(p.body) || name).slice(0, 2000),
+    thumbnailUrl: [og.image || streamThumb(p.video_cf_code, p.video_uid)].filter(Boolean),
+    ...(p.created_at ? { uploadDate: p.created_at } : {}),
+    contentUrl: videoFile(p.video_cf_code, p.video_uid, meta), embedUrl: streamPlayer(p),
+    ...(dur ? { duration: dur } : {}), ...(meta?.width ? { width: meta.width, height: meta.height } : {}),
+    url, inLanguage: 'he-IL', isFamilyFriendly: true, publisher: ORG_REF(site),
+    ...(gameUrl ? { about: { '@id': `${gameUrl}#event` } } : {}),
+    ...keyMoments(url, meta),
   }
 }
+
+/** The game broadcast (a Cloudflare live input on air, its recording after): VideoObject
+ *  + BroadcastEvent, which is what gets a LIVE badge in Search while it is on. */
+function broadcastLd(site, url, v, meta, { live, name, part, gameStart }) {
+  const code = v.cf_customer_code
+  const start = v.created_at || gameStart
+  const dur = isoDuration(meta?.duration_s)
+  const end = live ? null
+    : meta?.duration_s ? new Date(new Date(start).getTime() + meta.duration_s * 1000).toISOString()
+    : gameStart ? new Date(new Date(gameStart).getTime() + GAME_LENGTH_MS).toISOString() : null
+  const title = `${live ? 'שידור חי' : 'שידור המשחק'}: ${name}${part ? ` (חלק ${part})` : ''}`
+  return {
+    '@type': 'VideoObject', '@id': `${url}#broadcast-${v.id}`, name: title,
+    description: `${title} — ${SITE_NAME}`,
+    thumbnailUrl: [streamThumb(code, v.video_id, live ? null : 60)],
+    uploadDate: start, embedUrl: `https://customer-${code}.cloudflarestream.com/${v.video_id}/iframe`,
+    contentUrl: live ? streamHls(code, v.video_id) : videoFile(code, v.video_id, meta),
+    ...(dur && !live ? { duration: dur } : {}), url, inLanguage: 'he-IL', publisher: ORG_REF(site),
+    about: { '@id': `${url}#event` },
+    publication: { '@type': 'BroadcastEvent', isLiveBroadcast: true, startDate: start, ...(end ? { endDate: end } : {}) },
+  }
+}
+
+/** The <video> a watch page shows — a real file, so the page IS a watch page to Google. */
+function videoTag({ code, uid, meta, poster, title, t }) {
+  const frag = t > 0 ? `#t=${t}` : ''
+  const mp4 = meta?.mp4_status === 'ready' && meta.mp4_url
+  const w = meta?.width || 1280, h = meta?.height || 720
+  return `<video controls playsinline preload="metadata" poster="${esc(poster)}" width="${w}" height="${h}" title="${esc(title)}">` +
+    (mp4 ? `<source src="${esc(mp4 + frag)}" type="video/mp4"/>` : '') +
+    `<source src="${esc(streamHls(code, uid) + frag)}" type="application/x-mpegURL"/>` +
+    `${esc(title)}</video>`
+}
+
+const durText = (s) => { const n = Math.round(+s); return n > 0 ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}` : '' }
 const teamRef = (site, t) => t ? { '@type': 'SportsTeam', name: t.name, ...(t.slug ? { url: `${site}${path('teams', t.slug)}` } : {}) } : undefined
 
 const fmtDate = (iso) => {
@@ -137,6 +209,33 @@ function scorersHtml(g, stats, h, a) {
   return `<h2>מבקיעים</h2>` + (home ? `<h3>${esc(h)}</h3><ul>${home}</ul>` : '') + (away ? `<h3>${esc(a)}</h3><ul>${away}</ul>` : '')
 }
 
+const PERIOD_HE = { '1': 'מחצית 1', '2': 'מחצית 2', 'הארכה 1': 'הארכה 1', 'הארכה 2': 'הארכה 2' }
+const frameOf = (m, sec) => m?.cf_uid && m?.cf_code
+  ? `https://customer-${m.cf_code}.cloudflarestream.com/${m.cf_uid}/thumbnails/thumbnail.jpg?time=${Math.max(1, Math.round(sec || 1))}s&height=720`
+  : (m?.public_url || null)
+
+// Same content as GameStory.jsx: the timeline beats, each with the frame of the clip it cites.
+function storyHtml(story, media = []) {
+  if (!story) return ''
+  const beats = Array.isArray(story.timeline) ? story.timeline : []
+  const head = `<article><h2>סיפור המשחק: ${esc(story.title)}</h2>` +
+    (absImg(story.hero_image_url) ? `<figure>${img(story.hero_image_url, story.title, 1280).replace(/ height="1280"/, '')}</figure>` : '') +
+    `<p><strong>${esc(story.summary)}</strong></p>`
+  if (!beats.length) {
+    const paras = String(story.body || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
+    return head + paras.map(t => `<p>${esc(t)}</p>`).join('') + `</article>`
+  }
+  const byId = Object.fromEntries(media.map(m => [m.id, m]))
+  return head + `<ol>` + beats.map(b => {
+    const when = [PERIOD_HE[b.period] || '', b.game_time || ''].filter(Boolean).join(' · ')
+    const ev = (b.media || []).map(m => ({ ...m, row: byId[m.media_id] })).find(m => m.row)
+    const src = ev ? frameOf(ev.row, ev.at_s ?? ev.start_s) : null
+    return `<li><h3>${when ? `${esc(when)} — ` : ''}${esc(b.title || '')}</h3>` +
+      (src ? `<figure>${img(src, b.title || story.title, 720).replace(/ height="720"/, '')}${ev.row.post_id ? `<figcaption>${link(`/posts/${ev.row.post_id}`, 'לצפייה בקטע')}</figcaption>` : ''}</figure>` : '') +
+      `<p>${esc(b.text)}</p></li>`
+  }).join('') + `</ol></article>`
+}
+
 function highlightsHtml(posts) {
   if (!posts.length) return ''
   // Video posts first, like the game page section.
@@ -163,9 +262,10 @@ const BUILDERS = {
     return {
       title: SITE_NAME, desc: DEFAULT_DESC, canonicalPath: '/',
       jsonLd: [
-        { ...ORG_REF(site), logo: `${site}/logos/main-logo.png`, sport: 'Roller hockey', location: { '@type': 'Country', name: 'Israel' },
+        { ...ORG_REF(site), alternateName: ['ליגת הוקי גלגיליות', 'RinkHockeyIL'], logo: { '@type': 'ImageObject', url: `${site}${LOGO_PATH}`, width: 512, height: 512 },
+          image: `${site}${LOGO_PATH}`, sport: 'Roller hockey', sameAs: SAME_AS, location: { '@type': 'Country', name: 'Israel' },
           member: teams.map(t => teamRef(site, t)) },
-        { '@type': 'WebSite', '@id': `${site}/#site`, name: SITE_NAME, url: `${site}/`, inLanguage: 'he-IL', publisher: { '@id': `${site}/#league` } },
+        { '@type': 'WebSite', '@id': `${site}/#site`, name: SITE_NAME, alternateName: ['ליגת הוקי גלגיליות', 'rinkhockeyil.com'], url: `${site}/`, inLanguage: 'he-IL', publisher: { '@id': `${site}/#league` } },
       ],
       body: `<h1>${esc(SITE_NAME)}</h1>${img(`${site}/logos/main-logo.png`, SITE_NAME, 120)}<p>${esc(DEFAULT_DESC)}</p>` +
         `<h2>טבלת הליגה</h2>${standingsTable(teams)}` +
@@ -279,10 +379,13 @@ const BUILDERS = {
     // Past seasons (the archive's frozen per-season rows) + this season's game log —
     // the same history the player page shows, and the links that tie a player page
     // to the games it was earned in.
-    const [history, log] = await Promise.all([
+    const [history, log, tagged] = await Promise.all([
       sb(`player_season_stats?player_id=eq.${p.id}&select=goals,games_played,blue_cards,red_cards,team_name,season:seasons(name,slug)`),
       sb(`game_stats?player_id=eq.${p.id}&select=goals,blue_cards,red_cards,game:games(${GAME_SELECT})&limit=40`),
+      // "תויג/ה ב…" on the player page — the posts (often goal clips) this player is @-tagged in.
+      sb('rpc/player_mentions', { method: 'POST', body: JSON.stringify({ p_player: p.id, p_limit: 10 }) }),
     ])
+    const taggedPosts = tagged.filter(m => /^\/posts\/[0-9a-f-]{36}$/i.test(m.href || ''))
     const games = log.filter(r => r.game).sort((a, b) => String(b.game.game_date).localeCompare(String(a.game.game_date)))
     const facts = [p.team?.name, posHe(p.position), p.jersey_number != null ? `מספר ${p.jersey_number}` : null,
       `${p.goals || 0} שערים`, `${p.games_played || 0} משחקים`].filter(Boolean)
@@ -293,8 +396,12 @@ const BUILDERS = {
       title: `${name} | ${SITE_NAME}`, canonicalPath: path('players', p.slug || p.id), image: p.photo_url, ogType: 'profile',
       desc: `${name} — ${facts.join(' · ')}.${pastLine} פרופיל שחקן בליגת הוקי הגלגיליות הישראלית.`.slice(0, 300),
       jsonLd: [
+        // ProfilePage: Google's profile-page result type — the page is ABOUT this person.
+        { '@type': 'ProfilePage', '@id': `${url}#page`, url, name: `${name} | ${SITE_NAME}`, inLanguage: 'he-IL',
+          mainEntity: { '@id': `${url}#person` }, isPartOf: { '@id': `${site}/#site` } },
         { '@type': 'Person', '@id': `${url}#person`, name, url, ...(absImg(p.photo_url) ? { image: p.photo_url } : {}),
-          jobTitle: posHe(p.position), ...(p.team ? { memberOf: teamRef(site, p.team), affiliation: ORG_REF(site) } : { affiliation: ORG_REF(site) }) },
+          jobTitle: posHe(p.position), ...(p.team ? { memberOf: teamRef(site, p.team), affiliation: ORG_REF(site) } : { affiliation: ORG_REF(site) }),
+          ...(taggedPosts.length ? { subjectOf: taggedPosts.map(m => ({ '@id': `${site}${m.href}#video`, url: `${site}${m.href}` })) } : {}) },
         breadcrumbs(site, [['ראשי', '/'], ['שחקנים', '/players'], [name, path('players', p.slug || p.id)]]),
       ],
       body: `<h1>${esc(name)}</h1>` + img(p.photo_url, name, 160) +
@@ -304,7 +411,8 @@ const BUILDERS = {
         `<li>שערים: ${p.goals || 0}</li><li>משחקים: ${p.games_played || 0}</li>` +
         `<li>כרטיסים כחולים: ${p.blue_cards || 0}</li><li>כרטיסים אדומים: ${p.red_cards || 0}</li></ul>` +
         (games.length ? `<h2>משחקים העונה</h2><ul>${games.map(r => gameLine(r.game).replace('</li>', ` — ${r.goals || 0} שערים</li>`)).join('')}</ul>` : '') +
-        (past.length ? `<h2>עונות קודמות</h2><ul>${past.map(h => `<li>${link(`/archive/${encodeURIComponent(h.season.slug || '')}`, `עונת ${h.season.name}`)} — ${esc(h.team_name || '')}: ${h.goals} שערים, ${h.games_played} משחקים, ${h.blue_cards || 0} כחולים, ${h.red_cards || 0} אדומים</li>`).join('')}</ul>` : ''),
+        (past.length ? `<h2>עונות קודמות</h2><ul>${past.map(h => `<li>${link(`/archive/${encodeURIComponent(h.season.slug || '')}`, `עונת ${h.season.name}`)} — ${esc(h.team_name || '')}: ${h.goals} שערים, ${h.games_played} משחקים, ${h.blue_cards || 0} כחולים, ${h.red_cards || 0} אדומים</li>`).join('')}</ul>` : '') +
+        (taggedPosts.length ? `<h2>תויג/ה ב…</h2><ul>${taggedPosts.map(m => `<li>${link(m.href, m.preview || 'פוסט')}${m.author_name ? ` — ${esc(m.author_name)}` : ''}</li>`).join('')}</ul>` : ''),
     }
   },
 
@@ -342,7 +450,7 @@ const BUILDERS = {
   },
 
   async game(key, match, { site }) {
-    let [g] = await sb(`games?${match}&select=${GAME_SELECT},home_team_id,away_team_id,home_logo:teams!games_home_team_id_fkey(logo_url),away_logo:teams!games_away_team_id_fkey(logo_url)`)
+    let [g] = await sb(`games?${match}&select=${GAME_SELECT},created_at,home_team_id,away_team_id,home_logo:teams!games_home_team_id_fkey(logo_url),away_logo:teams!games_away_team_id_fkey(logo_url)`)
     let stats
     if (!g) {
       const old = await archivedGame(key)
@@ -351,11 +459,22 @@ const BUILDERS = {
     }
     // Same facts as the game page: the box score (a loaned player counts for the side he
     // played for) and "היילייטס ופוסטים מהמשחק" — which is also how Google finds /posts/<id>.
-    const [liveStats, posts] = await Promise.all([
+    const [liveStats, posts, [story], broadcasts] = await Promise.all([
       stats ? null : sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
       sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT},created_at&order=created_at.desc&limit=20`),
+      // סיפור המשחק — published only (anon RLS), the same text GameStory.jsx shows.
+      sb(`game_stories?game_id=eq.${g.id}&status=eq.published&select=title,summary,body,moments,timeline,hero_image_url,published_at,updated_at`),
+      // The broadcast / full-game videos GameVideo.jsx plays (Cloudflare live input → recording, YouTube).
+      sb(`game_videos?game_id=eq.${g.id}&hidden=eq.false&kind=eq.full&select=id,provider,video_id,cf_customer_code,title,created_at&order=created_at.asc`),
     ])
     stats = stats || liveStats
+    const cfCasts = broadcasts.filter(v => v.provider === 'cloudflare' && v.video_id && v.cf_customer_code)
+    const ytCasts = broadcasts.filter(v => v.provider === 'youtube' && v.video_id)
+    const metas = await videoMetaFor(sb, [...cfCasts.map(v => v.video_id), ...posts.map(p => p.video_uid)])
+    const live = g.status === 'in_progress'
+    // The timeline's evidence: the public media its beats cite (frames shown beside each beat).
+    const citedIds = [...new Set((story?.timeline || []).flatMap(b => (b.media || []).map(m => m.media_id)).filter(id => /^[0-9a-f-]{36}$/i.test(id)))]
+    const citedMedia = citedIds.length ? await sb(`game_media?id=in.(${citedIds.join(',')})&is_public=eq.true&select=id,kind,cf_uid,cf_code,public_url,post_id`) : []
     const h = g.home?.name || 'בית', a = g.away?.name || 'חוץ'
     const hLogo = g.home_logo?.logo_url || g.home?.logo_url, aLogo = g.away_logo?.logo_url || g.away?.logo_url
     const played = g.status === 'completed' && g.home_score != null
@@ -363,59 +482,118 @@ const BUILDERS = {
     const when = [fmtDate(g.game_date), g.venue].filter(Boolean).join(', ')
     const url = `${site}${path('games', g.slug || g.id)}`
     const videos = posts.filter(p => streamPlayer(p))
+    const endDate = g.game_date ? new Date(new Date(g.game_date).getTime() + GAME_LENGTH_MS).toISOString() : null
+    const eventStatus = g.status === 'cancelled' ? 'EventCancelled' : g.status === 'postponed' ? 'EventPostponed' : 'EventScheduled'
+    const teams = [teamRef(site, g.home), teamRef(site, g.away)].filter(Boolean)
+    const castName = `${h} נגד ${a}`
     return {
-      title: `${headline} | ${SITE_NAME}`, canonicalPath: path('games', g.slug || g.id),
-      image: postOg(videos[0] || {}).image || absImg(hLogo),
-      desc: `${played ? 'תוצאת המשחק' : 'משחק'} ${h} נגד ${a}${when ? ` — ${when}` : ''}${g.game_type ? ` (${g.game_type})` : ''}.`,
+      // A live game changes by the minute — let the edge refresh it quickly.
+      cache: live ? 's-maxage=60, stale-while-revalidate=60' : null,
+      title: `${live ? 'שידור חי: ' : ''}${headline} | ${SITE_NAME}`, canonicalPath: path('games', g.slug || g.id),
+      image: absImg(story?.hero_image_url) || postOg(videos[0] || {}).image || absImg(hLogo),
+      desc: story?.summary || `${played ? 'תוצאת המשחק' : 'משחק'} ${h} נגד ${a}${when ? ` — ${when}` : ''}${g.game_type ? ` (${g.game_type})` : ''}.`,
+      ogType: story ? 'article' : 'website',
       jsonLd: [
         { '@type': 'SportsEvent', '@id': `${url}#event`, name: `${h} נגד ${a}`, url, sport: 'Roller hockey',
-          ...(g.game_date ? { startDate: g.game_date } : {}),
-          eventStatus: g.status === 'cancelled' ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
+          ...(g.game_date ? { startDate: g.game_date, endDate } : {}),
+          eventStatus: `https://schema.org/${eventStatus}`,
           eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
           location: { '@type': 'Place', name: g.venue || h, address: { '@type': 'PostalAddress', addressCountry: 'IL', ...(g.venue ? { addressLocality: g.venue } : {}) } },
           homeTeam: teamRef(site, g.home), awayTeam: teamRef(site, g.away),
-          competitor: [teamRef(site, g.home), teamRef(site, g.away)].filter(Boolean),
+          competitor: teams, performer: teams,
+          // League games are free to watch (Ariel, 2026-10-18).
+          isAccessibleForFree: true,
+          offers: { '@type': 'Offer', price: 0, priceCurrency: 'ILS', availability: 'https://schema.org/InStock', url,
+            ...(g.created_at ? { validFrom: g.created_at } : {}) },
           organizer: ORG_REF(site),
           ...(absImg(hLogo) ? { image: [hLogo, absImg(aLogo)].filter(Boolean) } : {}),
           description: played ? `תוצאה סופית: ${h} ${g.home_score}, ${a} ${g.away_score}` : `${h} נגד ${a}${when ? `, ${when}` : ''}` },
-        ...videos.map(p => videoLd(site, p)),
+        ...cfCasts.map((v, i) => broadcastLd(site, url, v, metas[v.video_id],
+          { live: live && i === cfCasts.length - 1, name: castName, part: cfCasts.length > 1 ? i + 1 : 0, gameStart: g.game_date })),
+        ...ytCasts.map(v => ({
+          '@type': 'VideoObject', '@id': `${url}#yt-${v.video_id}`, name: `${v.title || 'המשחק המלא'}: ${castName}`,
+          description: `המשחק המלא ${castName}${when ? ` — ${when}` : ''}. ${SITE_NAME}.`,
+          thumbnailUrl: [`https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`], uploadDate: v.created_at,
+          embedUrl: `https://www.youtube.com/embed/${v.video_id}`, url, inLanguage: 'he-IL', about: { '@id': `${url}#event` },
+        })),
+        ...videos.map(p => videoLd(site, p, metas[p.video_uid], { gameUrl: url })),
+        ...(story ? [{
+          '@type': 'NewsArticle', '@id': `${url}#story`, headline: story.title.slice(0, 110), description: story.summary,
+          articleBody: story.body, inLanguage: 'he-IL', url, mainEntityOfPage: url,
+          datePublished: story.published_at || story.updated_at, dateModified: story.updated_at,
+          ...(absImg(story.hero_image_url) ? { image: [story.hero_image_url] } : {}),
+          about: { '@id': `${url}#event` }, author: ORG_REF(site), publisher: { ...ORG_REF(site), logo: { '@type': 'ImageObject', url: `${site}${LOGO_PATH}` } },
+        }] : []),
         breadcrumbs(site, [['ראשי', '/'], ['משחקים', '/games'], [`${h} נגד ${a}`, path('games', g.slug || g.id)]]),
       ],
       body: `<h1>${esc(headline)}</h1><p>${img(hLogo, `סמל ${h}`, 64)} ${img(aLogo, `סמל ${a}`, 64)}</p><ul>` +
         (g.home ? `<li>בית: ${link(path('teams', g.home.slug), h)}</li>` : '') +
         (g.away ? `<li>חוץ: ${link(path('teams', g.away.slug), a)}</li>` : '') +
         (when ? `<li>${esc(when)}</li>` : '') + (g.game_type ? `<li>סוג: ${esc(g.game_type)}</li>` : '') + `</ul>` +
-        scorersHtml(g, stats, h, a) + highlightsHtml(posts),
+        (cfCasts.length ? `<h2>${live ? 'שידור חי' : 'שידור המשחק'}</h2>` + cfCasts.map((v, i) => `<figure>${videoTag({
+          code: v.cf_customer_code, uid: v.video_id, meta: metas[v.video_id], title: `${castName}${cfCasts.length > 1 ? ` — חלק ${i + 1}` : ''}`,
+          poster: streamThumb(v.cf_customer_code, v.video_id, live ? null : 60) })}` +
+          (cfCasts.length > 1 || metas[v.video_id]?.duration_s ? `<figcaption>${esc([cfCasts.length > 1 ? `חלק ${i + 1}` : '', durText(metas[v.video_id]?.duration_s)].filter(Boolean).join(' · '))}</figcaption>` : '') +
+          `</figure>`).join('') : '') +
+        (ytCasts.length ? ytCasts.map(v => `<figure><iframe src="https://www.youtube.com/embed/${esc(v.video_id)}" title="${esc(`המשחק המלא: ${castName}`)}" width="640" height="360" loading="lazy" allowfullscreen></iframe></figure>`).join('') : '') +
+        storyHtml(story, citedMedia) + scorersHtml(g, stats, h, a) + highlightsHtml(posts),
     }
   },
 
   // A post permalink (/posts/<uuid>). UUID-only, never a deleted post; same words as
-  // the SPA card and the og.js unfurl — plus its photo or video, which is what makes
-  // it eligible for Images / video results.
-  async post(key, _match, { site }) {
+  // the SPA card (PostDetail.jsx) — plus its photo or video, which is what makes it
+  // eligible for Images / video results. A video post is a WATCH page: the video first
+  // (a real <video> file, not only the robots-blocked Stream iframe), its own title, the
+  // game it is from, who is tagged, and the game's other clips — what PostDetail shows.
+  // ?t=<seconds> (key-moment links) starts the video there, like the SPA.
+  async post(key, _match, { site, t }) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) return null
-    const [p] = await sb(`posts?id=eq.${key}&deleted_at=is.null&select=${POST_SELECT},created_at,updated_at,external_guid,game:games(slug,id)`)
+    const [p] = await sb(`posts?id=eq.${key}&deleted_at=is.null&select=${POST_SELECT},created_at,updated_at,external_guid,game_id,` +
+      `game:games(slug,id,game_date,venue,status,home_score,away_score,home:teams!games_home_team_id_fkey(name,slug),away:teams!games_away_team_id_fkey(name,slug))`)
     if (!p) return null
     const og = postOg(p)
-    const paras = String(p.body || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
     const player = streamPlayer(p)
+    const [tags, related, metas] = await Promise.all([
+      sb(`mentions?post_id=eq.${p.id}&removed_at=is.null&select=display,player:players(slug,id,first_name,last_name)`),
+      p.game_id ? sb(`posts?game_id=eq.${p.game_id}&deleted_at=is.null&video_uid=not.is.null&id=neq.${p.id}&select=${POST_SELECT},created_at&order=created_at.asc&limit=12`) : [],
+      player ? videoMetaFor(sb, [p.video_uid]) : {},
+    ])
+    const meta = metas[p.video_uid]
+    const headline = postHeadline(p.body) || og.title
+    const lines = postText(p.body).split('\n').filter(Boolean)
+    const paras = lines.filter((l, i) => !(i < 2 && headline.includes(l)))
     const url = `${site}/posts/${p.id}`
+    const g = p.game
+    const gName = g ? `${g.home?.name || 'בית'} נגד ${g.away?.name || 'חוץ'}` : null
+    const gPath = g ? path('games', g.slug || g.id) : null
+    const gPlayed = g && g.status === 'completed' && g.home_score != null
+    const start = Number.isFinite(+t) && +t > 0 ? Math.floor(+t) : 0
     const media = player
-      ? `<figure><iframe src="${esc(player)}" title="${esc(og.desc || og.title)}" width="640" height="360" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>` +
-        (og.image ? `<noscript>${img(og.image, og.desc || og.title, 640)}</noscript>` : '') + `</figure>`
-      : (absImg(p.image_url) ? `<figure>${img(p.image_url, og.desc || og.title, 640).replace(/ height="640"/, '')}</figure>` : '')
+      ? `<figure>${videoTag({ code: p.video_cf_code, uid: p.video_uid, meta, poster: og.image || streamThumb(p.video_cf_code, p.video_uid), title: headline, t: start })}` +
+        (meta?.duration_s ? `<figcaption>${esc(durText(meta.duration_s))}</figcaption>` : '') + `</figure>`
+      : (absImg(p.image_url) ? `<figure>${img(p.image_url, headline, 640).replace(/ height="640"/, '')}</figure>` : '')
+    const tagged = tags.filter(m => m.player)
     return {
-      title: og.title, desc: og.desc, image: og.image, canonicalPath: `/posts/${p.id}`, ogType: player ? 'video.other' : 'article',
+      title: `${headline} | ${SITE_NAME}`, desc: og.desc, image: og.image, canonicalPath: `/posts/${p.id}`, ogType: player ? 'video.other' : 'article',
       jsonLd: [
-        player ? videoLd(site, p) : {
-          '@type': 'SocialMediaPosting', '@id': `${url}#post`, url, headline: (og.desc || og.title).slice(0, 110),
+        player ? videoLd(site, p, meta, { gameUrl: gPath ? `${site}${gPath}` : null }) : {
+          '@type': 'SocialMediaPosting', '@id': `${url}#post`, url, headline: headline.slice(0, 110),
           ...(p.body ? { articleBody: p.body } : {}), datePublished: p.created_at, dateModified: p.updated_at || p.created_at,
           ...(absImg(og.image) ? { image: og.image } : {}), author: { '@type': 'Organization', name: og.title.split(' · ')[0] }, publisher: ORG_REF(site),
         },
-        breadcrumbs(site, [['ראשי', '/'], ['המגרש', '/'], [og.title.split(' · ')[0], `/posts/${p.id}`]]),
+        breadcrumbs(site, g
+          ? [['ראשי', '/'], ['משחקים', '/games'], [gName, gPath], [headline, `/posts/${p.id}`]]
+          : [['ראשי', '/'], [headline, `/posts/${p.id}`]]),
       ],
-      body: `<article><h1>${esc(og.title)}</h1>${media}${paras.map(t => `<p>${esc(t)}</p>`).join('')}` +
-        (p.game ? `<p>${link(path('games', p.game.slug || p.game.id), 'לעמוד המשחק')}</p>` : '') + `</article>`,
+      body: `<article><h1>${esc(headline)}</h1>${media}${paras.map(s => `<p>${esc(s)}</p>`).join('')}` +
+        (tagged.length ? `<p>בסרטון: ${tagged.map(m => link(path('players', m.player.slug || m.player.id), fullName(m.player))).join(', ')}</p>` : '') +
+        (g ? `<p>${link(gPath, gPlayed ? `${g.home?.name} ${g.home_score} - ${g.away_score} ${g.away?.name}` : gName)}` +
+          `${[fmtDate(g.game_date), g.venue].filter(Boolean).length ? ` — ${esc([fmtDate(g.game_date), g.venue].filter(Boolean).join(', '))}` : ''}</p>` : '') +
+        `<p>פורסם ${esc(fmtDate(p.created_at))} · ${esc(og.title.split(' · ')[0])}</p></article>` +
+        (related.length ? `<h2>עוד סרטונים מהמשחק</h2><ul>${related.map(r => {
+          const ro = postOg(r)
+          return `<li>${ro.image ? `${img(ro.image, postHeadline(r.body) || ro.title, 160).replace(/ height="160"/, '')} ` : ''}${link(`/posts/${r.id}`, postHeadline(r.body) || ro.title)}</li>`
+        }).join('')}</ul>` : ''),
     }
   },
 
@@ -495,7 +673,7 @@ function render(site, { title, desc, body, canonicalPath, image, jsonLd, ogType 
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}"/>
-${noindex ? '<meta name="robots" content="noindex"/>' : `<link rel="canonical" href="${esc(url)}"/>`}
+${noindex ? '<meta name="robots" content="noindex"/>' : `<meta name="robots" content="${ROBOTS}"/>\n<link rel="canonical" href="${esc(url)}"/>`}
 <meta property="og:type" content="${esc(ogType)}"/>
 <meta property="og:site_name" content="${esc(SITE_NAME)}"/>
 <meta property="og:locale" content="he_IL"/>
@@ -531,13 +709,27 @@ export default async function handler(req, res) {
       // before reaching here, but match either so a miss can't come from that.
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
       const match = isUuid ? `id=eq.${id}` : `slug=eq.${encodeURIComponent(id)}`
-      data = await BUILDERS[DETAIL_BUILDERS[type]](id, match, { site })
+      data = await BUILDERS[DETAIL_BUILDERS[type]](id, match, { site, t: req.query.t })
+    }
+    // A superseded slug (renamed player/team, rescheduled game) — resolve.js redirects these
+    // for people, but bots are rewritten straight here, so without this an old link Google
+    // already knows would 404 and drop out instead of moving to the new URL.
+    if (!data && DETAIL_BUILDERS[type] && id && SLUG_HISTORY_TYPES.has(type)) {
+      const h = await sb(`entity_slug_history?entity_type=eq.${type}&slug=eq.${encodeURIComponent(id)}&select=entity_id`)
+      const row = h[0]?.entity_id
+        ? (await sb(`${type}?id=eq.${h[0].entity_id}&select=slug`))[0]
+        : null
+      if (row?.slug && row.slug !== id) {
+        res.setHeader('Location', `/${type}/${encodeURIComponent(row.slug)}`)
+        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400')
+        return res.status(308).end()
+      }
     }
     if (!data) {
       res.setHeader('Cache-Control', 's-maxage=300')
       return res.status(404).send(render(site, { title: `הדף לא נמצא | ${SITE_NAME}`, desc: DEFAULT_DESC, body: '<h1>הדף לא נמצא</h1>' }, { noindex: true }))
     }
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400')
+    res.setHeader('Cache-Control', data.cache || 's-maxage=3600, stale-while-revalidate=86400')
     return res.status(200).send(render(site, data))
   } catch (e) {
     console.error('seo render failed', e)

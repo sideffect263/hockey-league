@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import TeamLogo from "@/components/TeamLogo"
 import { BRAND_ORANGE } from "@/lib/brand"
+import { sizedImage } from "@/lib/imageSize"
 
 // Some teams pick a white/near-white primary_color; white initial text on it is
 // invisible. Fall back to the brand color for the initial background in that case.
@@ -32,7 +33,7 @@ export default function PlayerAvatar({ player, team, size = 12, className = "" }
     <div className={`relative shrink-0 ${box} ${className}`}>
       {photo && !imgError ? (
         <img
-          src={photo}
+          src={sizedImage(photo, { 10: 40, 12: 48, 14: 56, 16: 64, 20: 80 }[size] || 48)}
           alt={`${player?.first_name || ""} ${player?.last_name || ""}`.trim()}
           onError={() => setImgError(true)}
           className={`${box} ${rounded} object-cover bg-slate-100 dark:bg-slate-700`}

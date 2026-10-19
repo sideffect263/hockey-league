@@ -65,8 +65,9 @@ function prefersNoAutoplay() {
  * provider "youtube" (default): videoId = YouTube id.
  * provider "cloudflare": videoId = Stream uid, cfCode = account subdomain code, ratio =
  * width/height of the clip (a 9:16 clip shows in a 4:5 box, letterboxed, like Instagram).
+ * startAt (seconds, Stream only): play from there — a /posts/<id>?t=N key-moment link.
  */
-export default function FeedVideo({ videoId, poster, title, provider = "youtube", cfCode, ratio, onWatchTime, children }) {
+export default function FeedVideo({ videoId, poster, title, provider = "youtube", cfCode, ratio, onWatchTime, startAt, children }) {
   const isStream = provider === "cloudflare"
   const hostRef = useRef(null)      // stable wrapper; YT replaces the child node
   const playerRef = useRef(null)
@@ -99,7 +100,7 @@ export default function FeedVideo({ videoId, poster, title, provider = "youtube"
     if (!started || !isStream) return
     let cancelled = false
     const iframe = document.createElement("iframe")
-    iframe.src = `https://customer-${cfCode}.cloudflarestream.com/${videoId}/iframe?muted=true&autoplay=true&preload=auto&controls=true`
+    iframe.src = `https://customer-${cfCode}.cloudflarestream.com/${videoId}/iframe?muted=true&autoplay=true&preload=auto&controls=true${startAt > 0 ? `&startTime=${Math.floor(startAt)}s` : ""}`
     iframe.allow = "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
     iframe.allowFullscreen = true
     iframe.title = title || "וידאו"
@@ -118,7 +119,7 @@ export default function FeedVideo({ videoId, poster, title, provider = "youtube"
       playerRef.current = null
       if (hostRef.current) hostRef.current.innerHTML = ""
     }
-  }, [started, isStream, videoId, cfCode, title])
+  }, [started, isStream, videoId, cfCode, title, startAt])
 
   // Build the player the first time we're asked to start.
   useEffect(() => {

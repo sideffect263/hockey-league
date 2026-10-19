@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BRAND_ORANGE } from '@/lib/brand'
+import { sizedImage } from "@/lib/imageSize"
 
 // Some teams pick a white/near-white primary_color; white initial text on it is
 // invisible. Fall back to the brand color for the initial background in that case.
@@ -38,7 +39,7 @@ export default function TeamLogo({ team, size = 8, className = "" }) {
   if (team?.logo_url && !imgError) {
     return (
       <img
-        src={team.logo_url}
+        src={sizedImage(team.logo_url, { 5: 20, 6: 24, 8: 32, 10: 40, 12: 48, 14: 56 }[size] || 32, 'contain')}
         alt={team.name}
         onError={() => setImgError(true)}
         // Crests are transparent cutouts of any shape (round, shield, triangle):

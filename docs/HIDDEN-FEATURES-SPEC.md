@@ -42,7 +42,7 @@ live game screen. Record locally per version. Telemetry action `review_prompt_sh
 **Push nudge**: only when flag on AND notification permission is not granted (iOS
 `.notDetermined` → system prompt after the card; `.denied` → "פתח הגדרות" deep link; Android 13+
 POST_NOTIFICATIONS same idea) AND interval elapsed. A dismissible card (Hebrew): title
-"לא לפספס אף משחק", body "התראות על משחקים של הקבוצות שאתם עוקבים אחריהן, תוצאות ושינויים בלוח.",
+"לא לפספס אף משחק", body "התראות על משחקים של הקבוצות שאתם אוהדים, תוצאות ושינויים בלוח.",
 buttons "הפעלת התראות" / "לא עכשיו". Shown at the top of the feed (not a modal). Telemetry
 `push_nudge_shown` / `push_nudge_accepted` / `push_nudge_dismissed`.
 

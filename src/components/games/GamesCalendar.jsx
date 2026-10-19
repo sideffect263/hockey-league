@@ -9,6 +9,7 @@ import {
 import TeamLogo from "@/components/TeamLogo"
 import { entityPath } from "@/lib/slugs"
 import { toCsv, toXlsx, downloadBlob } from "@/lib/scheduleExport"
+import { isIOS, isAndroid, isMobile, isInAppBrowser } from "@/lib/device"
 
 /**
  * Season calendar at the top of /games — the whole schedule at a glance, plus the
@@ -297,19 +298,72 @@ function MonthList({ y, m, byDay, teamsMap, selected, onPick }) {
   )
 }
 
+// What a subscribe link can actually do depends on the device, not just the browser:
+//  - webcal:// only has a handler on Apple devices (Android: dead tap),
+//  - in-app browsers (WhatsApp, Instagram…) block webcal: even on iPhone,
+//  - Google Calendar can subscribe by URL ONLY from desktop web; its phone app and
+//    mobile site add nothing. A calendar added on a computer syncs to the phone by itself.
+function subscribeMode() {
+  if (isIOS()) return isInAppBrowser() ? "ios-inapp" : "ios"
+  if (isAndroid() || isMobile()) return "phone"
+  return "desktop"
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true } catch { /* in-app browsers often refuse */ }
+  try {
+    const ta = document.createElement("textarea")
+    ta.value = text
+    ta.setAttribute("readonly", "")
+    ta.style.position = "fixed"
+    ta.style.opacity = "0"
+    document.body.appendChild(ta)
+    ta.select()
+    ta.setSelectionRange(0, text.length)
+    const ok = document.execCommand("copy")
+    ta.remove()
+    return ok
+  } catch { return false }
+}
+
+function GoogleFromComputerSteps() {
+  return (
+    <ol className="list-decimal pr-5 space-y-1 text-xs text-fg-muted">
+      <li>העתיקו את הקישור (או שלחו אותו לעצמכם).</li>
+      <li>במחשב: היכנסו ל־<bdi dir="ltr">calendar.google.com</bdi></li>
+      <li>"יומנים אחרים" ← "+" ← "מכתובת URL"</li>
+      <li>הדביקו את הקישור — היומן יסתנכרן לטלפון לבד.</li>
+    </ol>
+  )
+}
+
 function SubscribePanel({ team, onClose }) {
   const [scope, setScope] = useState(team ? "team" : "all")
   const [copied, setCopied] = useState(false)
+  const [mode] = useState(subscribeMode)
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function"
   useEffect(() => { if (!team) setScope("all") }, [team])
 
   const useTeam = scope === "team" && team
   const https = `${feedOrigin()}/api/calendar${useTeam ? `?team=${encodeURIComponent(team.slug || team.id)}` : ""}`
   const webcal = https.replace(/^https?:/, "webcal:")
-  const google = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal)}`
+  // cid = the https URL (not webcal): webcal→http makes Google take an extra 308 hop to https.
+  const google = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(https)}`
+  const calName = useTeam ? `משחקי ${team.name}` : "לוח משחקי הליגה"
 
   const copy = async () => {
-    try { await navigator.clipboard.writeText(https); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* no clipboard permission */ }
+    if (await copyText(https)) { setCopied(true); setTimeout(() => setCopied(false), 2000) }
   }
+  const share = async () => {
+    try { await navigator.share({ title: calName, text: `${calName} — להוספה ליומן Google מהמחשב:`, url: https }) }
+    catch { /* user cancelled */ }
+  }
+
+  const copyBtn = (cls) => (
+    <button type="button" onClick={copy} className={`btn ${cls} btn-sm`}>
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? "הועתק ✓" : "העתק קישור"}
+    </button>
+  )
 
   return (
     <div className="rounded-xl border border-brand/30 bg-brand/[0.04] p-3 sm:p-4 space-y-3">
@@ -334,17 +388,68 @@ function SubscribePanel({ team, onClose }) {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <a href={webcal} className="btn btn-primary btn-sm">יומן אייפון</a>
-        <a href={google} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">יומן <bdi>Google</bdi></a>
-        <button type="button" onClick={copy} className="btn btn-ghost btn-sm">
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? "הועתק" : "העתק קישור"}
-        </button>
-      </div>
-      <p className="text-[11px] text-fg-subtle">
-        באייפון — אישור אחד ב"הירשם", וזהו. ביומן <bdi>Google</bdi> עדכון של משחק שזז יכול לקחת עד יום.
-        <br />מחשב עם <bdi>Outlook</bdi>: "העתק קישור" והוספה כיומן מאינטרנט.
-      </p>
+      {mode === "ios" && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <a href={webcal} className="btn btn-primary btn-sm"><CalendarPlus className="w-3.5 h-3.5" /> הוספה ליומן האייפון</a>
+            {copyBtn("btn-ghost")}
+          </div>
+          <p className="text-[11px] text-fg-subtle">אישור אחד ב"הירשם", וזהו.</p>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-fg-muted">משתמשים ביומן <bdi>Google</bdi>?</summary>
+            <p className="text-[11px] text-fg-subtle mt-1.5 mb-1">
+              <bdi>Google</bdi> מאפשר להוסיף יומן מקישור רק מהמחשב:
+            </p>
+            <GoogleFromComputerSteps />
+          </details>
+        </>
+      )}
+
+      {mode === "ios-inapp" && (
+        <>
+          <div className="rounded-lg bg-surface-sunken p-2.5 space-y-1.5">
+            <p className="text-xs font-bold text-fg-strong">כדי להוסיף ליומן, פתחו את הדף בספארי</p>
+            <ol className="list-decimal pr-5 space-y-1 text-xs text-fg-muted">
+              <li>לחצו על <bdi>⋯</bdi> או על סמל השיתוף בפינת המסך.</li>
+              <li>בחרו "פתיחה בספארי".</li>
+              <li>שם — "הוספה ליומן האייפון", ואישור ב"הירשם".</li>
+            </ol>
+          </div>
+          <div className="flex flex-wrap gap-2">{copyBtn("btn-secondary")}</div>
+          <p className="text-[11px] text-fg-subtle">אפשר גם להעתיק את הקישור ולהדביק אותו בספארי.</p>
+        </>
+      )}
+
+      {mode === "phone" && (
+        <>
+          <div className="rounded-lg bg-surface-sunken p-2.5 space-y-1.5">
+            <p className="text-xs font-bold text-fg-strong">
+              יומן <bdi>Google</bdi> מוסיף יומן מקישור רק מהמחשב
+            </p>
+            <GoogleFromComputerSteps />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {copyBtn("btn-primary")}
+            {canShare && (
+              <button type="button" onClick={share} className="btn btn-secondary btn-sm">שליחה לעצמי</button>
+            )}
+          </div>
+        </>
+      )}
+
+      {mode === "desktop" && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <a href={google} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">יומן <bdi>Google</bdi></a>
+            <a href={webcal} className="btn btn-secondary btn-sm">יומן אפל / <bdi>Outlook</bdi></a>
+            {copyBtn("btn-ghost")}
+          </div>
+          <p className="text-[11px] text-fg-subtle">
+            אחרי ההוספה ביומן <bdi>Google</bdi> הוא יופיע גם בטלפון. עדכון של משחק שזז יכול לקחת שם עד יום.
+            <br /><bdi>Outlook</bdi> באינטרנט: "העתק קישור" והוספה כיומן מאינטרנט.
+          </p>
+        </>
+      )}
     </div>
   )
 }

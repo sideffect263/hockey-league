@@ -1,22 +1,25 @@
 import { useState, useEffect, useMemo } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowRight, MessageSquareOff } from "lucide-react"
-import { getPost, getMyLikes, getRoleBadges, getTeams, getPlayers, getGameById } from "@/lib/api"
+import { getPost, getMyLikes, getRoleBadges, getTeams, getPlayers, getGameById, getGamePosts } from "@/lib/api"
 import { getMyBlocks } from "@/lib/moderation"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import { birthdayPlayerId } from "@/lib/feed"
-import { firstLine } from "@/lib/shareLinks"
+import { firstLine, postTitle } from "@/lib/shareLinks"
 import { isUuid, leadingUuid } from "@/lib/slugs"
 import { useSeo } from "@/lib/seo"
 import { useAuth } from "@/lib/AuthContext"
 import FeedPost from "@/components/feed/FeedPost"
+import { streamPoster } from "@/components/feed/FeedVideo"
 import { SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
 
 /**
  * Post permalink — https://rinkhockeyil.com/posts/<uuid>. The same card as in the feed,
  * full width, with its likes and comments open. What the share button, the bell
  * (post_like / post_comment / tagged) and old /#post-<id> links all land on.
- * Link previews for bots come from api/og.js (vercel.json routes /posts/:id there).
+ * Link previews for bots come from api/og.js (vercel.json routes /posts/:id there); search
+ * bots get api/seo.js, a text copy of THIS page — title, video, game, the game's other
+ * clips — so keep the two in step. ?t=<seconds> starts the video there (Google key moments).
  */
 export default function PostDetail() {
   const { id } = useParams()
@@ -31,6 +34,9 @@ export default function PostDetail() {
   const [mentions, setMentions] = useState(undefined)
   const [blocked, setBlocked] = useState(() => new Set())
   const [game, setGame] = useState(null)   // the game it is attached to → GameChip
+  const [related, setRelated] = useState([]) // the game's other video posts → "עוד סרטונים מהמשחק"
+  const [params] = useSearchParams()
+  const startAt = Math.max(0, Math.floor(Number(params.get("t")) || 0))
 
   useEffect(() => {
     let alive = true
@@ -53,6 +59,10 @@ export default function PostDetail() {
         // Players decorate only (birthday banner, OG badge) — never hold the page up.
         getPlayers().then(pl => alive && setPlayers(pl || [])).catch(() => {})
         if (p.game_id) getGameById(p.game_id).then(g => alive && setGame(g)).catch(() => {})
+        if (p.game_id) getGamePosts(p.game_id)
+          .then(ps => alive && setRelated((ps || []).filter(r => r.id !== p.id && r.video_uid && r.video_cf_code)
+            .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).slice(0, 12)))
+          .catch(() => {})
       })
       .catch(() => alive && setState("error"))
     return () => { alive = false }
@@ -70,7 +80,7 @@ export default function PostDetail() {
   const isBirthday = !!birthdayPlayerId(post)
   const authorName = isBirthday ? "ליגת הוקי גלגיליות" : (post?.source_name || post?.author?.display_name || "חבר/ת הליגה")
   useSeo({
-    title: post ? `${authorName} · פוסט` : "פוסט",
+    title: post ? (postTitle(post.body) || `${authorName} · פוסט`) : "פוסט",
     description: post ? firstLine(post.body, 160) : undefined,
     path: `/posts/${id}`,
   })
@@ -117,7 +127,27 @@ export default function PostDetail() {
           blockedIds={blocked}
           mentions={mentions}
           initialShowComments
+          startAt={startAt}
         />
+      )}
+
+      {state === "ready" && related.length > 0 && (
+        <section className="card p-4">
+          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-3">עוד סרטונים מהמשחק</h2>
+          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {related.map(r => (
+              <li key={r.id}>
+                <Link to={`/posts/${r.id}`} className="block group">
+                  <img src={streamPoster(r.video_cf_code, r.video_uid)} alt={postTitle(r.body, 60)} loading="lazy"
+                       className="w-full aspect-video object-cover rounded-lg bg-slate-200 dark:bg-slate-800" />
+                  <span className="mt-1 block text-xs font-semibold text-slate-600 dark:text-slate-300 group-hover:text-brand line-clamp-2">
+                    {postTitle(r.body, 60)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   )

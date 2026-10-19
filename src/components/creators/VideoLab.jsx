@@ -8,6 +8,8 @@ import {
   getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions, getLabShots, getGameSides,
 } from "@/lib/videoLab"
 import { ShotsPanel, ShotsSummary, RESULTS as SHOT_RESULTS } from "./LabShots"
+import { RinkSetsCard, RinkPointsEditor } from "./RinkPoints"
+import { MatchRunsCard, MatchReviewEditor } from "./MatchReview"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { useAuth } from "@/lib/AuthContext"
 import { surveysForPost, setPostInSurvey } from "@/lib/videoSurveys"
@@ -28,7 +30,11 @@ function StatusPill({ status }) {
   return <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${s.cls}`}>{s.label}</span>
 }
 
-export default function VideoLab() {
+// `focus` narrows the list view to one task (the /devs topics embed it that way):
+// "clips" = ball tagging, "shots" = shot scouting, "match" = event review, "rink" = rink points.
+// Without it the whole lab shows. The editors (?clip / ?rink / ?match) open the same either way.
+export default function VideoLab({ focus = null }) {
+  const show = (part) => !focus || focus === part || (part === "clips" && focus === "shots")
   const [clips, setClips] = useState(null)
   const [sortBy, setSortBy] = useState(() => { try { return localStorage.getItem("lab_sort") || "processed" } catch { return "processed" } })
   const changeSort = (v) => { setSortBy(v); try { localStorage.setItem("lab_sort", v) } catch { /* private mode */ } }
@@ -43,6 +49,8 @@ export default function VideoLab() {
   }, [clips, sortBy])
   const [error, setError] = useState(null)
   const [openId, setOpenId] = useState(() => new URLSearchParams(window.location.search).get("clip"))
+  const [rinkId, setRinkId] = useState(() => new URLSearchParams(window.location.search).get("rink"))
+  const [matchId, setMatchId] = useState(() => new URLSearchParams(window.location.search).get("match"))
 
   const load = useCallback(() => {
     setError(null)
@@ -57,11 +65,27 @@ export default function VideoLab() {
     window.history.replaceState(null, "", u)
   }
 
+  const openRink = (id) => {
+    setRinkId(id)
+    const u = new URL(window.location.href)
+    if (id) u.searchParams.set("rink", id); else u.searchParams.delete("rink")
+    window.history.replaceState(null, "", u)
+  }
+
   if (openId) return <ClipEditor id={openId} onBack={() => { open(null); load() }} />
+  const openMatch = (id) => {
+    setMatchId(id)
+    const u = new URL(window.location.href)
+    if (id) u.searchParams.set("match", id); else u.searchParams.delete("match")
+    window.history.replaceState(null, "", u)
+  }
+
+  if (rinkId) return <RinkPointsEditor id={rinkId} onBack={() => openRink(null)} />
+  if (matchId) return <MatchReviewEditor id={matchId} onBack={() => openMatch(null)} />
 
   return (
     <div className="space-y-4">
-      <div className="card p-4 sm:p-5">
+      {!focus && <div className="card p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <FlaskConical className="w-6 h-6 text-brand shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
@@ -75,12 +99,14 @@ export default function VideoLab() {
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      </div>}
 
-      <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />
-      <ShotsSummary />
+      {show("clips") && <UploadClip onDone={(c) => { load(); if (c) open(c.id) }} />}
+      {show("shots") && <ShotsSummary />}
+      {show("match") && <MatchRunsCard onOpen={openMatch} />}
+      {show("rink") && <RinkSetsCard onOpen={openRink} />}
 
-      {error ? (
+      {!show("clips") ? null : error ? (
         <div className="card p-6 text-center text-sm text-red-600">
           {error} <button onClick={load} className="underline ms-2">נסו שוב</button>
         </div>
@@ -103,8 +129,12 @@ export default function VideoLab() {
           {sorted.map(c => (
             <button key={c.id} onClick={() => open(c.id)}
               className="card overflow-hidden text-start hover:ring-2 hover:ring-brand/40 transition">
-              <div className="aspect-video bg-slate-900">
-                <video src={`${labUrl(c.processed_path || c.source_path)}#t=1`} preload="metadata" muted playsInline className="w-full h-full object-cover pointer-events-none" />
+              {/* No <video> per tile: iOS Safari pulls each ~12 MB clip in full, and 20 tiles per visit
+                  blew the Supabase egress quota. Cloudflare's thumbnail when the clip is in the feed. */}
+              <div className="aspect-video bg-slate-900 grid place-items-center">
+                {c.feed_uid
+                  ? <img src={`https://videodelivery.net/${c.feed_uid}/thumbnails/thumbnail.jpg?time=1s&height=360`} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  : <Play className="w-8 h-8 text-white/40" />}
               </div>
               <div className="p-3 space-y-1.5">
                 <div className="flex items-start gap-2">
@@ -512,6 +542,7 @@ function ClipEditor({ id, onBack }) {
           <DeleteClip clip={clip} onDone={onBack} />
         </div>
         {clip.worker_note && <p className="text-xs text-slate-500 w-full">{clip.worker_note}</p>}
+        <ProcessPlan clip={clip} stats={stats} />
         <textarea defaultValue={clip.note || ""} onBlur={e => e.target.value !== (clip.note || "") && setClipField({ note: e.target.value || null })}
           placeholder="הערות (למשל: הכדור נכנס בפינה הימנית, השוער מסתיר)" rows={2} maxLength={1000} className="filter-input w-full text-sm" />
       </div>
@@ -667,6 +698,7 @@ function FeedSwap({ clip, onClip, onWatch }) {
 
 // How the ball is marked in the rendered video (per clip). Applied on the next "עבד מחדש".
 const MARK_STYLES = [
+  { id: "dark", label: "שחור-אפור", hint: "התקן: עיגול שחור-אפור צבוע על הרצפה סביב הכדור כשהוא מתגלגל, מסלול על הרצפה, ובאוויר רק קו מקווקו. במצלמות שלא כוילו — טבעת דקה על הכדור" },
   { id: "paint", label: "כדור צבוע", hint: "הכדור עצמו נצבע + נקודות מסלול כשהוא זז" },
   { id: "outline", label: "טבעת דקה", hint: "טבעת דקה סביב הכדור + קו מסלול" },
   { id: "none", label: "בלי סימון", hint: "רק שיפור תמונה והילוך חוזר" },
@@ -676,7 +708,7 @@ const MARK_COLORS = [
   { hex: "#00e5ff", name: "תכלת" }, { hex: "#ff8a00", name: "כתום" },
 ]
 function MarkStyle({ clip, onChange }) {
-  const style = clip.mark_style || "paint", color = (clip.mark_color || "#d4ff00").toLowerCase()
+  const style = clip.mark_style || "dark", color = (clip.mark_color || "#d4ff00").toLowerCase()
   return (
     <div className="card p-3 flex flex-wrap items-center gap-2">
       <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">סימון הכדור:</span>
@@ -695,6 +727,13 @@ function MarkStyle({ clip, onChange }) {
           ))}
         </div>
       )}
+      <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 ms-auto cursor-pointer">
+        <span>סימן מים (לוגו הליגה)</span>
+        <button role="switch" aria-checked={clip.watermark !== false} onClick={() => onChange({ watermark: clip.watermark === false })}
+          className={`relative w-10 h-6 rounded-full transition ${clip.watermark !== false ? "bg-brand" : "bg-slate-300 dark:bg-slate-600"}`}>
+          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${clip.watermark !== false ? "start-[18px]" : "start-0.5"}`} />
+        </button>
+      </label>
       <span className="text-xs text-slate-500 w-full">השינוי ייכנס לתוקף בלחיצה על "עבד מחדש עם התיקונים".</span>
     </div>
   )
@@ -720,6 +759,7 @@ function Versions({ clip }) {
   const sync = (e) => { if (!vb) return; const o = e.target === ra.current ? rb.current : ra.current; if (o && Math.abs(o.currentTime - e.target.currentTime) > 0.15) o.currentTime = e.target.currentTime }
   return (
     <div className="space-y-3">
+      {clip.vertical_path && <Vertical clip={clip} />}
       <div className={`grid gap-2 ${vb ? "lg:grid-cols-2" : ""}`}>
         {va && <div><div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{va.label} <span className="font-normal text-slate-400">{when(va)}</span></div>
           <video key={va.id} ref={ra} src={labUrl(va.path)} controls playsInline className="w-full rounded-xl bg-black" onSeeked={sync} onPlay={() => vb && both(v => v.play())} onPause={() => vb && both(v => v.pause())} /></div>}
@@ -738,5 +778,52 @@ function Versions({ clip }) {
         ))}
       </div>
     </div>
+  )
+}
+
+// The 9:16 render that follows the play (for Instagram / TikTok / WhatsApp status). Download = the file itself.
+function Vertical({ clip }) {
+  const [open, setOpen] = useState(false)
+  const url = labUrl(clip.vertical_path)
+  return (
+    <div className="card p-3 flex flex-wrap items-center gap-2">
+      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">גרסה אנכית 9:16</span>
+      <span className="text-xs text-slate-500">לרשתות — עוקבת אחרי המשחק</span>
+      <button onClick={() => setOpen(o => !o)} className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 ms-auto">{open ? "הסתר" : "צפייה"}</button>
+      <a href={`${url}?download=${encodeURIComponent((clip.title || "clip").slice(0, 60))}-9x16.mp4`} className="text-xs px-2 py-1 rounded bg-brand text-white">הורדה</a>
+      {open && <video src={url} controls playsInline className="w-full max-w-[280px] mx-auto rounded-xl bg-black" style={{ aspectRatio: "9 / 16" }} />}
+    </div>
+  )
+}
+
+// "What will 'עבד מחדש' do to THIS clip?" — the Mac worker's steps, written for the clip's current settings.
+function ProcessPlan({ clip, stats }) {
+  const goal = !clip.no_replay && clip.goal_frame != null
+  const angle2 = goal && clip.goal2_frame != null
+  const lowRes = clip.width && clip.width < 1280
+  const style = clip.mark_style || "dark"
+  const steps = [
+    stats.ball + stats.none > 0
+      ? `התיוגים שלכם (${stats.ball} כדור, ${stats.none} "אין כדור") מחליפים את הניחוש של ה-AI; פערים קצרים (עד 12 פריימים) בין תיוגים מושלמים, ובפריימים של "אין כדור" לא יופיע סימון.`
+      : "אין תיוגים — מסלול הכדור הוא של ה-AI בלבד (כדאי לתייג כדי לדייק).",
+    "פריימים \"כפולים\" מהמקור (שחקן שמופיע פעמיים בהילוך החוזר של השידור) נבנים מחדש בבינה מלאכותית (RIFE).",
+    lowRes ? `הקליפ ברזולוציה נמוכה (${clip.width}px) — מוגדל פי 2 בבינה מלאכותית (Real-ESRGAN), ואז ניקוי רעש, ניגודיות, צבע וחידוד.` : "שיפור תמונה: ניקוי רעש, ניגודיות, צבע וחידוד.",
+    style === "none" ? "בלי סימון כדור." :
+      style === "dark" ? "סימון הכדור (התקן): במצלמה שכוילה — עיגול שחור-אפור צבוע על הרצפה סביב הכדור כשהוא מתגלגל, והמסלול על הרצפה (נעלמים מאחורי שחקנים); כשהכדור באוויר אין עיגול, רק קו מקווקו. במצלמה שלא כוילה — טבעת דקה שחורה-אפורה על הכדור עצמו. ההילוך החוזר נבנה מהמצלמה המלאה כשהקליפ מגיע ממשחק שצולם במצלמה מכוילת." :
+      style === "outline" ? "סימון הכדור: טבעת דקה סביב הכדור + קו מסלול." :
+      "סימון הכדור: מסגרת דקה ומילוי שקוף למחצה על הכדור עצמו, בגודל שמשתנה לפי המרחק, ונקודות מסלול כשהכדור זז.",
+    goal ? `קו הבעיטה: קו ישר מרגע הבעיטה לשער${angle2 ? ", בשתי הזוויות" : ""}.` : null,
+    goal ? `הילוך חוזר בסוף הקליפ: זום על הבעיטה והשער, איטי פי 2 עם פריימי ביניים חלקים (RIFE)${angle2 ? ", נבנה מזווית 2 (הריפליי / זום)" : ""}${lowRes ? " והגדלה פי 4 בבינה מלאכותית" : ""}.`
+         : clip.no_replay ? "בלי הילוך חוזר (הקליפ מסומן \"לא גול\")." : "הילוך חוזר ייווצר רק אחרי שתסמנו את רגע הגול.",
+    clip.watermark !== false ? "לוגו הליגה בפינה הימנית העליונה." : "בלי לוגו (סימן המים כבוי).",
+    "נוצרות שתי גרסאות: 16:9 לאתר, ו-9:16 לרשתות שעוקבת אחרי המשחק (לא חיתוך קבוע של האמצע). הן נשמרות כגרסה חדשה — הפיד לא משתנה עד שתלחצו \"החלף בפיד\".",
+  ].filter(Boolean)
+  return (
+    <details className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm">
+      <summary className="cursor-pointer font-semibold text-slate-700 dark:text-slate-200">מה יקרה בעיבוד? (כ-2–5 דקות על המחשב של הליגה)</summary>
+      <ol className="list-decimal ps-5 mt-2 space-y-1 text-slate-600 dark:text-slate-300">
+        {steps.map((t, i) => <li key={i}>{t}</li>)}
+      </ol>
+    </details>
   )
 }

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { listenPrivateTopic } from './realtimeTopics'
 import { sessionUser } from './sessionUser'
 
 /**
@@ -106,16 +107,11 @@ export async function getMessageableMembers() {
   return (data || []).filter(m => m.id !== me)
 }
 
-// Incoming messages (for me) in real time. Returns an unsubscribe fn.
-export function subscribeToMessages(userId, cb) {
+// Incoming messages (for me) in real time, cb(row) with the direct_messages row, over the
+// private `user:<uid>` Broadcast topic (supabase/realtime-private-user.sql). onRejoin() fires
+// after a dropped socket comes back — messages sent meanwhile are lost, so refetch there.
+// Returns an unsubscribe fn.
+export function subscribeToMessages(userId, cb, onRejoin) {
   if (!userId) return () => {}
-  const channel = supabase
-    .channel(`dm:${userId}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `recipient_id=eq.${userId}` },
-      (payload) => cb(payload.new),
-    )
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  return listenPrivateTopic(`user:${userId}`, 'dm', (p) => { if (p.row) cb(p.row) }, onRejoin)
 }
