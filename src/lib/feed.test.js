@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFeed, lastMatchday } from './feed'
+import { buildFeed, lastMatchday, parseRanking, RANKING_DEFAULTS } from './feed'
 
 const H = 60 * 60 * 1000
 const NOW = Date.parse('2026-10-21T12:00:00Z')            // Wednesday
@@ -78,5 +78,37 @@ describe('matchday block order', () => {
   it('the game result leads the clips posted the day after', () => {
     const feed = buildFeed({ games: [game('g1', SAT)], teams, now: NOW, humanPosts: [post('clip', '2026-10-18T09:00:00Z', { game_id: 'g1' })] })
     expect(ids(feed)[0]).toBe('game-g1')
+  })
+})
+
+describe('feed_ranking from the backend', () => {
+  it('falls back to defaults on missing, junk or partial JSON', () => {
+    const d = parseRanking(null)
+    expect(d.worldPenalty).toBe(RANKING_DEFAULTS.world_penalty_hours * H)
+    expect(parseRanking('{not json').leagueBoost).toBe(12 * H)
+    const p = parseRanking('{"world_penalty_hours": 6, "league_boost_hours": "x"}')
+    expect(p.worldPenalty).toBe(6 * H)
+    expect(p.leagueBoost).toBe(12 * H)
+    expect(p.birthdayPhoto).toBe(false)
+  })
+
+  it('show_world_news=false drops outside news', () => {
+    const feed = buildFeed({ games: [], teams, now: NOW, ranking: '{"show_world_news": false}', humanPosts: [
+      post('ours', '2026-10-20T12:00:00Z'), post('clip', '2026-10-21T11:00:00Z', { source_name: 'S' }),
+    ] })
+    expect(ids(feed)).toEqual(['post-ours'])
+  })
+
+  it('a zero world penalty and league boost is plain recency', () => {
+    const feed = buildFeed({ games: [], teams, now: NOW, ranking: { world_penalty_hours: 0, league_boost_hours: 0 }, humanPosts: [
+      post('ours', '2026-10-20T12:00:00Z'), post('clip', '2026-10-21T11:00:00Z', { source_name: 'S' }),
+    ] })
+    expect(ids(feed)).toEqual(['post-clip', 'post-ours'])
+  })
+
+  it('birthday_photo is carried to the birthday card', () => {
+    const bday = post('b', '2026-10-21T04:00:00Z', { source_name: 'יום הולדת', external_guid: 'birthday:12345678-1234-1234-1234-123456789012:2026' })
+    expect(buildFeed({ games: [], teams, now: NOW, humanPosts: [bday] })[0].data.showPhoto).toBe(false)
+    expect(buildFeed({ games: [], teams, now: NOW, ranking: '{"birthday_photo": true}', humanPosts: [bday] })[0].data.showPhoto).toBe(true)
   })
 })
