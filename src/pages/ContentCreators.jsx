@@ -10,7 +10,7 @@ import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
 import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
-import FeedDrafts from "@/components/creators/FeedDrafts"
+import Studio from "@/components/creators/Studio"
 import GameStoriesReview from "@/components/creators/GameStoriesReview"
 import { countStoryDrafts } from "@/lib/gameStories"
 import VideoIngest from "@/components/creators/VideoIngest"
@@ -20,7 +20,7 @@ import VideoIngest from "@/components/creators/VideoIngest"
 const MOVED_TO_DEVS = new Set(["lab", "scene3d", "media", "clusters"])
 
 const tabs = [
-  { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
+  { id: "drafts", label: "סטודיו", icon: Clapperboard },
   { id: "stories", label: "סיפורי משחקים", icon: BookOpen },
   { id: "ingest", label: "העלאת וידאו", icon: Upload },
   { id: "reports", label: "דיווחים", icon: Flag },
@@ -69,7 +69,7 @@ function CreatorsWorkspace() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, העלאת וידאו, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">סטודיו ליצירת תוכן, סיפורי משחקים, העלאת וידאו, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -100,7 +100,7 @@ function CreatorsWorkspace() {
         </aside>
 
         <div className="min-w-0">
-          {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
+          {activeTab === "drafts" && <Studio onCountChange={setDraftCount} />}
           {activeTab === "stories" && <GameStoriesReview onCountChange={setStoryCount} />}
           {activeTab === "ingest" && <VideoIngest />}
           {activeTab === "reports" && <ReportsReview />}
