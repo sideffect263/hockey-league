@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import {
   Images, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, BookOpen
+  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, BookOpen, Upload
 } from "lucide-react"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import ReportsReview from "@/components/admin/ReportsReview"
@@ -13,6 +13,7 @@ import { CreatorsSkeleton, SkeletonPanelRows } from "@/components/skeletons/Page
 import FeedDrafts from "@/components/creators/FeedDrafts"
 import GameStoriesReview from "@/components/creators/GameStoriesReview"
 import { countStoryDrafts } from "@/lib/gameStories"
+import VideoIngest from "@/components/creators/VideoIngest"
 
 // The lab, 3D replay, media (face naming) and photo clusters moved to /devs (2026-10-15).
 // Old links (/creators?tab=lab&clip=…) keep working: they redirect with the query intact.
@@ -21,6 +22,7 @@ const MOVED_TO_DEVS = new Set(["lab", "scene3d", "media", "clusters"])
 const tabs = [
   { id: "drafts", label: "טיוטות לפיד", icon: Clapperboard },
   { id: "stories", label: "סיפורי משחקים", icon: BookOpen },
+  { id: "ingest", label: "העלאת וידאו", icon: Upload },
   { id: "reports", label: "דיווחים", icon: Flag },
   { id: "albums", label: "אלבומים חדשים", icon: FolderPlus },
 ]
@@ -67,7 +69,7 @@ function CreatorsWorkspace() {
         <h1 className="page-title flex items-center gap-2.5">
           <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">טיוטות לפיד, סיפורי משחקים, העלאת וידאו, דיווחים ואלבומים חדשים</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -100,6 +102,7 @@ function CreatorsWorkspace() {
         <div className="min-w-0">
           {activeTab === "drafts" && <FeedDrafts onCountChange={setDraftCount} />}
           {activeTab === "stories" && <GameStoriesReview onCountChange={setStoryCount} />}
+          {activeTab === "ingest" && <VideoIngest />}
           {activeTab === "reports" && <ReportsReview />}
           {activeTab === "albums" && <AlbumSubmissions />}
         </div>
