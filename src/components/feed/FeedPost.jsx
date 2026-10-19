@@ -479,12 +479,10 @@ function MilestonePost({ post, onPhotoRefreshed, ...rx }) {
 }
 
 /* ============ BIRTHDAY (post_birthdays, supabase/birthday-celebrations.sql) ============
-   Only "today" — never a date or an age. Falls back to the post's own text/photo when the
-   player isn't in playersMap (e.g. archived). */
-function BirthdayBody({ player, team, fallbackPhoto, body }) {
+   Only "today" — never a date or an age. Text only, no photo (Ariel, 2026-10-19). Falls back
+   to the post's own text when the player isn't in playersMap (e.g. archived). */
+function BirthdayBody({ player, team, body }) {
   const fullName = [player.first_name, player.last_name].filter(Boolean).join(" ")
-  const photo = player.photo_url || fallbackPhoto
-  const [imgError, setImgError] = useState(false)
   return (
     <>
       <div className={INSET}>
@@ -504,14 +502,6 @@ function BirthdayBody({ player, team, fallbackPhoto, body }) {
         )}
         <p className="text-sm text-slate-700 dark:text-slate-200 mt-1">כל הליגה מאחלת מזל טוב — כתבו ברכה בתגובות</p>
       </div>
-      {photo && !imgError && (
-        <PlayerLink playerId={player.id} className="block mt-3">
-          <div className="relative sm:rounded-xl overflow-hidden bg-slate-900 aspect-[4/5] sm:aspect-[4/3]">
-            <img src={photo} alt="" loading="lazy" onError={() => setImgError(true)}
-                 className="absolute inset-0 w-full h-full object-cover object-top" />
-          </div>
-        </PlayerLink>
-      )}
     </>
   )
 }
@@ -817,7 +807,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
           </div>
         </div>
       ) : bday ? (
-        <BirthdayBody player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} fallbackPhoto={p.image_url} body={postBody} />
+        <BirthdayBody player={bday} team={bday.team_id ? teamsMap?.[bday.team_id] : null} body={postBody} />
       ) : (
         <div className="px-4 sm:px-0">
           {/* News: the headline is the first line, the summary (ingest, 2026-10-08) the rest. */}
