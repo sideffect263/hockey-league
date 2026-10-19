@@ -6,13 +6,13 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import {
-  loadBoard, cachedBoard, invalidateBoard, getTrades, pickFeatured, groupByMatchday, holdsAny,
+  loadBoard, cachedBoard, invalidateBoard, pickFeaturedList, groupByMatchday, holdsAny,
   coins as fmtCoins, pct, START_BALANCE,
 } from '@/lib/market'
 import MarketGate from '@/components/market/MarketGate'
 import MarketCard, { OutcomeFace, StatusChip } from '@/components/market/MarketCard'
 import MatchCard, { GameRow } from '@/components/market/MatchCard'
-import FeaturedMarket from '@/components/market/FeaturedMarket'
+import { FeaturedCarousel } from '@/components/market/FeaturedMarket'
 import Leaderboard from '@/components/market/Leaderboard'
 import MarketAdmin from '@/components/market/MarketAdmin'
 import { useSeasonName } from '@/App'
@@ -45,7 +45,6 @@ export default function Market() {
   // from a market is instant; a fresh load then runs underneath.
   const cached = cachedBoard(user?.id)
   const [board, setBoard] = useState(cached)
-  const [featuredTrades, setFeaturedTrades] = useState(null)
   const [tab, setTab] = useState('board')
   const [filter, setFilter] = useState('all')
 
@@ -86,19 +85,9 @@ export default function Market() {
   }, [markets, positions])
 
   const featured = useMemo(
-    () => (markets ? pickFeatured(markets, activity, conflicts) : null),
+    () => (markets ? pickFeaturedList(markets, activity, conflicts, 3) : []),
     [markets, activity, conflicts],
   )
-
-  // The hero's chart is the only thing on the board that needs a market's tape,
-  // so it is fetched for that one market after the board has already rendered
-  // rather than holding the whole page on a query nothing else reads.
-  useEffect(() => {
-    let alive = true
-    if (!featured) { setFeaturedTrades(null); return }
-    getTrades(featured.id).then(t => { if (alive) setFeaturedTrades(t) }).catch(() => {})
-    return () => { alive = false }
-  }, [featured?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!board) return <MarketSkeleton />
   if (board.reason) return <MarketGate reason={board.reason} onUnlocked={() => { invalidateBoard(); load() }} />
@@ -151,7 +140,7 @@ export default function Market() {
       {tab === 'board' && (
         <Board
           filter={filter} setFilter={setFilter}
-          featured={featured} featuredTrades={featuredTrades}
+          featured={featured}
           games={games} futures={futures} settled={settled} mineCount={mineCount}
           live={live} positions={positions} conflicts={conflicts} activity={activity}
           seasonName={seasonName}
@@ -218,7 +207,7 @@ function WalletHero({ balance, netWorth, ready }) {
  * top jump straight to one kind.
  */
 function Board({
-  filter, setFilter, featured, featuredTrades, games, futures, settled, mineCount,
+  filter, setFilter, featured, games, futures, settled, mineCount,
   live, positions, conflicts, activity, seasonName,
 }) {
   const [showAllRounds, setShowAllRounds] = useState(false)
@@ -259,8 +248,8 @@ function Board({
       </div>
 
       <div className="space-y-10">
-        {filter === 'all' && featured && (
-          <FeaturedMarket market={featured} trades={featuredTrades} activity={activity.get(featured.id)} />
+        {filter === 'all' && featured.length > 0 && (
+          <FeaturedCarousel markets={featured} activity={activity} />
         )}
 
         {(filter === 'all' || filter === 'season') && (
@@ -272,7 +261,7 @@ function Board({
             ) : (
               <Grid>
                 {(filter === 'all'
-                  ? futures.filter(m => m.id !== featured?.id).slice(0, SEASON_PREVIEW)
+                  ? futures.filter(m => !featured.some(f => f.id === m.id)).slice(0, SEASON_PREVIEW)
                   : futures
                 ).map(card)}
               </Grid>

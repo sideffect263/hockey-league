@@ -442,7 +442,7 @@ export async function getActivity() {
 const DAY = 86400000
 
 /**
- * The one market the board opens with.
+ * The markets the board opens with, best first.
  *
  * A featured slot is only worth the space it takes if it lands on the market a
  * trader would have gone looking for anyway, so it scores the two things that
@@ -450,11 +450,12 @@ const DAY = 86400000
  * window to trade it is closing — and never picks one the viewer is barred
  * from, which would be a hero card they can only look at.
  *
- * Returns null when nothing is open; the board then renders as it always did.
+ * Returns up to `n` markets; an empty list when nothing is open, and the board
+ * then renders as it always did.
  */
-export function pickFeatured(markets, activity = new Map(), conflicts = new Map()) {
+export function pickFeaturedList(markets, activity = new Map(), conflicts = new Map(), n = 3) {
   const now = Date.now()
-  let best = null, bestScore = -Infinity
+  const scored = []
   for (const m of markets || []) {
     if (m.status !== 'open') continue
     if (conflicts.get(m.id)) continue
@@ -479,9 +480,16 @@ export function pickFeatured(markets, activity = new Map(), conflicts = new Map(
     // A tie between two untouched markets should at least be stable rather than
     // re-ordering on every load.
     score += m.kind === 'game' ? 2 : 0
-    if (score > bestScore) { best = m; bestScore = score }
+    scored.push({ m, score })
   }
-  return best
+  // Stable sort: equal scores keep board order, as the single pick used to.
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, n).map(x => x.m)
+}
+
+/** The single best featured market, or null. */
+export function pickFeatured(markets, activity, conflicts) {
+  return pickFeaturedList(markets, activity, conflicts, 1)[0] || null
 }
 
 // ── Board loading + cache ───────────────────────────────────────────────────
