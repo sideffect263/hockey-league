@@ -66,6 +66,11 @@ export function birthdayPlayerId(p) {
   return m ? m[1] : null
 }
 
+/** A sourced post WE made (birthday, weekly preview) rather than ingested outside news. */
+export function isLeagueSourced(p) {
+  return !!birthdayPlayerId(p) || (p?.external_guid || '').startsWith('weekly-preview:')
+}
+
 /**
  * Tags describing what a feed item is ABOUT. Sent with every impression so the server
  * can learn affinity without knowing how the feed is built — synthetic items (game
@@ -114,23 +119,33 @@ export function feedItemTags(post) {
  * Personalised ranking. Everything is still expressed as TIME, on top of the item's
  * own timestamp, so recency keeps dominating and one number explains every position:
  *
- *   score = date + follow + affinity + popularity − world − seen
+ *   score = date + matchday + league + follow + affinity + popularity − world − seen
  *
+ * - MATCHDAY_BOOST_MS: our content from the last game day (its results, hat-tricks,
+ *   posts tied to its games, and what we posted in the two days around it) sits above
+ *   everything else until the next game day — or until it is MATCHDAY_FRESH_MS old,
+ *   so an off-season feed is not stuck on the final. Ariel, 2026-10-19.
+ * - LEAGUE_BOOST_MS: below that block, our own content still floats a bit above outside
+ *   news of a similar age, but a fresh outside clip can beat an old post of ours.
+ * - WORLD_PENALTY_MS: outside news sinks by three days on top of that. Applies to guests too.
  * - AFFINITY_MS: a tag profile of ±1 is worth ±24h. Built server-side from what this
  *   viewer lingered on, opened, liked and commented on (feed_personalization()).
  * - POPULAR_MS_PER_LOG: league-wide engagement, log-scaled and capped, so one card
  *   people reacted to rises a bit for everyone without pinning itself to the top.
- * - WORLD_PENALTY_MS: outside news yields to league content of a similar age — the
- *   wire feed must never bury what happened here. Applies to guests too.
  * - SEEN_PENALTY_MS: something you already looked at on an earlier visit sinks by two
  *   days, so every visit opens on what is new to YOU. "Seen" comes from the snapshot
  *   taken at load, so a card never jumps while you are reading.
  * Pinned posts are exempt from all of it.
  */
+export const MATCHDAY_BOOST_MS = 365 * 24 * 60 * 60 * 1000
+export const MATCHDAY_FRESH_MS = 15 * 24 * 60 * 60 * 1000
+export const MATCHDAY_POST_WINDOW_MS = 48 * 60 * 60 * 1000
+export const MATCHDAY_RESULT_LEAD_MS = 3 * 24 * 60 * 60 * 1000
+export const LEAGUE_BOOST_MS = 12 * 60 * 60 * 1000
 export const AFFINITY_MS = 24 * 60 * 60 * 1000
 export const POPULAR_MS_PER_LOG = 6 * 60 * 60 * 1000
 export const POPULAR_CAP_MS = 18 * 60 * 60 * 1000
-export const WORLD_PENALTY_MS = 12 * 60 * 60 * 1000
+export const WORLD_PENALTY_MS = 72 * 60 * 60 * 1000
 export const SEEN_PENALTY_MS = 48 * 60 * 60 * 1000
 
 /** Mean affinity of the tags we have an opinion on, clamped to −1..1. */
@@ -152,18 +167,60 @@ export function affinityOf(tags, affinity) {
  */
 export function scoreItem(post, personalization) {
   const t = new Date(post.date).getTime()
-  const parts = { date: isNaN(t) ? 0 : t, follow: 0, affinity: 0, popular: 0, world: 0, seen: 0 }
+  const parts = { date: isNaN(t) ? 0 : t, matchday: 0, league: 0, follow: 0, affinity: 0, popular: 0, world: 0, seen: 0 }
   if (post.data?.post?.pinned) return { score: parts.date, parts }
+  // Within the block the scores lead, ahead of the clips posted the day after.
+  if (post.matchday) parts.matchday = MATCHDAY_BOOST_MS + (post.type === 'game_result' ? MATCHDAY_RESULT_LEAD_MS : 0)
   if (post.followed) parts.follow = FOLLOW_BOOST_MS
   if (post.type === 'external') parts.world = -WORLD_PENALTY_MS
+  else parts.league = LEAGUE_BOOST_MS
   if (personalization) {
     parts.affinity = Math.round(AFFINITY_MS * affinityOf(post.tags || feedItemTags(post), personalization.affinity))
     const pop = personalization.popular?.[post.id] || 0
     if (pop > 0) parts.popular = Math.min(POPULAR_CAP_MS, Math.round(POPULAR_MS_PER_LOG * Math.log2(1 + pop)))
     if (personalization.seen?.[post.id]) parts.seen = -SEEN_PENALTY_MS
   }
-  const score = parts.date + parts.follow + parts.affinity + parts.popular + parts.world + parts.seen
+  const score = parts.date + parts.matchday + parts.league + parts.follow + parts.affinity + parts.popular + parts.world + parts.seen
   return { score, parts }
+}
+
+const dayKey = t => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(t)
+
+/**
+ * The most recent day league games were played (Israel time), or null when it is
+ * more than MATCHDAY_FRESH_MS ago. { gameIds, from, to }: posts created between the
+ * day's first game −12h and its last game +48h count as that day's coverage.
+ */
+export function lastMatchday(completedGames, now = Date.now()) {
+  let last = null
+  for (const g of completedGames) {
+    const t = new Date(g.game_date).getTime()
+    if (!isNaN(t) && t <= now && (last == null || t > last)) last = t
+  }
+  if (last == null || now - last > MATCHDAY_FRESH_MS) return null
+  const key = dayKey(last)
+  const gameIds = new Set()
+  let first = last
+  for (const g of completedGames) {
+    const t = new Date(g.game_date).getTime()
+    if (isNaN(t) || dayKey(t) !== key) continue
+    gameIds.add(g.id)
+    if (t < first) first = t
+  }
+  return { gameIds, from: first - 12 * 60 * 60 * 1000, to: last + MATCHDAY_POST_WINDOW_MS }
+}
+
+/** Is this feed item OUR coverage of that game day? Outside news never is. */
+export function isMatchdayItem(p, md) {
+  if (p.type === 'external') return false
+  const game = p.data?.game
+  if (game && md.gameIds.has(game.id)) return true
+  if (p.type === 'post') {
+    if (p.data?.post?.game_id && md.gameIds.has(p.data.post.game_id)) return true
+    const t = new Date(p.date).getTime()
+    return t >= md.from && t <= md.to
+  }
+  return false
 }
 
 /**
@@ -195,6 +252,7 @@ export function buildFeed({
   followedPlayers = new Set(),
   personalization = null,
   marketItems = [],
+  now = Date.now(),
 } = {}) {
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const playersMap = Object.fromEntries(players.map(p => [p.id, p]))
@@ -312,9 +370,9 @@ export function buildFeed({
     // An ingested item carries source_name; it gets its own type so the "פוסטים"
     // filter keeps meaning "what people here wrote" rather than silently mixing
     // in a wire feed. See supabase/functions/ingest-rink-hockey-news.
-    // Birthday posts are sourced too (so native shows them without a release), but they
-    // are league content, not world news.
-    const isExternal = !!p.source_name && !birthdayPlayerId(p)
+    // Birthday posts and the Friday preview are sourced too (so native shows them without
+    // a release), but they are league content, not world news.
+    const isExternal = !!p.source_name && !isLeagueSourced(p)
     posts.push({
       id: `post-${p.id}`,
       type: isExternal ? 'external' : 'post',
@@ -334,6 +392,10 @@ export function buildFeed({
     if (!m?.kind || !m?.key) continue
     posts.push({ id: `market-${m.key}`, type: 'market', date: m.date, rank: 55, data: m })
   }
+
+  // ---- The last game day's own content goes on top (see MATCHDAY_BOOST_MS) ----
+  const matchday = lastMatchday(completed, now)
+  for (const p of posts) p.matchday = !!matchday && isMatchdayItem(p, matchday)
 
   // ---- Rank: recency, plus time-denominated nudges (see scoreItem) ----
   // One stream, not tabs: a followed / liked-topic item floats above same-age

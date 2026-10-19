@@ -59,52 +59,20 @@ type Source = {
   includeTitle?: RegExp;
   // Overrides MAX_NEW_PER_SOURCE for a high-volume channel.
   maxPerRun?: number;
+  // At most this many posts from the source in any 24 h (cron runs 3x a day).
+  maxPerDay?: number;
   // Match-highlight clips: headline built by highlightHeadline(), not translated whole.
   highlights?: boolean;
 };
 
 const SOURCES: Source[] = [
-  {
-    key: "wse-tv",
-    kind: "youtube",
-    name: "WSE Rink Hockey TV",
-    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCjUBgw3RIYYbivfVcXP83Yg",
-  },
-  {
-    key: "okliga-tv",
-    kind: "youtube",
-    name: "OKLIGA.TV",
-    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UC6RLLzXQJWy1yCAEysy1Wgw",
-  },
-  // ---- Removed 2026-10-10 (≈ zero opens over 30 days, see ניתוח פיד): World Skate
-  // Europe news, Andi Colaianni, Patines y Chuecas, HoqueiPatins.pt, Federação de
-  // Patinagem de Portugal, swiss skate, Actus Rink. Their old posts were soft-deleted.
-  // 2026-10-11: Hockey Italia 21 removed too (Ariel's call), old posts soft-deleted.
-  // ---- Added 2026-09-28: the Italian and Argentine leagues, in pre-season then.
-  {
-    // Italian national sports outlet, hockey-pista category — ~weekly.
-    key: "oasport",
-    kind: "rss",
-    name: "OA Sport",
-    url: "https://www.oasport.it/category/hockey-pista/feed/",
-  },
-  {
-    // Argentina's national rink-hockey committee (CNTHsP) — sporadic, no images.
-    key: "cnthsp",
-    kind: "rss",
-    name: "Comité Nacional Hockey sobre Patín (AR)",
-    url: "https://comitehockeypatin.ar/feed/",
-  },
-  {
-    // Highest-volume written source (Barça-heavy); quiet in summer, busy Oct–Jun.
-    // media:content carries the image.
-    key: "mundodeportivo",
-    kind: "rss",
-    name: "Mundo Deportivo",
-    url: "https://www.mundodeportivo.com/rss/hockey-patines",
-  },
-  // ---- Added 2026-10-08: highlights + tactics video. Ariel wants more game
-  // highlights and analysis; every feed below was checked (200 + embeddable).
+  // ---- 2026-10-19 (Ariel): the feed is OUR league first. Only Som D'hoquei stays,
+  // at one clip a day; the feed ranks it well below league content (src/lib/feed.js).
+  // Removed, their posts soft-deleted: WSE Rink Hockey TV, OKLIGA.TV, OA Sport,
+  // Comité Nacional (AR), Mundo Deportivo, Skate Italia, Azul Directa. Earlier culls:
+  // 2026-10-10 (World Skate Europe news, Andi Colaianni, Patines y Chuecas,
+  // HoqueiPatins.pt, FPP, swiss skate, Actus Rink), 2026-10-11 (Hockey Italia 21).
+  // Their entries are in git history if one ever comes back.
   {
     // Highlights re-uploads: World Championship, OK Liga, Portugal, Italy, Champions
     // League, Argentina. Posts ~5 a day, so it is capped. Fan channel re-uploading
@@ -115,24 +83,8 @@ const SOURCES: Source[] = [
     url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCpzv8BikWPwHoQugAWE8Ikg",
     includeTitle: /highlights/i,
     highlights: true,
-    maxPerRun: 2,
-  },
-  {
-    // Italian federation. Serie A1 highlights (~7 per matchday) mixed with
-    // interviews and full games — the title filter keeps the highlights only.
-    key: "skate-italia",
-    kind: "youtube",
-    name: "Skate Italia Hockey Pista",
-    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCFcx30ZnLm7eDDLCrFxX3JA",
-    includeTitle: /^\s*highlights/i,
-    highlights: true,
-  },
-  {
-    // Tactics and referee analysis (Spanish), 4–7 min. Follows the season.
-    key: "azul-directa",
-    kind: "youtube",
-    name: "Azul Directa",
-    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCjQeZ1gzxoHwqtpaSxohPbw",
+    maxPerRun: 1,
+    maxPerDay: 1,
   },
 ];
 
@@ -579,9 +531,12 @@ Deno.serve(async (req) => {
 
     for (const src of ordered) {
       if (only && !only.includes(src.key)) continue;
-      const left = src.kind === "rss"
-        ? Math.min(budget.rss, MAX_ARTICLES_PER_SOURCE_PER_DAY - (today.get(src.name) ?? 0))
-        : budget.youtube;
+      const left = Math.min(
+        src.kind === "rss"
+          ? Math.min(budget.rss, MAX_ARTICLES_PER_SOURCE_PER_DAY - (today.get(src.name) ?? 0))
+          : budget.youtube,
+        (src.maxPerDay ?? Infinity) - (today.get(src.name) ?? 0),
+      );
       if (left <= 0) { report.push({ source: src.key, skipped: budget[src.kind] <= 0 ? "budget spent" : "daily source cap" }); continue; }
       try {
         const r = await ingestSource(src, authorId, left, dryRun, maxAgeDays);
