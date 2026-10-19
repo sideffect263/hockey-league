@@ -698,6 +698,7 @@ function FeedSwap({ clip, onClip, onWatch }) {
 
 // How the ball is marked in the rendered video (per clip). Applied on the next "עבד מחדש".
 const MARK_STYLES = [
+  { id: "dark", label: "שחור-אפור", hint: "טבעת דקה שחורה-אפורה סביב הכדור + מסלול צבוע על הרצפה (ברירת המחדל)" },
   { id: "paint", label: "כדור צבוע", hint: "הכדור עצמו נצבע + נקודות מסלול כשהוא זז" },
   { id: "outline", label: "טבעת דקה", hint: "טבעת דקה סביב הכדור + קו מסלול" },
   { id: "none", label: "בלי סימון", hint: "רק שיפור תמונה והילוך חוזר" },
@@ -707,7 +708,7 @@ const MARK_COLORS = [
   { hex: "#00e5ff", name: "תכלת" }, { hex: "#ff8a00", name: "כתום" },
 ]
 function MarkStyle({ clip, onChange }) {
-  const style = clip.mark_style || "paint", color = (clip.mark_color || "#d4ff00").toLowerCase()
+  const style = clip.mark_style || "dark", color = (clip.mark_color || "#d4ff00").toLowerCase()
   return (
     <div className="card p-3 flex flex-wrap items-center gap-2">
       <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">סימון הכדור:</span>
@@ -758,6 +759,7 @@ function Versions({ clip }) {
   const sync = (e) => { if (!vb) return; const o = e.target === ra.current ? rb.current : ra.current; if (o && Math.abs(o.currentTime - e.target.currentTime) > 0.15) o.currentTime = e.target.currentTime }
   return (
     <div className="space-y-3">
+      {clip.vertical_path && <Vertical clip={clip} />}
       <div className={`grid gap-2 ${vb ? "lg:grid-cols-2" : ""}`}>
         {va && <div><div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{va.label} <span className="font-normal text-slate-400">{when(va)}</span></div>
           <video key={va.id} ref={ra} src={labUrl(va.path)} controls playsInline className="w-full rounded-xl bg-black" onSeeked={sync} onPlay={() => vb && both(v => v.play())} onPause={() => vb && both(v => v.pause())} /></div>}
@@ -779,12 +781,27 @@ function Versions({ clip }) {
   )
 }
 
+// The 9:16 render that follows the play (for Instagram / TikTok / WhatsApp status). Download = the file itself.
+function Vertical({ clip }) {
+  const [open, setOpen] = useState(false)
+  const url = labUrl(clip.vertical_path)
+  return (
+    <div className="card p-3 flex flex-wrap items-center gap-2">
+      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">גרסה אנכית 9:16</span>
+      <span className="text-xs text-slate-500">לרשתות — עוקבת אחרי המשחק</span>
+      <button onClick={() => setOpen(o => !o)} className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 ms-auto">{open ? "הסתר" : "צפייה"}</button>
+      <a href={`${url}?download=${encodeURIComponent((clip.title || "clip").slice(0, 60))}-9x16.mp4`} className="text-xs px-2 py-1 rounded bg-brand text-white">הורדה</a>
+      {open && <video src={url} controls playsInline className="w-full max-w-[280px] mx-auto rounded-xl bg-black" style={{ aspectRatio: "9 / 16" }} />}
+    </div>
+  )
+}
+
 // "What will 'עבד מחדש' do to THIS clip?" — the Mac worker's steps, written for the clip's current settings.
 function ProcessPlan({ clip, stats }) {
   const goal = !clip.no_replay && clip.goal_frame != null
   const angle2 = goal && clip.goal2_frame != null
   const lowRes = clip.width && clip.width < 1280
-  const style = clip.mark_style || "paint"
+  const style = clip.mark_style || "dark"
   const steps = [
     stats.ball + stats.none > 0
       ? `התיוגים שלכם (${stats.ball} כדור, ${stats.none} "אין כדור") מחליפים את הניחוש של ה-AI; פערים קצרים (עד 12 פריימים) בין תיוגים מושלמים, ובפריימים של "אין כדור" לא יופיע סימון.`
@@ -792,13 +809,14 @@ function ProcessPlan({ clip, stats }) {
     "פריימים \"כפולים\" מהמקור (שחקן שמופיע פעמיים בהילוך החוזר של השידור) נבנים מחדש בבינה מלאכותית (RIFE).",
     lowRes ? `הקליפ ברזולוציה נמוכה (${clip.width}px) — מוגדל פי 2 בבינה מלאכותית (Real-ESRGAN), ואז ניקוי רעש, ניגודיות, צבע וחידוד.` : "שיפור תמונה: ניקוי רעש, ניגודיות, צבע וחידוד.",
     style === "none" ? "בלי סימון כדור." :
+      style === "dark" ? "סימון הכדור: טבעת דקה שחורה-אפורה סביב הכדור; המסלול נצבע על הרצפה (נעלם מאחורי שחקנים) כשהכדור מתגלגל, וקו מקווקו כשהוא באוויר — במצלמות שכוילו." :
       style === "outline" ? "סימון הכדור: טבעת דקה סביב הכדור + קו מסלול." :
       "סימון הכדור: מסגרת דקה ומילוי שקוף למחצה על הכדור עצמו, בגודל שמשתנה לפי המרחק, ונקודות מסלול כשהכדור זז.",
     goal ? `קו הבעיטה: קו ישר מרגע הבעיטה לשער${angle2 ? ", בשתי הזוויות" : ""}.` : null,
     goal ? `הילוך חוזר בסוף הקליפ: זום על הבעיטה והשער, איטי פי 2 עם פריימי ביניים חלקים (RIFE)${angle2 ? ", נבנה מזווית 2 (הריפליי / זום)" : ""}${lowRes ? " והגדלה פי 4 בבינה מלאכותית" : ""}.`
          : clip.no_replay ? "בלי הילוך חוזר (הקליפ מסומן \"לא גול\")." : "הילוך חוזר ייווצר רק אחרי שתסמנו את רגע הגול.",
     clip.watermark !== false ? "לוגו הליגה בפינה הימנית העליונה." : "בלי לוגו (סימן המים כבוי).",
-    "נוצרות שתי גרסאות (16:9 לפיד, 9:16 לרילס) ונשמרות כגרסה חדשה ברשימת הגרסאות — הפיד לא משתנה עד שתלחצו \"החלף בפיד\".",
+    "נוצרות שתי גרסאות: 16:9 לאתר, ו-9:16 לרשתות שעוקבת אחרי המשחק (לא חיתוך קבוע של האמצע). הן נשמרות כגרסה חדשה — הפיד לא משתנה עד שתלחצו \"החלף בפיד\".",
   ].filter(Boolean)
   return (
     <details className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm">
