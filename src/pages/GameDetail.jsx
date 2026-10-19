@@ -31,6 +31,7 @@ import GameMarketCard from "@/components/games/GameMarketCard"
 import { usePinSeason } from "@/components/SeasonPicker"
 import GameStory from "@/components/games/GameStory"
 import GameMediaUpload from "@/components/games/GameMediaUpload"
+import { MATCH_STATS_GAMES } from "@/lib/matchStats"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
@@ -452,6 +453,18 @@ export default function GameDetail() {
 
       {/* ===== OFFICIAL SELF-SUBMIT (judge/medic apply for an upcoming game) ===== */}
       <OfficialSelfSubmit game={game} />
+
+      {/* ===== MATCH CENTRE: FIFA-style stats from the video (preview, only games we analysed) ===== */}
+      {MATCH_STATS_GAMES.has(game.id) && (
+        <Link to={`${entityPath('games', game)}/stats`} className="card p-4 flex items-center gap-3 hover:border-brand transition-colors">
+          <span className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0"><TrendingUp className="w-5 h-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-sm">מרכז המשחק · סטטיסטיקות מהווידאו</span>
+            <span className="block text-xs text-fg-muted">אחזקה, בעיטות, מסירות, מפת חום ושחקנים — חושב אוטומטית מהצילום (תצוגה מקדימה)</span>
+          </span>
+          <ArrowLeft className="w-4 h-4 text-fg-muted shrink-0" />
+        </Link>
+      )}
 
       {/* ===== VIDEO / VOD (the live stream is shown up top while in-progress) ===== */}
       {!showLive && <GameVideo game={game} home={home} away={away} players={players} />}
