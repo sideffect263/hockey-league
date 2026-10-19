@@ -64,7 +64,7 @@ function StatPills({ stat }) {
 export default function GameDetail() {
   const { id: routeKey } = useParams()
   const { id, notFound: unknownRoute } = useSlugId('games', routeKey)
-  const { user, isAdmin, isJudgeRole, isLeagueManager, profile, coachTeamIds, openAuth } = useAuth()
+  const { user, isAdmin, isDeveloper, isJudgeRole, isLeagueManager, profile, coachTeamIds, openAuth } = useAuth()
   const { hash } = useLocation()
   const [game, setGame] = useState(null)
   const [stats, setStats] = useState([])
@@ -454,8 +454,8 @@ export default function GameDetail() {
       {/* ===== OFFICIAL SELF-SUBMIT (judge/medic apply for an upcoming game) ===== */}
       <OfficialSelfSubmit game={game} />
 
-      {/* ===== MATCH CENTRE: FIFA-style stats from the video (preview, only games we analysed) ===== */}
-      {MATCH_STATS_GAMES.has(game.id) && (
+      {/* ===== MATCH CENTRE: FIFA-style stats from the video — preview, devs + admins only for now ===== */}
+      {(isAdmin || isDeveloper) && MATCH_STATS_GAMES.has(game.id) && (
         <Link to={`${entityPath('games', game)}/stats`} className="card p-4 flex items-center gap-3 hover:border-brand transition-colors">
           <span className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0"><TrendingUp className="w-5 h-5" /></span>
           <span className="min-w-0 flex-1">

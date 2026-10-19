@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, BarChart3, Crosshair, Flame, PlayCircle, Users, Activity, Info, FlaskConical } from "lucide-react"
+import { ArrowRight, BarChart3, Crosshair, Flame, PlayCircle, Users, Activity, Info, FlaskConical, Check, X, HelpCircle, RotateCcw, SkipForward, Plus, Loader2, HandHeart } from "lucide-react"
 import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
 import { getTeams } from "@/lib/api"
 import TeamLogo from "@/components/TeamLogo"
+import { useAuth } from "@/lib/AuthContext"
+import { loadYouTubeApi } from "@/lib/youtubeApi"
+import { getMyVotes, getVoteCounts, saveVote, addMissed } from "@/lib/matchStats"
 
 /**
  * "מרכז המשחק" — FIFA-style end-of-match stats computed from the game video by the
@@ -56,13 +59,14 @@ export default function MatchStats() {
   const { id: param } = useParams()
   const { id: gameId, loading: idLoading } = useSlugId("games", param)
   const { data, loading } = useMatchData(gameId)
-  const [videoT, setVideoT] = useState(null)
   const videoRef = useRef(null)
+  const boxRef = useRef(null)
+  const { player, ready, playClip } = useClipPlayer(data?.youtube_id, boxRef)
 
   useSeo({ title: "מרכז המשחק · סטטיסטיקות מהווידאו", noindex: true })
 
-  const seek = (t) => {
-    setVideoT(Math.max(0, Math.round(t - 4)))
+  const seek = (t, type) => {
+    playClip(t, type)
     videoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
@@ -94,11 +98,14 @@ export default function MatchStats() {
       <PreviewNote coverage={coverage} engine={data.engine} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <TeamCompare ts={ts} teams={teams} home={home} away={away} accuracy={accuracy} coverage={coverage} />
-        <div className="space-y-4">
+        <div className="space-y-4 lg:order-2">
           <div ref={videoRef}>
-            <VideoCard youtubeId={data.youtube_id} t={videoT} />
+            <VideoCard boxRef={boxRef} ready={ready} />
           </div>
+          <CrowdReview data={data} gameId={gameId} player={player} ready={ready} playClip={playClip} />
+        </div>
+        <div className="space-y-4 lg:order-1">
+          <TeamCompare ts={ts} teams={teams} home={home} away={away} accuracy={accuracy} coverage={coverage} />
           <Momentum possession={data.possession} teams={teams} home={home} away={away} />
         </div>
       </div>
@@ -246,12 +253,12 @@ function TeamCompare({ ts, teams, home, away, accuracy, coverage }) {
 const Pct = ({ n }) => <span dir="ltr" className="inline-block">{Math.round(n)}%</span>
 const fmtNum = (n) => (n == null ? "–" : Number.isInteger(n) ? n : n.toFixed(1))
 
-function VideoCard({ youtubeId, t }) {
-  const src = `https://www.youtube-nocookie.com/embed/${youtubeId}?rel=0${t != null ? `&start=${t}&autoplay=1` : ""}`
+function VideoCard({ boxRef, ready }) {
   return (
-    <Card title="הווידאו" icon={PlayCircle} subtitle="לחיצה על בעיטה או אירוע קופצת לרגע הזה בווידאו">
-      <div className="aspect-video rounded-xl overflow-hidden bg-black">
-        <iframe key={src} src={src} title="וידאו המשחק" className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+    <Card title="הווידאו" icon={PlayCircle} subtitle="לחיצה על בעיטה או אירוע מנגנת את הרגע הזה">
+      <div className="aspect-video rounded-xl overflow-hidden bg-black relative [&_iframe]:w-full [&_iframe]:h-full">
+        <div ref={boxRef} className="absolute inset-0" />
+        {!ready && <Loader2 className="w-6 h-6 text-white/60 animate-spin absolute inset-0 m-auto" />}
       </div>
     </Card>
   )
@@ -334,7 +341,7 @@ function ShotMap({ data, home, away, onSeek }) {
       <Rink rink={rink}>
         {shots.map((s, i) => {
           const c = teams[s.team].color, o = OUTCOME[s.outcome] || OUTCOME.wide, y = -s.y
-          const common = { onClick: () => s.t != null && onSeek(s.t), style: { cursor: "pointer" } }
+          const common = { onClick: () => s.t != null && onSeek(s.t, "shot"), style: { cursor: "pointer" } }
           const tip = <title>{`${teams[s.team].name} · ${o.label} · מחצית ${s.half} ${s.clock} · ${s.dist_m} מ׳ מהשער`}</title>
           if (s.outcome === "goal") {
             return <g key={i} {...common}><circle cx={s.x} cy={y} r={o.r} fill={c} stroke="#facc15" strokeWidth={0.22} />{tip}</g>
@@ -479,7 +486,7 @@ function Timeline({ data, onSeek }) {
       </div>
       <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto">
         {list.map((e, i) => (
-          <button key={i} type="button" onClick={() => onSeek(e.t)}
+          <button key={i} type="button" onClick={() => onSeek(e.t, e.type)}
             className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-line text-[11px] hover:border-brand">
             <span className="w-2 h-2 rounded-full" style={{ background: teams[e.team]?.color }} />
             <span className="tabular-nums">מח׳ {e.half} · {e.clock}</span>
@@ -518,6 +525,268 @@ function Accuracy({ accuracy, coverage }) {
           <li>שערים — מהלוח הרשמי. גולים שהמנוע עצמו זיהה עדיין חלקיים כי המצלמה לא תמיד רואה את השער.</li>
         </ul>
       </div>
+    </Card>
+  )
+}
+
+// --- video player + crowd review --------------------------------------------
+
+// Seconds before/after the engine's moment to play, per type (same windows as the lab review).
+const CLIP = { pass: [2.5, 2], pass_lost: [2.5, 2.5], steal: [2.5, 2], interception: [3, 2], shot: [3, 3] }
+
+/** A YouTube player the page controls: playClip(t, type) plays a few seconds around t, then pauses. */
+function useClipPlayer(videoId, boxRef) {
+  const player = useRef(null)
+  const stopAt = useRef(null)
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    if (!videoId) return
+    let dead = false
+    loadYouTubeApi().then((YT) => {
+      if (dead || !boxRef.current) return
+      const el = document.createElement("div"); boxRef.current.appendChild(el)
+      player.current = new YT.Player(el, {
+        videoId, width: "100%", height: "100%",
+        playerVars: { rel: 0, modestbranding: 1, playsinline: 1, controls: 1 },
+        events: { onReady: () => !dead && setReady(true) },
+      })
+    })
+    const iv = setInterval(() => {
+      const p = player.current
+      if (stopAt.current != null && p?.getCurrentTime && p.getCurrentTime() >= stopAt.current) { p.pauseVideo(); stopAt.current = null }
+    }, 150)
+    return () => { dead = true; clearInterval(iv); try { player.current?.destroy() } catch { /* already gone */ } }
+  }, [videoId, boxRef])
+  const playClip = useCallback((t, type) => {
+    const p = player.current
+    if (!p?.seekTo) return
+    const [pre, post] = CLIP[type] || [3, 2.5]
+    p.seekTo(Math.max(0, t - pre), true); p.playVideo(); stopAt.current = t + post
+  }, [])
+  return { player, ready, playClip }
+}
+
+const REVIEW_TYPES = ["shot", "steal", "interception", "pass_lost", "pass"]       // queue priority
+const ACTUAL_TYPES = ["pass", "shot", "steal", "interception", "pass_lost", "goal", "nothing"]
+const ACTUAL_LABEL = { ...EVENT_LABEL, goal: "גול", nothing: "לא היה כלום" }
+
+// The claim as a sentence that names the team's role — a bare "team" on a turnover was read both ways in the lab.
+function claim(e, teams) {
+  const n = teams[e.team]?.name || ""
+  switch (e.type) {
+    case "shot": return `בעיטה של ${n}`
+    case "pass": return `מסירה של ${n}`
+    case "pass_lost": return `${n} איבדה את הכדור במסירה`
+    case "steal": return `${n} חטפה את הכדור`
+    case "interception": return `${n} יירטה מסירה`
+    default: return `${EVENT_LABEL[e.type] || e.type} · ${n}`
+  }
+}
+
+function CrowdReview({ data, gameId, player, ready, playClip }) {
+  const { user, openAuth } = useAuth()
+  const { teams, engine } = data
+  const [mine, setMine] = useState(null)            // Map event_id -> my vote row
+  const [counts, setCounts] = useState(new Map())
+  const [cur, setCur] = useState(null)              // event being reviewed
+  const [wrongMode, setWrongMode] = useState(false)
+  const [missed, setMissed] = useState(null)        // { t } while adding a missed event
+  const [pick, setPick] = useState({ type: null, team: null })
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const [done, setDone] = useState(0)
+
+  useEffect(() => {
+    if (!user || !gameId) return
+    getMyVotes(gameId, engine).then((rows) => setMine(new Map(rows.filter((r) => r.event_id != null).map((r) => [r.event_id, r]))))
+      .catch(() => setMine(new Map()))
+    getVoteCounts(gameId, engine).then(setCounts).catch(() => {})
+  }, [user, gameId, engine])
+
+  // Least-checked events first, shots and turnovers before passes, never one I already answered.
+  const queue = useMemo(() => {
+    if (!mine) return []
+    const n = (e) => { const c = counts.get(e.id); return c ? c.n_correct + c.n_wrong + c.n_unsure : 0 }
+    return data.events
+      .filter((e) => REVIEW_TYPES.includes(e.type) && !mine.has(e.id))
+      .sort((a, b) => n(a) - n(b) || REVIEW_TYPES.indexOf(a.type) - REVIEW_TYPES.indexOf(b.type) || a.t - b.t)
+  }, [data.events, mine, counts])
+
+  const next = useCallback((skipId) => {
+    const e = queue.find((q) => q.id !== skipId && q.id !== cur?.id) || null
+    setCur(e); setWrongMode(false); setPick({ type: null, team: null }); setErr(null)
+    if (e) playClip(e.t, e.type)
+  }, [queue, cur, playClip])
+
+  const answer = async (verdict, actual = {}) => {
+    if (!cur || busy) return
+    setBusy(true); setErr(null)
+    try {
+      const row = await saveVote({ existingId: mine.get(cur.id)?.id, gameId, engine, event: cur, verdict,
+        actualType: actual.type ?? null, actualTeam: actual.team ?? null })
+      const id = cur.id
+      setMine((m) => new Map(m).set(id, row))
+      setCounts((c) => {
+        const o = c.get(id) || { event_id: id, n_correct: 0, n_wrong: 0, n_unsure: 0 }
+        return new Map(c).set(id, { ...o, [`n_${verdict}`]: o[`n_${verdict}`] + 1 })
+      })
+      setDone((d) => d + 1)
+      const nextE = queue.find((q) => q.id !== id) || null
+      setCur(nextE); setWrongMode(false); setPick({ type: null, team: null })
+      if (nextE) playClip(nextE.t, nextE.type)
+    } catch (e) {
+      setErr("השמירה נכשלה — נסו שוב")
+    } finally { setBusy(false) }
+  }
+
+  const startMissed = () => {
+    const p = player.current
+    p?.pauseVideo?.()
+    setMissed({ t: Math.round((p?.getCurrentTime?.() || 0) * 10) / 10 }); setPick({ type: null, team: null })
+  }
+  const saveMissed = async () => {
+    if (!missed || !pick.type || !pick.team || busy) return
+    setBusy(true); setErr(null)
+    try {
+      await addMissed({ gameId, engine, t: missed.t, type: pick.type, team: pick.team })
+      setMissed(null); setDone((d) => d + 1)
+    } catch { setErr("השמירה נכשלה — נסו שוב") } finally { setBusy(false) }
+  }
+
+  // Keyboard: V נכון · X לא נכון · U לא בטוח · R שוב · N דלג (Hebrew layout keys too)
+  useEffect(() => {
+    if (!cur) return
+    const onKey = (ev) => {
+      if (ev.target.closest?.("input, textarea, [contenteditable]") || ev.metaKey || ev.ctrlKey) return
+      const k = ev.key.toLowerCase()
+      if (wrongMode || missed) return
+      if (k === "v" || k === "ה") answer("correct")
+      else if (k === "x" || k === "ס") setWrongMode(true)
+      else if (k === "u" || k === "ו") answer("unsure")
+      else if (k === "r" || k === "ר") playClip(cur.t, cur.type)
+      else if (k === "n" || k === "מ") next(cur.id)
+      else return
+      ev.preventDefault()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
+
+  const total = data.events.filter((e) => REVIEW_TYPES.includes(e.type)).length
+  const myCount = mine ? mine.size : 0
+
+  const teamBtns = (val, set) => Object.keys(teams).map((k) => (
+    <button key={k} type="button" onClick={() => set(k)}
+      className={`px-3 py-2 rounded-xl text-sm font-bold border-2 transition-colors ${val === k ? "text-white" : "border-line"}`}
+      style={val === k ? { background: teams[k].color, borderColor: teams[k].color } : { color: teams[k].color }}>
+      {teams[k].name}
+    </button>
+  ))
+  const typeBtns = (types, val, set) => types.map((k) => (
+    <button key={k} type="button" onClick={() => set(k)}
+      className={`px-3 py-2 rounded-xl text-sm font-semibold border ${val === k ? "bg-brand text-white border-brand" : "border-line hover:border-brand"}`}>
+      {ACTUAL_LABEL[k]}
+    </button>
+  ))
+
+  return (
+    <Card title="עזרו לדייק את הסטטיסטיקה" icon={HandHeart}
+      subtitle="צופים ברגע מהמשחק ואומרים אם המחשב צדק. כל תשובה משפרת את המנוע ואת המספרים בעמוד.">
+      {!user ? (
+        <div className="text-center py-3 space-y-2">
+          <p className="text-sm text-fg-muted">כדי לעזור צריך להתחבר — זה לוקח כמה שניות.</p>
+          <button type="button" onClick={openAuth} className="btn-primary px-4 py-2 rounded-xl text-sm font-bold">התחברו ועזרו</button>
+        </div>
+      ) : !mine ? (
+        <Loader2 className="w-5 h-5 animate-spin mx-auto text-fg-muted" />
+      ) : missed ? (
+        <div className="space-y-3">
+          <p className="text-sm font-bold">מה המחשב פספס ב־<span dir="ltr">{fmtT(missed.t)}</span> בסרטון?</p>
+          <div className="flex flex-wrap gap-2">{typeBtns(ACTUAL_TYPES.filter((k) => k !== "nothing"), pick.type, (type) => setPick((p) => ({ ...p, type })))}</div>
+          <div className="flex flex-wrap gap-2">{teamBtns(pick.team, (team) => setPick((p) => ({ ...p, team })))}</div>
+          <div className="flex gap-2">
+            <button type="button" disabled={!pick.type || !pick.team || busy} onClick={saveMissed}
+              className="btn-primary px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-40">שמירה</button>
+            <button type="button" onClick={() => setMissed(null)} className="px-4 py-2 rounded-xl text-sm border border-line">ביטול</button>
+          </div>
+        </div>
+      ) : !cur ? (
+        <div className="text-center py-2 space-y-3">
+          {queue.length === 0 ? (
+            <p className="text-sm font-semibold">בדקת את כל {total} האירועים — תודה ענקית! 🙏</p>
+          ) : (
+            <>
+              <p className="text-sm text-fg-muted">
+                {myCount > 0 ? <>כבר בדקת <b>{myCount}</b> אירועים. נשארו {queue.length}.</> : <>יש {total} אירועים לבדוק. כל אחד לוקח כמה שניות.</>}
+              </p>
+              <button type="button" disabled={!ready} onClick={() => next(null)}
+                className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 inline-flex items-center gap-2">
+                <PlayCircle className="w-4 h-4" /> {myCount > 0 ? "להמשיך לבדוק" : "להתחיל לבדוק"}
+              </button>
+            </>
+          )}
+          <button type="button" disabled={!ready} onClick={startMissed} className="block mx-auto text-xs text-fg-muted hover:text-brand">
+            <Plus className="w-3 h-3 inline" /> המחשב פספס משהו ברגע שבסרטון עכשיו?
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] text-fg-muted">המחשב חושב שהיה כאן:</p>
+              <p className="text-lg font-black flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: teams[cur.team]?.color }} />
+                {claim(cur, teams)}
+                {cur.outcome && <span className="text-sm font-semibold text-fg-muted">· {OUTCOME[cur.outcome]?.label || cur.outcome}</span>}
+              </p>
+              <p className="text-[11px] text-fg-muted">מחצית {cur.half} · <span dir="ltr">{cur.clock}</span></p>
+            </div>
+            <button type="button" onClick={() => playClip(cur.t, cur.type)} title="לנגן שוב (R)"
+              className="shrink-0 p-2 rounded-xl border border-line hover:border-brand"><RotateCcw className="w-4 h-4" /></button>
+          </div>
+
+          {!wrongMode ? (
+            <div className="grid grid-cols-3 gap-2">
+              <button type="button" disabled={busy} onClick={() => answer("correct")}
+                className="py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 flex flex-col items-center gap-0.5">
+                <Check className="w-5 h-5" /> נכון <span className="text-[10px] font-normal opacity-80 hidden sm:block">V</span>
+              </button>
+              <button type="button" disabled={busy} onClick={() => setWrongMode(true)}
+                className="py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 flex flex-col items-center gap-0.5">
+                <X className="w-5 h-5" /> לא נכון <span className="text-[10px] font-normal opacity-80 hidden sm:block">X</span>
+              </button>
+              <button type="button" disabled={busy} onClick={() => answer("unsure")}
+                className="py-3 rounded-xl font-bold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 disabled:opacity-50 flex flex-col items-center gap-0.5">
+                <HelpCircle className="w-5 h-5" /> לא בטוח <span className="text-[10px] font-normal opacity-70 hidden sm:block">U</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2 rounded-xl border border-red-300/60 dark:border-red-800/60 p-3">
+              <p className="text-sm font-bold">אז מה באמת קרה?</p>
+              <div className="flex flex-wrap gap-2">{typeBtns(ACTUAL_TYPES, pick.type, (type) => setPick((p) => ({ ...p, type })))}</div>
+              {pick.type && pick.type !== "nothing" && (
+                <div className="flex flex-wrap gap-2 items-center"><span className="text-xs text-fg-muted">של איזו קבוצה?</span>{teamBtns(pick.team, (team) => setPick((p) => ({ ...p, team })))}</div>
+              )}
+              <div className="flex gap-2">
+                <button type="button" disabled={busy || !pick.type || (pick.type !== "nothing" && !pick.team)}
+                  onClick={() => answer("wrong", pick)} className="btn-primary px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-40">שמירה</button>
+                <button type="button" onClick={() => setWrongMode(false)} className="px-4 py-2 rounded-xl text-sm border border-line">חזרה</button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-xs text-fg-muted">
+            <button type="button" onClick={() => next(cur.id)} className="inline-flex items-center gap-1 hover:text-brand">
+              <SkipForward className="w-3.5 h-3.5" /> דלג (N)
+            </button>
+            <span>{done > 0 ? `בדקת ${done} עכשיו · ` : ""}{myCount} מתוך {total}</span>
+            <button type="button" onClick={startMissed} className="inline-flex items-center gap-1 hover:text-brand">
+              <Plus className="w-3.5 h-3.5" /> פספסו משהו?
+            </button>
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+        </div>
+      )}
     </Card>
   )
 }
