@@ -14,7 +14,7 @@
 --   chapters                    — [{ name, start_s, end_s }] key moments: the goals of a
 --                                 highlight reel (video-analysis/highlight_reel.py writes them)
 --
--- Filled by the `video-seo-sync` edge function, every 30 min via pg_cron (below), for
+-- Filled by the `video-seo-sync` edge function, every 10 min via pg_cron (below; was 30 until 2026-10-19 — kits wait on it), for
 -- every post video and every Cloudflare full-game recording. Additive; down = drop.
 -- ============================================================================
 
@@ -59,7 +59,7 @@ end $$;
 revoke all on function public.run_video_seo_sync() from public, anon, authenticated;
 
 select cron.unschedule('video-seo-sync') where exists (select 1 from cron.job where jobname = 'video-seo-sync');
-select cron.schedule('video-seo-sync', '*/30 * * * *', 'select public.run_video_seo_sync()');
+select cron.schedule('video-seo-sync', '*/10 * * * *', 'select public.run_video_seo_sync()');
 
 -- down:
 --   select cron.unschedule('video-seo-sync');

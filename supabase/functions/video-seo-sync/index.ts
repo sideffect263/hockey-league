@@ -1,14 +1,14 @@
 // ============================================================================
 // video-seo-sync -- what Google needs to index our videos, fetched from Cloudflare.
 //
-// For every Cloudflare Stream video we show (post videos + full-game recordings):
+// For every Cloudflare Stream video we show (post videos + full-game recordings + studio kits + game uploads):
 //   1. GET  /stream/<uid>            -> duration, size, ready
 //   2. POST /stream/<uid>/downloads  -> the default MP4 (idempotent; free to store)
 // and upserts public.video_seo_meta, which api/seo.js + api/sitemap.js read with the
 // anon key. Why: Cloudflare's robots.txt blocks /*iframe$ for crawlers, so the player
 // URL alone gives Google no video it may fetch; the MP4 (or HLS manifest) does.
 //
-// Called by pg_cron every 30 min (supabase/video-seo-meta.sql). Only rows not yet
+// Called by pg_cron every 10 min (supabase/video-seo-meta.sql). Only rows not yet
 // complete (no duration, or MP4 not ready) are asked about, so a quiet run is cheap.
 // Never touches `chapters` (the reel worker owns that column).
 //
@@ -45,14 +45,20 @@ Deno.serve(async (req) => {
   try { force = !!(await req.json())?.force; } catch { /* {} */ }
 
   // Every video a page shows: post videos (not deleted) + full-game Cloudflare recordings.
-  const [{ data: posts }, { data: games }, { data: known }] = await Promise.all([
+  // + studio kits (feed_drafts) and game uploads (game_media): their MP4 is what the creators studio
+  //   downloads and what the vertical-crop worker reads (studio_worker.py).
+  const [{ data: posts }, { data: games }, { data: drafts }, { data: media }, { data: known }] = await Promise.all([
     admin.from("posts").select("video_uid, video_cf_code").not("video_uid", "is", null).is("deleted_at", null),
     admin.from("game_videos").select("video_id, cf_customer_code").eq("provider", "cloudflare").eq("hidden", false),
+    admin.from("feed_drafts").select("video_uid, video_cf_code").not("video_uid", "is", null),
+    admin.from("game_media").select("cf_uid, cf_code").eq("kind", "video").not("cf_uid", "is", null),
     admin.from("video_seo_meta").select("uid, duration_s, mp4_status"),
   ]);
   const want = new Map<string, string | null>();
   for (const p of posts ?? []) want.set(p.video_uid, p.video_cf_code);
   for (const g of games ?? []) if (g.video_id) want.set(g.video_id, g.cf_customer_code);
+  for (const d of drafts ?? []) want.set(d.video_uid, d.video_cf_code);
+  for (const m of media ?? []) want.set(m.cf_uid, m.cf_code);
   const done = new Set((known ?? []).filter((k) => k.duration_s != null && k.mp4_status === "ready").map((k) => k.uid));
 
   let checked = 0, updated = 0;
