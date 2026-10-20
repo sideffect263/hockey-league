@@ -32,6 +32,7 @@ const PLAY_DAYS = 14
 const PLAY_INSTALLER = "com.android.vending"
 
 const SORT_OPTIONS = [
+  { key: "likely", label: "סבירות הרשמה", dir: "desc" },
   { key: "seen", label: "נראה לאחרונה", dir: "desc" },
   { key: "state", label: "מצב", dir: "asc" },
   { key: "name", label: "שם", dir: "asc" },
@@ -87,6 +88,34 @@ function stateOf(h, lastSeen) {
   if (d <= 3) return "working"
   if (d <= 7) return "quiet"
   return "idle"
+}
+
+/**
+ * How likely it is that this person has opted in on Play. Play never says who, so:
+ *  - installed from Play (installer reported by Android ≥ 1.5.2) — certain: Play only
+ *    installs or updates a closed-test app for someone who joined the test;
+ *  - ticked by hand — the admin knows;
+ *  - otherwise a guess: got the link (WhatsApp group), uses the Android app, recent build.
+ */
+function likelihoodOf(p) {
+  if (p.fromPlay) return { score: 100, label: "ודאי · מ־Play", tone: "sure" }
+  if (p.st.opted_in) return { score: 95, label: "סומן שהצטרף", tone: "sure" }
+  if (!p.st.on_play_list) return { score: 0, label: "לא ברשימת Play", tone: "no" }
+  let score = 0
+  if (p.st.in_group) score += 40                       // got the opt-in link
+  if (p.appDays > 0) score += 25                       // uses the Android app now
+  else if (p.webDays > 0) score += 10                  // has an Android phone, site only
+  if ((versionCode(p.ver) || 0) >= 60) score += 10     // keeps the app current
+  if (score >= 60) return { score, label: "סביר", tone: "likely" }
+  if (score >= 30) return { score, label: "אולי", tone: "maybe" }
+  return { score, label: "לא סביר", tone: "no" }
+}
+
+const LIKELY_CLS = {
+  sure: "bg-emerald-600 text-white",
+  likely: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+  maybe: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  no: "bg-slate-500/10 text-slate-500 dark:text-slate-400",
 }
 
 const STATE_BADGE = {
@@ -173,7 +202,7 @@ export default function AndroidTestersAdmin() {
   const [latest, setLatest] = useState({ code: null, name: null })
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
-  const [sort, setSort] = useState({ key: "state", dir: "asc" })
+  const [sort, setSort] = useState({ key: "likely", dir: "desc" })
   const [filter, setFilter] = useState("testers")
   const [q, setQ] = useState("")
   const [copied, setCopied] = useState(null) // "all" | user_id
@@ -246,7 +275,7 @@ export default function AndroidTestersAdmin() {
       optedIn: !!st.opted_in || fromPlay,
       outdated: latest.code && versionCode(ver) ? versionCode(ver) < latest.code : false,
     }
-  }), [rows, health, status, latest, activity])
+  }).map(p => ({ ...p, likely: likelihoodOf(p) })), [rows, health, status, latest, activity])
 
   // Play-list / hand-added addresses that match no app user (e.g. a second Google account).
   const orphans = useMemo(() => {
@@ -285,6 +314,7 @@ export default function AndroidTestersAdmin() {
       state: p => STATE_ORDER[p.state],
       name: p => p.display_name || p.player_name || "",
       days: p => p.anyDays,
+      likely: p => p.likely.score,
     })
   }, [people, sort, q, filter])
 
@@ -395,6 +425,10 @@ export default function AndroidTestersAdmin() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <span title="סבירות שהצטרף לבדיקה ב־Play"
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${LIKELY_CLS[p.likely.tone]}`}>
+                        {p.likely.label}
+                      </span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${badge.cls}`}>
                         <badge.Icon className="w-3 h-3" /> {badge.label}
                       </span>
