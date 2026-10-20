@@ -139,7 +139,12 @@ export function mcpLandingHtml({ endpoint, site, tools }) {
     </div>
 
     <div class="panel" data-panel="dev" hidden>
-      <div><b>Claude Code</b> — בטרמינל:</div>
+      <div><b>הכי פשוט:</b> מבקשים מהעוזר להתקין לבד. מעתיקים ושולחים לו:</div>
+      <div class="chips" style="margin:8px 0 16px">
+        <button class="chip" data-copy="תתקין לי את שרת ה-MCP הזה: ${esc(endpoint)}">תתקין לי את שרת ה-MCP הזה: <span dir="ltr">${esc(endpoint)}</span></button>
+      </div>
+      <div class="muted" style="margin-bottom:14px">עובד בכלים שמריצים פקודות במחשב (Claude Code, Cursor). אחרי ההתקנה פותחים שיחה חדשה. ב-claude.ai וב-ChatGPT העוזר לא יכול לשנות את ההגדרות של עצמו — שם מחברים לפי השלבים בלשוניות האחרות.</div>
+      <div><b>או ידנית — Claude Code</b>, בטרמינל:</div>
       <pre>claude mcp add --transport http rinkhockeyil ${esc(endpoint)}</pre>
       <div style="margin-top:14px"><b>Cursor</b> — בקובץ <span class="k" dir="ltr">~/.cursor/mcp.json</span>:</div>
       <pre>{

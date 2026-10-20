@@ -302,11 +302,13 @@ export default async function handler(req, res) {
   // Stateless: no server-initiated stream to open.
   if (req.method === 'GET') {
     const accept = String(req.headers.accept || '')
+    // Same URL answers HTML or JSON by Accept — never let the CDN hand one to the other.
+    res.setHeader('Vary', 'Accept')
+    res.setHeader('Cache-Control', 'no-store')
     if (accept.includes('text/event-stream')) return res.status(405).end()
     // A person opening the URL in a browser gets the how-to-connect page.
     if (accept.includes('text/html')) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8')
-      res.setHeader('Cache-Control', 'public, max-age=300')
       return res.status(200).send(mcpLandingHtml({ endpoint: `${SITE}/api/mcp`, site: SITE, tools: TOOLS.map(t => t.name) }))
     }
     return res.status(200).json({
