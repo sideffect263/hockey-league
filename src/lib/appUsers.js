@@ -89,6 +89,17 @@ export async function getAndroidTesterHealth() {
   return data || []
 }
 
+/**
+ * App + website use in Play's 14-day window, per account that is on the tester list or
+ * has used the Android app — so website-only testers show up too. Admin-only RPC, see
+ * supabase/android-tester-activity.sql.
+ */
+export async function getAndroidTesterActivity() {
+  const { data, error } = await supabase.rpc('admin_android_tester_activity')
+  if (error) throw error
+  return data || []
+}
+
 /** The hand-kept tester flags (on Play list / in WhatsApp group / opted in / note), by email. */
 export async function getAndroidTesterStatus() {
   const { data, error } = await supabase

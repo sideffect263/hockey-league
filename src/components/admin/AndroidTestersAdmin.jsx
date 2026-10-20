@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import {
   TestTube2, RefreshCw, Copy, Check, Info, Smartphone, Search, AlertTriangle, CheckCircle2,
-  Clock, MessageCircle, Store, Plus,
+  Clock, MessageCircle, Store, Plus, Globe,
 } from "lucide-react"
 import {
   getAndroidTesters, getAndroidTesterHealth, getAndroidTesterStatus, setAndroidTesterStatus, getAndroidLatestVersion,
+  getAndroidTesterActivity,
 } from "@/lib/appUsers"
 import { entityPath } from "@/lib/slugs"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
@@ -20,7 +21,9 @@ import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
  *    which version, how many of the last 14 days they used it, crashes on their device;
  *  - hand-kept flags per Google address (android_tester_status): on the Play list,
  *    in the WhatsApp group, opted in. From Android 1.5.2 (62) the app reports its
- *    installer, so "installed from Play" counts as opted in without ticking.
+ *    installer, so "installed from Play" counts as opted in without ticking;
+ *  - app + website use in Play's 14-day window (admin_android_tester_activity), which
+ *    also brings in testers who so far only use the website on an Android phone.
  * Admin-only throughout. See supabase/android-testers.sql + android-tester-health.sql.
  */
 
@@ -35,8 +38,12 @@ const SORT_OPTIONS = [
   { key: "days", label: "ימים פעילים", dir: "desc" },
 ]
 
+// "testers" = on the Play tester list — the people the 14-day test is about
+
 const FILTERS = [
+  { key: "testers", label: "בודקים" },
   { key: "all", label: "הכול" },
+  { key: "inactive14", label: "לא נכנסו 14 ימים" },
   { key: "not_opted", label: "לא הצטרפו" },
   { key: "not_group", label: "לא בקבוצה" },
   { key: "problem", label: "קריסות" },
@@ -44,7 +51,7 @@ const FILTERS = [
 ]
 
 // worst first when sorting by state
-const STATE_ORDER = { crashing: 0, idle: 1, quiet: 2, working: 3 }
+const STATE_ORDER = { crashing: 0, idle: 1, web: 2, quiet: 3, working: 4 }
 
 /** Hebrew relative day count — "היום", "אתמול", "לפני 12 ימים". */
 function daysAgo(iso) {
@@ -86,6 +93,7 @@ const STATE_BADGE = {
   working: { label: "עובד", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400", Icon: CheckCircle2 },
   quiet: { label: "שקט", cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400", Icon: Clock },
   idle: { label: "לא פעיל", cls: "bg-slate-500/10 text-slate-600 dark:text-slate-400", Icon: Clock },
+  web: { label: "אתר בלבד", cls: "bg-sky-500/10 text-sky-700 dark:text-sky-400", Icon: Globe },
   crashing: { label: "קורס", cls: "bg-red-500/10 text-red-700 dark:text-red-400", Icon: AlertTriangle },
 }
 
@@ -107,7 +115,7 @@ function Toggle({ on, onClick, children, busy }) {
 function DaysMeter({ days }) {
   const n = Math.max(0, Math.min(PLAY_DAYS, days || 0))
   return (
-    <span className="inline-flex items-center gap-1.5" title={`${n} מתוך ${PLAY_DAYS} הימים האחרונים`}>
+    <span className="inline-flex items-center gap-1.5" title={`נכנס ב־${n} מתוך ${PLAY_DAYS} הימים האחרונים (אפליקציה או אתר)`}>
       <span className="inline-flex gap-[2px]" dir="ltr">
         {Array.from({ length: PLAY_DAYS }, (_, i) => (
           <span key={i} className={`w-1.5 h-3 rounded-[2px] ${i < n ? "bg-brand" : "bg-slate-200 dark:bg-slate-700"}`} />
@@ -134,15 +142,39 @@ function Stat({ value, label, sub, tone = "slate" }) {
   )
 }
 
+/** "In the last 14 days": did they log in at all, and how often — app and site apart. */
+function ActivityLine({ p }) {
+  const a = p.act || {}
+  const opens = a.android_opens_14 || 0
+  const visits = a.web_visits_14 || 0
+  return (
+    <div className={`flex items-center gap-x-3 gap-y-1 flex-wrap text-[11px] rounded-lg px-2.5 py-1.5 ${
+      p.active14 ? "bg-emerald-500/5 text-slate-700 dark:text-slate-300" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>
+      <span className="font-semibold">
+        {p.active14 ? `נכנס ב־${PLAY_DAYS} הימים האחרונים` : `לא נכנס ב־${PLAY_DAYS} הימים האחרונים`}
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <Smartphone className="w-3 h-3" /> אפליקציה: <span className="font-semibold tabular-nums">{opens}</span> פתיחות ·{" "}
+        <span className="font-semibold tabular-nums">{p.appDays}</span> ימים
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <Globe className="w-3 h-3" /> אתר: <span className="font-semibold tabular-nums">{visits}</span> ביקורים ·{" "}
+        <span className="font-semibold tabular-nums">{p.webDays}</span> ימים
+      </span>
+    </div>
+  )
+}
+
 export default function AndroidTestersAdmin() {
   const [rows, setRows] = useState([])
   const [health, setHealth] = useState({})
   const [status, setStatus] = useState({})
+  const [activity, setActivity] = useState({})
   const [latest, setLatest] = useState({ code: null, name: null })
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
   const [sort, setSort] = useState({ key: "state", dir: "asc" })
-  const [filter, setFilter] = useState("all")
+  const [filter, setFilter] = useState("testers")
   const [q, setQ] = useState("")
   const [copied, setCopied] = useState(null) // "all" | user_id
   const [busy, setBusy] = useState(null) // email being saved
@@ -151,10 +183,20 @@ export default function AndroidTestersAdmin() {
   const load = async () => {
     setLoading(true); setErr(null)
     try {
-      const [t, h, s, v] = await Promise.all([
+      const [t, h, s, v, a] = await Promise.all([
         getAndroidTesters(), getAndroidTesterHealth(), getAndroidTesterStatus(), getAndroidLatestVersion().catch(() => ({})),
+        getAndroidTesterActivity(),
       ])
-      setRows(t)
+      // Website-only testers (on the Play list, never opened the Android app) get a row
+      // of their own, shaped like admin_android_testers'.
+      const appIds = new Set(t.map(r => r.user_id))
+      const webOnly = a.filter(r => !appIds.has(r.user_id)).map(r => ({
+        user_id: r.user_id, display_name: r.display_name, auth_email: r.auth_email, google_email: r.google_email,
+        play_email: r.google_email || r.auth_email, player_id: r.player_id, player_name: r.player_name,
+        team_name: r.team_name, android_version: null, android_last_seen: null, webOnly: true,
+      }))
+      setRows([...t, ...webOnly])
+      setActivity(Object.fromEntries(a.map(r => [r.user_id, r])))
       setHealth(Object.fromEntries(h.map(r => [r.user_id, r])))
       setStatus(Object.fromEntries(s.map(r => [r.email, r])))
       setLatest(v || {})
@@ -186,19 +228,25 @@ export default function AndroidTestersAdmin() {
   // account differ after a merge), so the flags row is whichever of them has one.
   const people = useMemo(() => rows.map(r => {
     const h = health[r.user_id]
+    const act = activity[r.user_id]
     const addresses = [r.play_email, r.google_email, r.auth_email].filter(Boolean).map(e => e.toLowerCase())
     const email = addresses.find(e => status[e]) || addresses[0] || ""
     const st = status[email] || {}
     const fromPlay = h?.installer === PLAY_INSTALLER
     const ver = h?.app_version || r.android_version
     const lastSeen = [h?.last_android_at, r.android_last_seen].filter(Boolean).sort().pop() || null
+    const appDays = Math.max(act?.android_days_14 || 0, h?.active_days_14 || 0)
+    const webDays = act?.web_days_14 || 0
+    const anyDays = Math.max(act?.active_days_14 || 0, appDays)
     return {
-      ...r, h, email, st, fromPlay, ver, lastSeen,
-      state: stateOf(h, lastSeen),
+      ...r, h, act, email, st, fromPlay, ver, lastSeen, appDays, webDays, anyDays,
+      // logged in at all (app or site) in Play's 14 days
+      active14: anyDays > 0,
+      state: r.webOnly && !h ? "web" : stateOf(h, lastSeen),
       optedIn: !!st.opted_in || fromPlay,
       outdated: latest.code && versionCode(ver) ? versionCode(ver) < latest.code : false,
     }
-  }), [rows, health, status, latest])
+  }), [rows, health, status, latest, activity])
 
   // Play-list / hand-added addresses that match no app user (e.g. a second Google account).
   const orphans = useMemo(() => {
@@ -214,6 +262,8 @@ export default function AndroidTestersAdmin() {
       group: all.filter(x => x.group).length,
       opted: all.filter(x => x.opted).length,
       working: people.filter(p => p.state === "working").length,
+      testers: people.filter(p => p.st.on_play_list).length,
+      active14: people.filter(p => p.st.on_play_list && p.active14).length,
       crashing: people.filter(p => p.state === "crashing").length,
     }
   }, [people, orphans])
@@ -221,6 +271,8 @@ export default function AndroidTestersAdmin() {
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase()
     let list = people.filter(p => {
+      if (filter === "testers" && !p.st.on_play_list) return false
+      if (filter === "inactive14" && (!p.st.on_play_list || p.active14)) return false
       if (filter === "not_opted" && p.optedIn) return false
       if (filter === "not_group" && p.st.in_group) return false
       if (filter === "problem" && !(p.state === "crashing" || (p.h?.crashes_7d || 0) > 0)) return false
@@ -232,7 +284,7 @@ export default function AndroidTestersAdmin() {
       seen: p => (p.lastSeen ? new Date(p.lastSeen).getTime() : null),
       state: p => STATE_ORDER[p.state],
       name: p => p.display_name || p.player_name || "",
-      days: p => p.h?.active_days_14 ?? 0,
+      days: p => p.anyDays,
     })
   }, [people, sort, q, filter])
 
@@ -278,10 +330,12 @@ export default function AndroidTestersAdmin() {
 
       {loading && !rows.length && !err ? <SkeletonPanelRows /> : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
             <Stat value={`${counts.opted}/${PLAY_MIN_TESTERS}`} label="הצטרפו לבדיקה" tone={enough ? "green" : "amber"}
               sub={enough ? "מעל הסף" : `חסרים ${PLAY_MIN_TESTERS - counts.opted}`} />
             <Stat value={counts.play} label="ברשימת Play" />
+            <Stat value={`${counts.active14}/${counts.testers}`} label="נכנסו ב־14 ימים" sub="אפליקציה או אתר"
+              tone={counts.active14 >= PLAY_MIN_TESTERS ? "green" : "amber"} />
             <Stat value={counts.group} label="בקבוצת הוואטסאפ" />
             <Stat value={counts.working} label="האפליקציה עובדת" sub="פעילים ב־3 ימים" tone="green" />
             <Stat value={counts.crashing} label="קורסים עכשיו" tone={counts.crashing ? "red" : "slate"} />
@@ -349,16 +403,18 @@ export default function AndroidTestersAdmin() {
                           <Store className="w-3 h-3" /> מ־Play
                         </span>
                       )}
-                      <span dir="ltr" className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${
-                        p.outdated ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-slate-500/10 text-slate-600 dark:text-slate-300"}`}>
-                        <Smartphone className="w-3 h-3" /> {p.ver || "—"}
-                      </span>
+                      {!p.webOnly && (
+                        <span dir="ltr" className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                          p.outdated ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-slate-500/10 text-slate-600 dark:text-slate-300"}`}>
+                          <Smartphone className="w-3 h-3" /> {p.ver || "—"}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-slate-600 dark:text-slate-300">
-                    <span>פעיל: <span className="font-semibold">{daysAgo(p.lastSeen) || "—"}</span></span>
-                    <DaysMeter days={p.h?.active_days_14} />
+                    <span>פעיל: <span className="font-semibold">{daysAgo(p.lastSeen || p.act?.last_seen_at) || "—"}</span></span>
+                    <DaysMeter days={p.anyDays} />
                     {p.h?.device && <span dir="ltr" className="text-slate-500">{p.h.device}{p.h.os ? ` · ${p.h.os}` : ""}</span>}
                     {p.h?.errors_7d > 0 && <span className="text-amber-700 dark:text-amber-400">{p.h.errors_7d} שגיאות השבוע</span>}
                     {p.team_name && <span>קבוצה: <span className="font-semibold">{p.team_name}</span></span>}
@@ -381,6 +437,8 @@ export default function AndroidTestersAdmin() {
                       {p.h.last_crash && <div dir="ltr" className="truncate opacity-80">{p.h.last_crash}</div>}
                     </div>
                   )}
+
+                  <ActivityLine p={p} />
 
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Toggle on={!!p.st.on_play_list} busy={busy === p.email} onClick={() => save(p.email, { on_play_list: !p.st.on_play_list })}>ברשימת Play</Toggle>
