@@ -11,7 +11,9 @@
 // the site, so RLS is the privacy boundary. Never put the service key here, and never
 // select players(*) (birth_date is revoked from anon; a wildcard 403s the whole request).
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://slpwwoupbbxcgjivcspv.supabase.co'
+import { mcpLandingHtml } from './_mcp-landing.js'
+
+const SUPABASE_URL =process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://slpwwoupbbxcgjivcspv.supabase.co'
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 const SITE = 'https://rinkhockeyil.com'
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
@@ -299,7 +301,14 @@ export default async function handler(req, res) {
 
   // Stateless: no server-initiated stream to open.
   if (req.method === 'GET') {
-    if (String(req.headers.accept || '').includes('text/event-stream')) return res.status(405).end()
+    const accept = String(req.headers.accept || '')
+    if (accept.includes('text/event-stream')) return res.status(405).end()
+    // A person opening the URL in a browser gets the how-to-connect page.
+    if (accept.includes('text/html')) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+      res.setHeader('Cache-Control', 'public, max-age=300')
+      return res.status(200).send(mcpLandingHtml({ endpoint: `${SITE}/api/mcp`, site: SITE, tools: TOOLS.map(t => t.name) }))
+    }
     return res.status(200).json({
       name: 'rinkhockeyil MCP', endpoint: `${SITE}/api/mcp`,
       tools: TOOLS.map(t => t.name),
