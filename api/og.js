@@ -64,12 +64,34 @@ async function sbOne(pathAndQuery) {
   return Array.isArray(rows) ? rows[0] : rows
 }
 
+/** An archived-season game for the unfurl (same shape as the games select above), or null. */
+async function archivedGameOg(key, isUuid) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/game_any_season`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(isUuid ? { p_game_id: key } : { p_slug: key }),
+    })
+    if (!r.ok) return null
+    const g = (await r.json())?.game
+    if (!g) return null
+    const teams = await fetch(`${SUPABASE_URL}/rest/v1/teams?id=in.(${g.home_team_id},${g.away_team_id})&select=id,name,logo_url`, {
+      headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+    }).then(x => (x.ok ? x.json() : []))
+    const t = (id) => teams.find(x => x.id === id) || null
+    return { ...g, home: t(g.home_team_id), away: t(g.away_team_id) }
+  } catch { return null }
+}
+
 export default async function handler(req, res) {
   const type = String(req.query.type || '')
   // A post link can arrive with share text glued on (/posts/<uuid>%20⚪%20גול…) — keep the UUID.
   const rawId = String(req.query.id || '').trim()
   const lead = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![0-9a-f-])/i.exec(rawId)
   const id = type === 'posts' && lead ? lead[1].toLowerCase() : rawId
+  // A game's sub-page (/games/<slug>/stats, /tv): same game, its own title and URL — without this the
+  // shared link fell through to the SPA shell and unfurled as the home page.
+  const suffix = type === 'games' && ['stats', 'tv'].includes(String(req.query.suffix || '')) ? String(req.query.suffix) : ''
   const site = `https://${req.headers.host || 'rinkhockeyil.com'}`
   const absImg = (u) => (!u ? `${site}/logos/main-logo.png` : /^https?:\/\//.test(u) ? u : `${site}${u.startsWith('/') ? '' : '/'}${u}`)
 
@@ -84,6 +106,7 @@ export default async function handler(req, res) {
   // a UUID or on a superseded slug still reports the one indexable URL.
   let pageUrl = `${site}/${encodeURIComponent(type)}/${encodeURIComponent(id)}`
   const canonicalise = (slug) => { if (slug) pageUrl = `${site}/${encodeURIComponent(type)}/${encodeURIComponent(slug)}` }
+  const withSuffix = () => { if (suffix) pageUrl += `/${suffix}` }
 
   // Fallback = the league card (same content as the static index.html tags).
   let title = 'ליגת הוקי הגלגיליות הישראלית'
@@ -114,15 +137,19 @@ export default async function handler(req, res) {
         title = 'אישור הגעה למשחק הבא'
         desc = 'לחצו כדי לאשר אם אתם מגיעים למשחק הבא של הקבוצה שלכם'
       } else if (type === 'games') {
-        const g = await sbOne(`games?${match}&select=slug,game_date,home_score,away_score,status,home:teams!games_home_team_id_fkey(name,logo_url),away:teams!games_away_team_id_fkey(name,logo_url)`)
+        let g = await sbOne(`games?${match}&select=slug,game_date,home_score,away_score,status,home:teams!games_home_team_id_fkey(name,logo_url),away:teams!games_away_team_id_fkey(name,logo_url)`)
+        // A game from an archived season is hidden from anon table reads (RLS) — game_any_season still answers,
+        // so an old game's link unfurls as that game, not as the generic league card.
+        if (!g) g = await archivedGameOg(id, isUuid)
         if (g) {
           canonicalise(g.slug)
           const h = g.home?.name || 'בית', a = g.away?.name || 'חוץ'
-          title = `${h} נגד ${a}`
+          title = `${suffix === 'stats' ? 'סטטיסטיקות המשחק · ' : suffix === 'tv' ? 'שידור · ' : ''}${h} נגד ${a}`
           desc = g.status === 'completed' && g.home_score != null
             ? `${h} ${g.home_score} - ${g.away_score} ${a}`
             : 'משחק בליגת הוקי הגלגיליות הישראלית'
           image = absImg(g.home?.logo_url || g.away?.logo_url)
+          withSuffix()
         }
       } else if (type === 'posts') {
         // Permalinks are UUID-only (no slugs). A deleted post falls back to the league card.

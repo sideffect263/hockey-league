@@ -516,7 +516,9 @@ const BUILDERS = {
           thumbnailUrl: [`https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`], uploadDate: v.created_at,
           embedUrl: `https://www.youtube.com/embed/${v.video_id}`, url, inLanguage: 'he-IL', about: { '@id': `${url}#event` },
         })),
-        ...videos.map(p => videoLd(site, p, metas[p.video_uid], { gameUrl: url })),
+        // NOT the game's goal clips: each one's watch page is /posts/<id> (its own VideoObject there). Listing
+        // them here made Google attach a clip to the GAME page and report "video isn't on a watch page"
+        // (Search Console, 2026-10-19). The clips stay as links in the body (highlightsHtml).
         ...(story ? [{
           '@type': 'NewsArticle', '@id': `${url}#story`, headline: story.title.slice(0, 110), description: story.summary,
           articleBody: story.body, inLanguage: 'he-IL', url, mainEntityOfPage: url,
