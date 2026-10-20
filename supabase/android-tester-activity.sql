@@ -35,6 +35,7 @@ stable
 security definer
 set search_path to 'public', 'auth'
 as $$
+#variable_conflict use_column
 begin
   if not public.is_admin() then
     raise exception 'not authorized';
