@@ -34,14 +34,14 @@ export function mcpLandingHtml({ endpoint, site, tools }) {
 <meta property="og:url" content="${esc(endpoint)}">
 <meta property="og:title" content="הליגה, בתוך Claude">
 <meta property="og:description" content="חברו את ליגת הוקי הגלגיליות ל-Claude או ChatGPT ושאלו מתי המשחק הבא, איפה, מה המצב בטבלה ומי מלך השערים.">
-<meta property="og:image" content="${site}/og/mcp.png">
+<meta property="og:image" content="${site}/og/mcp.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="הליגה, בתוך Claude — rinkhockeyil.com/api/mcp">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="הליגה, בתוך Claude">
 <meta name="twitter:description" content="שאלו את ה-AI מתי המשחק הבא, איפה, מה המצב בטבלה ומי מלך השערים.">
-<meta name="twitter:image" content="${site}/og/mcp.png">
+<meta name="twitter:image" content="${site}/og/mcp.jpg">
 <link rel="icon" href="${site}/logos/crest-256.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap">
