@@ -25,6 +25,8 @@ import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { PlayerDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { getPlayerMentions } from "@/lib/mentionsApi"
 import { sizedImage } from "@/lib/imageSize"
+import TeamMedia from "@/components/TeamMedia"
+import { getPlayerMedia } from "@/lib/teamMedia"
 
 export default function PlayerDetail() {
   // The route param is a Hebrew slug (/players/יואב-תורגמן) or, for every link
@@ -49,6 +51,7 @@ export default function PlayerDetail() {
   const [claimErr, setClaimErr] = useState(null)
   const [accountBadges, setAccountBadges] = useState(null) // { isAdmin, roles } | null
   const [tagged, setTagged] = useState([]) // "תויג/ה ב…" — posts/comments this player is @-tagged in
+  const [media, setMedia] = useState(null) // the team-page media wall, scoped to the games this player played
 
   const playerName = player ? `${player.first_name} ${player.last_name}` : null
   useSeo({
@@ -78,6 +81,21 @@ export default function PlayerDetail() {
     getPlayerMentions(player.id, 10).then(rows => alive && setTagged(rows))
     return () => { alive = false }
   }, [player?.id])
+
+  // Media wall: clips / photos / full games / stories from the games this player has a
+  // box-score row in, plus posts they're @-tagged in. Hidden when empty.
+  useEffect(() => {
+    let alive = true
+    setMedia(null)
+    if (!player?.id || !games.length) return
+    const played = new Set(gameStats.filter(s => s.player_id === player.id).map(s => s.game_id))
+    const myGames = games.filter(g => played.has(g.id))
+    const taggedPosts = tagged.filter(t => t.kind === 'post').map(t => (/^\/posts\/([^/?#]+)/.exec(t.href) || [])[1]).filter(Boolean)
+    getPlayerMedia(myGames, taggedPosts)
+      .then(m => { if (alive) setMedia(m) })
+      .catch(e => { console.error(e); if (alive) setMedia([]) })
+    return () => { alive = false }
+  }, [player?.id, games, gameStats, tagged])
 
   // Public league-role badges for the account (if any) linked to this player.
   useEffect(() => {
@@ -428,6 +446,11 @@ export default function PlayerDetail() {
             </div>
           )}
         </motion.div>
+      )}
+
+      {media && media.length > 0 && (
+        <TeamMedia items={media} team={team || { id: player.team_id, name: "" }} teamsMap={teamsMap}
+          title={`${player.first_name || ""} ${player.last_name || ""}`.trim()} />
       )}
 
       {/* Where this player was @-tagged (player_mentions RPC). Hidden when empty. */}

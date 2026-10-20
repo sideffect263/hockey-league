@@ -5,7 +5,7 @@ import { format } from "date-fns"
 import { entityPath } from "@/lib/slugs"
 
 /**
- * Team page media wall: the newest clip big, the next ones in a grid, full-game
+ * Team (and player) page media wall: the newest clip big, the next ones in a grid, full-game
  * videos as rows. Every item names its game. Filter chips appear only when there
  * is more than one kind. Items come from getTeamMedia().
  */
@@ -45,7 +45,8 @@ function PlayDot({ small }) {
   )
 }
 
-export default function TeamMedia({ items, team, teamsMap }) {
+/** `title` overrides the "<team> בווידאו" heading (the player page passes the player's name). */
+export default function TeamMedia({ items, team, teamsMap, title }) {
   const [kind, setKind] = useState("all")
   const [showAll, setShowAll] = useState(false)
   const kinds = KINDS.map(k => ({ ...k, n: items.filter(i => i.kind === k.key).length })).filter(k => k.n)
@@ -61,7 +62,7 @@ export default function TeamMedia({ items, team, teamsMap }) {
     <div className="card overflow-hidden">
       <div className="px-5 pt-4 pb-1 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-          <Film className="w-4 h-4 text-brand" /> {team.name} בווידאו
+          <Film className="w-4 h-4 text-brand" /> {title || team.name} בווידאו
         </h2>
         <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{items.length} פריטים</span>
       </div>
