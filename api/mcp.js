@@ -306,8 +306,9 @@ export default async function handler(req, res) {
     res.setHeader('Vary', 'Accept')
     res.setHeader('Cache-Control', 'no-store')
     if (accept.includes('text/event-stream')) return res.status(405).end()
-    // A person opening the URL in a browser gets the how-to-connect page.
-    if (accept.includes('text/html')) {
+    // Anyone not explicitly asking for JSON gets the how-to-connect page — browsers,
+    // and link-preview bots (WhatsApp sends Accept: */*, and got the JSON before).
+    if (!accept.includes('application/json') || accept.includes('text/html')) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8')
       return res.status(200).send(mcpLandingHtml({ endpoint: `${SITE}/api/mcp`, site: SITE, tools: TOOLS.map(t => t.name) }))
     }
