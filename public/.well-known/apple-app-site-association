@@ -5,10 +5,23 @@
         "appIDs": ["AR3LCY2JB4.com.arielbiton.rinkhockeyil"],
         "components": [
           { "/": "/games/*/tv", "exclude": true, "comment": "the TV board is a browser-only fullscreen page" },
-          { "/": "/games/*", "comment": "game pages, incl. /games/next (sign up for your next game)" }
+          { "/": "/games/*", "comment": "game pages, incl. /games/next (sign up for your next game)" },
+          { "/": "/teams/*/*", "exclude": true, "comment": "the app only understands /teams/<id-or-slug>" },
+          { "/": "/teams/?*", "comment": "a team page; ?follow=1 = a friend's fan invite (iOS 1.5.0+)" },
+          { "/": "/players/*/*", "exclude": true, "comment": "the app only understands /players/<id-or-slug>" },
+          { "/": "/players/?*", "comment": "a player page; ?follow=1 = a friend's fan invite (iOS 1.5.0+)" },
+          { "/": "/posts/*/*", "exclude": true, "comment": "the app only understands /posts/<uuid>" },
+          { "/": "/posts/?*", "comment": "one post: share button, 'tagged' notification (iOS 1.5.0+)" },
+          { "/": "/loans", "comment": "youth loans page (iOS 1.5.0+)" }
         ],
         "appID": "AR3LCY2JB4.com.arielbiton.rinkhockeyil",
-        "paths": ["NOT /games/*/tv", "/games/*"]
+        "paths": [
+          "NOT /games/*/tv", "/games/*",
+          "NOT /teams/*/*", "/teams/?*",
+          "NOT /players/*/*", "/players/?*",
+          "NOT /posts/*/*", "/posts/?*",
+          "/loans"
+        ]
       }
     ]
   }
