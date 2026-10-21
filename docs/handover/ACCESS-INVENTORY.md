@@ -26,7 +26,7 @@ Legend for **2nd owner?** — 🔴 needed now · 🟠 should have one · 🟢 lo
 
 | Service | What it does for us | Owner today | Where the credential lives | If access is lost | 2nd owner? |
 |---|---|---|---|---|---|
-| **Domain `rinkhockeyil.com` — registrar** | Owning the name | **?** (bought by 2026-07-11; registrar not recorded) | **?** | Domain expires → site, email and app links die | 🔴 Fill in registrar + renewal date; turn on auto-renew |
+| **Domain `rinkhockeyil.com` — registrar: Cloudflare Registrar** | Owning the name | Cloudflare account `arielxx263@gmail.com` (same account as DNS) | Cloudflare login | Registered 2026-07-10, **expires 2027-07-10**. If it lapses, the site, email and app links die. Cloudflare Registrar auto-renews only if the card on file works | 🔴 Check auto-renew is ON + a valid card; second Cloudflare admin |
 | **Cloudflare** (zone `7d0c400b…`) | DNS for the site and `api.` (DNS-only/grey cloud), email routing, **Stream** (live video + recordings), Realtime TURN | `arielxx263@gmail.com` | Cloudflare login; Stream token + account id as Supabase function secrets (`CF_STREAM_TOKEN`, `CF_ACCOUNT_ID`, `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN`) | DNS can't be changed; streaming bills go unpaid → streams stop | 🔴 Add a member with Administrator |
 | **Vercel** team `rinkhockeyil` | Hosts the website + `/api/*` functions. Projects: `hockey-league` (prod, rinkhockeyil.com) and `hockey-league-dev` | Created via a shared Google account; user `rinkhockeyiltestuser-9007` | Vercel login; CLI token on this Mac; GitHub Actions secrets in the fork; `.env.local` | Can't deploy the website | 🔴 Invite a second member (Hobby → may need Pro for teams) |
 | `hockey-league-pro.vercel.app` | Old site from Idan's repo. **Not ours, drifting, ignore** | Idan (someone else's Vercel) | — | Nothing (not used) | — |
@@ -73,6 +73,6 @@ script, copy it there again.
    Supabase, Play, registrar, Podium.
 2. Pick the second owner and add them: Supabase org (Owner), Cloudflare (Admin), Vercel team,
    GitHub (org owner or repo admin), Play Console (Admin), App Store Connect (Admin).
-3. Fill in the **?** rows above (registrar, renewal date, billing cards).
+3. ~~Fill in the registrar.~~ Done 2026-10-21: Cloudflare Registrar, expires 2027-07-10. Still check auto-renew + billing cards.
 4. ~~Push the iOS and Android `main` branches.~~ Done 2026-10-21.
 5. Copy the keystore folder `rinkhockeyIL-signing/` to an offline USB.
