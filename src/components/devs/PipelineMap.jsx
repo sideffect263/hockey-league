@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { ChevronDown, Lightbulb, Search, Users, MessageSquare, Workflow, X } from "lucide-react"
 import { LANES, STAGES, STAGE_STATUS } from "@/lib/pipelineMap"
 import { WORK } from "@/lib/stageWork"
+import VideoFlow from "@/components/video/VideoFlow"
 
 // מפת המערכת: every part of what we build (the video-AI pipeline, the site, the apps, the data) as lanes of
 // stages. A card opens the stage page (StagePage) — story, numbers, the action, tasks and the thread.
@@ -35,6 +36,7 @@ export default function PipelineMap({ members, noteStats, myStages, onOpen }) {
   return (
     <div className="space-y-4">
       <Intro />
+      <VideoFlow variant="devs" onOpen={onOpen} />
       <div className="space-y-2.5">
         <label className="relative block">
           <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />

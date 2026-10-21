@@ -9,6 +9,7 @@ import {
   getIngestJobs, submitIngestJob, requeueStep, deleteIngestJob, parseTimes, fmtTime, outputLinks,
 } from "@/lib/videoIngest"
 import { MAX_GAME_VIDEO_MB } from "@/lib/gameStories"
+import VideoFlow from "@/components/video/VideoFlow"
 
 const DEFAULT_PIPES = ["full_video", "goals", "reel"]
 const btn = "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
@@ -59,6 +60,7 @@ export default function VideoIngest() {
           קישור YouTube או קובץ של משחק הוקי גלגיליות → בוחרים מה להפיק ממנו. העיבוד רץ על מחשב הווידאו של הליגה, והתוצרים מגיעים לבדיקה — שום דבר לא מתפרסם אוטומטית.
         </p>
       </div>
+      <VideoFlow variant="creators" />
       <IngestForm games={games} onSubmitted={(j) => setJobs(js => [j, ...(js || [])])} />
       <div className="card p-4 flex items-center justify-between gap-3">
         <h3 className="font-bold text-slate-900 dark:text-white">עבודות אחרונות</h3>
