@@ -1,4 +1,4 @@
-# Code state — what's in the ~75 folders under `hockey/`
+# Code state — the folders under `hockey/`
 
 _Snapshot 2026-10-21, after `git fetch --all`. "behind/ahead" = commits relative to that repo's
 local `main`. Nothing has been deleted or pushed by this survey._
@@ -42,32 +42,15 @@ so a successor can find what's live.
 | `hockey-league-matchstats` | `match-stats-preview` | 14 | ✅ fork/dev | Match centre preview (main has the shipped version). Worktree can go. |
 | `HockeyTimer-iOS-rel-153`, `HockeyLeague-Android-rel-153` | `ios-rel-153`, `rel-153` | 0 (bump uncommitted) | — | **Current release 1.5.3 (63), not published.** Keep until it ships. |
 
-## Step 3 — fully merged worktrees (safe to remove)
+## Step 3 — merged worktrees: DONE 2026-10-21
 
-Every folder below is **0 commits ahead of main**: its work is already in main. Folders marked
-✎ have uncommitted files. In release folders that is almost always just the version bump (house
-rule: the bump isn't committed). Run `git -C <folder> status` and look before removing.
+57 fully merged worktrees were removed (iOS, Android and web feature/release folders, plus
+`live-edit-wt`). Their work is in `main`; their branches still exist locally. Uncommitted
+leftovers were version bumps (discarded) and screenshot folders + one iOS patch, archived to
+`MOBILE-BUILD/worktree-archive-2026-10-21/`.
 
-**iOS:** `HockeyTimer-iOS-148followups`, `-148ref` ✎, `-actionsfan`, `-broadcast`, `-design148`,
-`-feedrefresh`, `-gameform`, `-integrate-1411`, `-judgefix`, `-liveactivity` (pushed),
-`-loans`, `-market-card` ✎, `-player-loans` ✎, `-rel-1411` ✎, `-rel-1411-55` ✎,
-`-rel-1411-56` ✎, `-rel-1411-57` ✎, `-rel-150` ✎, `-rtl-videos` ✎, `-scroll`, `-scrollbase`,
-`-scrollperf`, `-scrub` ✎, `-slapshot` ✎, `-viewer` ✎, `-viewer-hitch`.
-
-**Android:** `HockeyLeague-Android-148-followups`, `-actions-fan`, `-broadcast-landscape`,
-`-design-revert`, `-gameform`, `-loans`, `-market-card` ✎, `-play`, `-ptr` ✎, `-rel-1425` ✎,
-`-rel-1426` ✎, `-rel-1427` ✎, `-rel-150` ✎, `-rtl-videos` ✎, `-scroll-perf`, `-scrollbase`,
-`-scrolljump`, `-scrub` ✎, `-slapshot` ✎, `-statusbar`, `-test45` ✎, `-viewer`.
-
-**Web:** `hockey-league-gameform`, `-ingest`, `-matchstats-main`, `-og`, `-rinkpoints`,
-`-shots`, `-studio`, `-surveys` (all on GitHub), `live-edit-wt` ✎ (live-edit branch, Sept).
-
-Remove one with:
-```bash
-git -C HockeyTimer-iOS worktree remove ../HockeyTimer-iOS-actionsfan
-```
-(add `--force` only after you've checked the ✎ changes are disposable). Then
-`git -C <repo> worktree prune`. Local branches can stay: they cost nothing.
+Still present on purpose: the Step 2 folders above (unmerged work) and the two `*-rel-153`
+release folders.
 
 ## Other folders (not code)
 
