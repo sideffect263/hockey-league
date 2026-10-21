@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+import { Ball } from './icons/HockeyIcons'
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
@@ -510,7 +511,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
                     <button onClick={() => seek(m.video_seconds)}
                       className="flex-1 flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-right">
                       <span dir="ltr" className="text-xs font-bold tabular-nums text-orange-500 shrink-0 w-12 text-left">{fmtClock(m.video_seconds)}</span>
-                      <span className={`stat-pill !py-0 !px-1.5 shrink-0 ${KINDS[m.kind]?.cls}`}>{KINDS[m.kind]?.emoji} {KINDS[m.kind]?.he}</span>
+                      <span className={`stat-pill !py-0 !px-1.5 shrink-0 inline-flex items-center gap-1 ${KINDS[m.kind]?.cls}`}>{m.kind === "goal" ? <Ball className="w-3 h-3" /> : KINDS[m.kind]?.emoji} {KINDS[m.kind]?.he}</span>
                       <span className="text-sm text-slate-700 dark:text-slate-300 truncate">{m.label || ""}</span>
                     </button>
                     {canMark && (

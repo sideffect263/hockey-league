@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { Ball } from '../components/icons/HockeyIcons'
 import { useParams, Link } from "react-router-dom"
 import { getPlayers, getTeams, getGames, getGameStats, getLeagueSetting, getPlayerRoleBadges } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -536,7 +537,7 @@ export default function PlayerDetail() {
                 </div>
                 {/* Player's per-game contribution + result score (left side in RTL) */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5">⚽ {stat.goals}</span>}
+                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3 h-3" />{stat.goals}</span>}
                   {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5">🟦 {stat.blue_cards}</span>}
                   {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0.5 !px-1.5">🟥 {stat.red_cards}</span>}
                   {isGK && stat.clean_sheet && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5">🧤</span>}

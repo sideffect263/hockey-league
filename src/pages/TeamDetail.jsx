@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { Ball } from '../components/icons/HockeyIcons'
 import { useParams, Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -398,7 +399,7 @@ export default function TeamDetail() {
                     <Crown className="w-3.5 h-3.5" />
                   </button>
                 )}
-                {ownGoals(player) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{ownGoals(player)}</span><span>⚽</span></span>}
+                {ownGoals(player) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{ownGoals(player)}</span><Ball className="w-3.5 h-3.5" /></span>}
                 {(loanGoals[player.id]?.goals || 0) > 0 && (
                   <span title={`שערים במשחקי השאלה לקבוצות אחרות (${loanGoals[player.id].games} מש׳)`}
                     className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">

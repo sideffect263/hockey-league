@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { Ball } from './icons/HockeyIcons'
 import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import TeamLogo from "@/components/TeamLogo"
@@ -63,8 +64,8 @@ function TeamPanel({ team, score, fallbackName, timeouts }) {
 }
 
 const EVENT_META = {
-  goal:    { icon: "⚽", label: "שער", accent: "text-emerald-600 dark:text-emerald-400" },
-  ownGoal: { icon: "⚽", label: "שער עצמי", accent: "text-emerald-600 dark:text-emerald-400" },
+  goal:    { icon: <Ball className="w-4 h-4 inline-block align-[-2px]" />, label: "שער", accent: "text-emerald-600 dark:text-emerald-400" },
+  ownGoal: { icon: <Ball className="w-4 h-4 inline-block align-[-2px]" />, label: "שער עצמי", accent: "text-emerald-600 dark:text-emerald-400" },
   blue:    { icon: "🟦", label: "כרטיס כחול", accent: "text-blue-600 dark:text-blue-400" },
   red:     { icon: "🟥", label: "כרטיס אדום", accent: "text-red-600 dark:text-red-400" },
   foul:    { icon: "🚩", label: "עבירה", accent: "text-slate-500 dark:text-slate-400" },

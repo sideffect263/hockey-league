@@ -23,6 +23,34 @@ function Svg({ children, className = "w-6 h-6", strokeWidth = 2, ...props }) {
   )
 }
 
+/**
+ * The rink-hockey ball, in place of the football emoji ⚽ that used to mark a goal
+ * (Ariel, 2026-10-20: a football is the wrong sport). Not a line icon like the rest of
+ * this family — it is the ball itself: orange, lit from the upper left so it reads as a
+ * ball rather than a dot, with a faint rim so it holds up on a pale stat pill. The same
+ * ball the two apps draw (BallIcon) and the one on the live-game progress bar.
+ *
+ * Sized by className like the others; `title` gives it a label where it stands alone.
+ */
+export function Ball({ className = "w-4 h-4", title, ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden={title ? undefined : "true"}
+         role={title ? "img" : undefined} {...props}>
+      {title ? <title>{title}</title> : null}
+      <defs>
+        <radialGradient id="rh-ball" cx="33%" cy="32%" r="78%">
+          <stop offset="0%" stopColor="#fb923c" />
+          <stop offset="55%" stopColor="#ea580c" />
+          <stop offset="100%" stopColor="#b4410a" />
+        </radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="10" fill="url(#rh-ball)" />
+      <circle cx="12" cy="12" r="9.3" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="1.4" />
+      <circle cx="7.9" cy="7.7" r="2.2" fill="rgba(255,255,255,0.75)" />
+    </svg>
+  )
+}
+
 // The rink from above — "בית / המגרש": boards, center line, faceoff circle, goals.
 export function Rink({ mono, ...props }) {
   const a = mono ? "currentColor" : O
