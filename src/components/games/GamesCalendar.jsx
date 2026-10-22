@@ -10,6 +10,7 @@ import TeamLogo from "@/components/TeamLogo"
 import { entityPath } from "@/lib/slugs"
 import { toCsv, toXlsx, downloadBlob } from "@/lib/scheduleExport"
 import { isIOS, isAndroid, isMobile, isInAppBrowser } from "@/lib/device"
+import { ilDate } from "@/lib/ilTime"
 
 /**
  * Season calendar at the top of /games — the whole schedule at a glance, plus the
@@ -57,12 +58,12 @@ export default function GamesCalendar({ games, teamsMap, selectedDate, onSelectD
   )
   const byDay = useMemo(() => {
     const m = {}
-    for (const g of sorted) (m[dayKey(new Date(g.game_date))] ||= []).push(g)
+    for (const g of sorted) (m[dayKey(ilDate(g.game_date))] ||= []).push(g)
     return m
   }, [sorted])
 
-  const firstM = sorted.length ? monthIdx(new Date(sorted[0].game_date)) : monthIdx(new Date())
-  const lastM = sorted.length ? monthIdx(new Date(sorted[sorted.length - 1].game_date)) : firstM
+  const firstM = sorted.length ? monthIdx(ilDate(sorted[0].game_date)) : monthIdx(new Date())
+  const lastM = sorted.length ? monthIdx(ilDate(sorted[sorted.length - 1].game_date)) : firstM
   const nextGame = sorted.find(g => new Date(g.game_date) >= new Date()) || null
 
   // Open on the month of the next game (or the last month, once the season is over).
@@ -71,7 +72,7 @@ export default function GamesCalendar({ games, teamsMap, selectedDate, onSelectD
     if (!sorted.length) return
     setCursor(c => {
       if (c != null && c >= firstM && c <= lastM) return c
-      return nextGame ? monthIdx(new Date(nextGame.game_date)) : lastM
+      return nextGame ? monthIdx(ilDate(nextGame.game_date)) : lastM
     })
   }, [firstM, lastM, sorted.length])
 
@@ -108,7 +109,7 @@ export default function GamesCalendar({ games, teamsMap, selectedDate, onSelectD
           <span className="block font-bold text-fg-strong">לוח העונה{seasonName && <> <bdi dir="ltr">{seasonName}</bdi></>}</span>
           <span className="block text-xs text-fg-muted truncate">
             {sorted.length} משחקים{team && ` · ${team.name}`}
-            {nextGame && <> · הבא: <span dir="ltr">{format(new Date(nextGame.game_date), "d/M HH:mm")}</span></>}
+            {nextGame && <> · הבא: <span dir="ltr">{format(ilDate(nextGame.game_date), "d/M HH:mm")}</span></>}
           </span>
         </span>
         <ChevronDown className={`w-5 h-5 text-fg-muted transition-transform ${open ? "rotate-180" : ""}`} />
@@ -233,7 +234,7 @@ function MonthGrid({ y, m, byDay, teamsMap, selected, onPick }) {
                   <span key={g.id} className="flex items-center justify-between gap-0.5">
                     <TeamLogo team={teamsMap[g.home_team_id]} size={5} />
                     <span dir="ltr" className={`text-[10px] tabular-nums ${isSel ? "text-white/90" : "text-fg-muted"}`}>
-                      {format(new Date(g.game_date), "HH:mm")}
+                      {format(ilDate(g.game_date), "HH:mm")}
                     </span>
                     <TeamLogo team={teamsMap[g.away_team_id]} size={5} />
                   </span>
@@ -279,7 +280,7 @@ function MonthList({ y, m, byDay, teamsMap, selected, onPick }) {
                       </span>
                       <span className="text-center leading-tight">
                         <span dir="ltr" className="block font-bold tabular-nums text-fg-strong">
-                          {g.status === "completed" && g.home_score != null ? `${g.away_score}:${g.home_score}` : format(new Date(g.game_date), "HH:mm")}
+                          {g.status === "completed" && g.home_score != null ? `${g.away_score}:${g.home_score}` : format(ilDate(g.game_date), "HH:mm")}
                         </span>
                         {g.venue && <span className="block text-[10px] text-fg-subtle">{g.venue}</span>}
                       </span>

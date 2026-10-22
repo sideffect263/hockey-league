@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { entityPath } from '@/lib/slugs'
 import { useHasNativeApp } from "@/lib/appUsers"
+import { ilDate } from "@/lib/ilTime"
 
 /**
  * "פעולות מהירות" — a context-aware quick-actions panel that sits under the feed
@@ -131,7 +132,7 @@ export default function QuickActions({ games = [], teamsMap = {} }) {
       {/* Player alerts — highest priority, attention-styled */}
       {nextGame && (() => {
         const g = nextGame.game
-        const sub = [opponentName(g), format(new Date(g.game_date), "d/M · HH:mm")].filter(Boolean).join(" · ")
+        const sub = [opponentName(g), format(ilDate(g.game_date), "d/M · HH:mm")].filter(Boolean).join(" · ")
         const cfg = nextGame.status === "available"
           ? { icon: CalendarCheck, tone: "green", label: "אישרת הגעה למשחק הקרוב" }
           : nextGame.status === "unavailable"

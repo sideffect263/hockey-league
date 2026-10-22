@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { Heart, RefreshCw, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { getAdminFanOverview } from "@/lib/follows"
+import { ilDate } from "@/lib/ilTime"
 
 /**
  * /admin אוהדים (fans-v2.sql). Per team: real fans (the team's own players are not
@@ -65,7 +66,7 @@ export default function FansAdmin() {
                 <td className="px-2 py-2 text-center tabular-nums">{r.new_30d}</td>
                 <td className="px-2 py-2 text-center tabular-nums whitespace-nowrap">
                   {r.next_game_id
-                    ? <Link to={`/games/${r.next_game_id}`} className="hover:text-brand">{r.coming_next} <span className="text-[11px] text-slate-400" dir="ltr">({format(new Date(r.next_game_date), "d/M")})</span></Link>
+                    ? <Link to={`/games/${r.next_game_id}`} className="hover:text-brand">{r.coming_next} <span className="text-[11px] text-slate-400" dir="ltr">({format(ilDate(r.next_game_date), "d/M")})</span></Link>
                     : <span className="text-slate-400">—</span>}
                 </td>
                 <td className="px-2 py-2 text-center tabular-nums text-slate-400">{r.roster_follows}</td>

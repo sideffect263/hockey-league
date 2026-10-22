@@ -29,7 +29,7 @@ export default function FeedDrafts({ onCountChange }) {
     Promise.all([getTeams(), getGames("game_date", false)]).then(([teams, games]) => {
       const t = Object.fromEntries((teams || []).map(x => [x.id, x.name]))
       const g = Object.fromEntries((games || []).map(x => [x.id, {
-        label: `${t[x.home_team_id] || "?"} – ${t[x.away_team_id] || "?"} · ${new Date(x.game_date).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" })}`,
+        label: `${t[x.home_team_id] || "?"} – ${t[x.away_team_id] || "?"} · ${new Date(x.game_date).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric" })}`,
         recent: new Date(x.game_date).getTime() < Date.now() + 864e5 && !x.is_test,
         date: x.game_date,
       }]))

@@ -28,7 +28,7 @@ import { Check, X, Loader2, CalendarCheck, CalendarX, AlertTriangle, Ban, UserMi
  */
 export function buildSquadMessage({ game, teamName, opponentName, coming, notComing, noReply, blocked = [], nameOf, noteOf = () => "", link = "" }) {
   const when = game?.game_date
-    ? new Date(game.game_date).toLocaleString("he-IL", {
+    ? new Date(game.game_date).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem",
         weekday: "long", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })
     : ""
   const list = (arr) => arr.map((p, i) => {

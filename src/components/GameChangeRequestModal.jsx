@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { X, CalendarClock, Send, Plus, Trash2 } from "lucide-react"
 import { requestGameChange } from "@/lib/gameRequests"
 import { getVenues } from "@/lib/venues"
+import { ilDate } from "@/lib/ilTime"
 
 const MAX_DATES = 3
 
@@ -64,7 +65,7 @@ export default function GameChangeRequestModal({ game, home, away, onClose, onSu
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {home?.name || "בית"} <span className="text-slate-400">נגד</span> {away?.name || "חוץ"}
           <span className="block text-xs mt-1">
-            כרגע: {game.game_date ? format(new Date(game.game_date), "d/M/yyyy HH:mm") : "—"}{" · "}{game.venue || "ללא מגרש"}
+            כרגע: {game.game_date ? format(ilDate(game.game_date), "d/M/yyyy HH:mm") : "—"}{" · "}{game.venue || "ללא מגרש"}
           </span>
         </p>
 

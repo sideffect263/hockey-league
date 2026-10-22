@@ -8,6 +8,7 @@ import {
   OFFICIAL_ROLE_LABEL, listAssignableOfficials, getOfficialsOverview, getOfficialRates,
   getOfficialsPaylog, assignOfficial, removeOfficial, setOfficialRate, reviewOfficialApplication,
 } from "@/lib/officials"
+import { ilDate } from "@/lib/ilTime"
 
 const UPCOMING = ["scheduled", "postponed", "waiting_result", "in_progress"]
 const roleIcon = { judge: Gavel, medic: HeartPulse }
@@ -163,7 +164,7 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
                         fixture — he needs WHEN and WHERE, not just the fixture name. */}
                     <span className="text-[11px] text-slate-400 truncate">
                       {OFFICIAL_ROLE_LABEL[a.role]} · {g ? `${teamsMap[g.home_team_id]?.name || "?"} נגד ${teamsMap[g.away_team_id]?.name || "?"}` : "משחק"}
-                      {g?.game_date && ` · ${new Date(g.game_date).toLocaleString("he-IL", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}`}
+                      {g?.game_date && ` · ${new Date(g.game_date).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}`}
                       {g?.venue && ` · ${g.venue}`}
                       {a.phone && <> · <span dir="ltr" className="tabular-nums">{a.phone}</span></>}
                     </span>
@@ -188,7 +189,7 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
             <div key={game.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{teamsMap[game.home_team_id]?.name || "?"} <span className="text-slate-400 font-normal">נגד</span> {teamsMap[game.away_team_id]?.name || "?"}</span>
-                <span className="text-[11px] text-slate-400 shrink-0">{format(new Date(game.game_date), "d/M HH:mm")}</span>
+                <span className="text-[11px] text-slate-400 shrink-0">{format(ilDate(game.game_date), "d/M HH:mm")}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <RoleSlot game={game} role="judge" />

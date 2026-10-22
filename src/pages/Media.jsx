@@ -11,6 +11,7 @@ import { entityPath } from "@/lib/slugs"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { MediaClustersSkeleton } from "@/components/skeletons/PageSkeletons"
+import { ilDate } from "@/lib/ilTime"
 
 const PAGE = 24
 
@@ -274,7 +275,7 @@ function GameVideoCard({ item, teams }) {
           </span>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400" dir="ltr" style={{ textAlign: "right" }}>
-          {format(new Date(game.game_date), "d/M/yyyy")}
+          {format(ilDate(game.game_date), "d/M/yyyy")}
         </p>
       </div>
     </Link>

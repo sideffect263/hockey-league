@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { Film, Play } from "lucide-react"
 import { format } from "date-fns"
 import { entityPath } from "@/lib/slugs"
+import { ilDate } from "@/lib/ilTime"
 
 /**
  * Team (and player) page media wall: the newest clip big, the next ones in a grid, full-game
@@ -23,7 +24,7 @@ function gameLabel(item, teamId, teamsMap) {
   if (!g) return null
   const oppId = g.home_team_id === teamId ? g.away_team_id : g.home_team_id
   const opp = teamsMap[oppId]?.name
-  return `${opp ? `מול ${opp} · ` : ""}${format(new Date(g.game_date), "d/M")}`
+  return `${opp ? `מול ${opp} · ` : ""}${format(ilDate(g.game_date), "d/M")}`
 }
 
 function itemLink(item) {
@@ -151,7 +152,7 @@ export function TeamMediaEmpty({ team, nextGame, teamsMap }) {
           <p className="font-bold text-sm text-slate-900 dark:text-white">עוד אין סרטונים של {team.name}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
             גולים ומשחקים מלאים יופיעו כאן אחרי משחק מצולם.
-            {nextGame && <> המשחק הבא: {format(new Date(nextGame.game_date), "d/M")}{opp ? ` מול ${opp.name}` : ""}.</>}
+            {nextGame && <> המשחק הבא: {format(ilDate(nextGame.game_date), "d/M")}{opp ? ` מול ${opp.name}` : ""}.</>}
           </p>
         </div>
       </div>

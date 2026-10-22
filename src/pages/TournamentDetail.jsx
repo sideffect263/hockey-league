@@ -16,6 +16,7 @@ import { TeamLink } from "@/components/EntityLinks"
 import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
 import { TournamentDetailSkeleton } from "@/components/skeletons/PageSkeletons"
+import { ilDate } from "@/lib/ilTime"
 
 const statusLabel = {
   scheduled: "מתוכנן", in_progress: "משחק חי", waiting_result: "ממתין לתוצאה",
@@ -200,7 +201,7 @@ export default function TournamentDetail() {
                       /* date and time are two separate LTR runs — without dir=ltr the RTL context prints the time first */
                       <span className="text-[11px] font-semibold text-slate-400">
                         {g.game_date
-                          ? <span dir="ltr" className="tabular-nums">{format(new Date(g.game_date), "d/M HH:mm")}</span>
+                          ? <span dir="ltr" className="tabular-nums">{format(ilDate(g.game_date), "d/M HH:mm")}</span>
                           : (statusLabel[g.status] || "")}
                       </span>
                     )}

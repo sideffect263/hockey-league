@@ -8,6 +8,7 @@ import TeamLogo from "@/components/TeamLogo"
 import { TeamLink } from "@/components/EntityLinks"
 import { useSeasonName } from "@/App"
 import { buildPlayoffs } from "@/lib/playoffs"
+import { ilDate } from "@/lib/ilTime"
 
 // Playoffs — the path to the title, shown above the league table on the standings
 // page (there is no separate Final Four page). All the RULES live in lib/playoffs.js
@@ -218,7 +219,7 @@ function GameResult({ game, label }) {
   return (
     <div className="flex items-center justify-between text-[11px] px-2 py-1 bg-surface-inset rounded-md">
       <span className="text-fg-subtle">{label || ""}</span>
-      <span className="text-fg-subtle" dir="ltr">{format(new Date(game.game_date), "d/M")}</span>
+      <span className="text-fg-subtle" dir="ltr">{format(ilDate(game.game_date), "d/M")}</span>
       {/* Score is away:home. The spaces around the dash are bidi-neutral, so under RTL
           the two digit runs swap (5 - 2 would read 2 - 5) — dir=ltr pins the order. */}
       {game.status === "completed"

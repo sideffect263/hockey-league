@@ -30,6 +30,7 @@ import { TeamDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import TeamMedia, { TeamMediaEmpty } from "@/components/TeamMedia"
 import { getTeamMedia } from "@/lib/teamMedia"
 import { sizedImage } from "@/lib/imageSize"
+import { ilDate } from "@/lib/ilTime"
 
 // Header gradient from the team's own colours. Its text and buttons are white, so
 // every stop is darkened until white reads on it (WCAG luminance cap), whatever a
@@ -269,14 +270,14 @@ export default function TeamDetail() {
               </h2>
               {live
                 ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white animate-pulse">LIVE</span>
-                : <span className="text-xs text-slate-500 dark:text-slate-400">{format(new Date(nextGame.game_date), "EEEE d/M", { locale: he })}</span>}
+                : <span className="text-xs text-slate-500 dark:text-slate-400">{format(ilDate(nextGame.game_date), "EEEE d/M", { locale: he })}</span>}
             </div>
             {/* RTL: home on the right, away on the left — same as every scoreboard here. */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
               {[home, null, away].map((t, k) => k === 1 ? (
                 <div key="mid" className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
                   <span dir="ltr" className="block text-lg font-extrabold text-slate-900 dark:text-white tabular-nums">
-                    {live && nextGame.home_score != null ? `${nextGame.away_score}:${nextGame.home_score}` : format(new Date(nextGame.game_date), "HH:mm")}
+                    {live && nextGame.home_score != null ? `${nextGame.away_score}:${nextGame.home_score}` : format(ilDate(nextGame.game_date), "HH:mm")}
                   </span>
                   {isHome ? 'בית' : 'חוץ'}{nextGame.venue ? ` · ${nextGame.venue}` : ''}
                 </div>
@@ -317,7 +318,7 @@ export default function TeamDetail() {
           {Array.from({ length: 5 }, (_, k) => form[k]).map((g, k) => {
             const o = g && outcome(g)
             return (
-              <span key={k} title={g ? `${o === 'w' ? 'ניצחון' : o === 'l' ? 'הפסד' : 'תיקו'} · ${format(new Date(g.game_date), "d/M")}` : undefined}
+              <span key={k} title={g ? `${o === 'w' ? 'ניצחון' : o === 'l' ? 'הפסד' : 'תיקו'} · ${format(ilDate(g.game_date), "d/M")}` : undefined}
                 className={`w-6 h-6 rounded-md grid place-items-center text-[11px] font-extrabold ${
                   o === 'w' ? 'bg-emerald-500 text-white' : o === 'l' ? 'bg-red-500 text-white' : o === 't' ? 'bg-slate-400 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
                 {o === 'w' ? 'נ' : o === 'l' ? 'ה' : o === 't' ? 'ת' : '–'}
@@ -463,12 +464,12 @@ export default function TeamDetail() {
                     <div className="min-w-0">
                       <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{opp?.name || '—'}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {format(new Date(game.game_date), "d/M/yyyy")} · {isHome ? 'בית' : 'חוץ'}{game.venue ? ` · ${game.venue}` : ''}
+                        {format(ilDate(game.game_date), "d/M/yyyy")} · {isHome ? 'בית' : 'חוץ'}{game.venue ? ` · ${game.venue}` : ''}
                       </p>
                     </div>
                   </div>
                   <span dir="ltr" className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light shrink-0 tabular-nums">
-                    <Clock className="w-3 h-3" /> {format(new Date(game.game_date), "HH:mm")}
+                    <Clock className="w-3 h-3" /> {format(ilDate(game.game_date), "HH:mm")}
                   </span>
                 </Link>
               )
@@ -509,7 +510,7 @@ export default function TeamDetail() {
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{opp?.name || '—'}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {format(new Date(game.game_date), "d/M/yyyy")} · {isHome ? 'בית' : 'חוץ'}
+                      {format(ilDate(game.game_date), "d/M/yyyy")} · {isHome ? 'בית' : 'חוץ'}
                       {game.game_type === FRIENDLY_GAME_TYPE && (
                         <span className="text-violet-500 dark:text-violet-400 font-medium"> · ידידותי</span>
                       )}

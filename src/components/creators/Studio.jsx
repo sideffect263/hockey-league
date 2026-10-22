@@ -45,7 +45,7 @@ export default function Studio({ onCountChange }) {
 
   const gameById = useMemo(() => Object.fromEntries(ctx.games.map(g => [g.id, g])), [ctx.games])
   const teamName = useCallback((id) => ctx.teams[id]?.name || "", [ctx.teams])
-  const gameLabel = useCallback((g) => g ? `${teamName(g.home_team_id)} – ${teamName(g.away_team_id)} · ${new Date(g.game_date).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" })}` : "", [teamName])
+  const gameLabel = useCallback((g) => g ? `${teamName(g.home_team_id)} – ${teamName(g.away_team_id)} · ${new Date(g.game_date).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric" })}` : "", [teamName])
 
   if (type) {
     return <Wizard type={TYPE_BY_ID[type]} ctx={{ ...ctx, gameById, teamName, gameLabel }}
@@ -459,7 +459,7 @@ function DayPicker({ which, games, teamName, day, onPick }) {
           return (
             <button key={d.day} onClick={() => onPick(d)}
               className={`text-start rounded-xl border-2 p-3 ${active ? "border-brand bg-brand/[0.05]" : "border-slate-200 dark:border-slate-700 hover:border-slate-300"}`}>
-              <p className="font-bold text-sm text-slate-900 dark:text-white">{new Date(d.games[0].game_date).toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "numeric" })}</p>
+              <p className="font-bold text-sm text-slate-900 dark:text-white">{new Date(d.games[0].game_date).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", weekday: "long", day: "numeric", month: "numeric" })}</p>
               {/* RTL row: home team on the right, so the score reads away:home inside an LTR run (CLAUDE.md gotcha). */}
               <ul className="mt-1 space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
                 {d.games.map(g => (

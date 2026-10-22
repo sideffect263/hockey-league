@@ -114,7 +114,7 @@ const span = (d) => (d.ends_on ? `${day(d.starts_on)}–${day(d.ends_on)}` : `מ
 // the reader has to act on; the old one is only there to make the change legible.
 function movedSummary(d) {
   const when = d.game_date
-    ? new Date(d.game_date).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+    ? new Date(d.game_date).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
     : ''
   if (d.what === 'venue') return `המשחק עבר ל${d.venue || 'מגרש אחר'}`
   if (d.what === 'time')  return `המשחק נדחה ל־${when}`

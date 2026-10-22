@@ -66,6 +66,7 @@ import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
+import { ilDate } from "@/lib/ilTime"
 
 const tabs = [
   { id: "games", label: "משחקים", icon: Calendar },
@@ -373,7 +374,7 @@ function CoachGamesView({ games, teamsMap, coachTeamIds }) {
                   <TeamLogo team={teamsMap[game.away_team_id]} size={7} />
                 </div>
                 <div className="flex items-center gap-2 mr-3 shrink-0">
-                  <span className="text-[10px] text-slate-400 hidden sm:inline">{format(new Date(game.game_date), "d/M/yy HH:mm")}</span>
+                  <span className="text-[10px] text-slate-400 hidden sm:inline">{format(ilDate(game.game_date), "d/M/yy HH:mm")}</span>
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">{GAME_STATUS_HE[game.status] || game.status}</span>
                 </div>
               </Link>
@@ -488,7 +489,7 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
     setForm({
       home_team_id: game.home_team_id || '',
       away_team_id: game.away_team_id || '',
-      game_date: game.game_date ? format(new Date(game.game_date), "yyyy-MM-dd'T'HH:mm") : '',
+      game_date: game.game_date ? format(ilDate(game.game_date), "yyyy-MM-dd'T'HH:mm") : '',
       venue: game.venue || '',
       home_score: game.home_score ?? '',
       away_score: game.away_score ?? '',
@@ -766,7 +767,7 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
                         <AlertTriangle className="w-3.5 h-3.5" /><span className="sm:hidden">חסר שופט</span>
                       </span>
                     )}
-                    <span dir="ltr" className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">{format(new Date(game.game_date), "d/M/yy")}</span>
+                    <span dir="ltr" className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">{format(ilDate(game.game_date), "d/M/yy")}</span>
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 whitespace-nowrap">{game.game_type}</span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

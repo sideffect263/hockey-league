@@ -10,6 +10,7 @@ import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import JudgeGate from "@/components/judge/JudgeGate"
 import { JudgeSkeleton } from "@/components/skeletons/PageSkeletons"
+import { ilDate } from "@/lib/ilTime"
 
 const OFFICIABLE = ["scheduled", "in_progress", "waiting_result"]
 const statusCfg = {
@@ -136,8 +137,8 @@ function JudgePicker() {
                     </div>
                   )}
                   <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "d/M/yyyy")}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "d/M/yyyy")}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
                     <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
                     <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">
                       פתח לוח שיפוט <ChevronLeft className="w-3.5 h-3.5" />

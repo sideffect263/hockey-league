@@ -68,7 +68,7 @@ export default function LoanInvite({ gameId = null, compact = false }) {
   const done = Object.keys(msg).filter(id => !invites.some(r => r.id === id))
   if (!invites.length && !done.length) return null
 
-  const when = (r) => new Date(r.game_date).toLocaleString("he-IL", {
+  const when = (r) => new Date(r.game_date).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem",
     weekday: "long", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit",
   })
 

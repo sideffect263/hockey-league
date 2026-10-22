@@ -37,6 +37,7 @@ import { MATCH_STATS_GAMES } from "@/lib/matchStats"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
+import { ilDate } from "@/lib/ilTime"
 
 const statusCfg = {
   scheduled: { label: "מתוכנן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -347,7 +348,7 @@ export default function GameDetail() {
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <span className="text-2xl font-extrabold text-slate-300 dark:text-slate-600 tabular-nums">{format(new Date(game.game_date), "HH:mm")}</span>
+                <span className="text-2xl font-extrabold text-slate-300 dark:text-slate-600 tabular-nums">{format(ilDate(game.game_date), "HH:mm")}</span>
                 <span className="text-[11px] text-slate-400 mt-0.5">שעת פתיחה</span>
               </div>
             )}
@@ -362,8 +363,8 @@ export default function GameDetail() {
         </div>
 
         <div className="flex items-center justify-center gap-x-4 gap-y-2 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
-          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>
+          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
           {/* Labelled: a bare name after the venue read as nothing (nobody saw it was the judge). */}
           {refName && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
@@ -706,7 +707,7 @@ export default function GameDetail() {
                   <Link key={g.id} to={entityPath('games', g)} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-2 min-w-0 text-xs text-slate-500 dark:text-slate-400">
                       <Calendar className="w-3.5 h-3.5 shrink-0" />
-                      <span>{format(new Date(g.game_date), "d/M/yyyy")}</span>
+                      <span>{format(ilDate(g.game_date), "d/M/yyyy")}</span>
                       <span className="text-slate-500 dark:text-slate-400">· {g.game_type}</span>
                     </div>
                     {/* dir=ltr isolates the standalone score so RTL can't split away:home

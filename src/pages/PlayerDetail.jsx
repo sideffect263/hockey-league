@@ -28,6 +28,7 @@ import { getPlayerMentions } from "@/lib/mentionsApi"
 import { sizedImage } from "@/lib/imageSize"
 import TeamMedia from "@/components/TeamMedia"
 import { getPlayerMedia } from "@/lib/teamMedia"
+import { ilDate } from "@/lib/ilTime"
 
 export default function PlayerDetail() {
   // The route param is a Hebrew slug (/players/יואב-תורגמן) or, for every link
@@ -434,7 +435,7 @@ export default function PlayerDetail() {
                         {m.kind === 'big_game' ? 'משחק ענק' : 'שלושער'} · {m.goals} שערים
                       </p>
                       <Link to={m.opp ? entityPath('teams', m.opp) : '#'} className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
-                        מול {m.opp?.name || '—'} · {format(new Date(m.game.game_date), "d/M/yyyy")}
+                        מול {m.opp?.name || '—'} · {format(ilDate(m.game.game_date), "d/M/yyyy")}
                       </Link>
                     </div>
                   </div>
@@ -528,7 +529,7 @@ export default function PlayerDetail() {
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{opp?.name || '—'}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })} · {isHome ? 'בית' : 'חוץ'}
+                      {format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })} · {isHome ? 'בית' : 'חוץ'}
                       {game.game_type === FRIENDLY_GAME_TYPE && (
                         <span className="text-violet-500 dark:text-violet-400 font-medium"> · ידידותי (לא נספר)</span>
                       )}

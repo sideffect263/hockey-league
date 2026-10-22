@@ -19,6 +19,7 @@ import { useSeasonName } from "@/App"
 import { entityPath } from "@/lib/slugs"
 import { GamesSkeleton } from "@/components/skeletons/PageSkeletons"
 import GamesCalendar from "@/components/games/GamesCalendar"
+import { ilDate } from "@/lib/ilTime"
 
 export default function Games() {
   const { coachTeamIds, profile } = useAuth()
@@ -132,7 +133,7 @@ export default function Games() {
     return true
   })
   const filtered = dateFilter
-    ? calendarGames.filter(g => format(new Date(g.game_date), 'yyyy-MM-dd') === dateFilter)
+    ? calendarGames.filter(g => format(ilDate(g.game_date), 'yyyy-MM-dd') === dateFilter)
     : calendarGames
 
   const completed = filtered.filter(g => g.status === 'completed')
@@ -146,8 +147,8 @@ export default function Games() {
   // already just one day.
   const sortedCompleted = [...completed].sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
   const lastRoundDay = !dateFilter && sortedCompleted.length
-    ? format(new Date(sortedCompleted[0].game_date), 'yyyy-MM-dd') : null
-  const inLastRound = (g) => lastRoundDay && format(new Date(g.game_date), 'yyyy-MM-dd') === lastRoundDay
+    ? format(ilDate(sortedCompleted[0].game_date), 'yyyy-MM-dd') : null
+  const inLastRound = (g) => lastRoundDay && format(ilDate(g.game_date), 'yyyy-MM-dd') === lastRoundDay
   const lastRound = sortedCompleted.filter(inLastRound)
   const olderResults = sortedCompleted.filter(g => !inLastRound(g))
 
@@ -244,7 +245,7 @@ export default function Games() {
                 </div>
               ) : (
                 <div className="text-lg font-bold text-slate-300 dark:text-slate-600">
-                  {format(new Date(game.game_date), "HH:mm")}
+                  {format(ilDate(game.game_date), "HH:mm")}
                 </div>
               )}
             </div>
@@ -265,9 +266,9 @@ export default function Games() {
 
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
             {/* Upcoming games already show the time in place of the score. */}
-            {done && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>}
+            {done && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>}
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
             {/* Kiosk — only when someone has actually said. null stays silent. */}
             {game.kiosk_open != null && (
@@ -396,7 +397,7 @@ export default function Games() {
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
               <Trophy className="w-4 h-4 text-amber-500" /> המחזור האחרון
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(new Date(lastRound[0].game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(ilDate(lastRound[0].game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
             </h2>
             <div className="grid gap-3">{lastRound.map(g => GameCard({ game: g }))}</div>
           </div>

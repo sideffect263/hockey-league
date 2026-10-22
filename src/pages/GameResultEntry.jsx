@@ -12,6 +12,7 @@ import {
   canEnterResults, isAwaitingResult, submitGameForm, getOpenSubmission, signFormPhotos,
   getGameRosters, applyGameFormResult, resultErrorText,
 } from "@/lib/gameFormResult"
+import { ilDate } from "@/lib/ilTime"
 
 /**
  * /games/:id/result — enter a game's result from the handwritten referee form.
@@ -514,7 +515,7 @@ export default function GameResultEntry() {
     <div className="space-y-1">
       <h1 className="page-title !text-2xl sm:!text-3xl">הזנת תוצאה מטופס שיפוט</h1>
       <p className="text-sm text-fg-muted">
-        {home?.name} נגד {away?.name} · <span dir="ltr">{format(new Date(game.game_date), "dd.MM.yyyy HH:mm")}</span>{game.venue ? ` · ${game.venue}` : ""}
+        {home?.name} נגד {away?.name} · <span dir="ltr">{format(ilDate(game.game_date), "dd.MM.yyyy HH:mm")}</span>{game.venue ? ` · ${game.venue}` : ""}
       </p>
     </div>
   )
