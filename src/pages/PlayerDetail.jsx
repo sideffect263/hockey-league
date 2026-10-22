@@ -29,6 +29,8 @@ import { sizedImage } from "@/lib/imageSize"
 import TeamMedia from "@/components/TeamMedia"
 import { getPlayerMedia } from "@/lib/teamMedia"
 import { ilDate } from "@/lib/ilTime"
+import { supabase } from "@/lib/supabase"
+import { playerSummary } from "@/lib/pageSummary"
 
 export default function PlayerDetail() {
   // The route param is a Hebrew slug (/players/יואב-תורגמן) or, for every link
@@ -53,6 +55,7 @@ export default function PlayerDetail() {
   const [claimErr, setClaimErr] = useState(null)
   const [accountBadges, setAccountBadges] = useState(null) // { isAdmin, roles } | null
   const [tagged, setTagged] = useState([]) // "תויג/ה ב…" — posts/comments this player is @-tagged in
+  const [pastSeasons, setPastSeasons] = useState([]) // archived-season lines, for "על השחקן"
   const [media, setMedia] = useState(null) // the team-page media wall, scoped to the games this player played
 
   const playerName = player ? `${player.first_name} ${player.last_name}` : null
@@ -66,6 +69,15 @@ export default function PlayerDetail() {
     if (id) loadData()
     else if (unknownRoute) { setError('השחקן לא נמצא'); setLoading(false) }
   }, [id, unknownRoute])
+
+  // The same archived-season rows PastSeasons lists — the summary sentence totals them.
+  useEffect(() => {
+    let alive = true
+    if (!player?.id) return
+    supabase.from("player_season_stats").select("goals, games_played, team_name, season:seasons(name)").eq("player_id", player.id)
+      .then(({ data }) => alive && setPastSeasons((data || []).filter(r => r.season).sort((a, b) => b.season.name.localeCompare(a.season.name))))
+    return () => { alive = false }
+  }, [player?.id])
 
   // Load claim state for this player once it (and the auth user) are known.
   useEffect(() => {
@@ -180,6 +192,14 @@ export default function PlayerDetail() {
     .map(s => ({ stat: s, game: gamesMap[s.game_id] }))
     .filter(x => x.game)
     .sort((a, b) => new Date(b.game.game_date) - new Date(a.game.game_date))
+
+  // "על השחקן" — the same sentences api/seo.js gives search bots (one source: lib/pageSummary).
+  const last = gameLog[0]?.game
+  const summary = playerSummary({
+    player, team,
+    past: pastSeasons.map(r => ({ seasonName: r.season.name, teamName: r.team_name, goals: r.goals, games_played: r.games_played })),
+    lastGame: last ? { ...last, home: teamsMap[last.home_team_id]?.name || 'בית', away: teamsMap[last.away_team_id]?.name || 'חוץ', goals: gameLog[0].stat.goals || 0 } : null,
+  })
 
   // Result (from the player's team perspective) for a given game.
   const resultOf = (game) => {
@@ -377,6 +397,11 @@ export default function PlayerDetail() {
           <TeamMembershipCard player={player} onChange={() => getPlayers().then(ps => setPlayer(ps.find(p => p.id === id) || null)).catch(() => {})} />
         </div>
       )}
+
+      <section className="card p-5">
+        <h2 className="font-bold text-sm text-slate-900 dark:text-white mb-2">על השחקן</h2>
+        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{summary.join(' ')}</p>
+      </section>
 
       {/* Season totals */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>

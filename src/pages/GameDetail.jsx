@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Ball } from '../components/icons/HockeyIcons'
 import { useParams, Link, useLocation } from "react-router-dom"
-import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason } from "@/lib/api"
+import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason, getArchivedGames } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
 import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, MonitorPlay, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
@@ -19,7 +19,7 @@ import GameBroadcast from "@/components/GameBroadcast"
 import { TeamLink, PlayerLink } from "@/components/EntityLinks"
 import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
-import { countsForStats, FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
+import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import GameChangeRequestModal from "@/components/GameChangeRequestModal"
 import GameChangeOpponentCard from "@/components/GameChangeOpponentCard"
 import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
@@ -38,6 +38,7 @@ import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameReque
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
 import { ilDate } from "@/lib/ilTime"
+import { headToHead, formBefore, gameSummary } from "@/lib/pageSummary"
 
 const statusCfg = {
   scheduled: { label: "מתוכנן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -142,7 +143,10 @@ export default function GameDetail() {
         getGameAnySeason(id), getGameStatsByGameId(id), getTeams(), getPlayers(), getReferees(), getGames(), getLiveGame(id),
       ])
       if (!cur) { setError('notfound'); return }
-      setGame(cur.game); setStats(cur.stats ?? s ?? []); setTeams(t); setPlayers(p); setReferees(r); setGames(allGames); setLive(lg)
+      // An archived game's form + head-to-head come from ITS season — getGames() only
+      // sees the live one, which left both sections empty on every 2025-26 game.
+      const seasonGames = cur.stats ? await getArchivedGames(cur.game.season_id).catch(() => allGames) : allGames
+      setGame(cur.game); setStats(cur.stats ?? s ?? []); setTeams(t); setPlayers(p); setReferees(r); setGames(seasonGames); setLive(lg)
     } catch (err) {
       console.error(err)
       setError(err?.code === 'PGRST116' ? 'notfound' : 'error')
@@ -247,27 +251,22 @@ export default function GameDetail() {
 
   // ---- Head-to-head: other completed meetings between the two teams ----
   // Friendlies are excluded — this reflects the competitive record only.
-  const h2h = games
-    .filter(g => g.id !== game.id && g.status === 'completed' && countsForStats(g) && g.home_score != null && g.away_score != null &&
-      ((g.home_team_id === game.home_team_id && g.away_team_id === game.away_team_id) ||
-       (g.home_team_id === game.away_team_id && g.away_team_id === game.home_team_id)))
-    .sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
+  const h2h = headToHead(games, game)
 
   // ---- Pre-match form: each team's last 5 completed results BEFORE this game ----
-  const formBefore = (teamId) => games
-    .filter(g => g.status === 'completed' && countsForStats(g) && g.home_score != null && g.away_score != null &&
-      new Date(g.game_date) < new Date(game.game_date) &&
-      (g.home_team_id === teamId || g.away_team_id === teamId))
-    .sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
-    .slice(0, 5)
-    .map(g => {
-      const isHome = g.home_team_id === teamId
-      const my = isHome ? g.home_score : g.away_score
-      const opp = isHome ? g.away_score : g.home_score
-      return my > opp ? 'win' : my < opp ? 'loss' : 'tie'
-    })
-  const homeForm = formBefore(game.home_team_id)
-  const awayForm = formBefore(game.away_team_id)
+  const homeForm = formBefore(games, game, game.home_team_id)
+  const awayForm = formBefore(games, game, game.away_team_id)
+
+  // "על המשחק" — the same sentences api/seo.js gives search bots (keep them one source).
+  const summary = gameSummary({
+    game, home, away, h2h, seasonName: pastSeason?.name || null,
+    cards: { blue: blueCards, red: redCards },
+    scorers: scorers.map(s => {
+      const p = playersMap[s.player_id]
+      const side = sideOf(s) === game.home_team_id ? 'home' : sideOf(s) === game.away_team_id ? 'away' : null
+      return { name: s.is_guest_player ? s.guest_player_name : (p ? `${p.first_name} ${p.last_name}` : null), goals: s.goals, side }
+    }).filter(s => s.name && s.side),
+  })
 
   // A coach of either team may request a reschedule while the game is still
   // upcoming (scheduled or already postponed). Managers/admins edit games directly.
@@ -392,6 +391,13 @@ export default function GameDetail() {
           </div>
         )}
       </motion.div>
+
+      {summary.length > 0 && (
+        <section className="card p-5">
+          <h2 className="font-bold text-sm text-slate-900 dark:text-white mb-2">על המשחק</h2>
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{summary.join(' ')}</p>
+        </section>
+      )}
 
       {/* ===== סיפור המשחק — written story (published, or a draft for editors) ===== */}
       {done && <GameStory gameId={game.id} home={home} away={away} />}
