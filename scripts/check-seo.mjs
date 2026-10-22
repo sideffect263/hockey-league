@@ -60,9 +60,9 @@ async function main() {
   if (playerHtml) expectLd(decodeURIComponent(player), playerHtml, 'ProfilePage')
   if (teamHtml) expectLd(decodeURIComponent(team), teamHtml, 'SportsTeam')
 
-  // Unknown slug → 404, so dead URLs leave the index instead of piling up as soft 404s.
+  // Unknown slug → 410 Gone (a deleted player, almost always), so dead URLs leave the index fast instead of piling up.
   const missing = await get('/players/__seo-check-missing__', GOOGLEBOT)
-  missing.status === 404 ? ok('unknown player → 404') : fail(`unknown player → ${missing.status}, expected 404`)
+  missing.status === 410 ? ok('unknown player → 410') : fail(`unknown player → ${missing.status}, expected 410`)
 
   // Visitors still get the app — and the shell must never carry a site-wide canonical again.
   const shell = await get(player || '/players', BROWSER)
