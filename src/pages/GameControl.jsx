@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus, LayoutGrid, Wand2, Hand, X } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, Lock, LockOpen, MonitorPlay, Pencil, Radio, Check, Minus, Plus, LayoutGrid, Wand2, Hand, X, Trash2 } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useSlugId } from "@/lib/slugs"
 import { getGameById, getTeams } from "@/lib/api"
 import { getGameVideos, subscribeGameVideo, groupCameras } from "@/lib/video"
 import {
   getBroadcast, subscribeBroadcast, saveBroadcast, setCameraHidden, renameCamera, getCameraStreamers, BROADCAST_DEFAULTS,
-  LAYOUT_SLOTS, getCameraActivity, getStreamRequests, decideStreamRequest,
+  LAYOUT_SLOTS, getCameraActivity, getStreamRequests, decideStreamRequest, deleteStreamRequest,
 } from "@/lib/streamControl"
 import { useCameraOnAir } from "@/lib/useCameraOnAir"
 import { useStreamViewers } from "@/lib/useStreamViewers"
@@ -161,7 +161,8 @@ export default function GameControl() {
       <AutoDirector bc={bc} cameras={approved} gameId={gameId} save={save} />
 
       <StreamRequests requests={requests}
-        onDecide={(id, approve) => act(() => decideStreamRequest(id, approve))} />
+        onDecide={(id, approve) => act(() => decideStreamRequest(id, approve))}
+        onDelete={(id) => act(() => deleteStreamRequest(id))} />
 
       {/* Cameras */}
       {pending.length > 0 && (
@@ -432,7 +433,7 @@ function IconBtn({ label, children, ...props }) {
 // for) until one is approved here; the fan then presses "שדר" again and is on air, visible.
 // The app can't tell them it's waiting — it shows its "the admin locked new streams" message —
 // so tell them to press again once approved.
-function StreamRequests({ requests, onDecide }) {
+function StreamRequests({ requests, onDecide, onDelete }) {
   const waiting = requests.filter((r) => r.status === "pending")
   const decided = requests.filter((r) => r.status !== "pending")
   if (!requests.length) return null
@@ -474,6 +475,11 @@ function StreamRequests({ requests, onDecide }) {
                 </button>
               </>
             )}
+            <button onClick={() => { if (window.confirm(`למחוק את הבקשה של ${r.name || "המשתמש"}?`)) onDelete(r.id) }}
+              aria-label="מחק בקשה" title="מחק בקשה"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </li>
         ))}
       </ul>

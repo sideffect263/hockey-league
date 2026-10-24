@@ -111,6 +111,12 @@ export async function decideStreamRequest(id, approve) {
   if (error) throw error
 }
 
+// Admin: remove a request completely. Pressing "שדר" again files a new one.
+export async function deleteStreamRequest(id) {
+  const { error } = await supabase.rpc('delete_stream_request', { p_id: id })
+  if (error) throw error
+}
+
 // Admin: the player count each camera reported in the last few seconds — { [camera_no]: n }
 // (auto-director). Cameras that stopped reporting are left out.
 export async function getCameraActivity(gameId) {
