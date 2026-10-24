@@ -511,8 +511,13 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
 
   return (
     <div ref={wrapRef} dir="ltr"
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden"
-      style={{ background: T.bg, color: T.primaryText }}>
+      className="fixed inset-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto overscroll-contain"
+      style={{
+        background: T.bg, color: T.primaryText,
+        // a phone's browser bars / status bar eat into the viewport, so the board can be
+        // taller than what's visible — scroll instead of clipping the timeout/end/save rows
+        paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)",
+      }}>
 
       {/* subtle web-only chrome: close (→ list) + kiosk fullscreen (top-left in LTR) */}
       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
@@ -523,7 +528,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
 
       {/* board: HOME (left) · center · GUEST (right) — items-stretch so each
           column fills the full height and spreads its rows to use the space */}
-      <div className="flex-1 flex items-stretch justify-between gap-2" style={{ padding: "clamp(1rem,4vh,3.5rem) clamp(1rem,3vw,4rem)" }}>
+      <div className="flex-1 shrink-0 flex items-stretch justify-between gap-2" style={{ padding: "clamp(1rem,4vh,3.5rem) clamp(1rem,3vw,4rem)" }}>
         <TeamColumn side={TeamSide.home} engine={engine} T={T} teamName={home?.name} setPicker={setPicker} onRemoveCard={removeCard} />
 
         {/* center stack */}
