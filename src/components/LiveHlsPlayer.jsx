@@ -141,7 +141,9 @@ export default function LiveHlsPlayer({ src, children, onLatency, preview = fals
           liveMaxLatencyDurationCount: 6,  // drifted past ~12s → hls.js seeks back itself
           maxLiveSyncPlaybackRate: 1.3,    // …or speeds up slightly to close a small gap
           backBufferLength: 30,
-          ...(preview ? { capLevelToPlayerSize: true, startLevel: 0 } : {}),
+          // A tile starts on the lowest rendition; the main player at ~4 Mbps (≈720p) —
+          // hls.js assumes 0.5 Mbps and opened viewers on 240p (2026-10-24).
+          ...(preview ? { capLevelToPlayerSize: true, startLevel: 0 } : { abrEwmaDefaultEstimate: 4_000_000 }),
           manifestLoadingMaxRetry: 6,
           levelLoadingMaxRetry: 6,
           fragLoadingMaxRetry: 6,
