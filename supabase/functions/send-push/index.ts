@@ -155,6 +155,8 @@ function notificationText(n: NotificationRow, actorName: string): string {
     // on the lock screen as "התראה חדשה" is the one notification where a generic
     // fallback defeats the entire point of sending it.
     // Loan invites — keep in step with src/lib/notifications.js.
+    // The fan waiting room (stream-request-approved-push.sql): keep in step with src/lib/notifications.js.
+    case "stream_approved":    return `אושרת לשדר את ${vs(d)} 🎥 — לחצו כדי להתחיל לשדר`;
     case "loan_call":          return `${d.team_name ?? "קבוצה"} מחפשת ${d.need === "gk" ? "שוער" : "שחקן שדה"} בהשאלה למשחק ${vs(d)} — רוצה לשחק?`;
     case "loan_join_request":  return `${d.player_name ?? "שחקן"}${d.age != null ? ` (${d.age})` : ""} מבקש/ת לשחק בהשאלה ב${d.team_name ?? "קבוצה"} — ${vs(d)}`;
     case "loan_join_approved": return `אושרת! את/ה בסגל של ${d.team_name ?? "הקבוצה"} למשחק ${vs(d)} 🎉`;
@@ -221,6 +223,9 @@ function notificationHref(n: NotificationRow): string {
     // a team's call for players → the youth loan page (web only for now; the apps
     // fall back to their default screen until they learn the route)
     case "loan_call":      return "/loans";
+    // Approved to stream → the game; `section: "broadcast"` (below) takes new apps on to the
+    // broadcast screen, older ones stay on the game page, which has the "שדר" button.
+    case "stream_approved": return n.entity_id ? `/games/${n.entity_id}` : "/games";
     case "app_update":     return "/app";
     // Reviewer queues: land on the TAB (and, inside the stacked claims tab, the
     // SECTION) the notification is about. A bare /admin opens whichever tab happens to
@@ -680,7 +685,9 @@ Deno.serve(async (req) => {
   // Where on that page to land. A separate key, NOT a `#fragment` on `url`: apps that
   // predate it read url's second segment as the row id, and "<id>#game-form" would
   // never match (see notificationHref). New apps append it as `#<section>`.
-  const section = n.type === "game_form_sign" ? "game-form" : null;
+  const section = n.type === "game_form_sign" ? "game-form"
+    : n.type === "stream_approved" ? "broadcast"
+    : null;
 
   // Recipient's devices.
   //

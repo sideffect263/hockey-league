@@ -188,6 +188,7 @@ export function notificationText(n) {
     // the sentence reads the same regardless of which side is home.
     // Loan invites (supabase/loan-requests.sql). The invite itself must say who is asking
     // and for which game — it is the one the player has to answer.
+    case 'stream_approved': return `אושרת לשדר את ${vs(d)} 🎥 — לחצו כדי להתחיל לשדר`
     case 'loan_call':      return `${d.team_name || 'קבוצה'} מחפשת ${d.need === 'gk' ? 'שוער' : 'שחקן שדה'} בהשאלה למשחק ${vs(d)} — רוצה לשחק?`
     case 'loan_join_request':  return `${d.player_name || 'שחקן'}${d.age != null ? ` (${d.age})` : ''} מבקש/ת לשחק בהשאלה ב${d.team_name || 'קבוצה'} — ${vs(d)}`
     case 'loan_join_approved': return `אושרת! את/ה בסגל של ${d.team_name || 'הקבוצה'} למשחק ${vs(d)} 🎉`
@@ -277,6 +278,7 @@ export function notificationIcon(n) {
     case 'tournament_invite':          return '🏆'
     case 'tournament_invite_accepted': return '✅'
     case 'tournament_invite_declined': return '⛔'
+    case 'stream_approved':    return '🎥'
     case 'loan_call':          return '📣'
     case 'loan_join_request':  return '🙋'
     case 'loan_join_approved': return '🤝'
@@ -366,6 +368,7 @@ export function notificationHref(n) {
     case 'game_form_sign':        return n.entity_id ? `/games/${n.entity_id}#game-form` : '/games'
     // a team's call for players → the youth loan page, where the ask button is
     case 'loan_call':             return '/loans'
+    case 'stream_approved':       return n.entity_id ? `/games/${n.entity_id}` : '/games'
     case 'app_update':            return '/app'
     case 'goal_scored':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
     // reviewers land on the /admin review tabs. The claims tab stacks five queues, so
