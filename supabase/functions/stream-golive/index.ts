@@ -29,6 +29,8 @@
 // of theirs that is on air right now (Cloudflare lifecycle says live) is not reused, so
 // the second device becomes its own camera; a camera of theirs that is off air is.
 // Optional body `camera` = a label ("מאחורי השער").
+// Trusted streamers (stream_trusted: league managers, coaches, people approved or kept
+// visible before) skip the request and go on air visible, like an approved fan.
 // The director (game_broadcast) can lock new streams (423) and cap simultaneous cameras
 // (409); the admin is exempt from both. A camera starts hidden until the admin approves
 // it (trigger game_videos_guard_hidden) -- the response's `hidden` tells the app.
@@ -134,7 +136,13 @@ Deno.serve(async (req) => {
   const svc = createClient(SB_URL, SB_SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
 
   // ---- Fans: the admin approves BEFORE any Cloudflare cost. One request row per fan per game.
-  if (isStaff !== true) {
+  // Trusted streamers skip the request (2026-10-25, supabase/stream-trusted.sql): league
+  // managers, coaches, and anyone the admin approved or kept visible before. They go on air
+  // like an approved fan: inserted by the service role, visible from the start.
+  const { data: trusted } = isStaff === true
+    ? { data: false }
+    : await svc.rpc("stream_trusted", { p_user: user.id });
+  if (isStaff !== true && trusted !== true) {
     const { data: request, error: reqErr } = await svc.from("stream_requests")
       .select("id, status, attempts").eq("game_id", gameId).eq("user_id", user.id).maybeSingle();
     if (reqErr) {
