@@ -8,6 +8,7 @@
 -- {"absent": true} (a signed-up player the judge hid: he did not come). The native boards
 -- do not load sign-ups, so the server, not the board, adds them; an old installed board
 -- sends no absent rows and simply gets every sign-up. Rows for one player are merged.
+-- A clean sheet goes only to a keeper who signed up, when his side has one (see below).
 create or replace function public.judge_save_game_result(p_game_id uuid, p_home_score integer, p_away_score integer, p_stats jsonb)
  returns void
  language plpgsql
@@ -57,6 +58,22 @@ begin
        and not exists (select 1 from public.game_stats st where st.game_id = p_game_id and st.player_id = ga.player_id)
        and not exists (select 1 from jsonb_array_elements(coalesce(p_stats, '[]'::jsonb)) r
                         where coalesce((r->>'absent')::boolean, false) and (r->>'player_id')::uuid = ga.player_id);
+
+  -- Goalkeepers: the boards give a 0-conceded side's clean sheet to EVERY keeper in the
+  -- squad, so one who stayed home got a game and a shutout. When the side has a signed-up
+  -- keeper, a clean-sheet-only row (no goal, no card) for a keeper who did not sign up goes.
+  delete from public.game_stats st
+   where st.game_id = p_game_id and st.clean_sheet and st.goals = 0 and st.blue_cards = 0 and st.red_cards = 0
+     and st.played_for_team_id is null
+     and not exists (select 1 from public.game_availability ga
+                      where ga.game_id = p_game_id and ga.player_id = st.player_id and ga.status = 'available')
+     and exists (
+       select 1 from public.game_stats st2
+         join public.players p2 on p2.id = st2.player_id and p2.position = 'Goalkeeper'
+         join public.game_availability ga2 on ga2.game_id = p_game_id and ga2.player_id = st2.player_id and ga2.status = 'available'
+         join public.player_teams a on a.player_id = st.player_id and a.team_id in (g.home_team_id, g.away_team_id)
+         join public.player_teams b on b.player_id = st2.player_id and b.team_id = a.team_id
+        where st2.game_id = p_game_id and st2.player_id <> st.player_id);
 
   update public.games set home_score = p_home_score, away_score = p_away_score, status = 'completed' where id = p_game_id;
   perform public.recompute_team_standings(g.home_team_id);
