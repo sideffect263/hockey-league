@@ -67,7 +67,7 @@ function ItemReactions({ post, likedItems, itemLikeCounts, itemCommentCounts, bl
 // full 1280px source cost (Google Photos oversizing was the page's biggest payload).
 const sizedUrl = (url, w = 1000) => (url ? url.replace(/=w\d+(-h\d+)?.*$/, `=w${w}`) : url)
 
-function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
+function EventPhoto({ photo, itemKey, candidates = [], onRefreshed, game }) {
   const { isAdmin, isContentEditor } = useAuth()
   const [current, setCurrent] = useState(photo)
   const [busy, setBusy] = useState(false)
@@ -175,8 +175,9 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
 
   return (
     <div className="relative mt-3">
-      <a href={current.detail_url} target="_blank" rel="noopener noreferrer"
-         className="group block relative sm:rounded-xl overflow-hidden bg-slate-900">
+      {/* A game's photo opens that game (Ariel 2026-10-25: same on web and both apps; the
+          Google Photos page it used to open is gone). Season cards' photos open nothing. */}
+      <PhotoFrame to={game ? entityPath('games', game) : null}>
         <img ref={imgRef} src={sizedUrl(current.image_url)} alt="" loading="lazy"
              onError={() => setImgError(true)}
              width={hasDims ? current.width : undefined}
@@ -205,9 +206,8 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
         <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3 pt-6 pb-2">
           <Camera className="w-3.5 h-3.5 text-white/80 shrink-0" />
           <span className="text-[11px] font-medium text-white/90 truncate">{caption}</span>
-          <ExternalLink className="w-3 h-3 text-white/50 mr-auto shrink-0" />
         </div>
-      </a>
+      </PhotoFrame>
 
       {/* Admins + content editors: swap the auto-matched photo for the next candidate. */}
       {canEdit && (
@@ -231,6 +231,11 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
       )}
     </div>
   )
+}
+
+function PhotoFrame({ to, children }) {
+  const cls = "group block relative sm:rounded-xl overflow-hidden bg-slate-900"
+  return to ? <Link to={to} className={cls}>{children}</Link> : <div className={cls}>{children}</div>
 }
 
 /* ---- Score (respects RTL gotcha: away first, home last) ---- */
@@ -365,7 +370,7 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
           label={tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'} />
       </div>
 
-      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
+      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={game} />
 
       {/* Links — one small line, like "למשחק המלא" under a video post. */}
       <div className={`mt-2 flex items-center gap-4 text-xs font-semibold ${INSET}`}>
@@ -473,7 +478,7 @@ function MilestonePost({ post, onPhotoRefreshed, ...rx }) {
           <TeamLink team={away} className="hover:text-brand transition-colors">{away?.name}</TeamLink>
         </p>
       </div>
-      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
+      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={game} />
       <ItemReactions post={post} {...rx} />
     </FeedCard>
   )
