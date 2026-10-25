@@ -14,7 +14,7 @@ import { getMyFollowSets } from "@/lib/follows"
 import { getMarketFeed } from "@/lib/market"
 import { setFeedTracking, observeFeedItem, getFeedPersonalization } from "@/lib/feedImpressions"
 import { attachEventPhotos } from "@/lib/eventPhotos"
-import { getPhotoIndex } from "@/lib/media"
+import { getPhotoIndex, getCachedPhotoIndex } from "@/lib/media"
 import { getPhotoOverrides } from "@/lib/photoOverrides"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import FeedPost from "@/components/feed/FeedPost"
@@ -42,6 +42,15 @@ function TrackedItem({ post, children }) {
   return <div ref={ref} id={post.id} className="scroll-mt-24">{children}</div>
 }
 
+
+const PHOTO_OVERRIDES_CACHE_KEY = 'photo-overrides-v1'
+function readCachedOverrides() {
+  try {
+    const o = JSON.parse(localStorage.getItem(PHOTO_OVERRIDES_CACHE_KEY) || 'null')
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {}
+  } catch { return {} }
+}
+
 export default function Feed() {
   const { seasonMode } = useSeasonMode()
   const seasonName = useSeasonName()
@@ -54,8 +63,8 @@ export default function Feed() {
   const [posts, setPosts] = useState([])
   const [roleBadges, setRoleBadges] = useState({}) // { [userId]: { isAdmin, roles } }
   const [postMentions, setPostMentions] = useState({}) // { [postId]: active @-tags }
-  const [photoIndex, setPhotoIndex] = useState({ photos: [], photoPlayers: [] })
-  const [photoOverrides, setPhotoOverrides] = useState({})
+  const [photoIndex, setPhotoIndex] = useState(() => getCachedPhotoIndex() || { photos: [], photoPlayers: [] })
+  const [photoOverrides, setPhotoOverrides] = useState(readCachedOverrides)
   const [likedPostIds, setLikedPostIds] = useState(() => new Set())
   const [likedItems, setLikedItems] = useState(() => new Set())
   const [itemLikeCounts, setItemLikeCounts] = useState({})
@@ -124,9 +133,14 @@ export default function Feed() {
   // The photo index is heavy (thousands of rows) and only decorates cards, so it
   // loads separately — the feed paints immediately and photos fill in a moment later.
   // The admin photo overrides ride alongside it (a public read → guests get them too).
+  // Both start from this browser's last copy (see getCachedPhotoIndex) so a returning
+  // visitor's cards have their photos on first paint instead of ~1.5 s later.
   useEffect(() => {
     getPhotoIndex().then(setPhotoIndex).catch(() => {})
-    getPhotoOverrides().then(setPhotoOverrides).catch(() => {})
+    getPhotoOverrides().then(o => {
+      setPhotoOverrides(o)
+      try { localStorage.setItem(PHOTO_OVERRIDES_CACHE_KEY, JSON.stringify(o)) } catch { /* ignore */ }
+    }).catch(() => {})
   }, [])
 
   // League-role badges for post authors — fetched once posts are known so a

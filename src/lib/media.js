@@ -73,7 +73,23 @@ export async function getPhotoIndex() {
     fetchAll('photos', 'photo_id,album_idx,album_title,album_date,image_url,detail_url,n_faces,width,height'),
     fetchAll('photo_players', 'photo_id,player_id,name,box,face_h'),
   ])
-  return { photos, photoPlayers }
+  const index = { photos, photoPlayers }
+  try { localStorage.setItem(PHOTO_INDEX_CACHE_KEY, JSON.stringify(index)) } catch { /* full / blocked: next visit just waits */ }
+  return index
+}
+
+/**
+ * The photo index this browser loaded last time, or null. The full index is ~0.7 MB
+ * from the database and takes 1.2–1.8 s to arrive from Tokyo, so the feed's photos
+ * start from this copy and getPhotoIndex() refreshes it behind them. Albums change
+ * a few times a season; a copy one visit old is fine.
+ */
+const PHOTO_INDEX_CACHE_KEY = 'photo-index-v1'
+export function getCachedPhotoIndex() {
+  try {
+    const c = JSON.parse(localStorage.getItem(PHOTO_INDEX_CACHE_KEY) || 'null')
+    return c && Array.isArray(c.photos) && Array.isArray(c.photoPlayers) ? c : null
+  } catch { return null }
 }
 
 // ---- Admin: review queue for name suggestions (shown in the "requests" tab) ----
