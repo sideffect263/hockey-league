@@ -13,7 +13,8 @@
 // finished one that no row points at yet: into the row still on the input if there is one,
 // else as a new part of the same camera. Inputs still on air or still encoding are left
 // alone; the next run picks them up. A partial unique index on video_id makes a race with
-// stream-replay insert nothing twice.
+// stream-replay insert nothing twice. A recording deleted in the control room left a
+// tombstone (game-video-tombstones.sql) and is never attached again.
 //
 // Auth: bearer must equal our own service-role key (verify_jwt alone admits the public
 // anon key). Secrets: CF_ACCOUNT_ID / CF_STREAM_TOKEN.
@@ -60,6 +61,12 @@ Deno.serve(async (req) => {
     byInput.set(r.cf_live_input, list);
   }
 
+  // Recordings someone deleted in the control room (game-video-tombstones.sql): never
+  // attach them again.
+  const { data: tombs } = await admin.from("game_video_tombstones").select("video_id")
+    .in("game_id", [...new Set(((rows ?? []) as Row[]).map((r) => r.game_id))]);
+  const deleted = new Set((tombs ?? []).map((t: { video_id: string }) => t.video_id));
+
   const attached: { input: string; video: string; row: string }[] = [];
   const skipped = { live: 0, processing: 0 };
   const errors: string[] = [];
@@ -76,7 +83,7 @@ Deno.serve(async (req) => {
     if (recs.some((v) => !v.readyToStream)) { skipped.processing++; continue; }
 
     const known = new Set(list.map((x) => x.video_id));
-    const missing = recs.filter((v) => !known.has(v.uid))
+    const missing = recs.filter((v) => !known.has(v.uid) && !deleted.has(v.uid))
       .sort((a, b) => String(a.created).localeCompare(String(b.created)));
     if (!missing.length) continue;
 
