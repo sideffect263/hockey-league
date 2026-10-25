@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Radio, Maximize } from "lucide-react"
+import { Radio, Maximize, Minimize, Play, Pause, Volume2, VolumeX } from "lucide-react"
 
 // Live player for an app (RTMP) broadcast. Replaces Cloudflare's iframe for the LIVE
 // part only: when that player stalled (streamer's uplink hiccup, viewer's weak network)
@@ -49,14 +49,65 @@ export default function LiveHlsPlayer({ src, children, onLatency, preview = fals
   const [waiting, setWaiting] = useState(true)
   const latencyCb = useRef(onLatency)
   latencyCb.current = onLatency
-  // Fullscreen the whole box, not the <video>: the browser's own video fullscreen shows
-  // the bare element and drops the overlay. iPhone has no element fullscreen → keep the
-  // native control there.
-  const canBoxFullscreen = !preview && typeof document !== "undefined" && !!document.fullscreenEnabled
+  // Our own controls, not the browser's: the browser's video fullscreen shows the bare
+  // <video> and drops the score/clock overlay, and Safari ignores controlsList, so a viewer
+  // saw two fullscreen buttons and one of them lost the score (2026-10-24). Fullscreen is
+  // always the whole box. iPhone has no element fullscreen, so there the box fills the
+  // screen with CSS instead (rotate the phone for landscape).
+  const [paused, setPaused] = useState(false)
+  const [soundOff, setSoundOff] = useState(true)
+  const [fs, setFs] = useState(false)        // real (Fullscreen API) or CSS ("pseudo")
+  const [pseudoFs, setPseudoFs] = useState(false)
+  const elementFs = typeof document !== "undefined" && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled)
+  const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
-    else boxRef.current?.requestFullscreen?.().catch(() => {})
+    if (pseudoFs) { setPseudoFs(false); return }
+    if (fsElement()) { (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {}); return }
+    const box = boxRef.current
+    const req = box && (box.requestFullscreen || box.webkitRequestFullscreen)
+    if (elementFs && req) {
+      // Refused, or still not full screen a second later (some browsers leave the request
+      // hanging): fill the screen with CSS instead. A late real fullscreen takes over.
+      let settled = false
+      const fallback = () => { if (!settled) { settled = true; if (!fsElement()) setPseudoFs(true) } }
+      try { req.call(box)?.catch?.(fallback) } catch { fallback() }
+      setTimeout(fallback, 1000)
+    } else setPseudoFs(true)
   }
+  const togglePlay = () => {
+    const v = videoRef.current
+    if (!v) return
+    if (v.paused) v.play?.().catch(() => {}); else v.pause()
+  }
+  const toggleSound = () => {
+    const v = videoRef.current
+    if (!v) return
+    v.muted = !v.muted
+    if (!v.muted && v.volume === 0) v.volume = 1
+  }
+  useEffect(() => {
+    if (preview) return
+    const onFs = () => {
+      const on = fsElement() === boxRef.current
+      setFs(on)
+      if (on) setPseudoFs(false)
+    }
+    document.addEventListener("fullscreenchange", onFs)
+    document.addEventListener("webkitfullscreenchange", onFs)
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs)
+      document.removeEventListener("webkitfullscreenchange", onFs)
+    }
+  }, [preview])
+  // CSS fullscreen: no page scroll behind it, Escape / back-swipe-free exit via the button.
+  useEffect(() => {
+    if (!pseudoFs) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const onKey = (e) => { if (e.key === "Escape") setPseudoFs(false) }
+    window.addEventListener("keydown", onKey)
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey) }
+  }, [pseudoFs])
 
   useEffect(() => {
     const video = videoRef.current
@@ -152,14 +203,22 @@ export default function LiveHlsPlayer({ src, children, onLatency, preview = fals
 
     const onPlaying = () => setWaiting(false)
     const onWaiting = () => setWaiting(true)
+    const onPlayState = () => setPaused(video.paused)
+    const onVolume = () => setSoundOff(video.muted || video.volume === 0)
     video.addEventListener("playing", onPlaying)
     video.addEventListener("waiting", onWaiting)
+    video.addEventListener("play", onPlayState)
+    video.addEventListener("pause", onPlayState)
+    video.addEventListener("volumechange", onVolume)
 
     return () => {
       cancelled = true
       clearInterval(tick); clearInterval(behind); clearInterval(lag); clearTimeout(restartTimer)
       video.removeEventListener("playing", onPlaying)
       video.removeEventListener("waiting", onWaiting)
+      video.removeEventListener("play", onPlayState)
+      video.removeEventListener("pause", onPlayState)
+      video.removeEventListener("volumechange", onVolume)
       try { hls?.destroy() } catch { /* ignore */ }
       video.removeAttribute("src"); video.load?.()
     }
@@ -169,23 +228,46 @@ export default function LiveHlsPlayer({ src, children, onLatency, preview = fals
     if (videoRef.current) videoRef.current.muted = muted
   }, [muted])
 
+  const full = fs || pseudoFs
+  const btn = "p-1.5 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
   return (
-    <div ref={boxRef} className="relative w-full aspect-video bg-black rounded-xl overflow-hidden [container-type:inline-size]">
-      <video ref={videoRef} autoPlay playsInline muted controls={!preview}
-        controlsList={canBoxFullscreen ? "nofullscreen" : undefined}
+    <div ref={boxRef}
+      className={pseudoFs ? "fixed inset-0 z-[100] bg-black flex items-center justify-center"
+        : full ? "w-full h-full bg-black flex items-center justify-center"
+        : "relative w-full aspect-video bg-black rounded-xl overflow-hidden"}>
+     {/* The picture's own 16:9 frame: score bug and buttons sit on the picture, not on the
+         black bars of a portrait phone or a non-16:9 screen. */}
+     <div className={`overflow-hidden [container-type:inline-size] ${full
+        ? "relative w-full max-h-full aspect-video" : "absolute inset-0"}`}
+        style={full ? { maxWidth: "calc(100dvh * 16 / 9)" } : undefined}>
+      <video ref={videoRef} autoPlay playsInline muted
         className="absolute inset-0 w-full h-full object-contain bg-black" />
       {children}
-      {canBoxFullscreen && (
-        <button onClick={toggleFullscreen} aria-label="מסך מלא"
-          className={`absolute top-[3cqw] ${fsSide === "right" ? "right-[3cqw]" : "left-[3cqw]"} p-1.5 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors`}>
-          <Maximize className="w-4 h-4" />
-        </button>
+      {!preview && (
+        <>
+          <button onClick={toggleFullscreen} aria-label={full ? "יציאה ממסך מלא" : "מסך מלא"}
+            className={`absolute top-[3cqw] ${fsSide === "right" ? "right-[3cqw]" : "left-[3cqw]"} ${btn}`}>
+            {full ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </button>
+          <div className="absolute bottom-[3cqw] left-[3cqw] flex items-center gap-1.5" dir="ltr">
+            <button onClick={togglePlay} aria-label={paused ? "נגן" : "השהה"} className={btn}>
+              {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+            </button>
+            <button onClick={toggleSound} aria-label={soundOff ? "הפעל קול" : "השתק"} className={btn}>
+              {soundOff ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-black/50 text-white text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> LIVE
+            </span>
+          </div>
+        </>
       )}
       {waiting && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/40 text-white text-sm">
           <span className="flex items-center gap-2"><Radio className="w-4 h-4 animate-pulse text-red-500" /> מתחבר לשידור…</span>
         </div>
       )}
+     </div>
     </div>
   )
 }
