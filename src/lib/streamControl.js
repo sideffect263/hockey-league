@@ -129,3 +129,20 @@ export async function getCameraActivity(gameId) {
   for (const r of data || []) if (out[r.camera_no] == null) out[r.camera_no] = r.players
   return out
 }
+
+// Admin: how long each recording is, { [cloudflare uid]: seconds } (video_seo_meta, filled
+// by the video-seo-sync job every 10 min; a fresh recording may not be there yet).
+export async function getRecordingDurations(uids) {
+  const ids = [...new Set((uids || []).filter(Boolean))]
+  if (!ids.length) return {}
+  const { data } = await supabase.from('video_seo_meta').select('uid, duration_s').in('uid', ids)
+  return Object.fromEntries((data || []).filter((r) => r.duration_s).map((r) => [r.uid, r.duration_s]))
+}
+
+// The judge's live state for the control room's status strip (null before kickoff/after save).
+export async function getLiveGameState(gameId) {
+  const { data } = await supabase.from('live_game_state')
+    .select('home_score, away_score, is_running, phase, period, clock_ends_at, clock_remaining_ms, updated_at')
+    .eq('game_id', gameId).maybeSingle()
+  return data || null
+}
