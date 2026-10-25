@@ -465,6 +465,18 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
         r.clean_sheet = cs
         map.set(p.id, r)
       }
+      // Who played: the server adds every "מגיע" sign-up to the box score
+      // (supabase/judge-save-full-lineup.sql). The board adds what only it knows — a
+      // borrowed player played (0-goal row), a squad player the judge hid or who is
+      // blocked did not ({ absent: true }). Before 10/25 only scorers and carded players
+      // were saved, and everyone else was missing from the game page and his game log.
+      for (const [side, l] of [[TeamSide.home, lineup.home], [TeamSide.guest, lineup.guest]]) {
+        for (const id of l?.added || []) {
+          if (!map.has(id)) map.set(id, { player_id: id, goals: 0, blue_cards: 0, red_cards: 0, clean_sheet: false })
+        }
+        const out = new Set([...(l?.hidden || []), ...squadFor(side).filter(p => blockedOn(side, p.id)).map(p => p.id)])
+        for (const id of out) if (id && !map.has(id)) map.set(id, { player_id: id, absent: true })
+      }
       // A player borrowed in the lineup editor is on neither roster: tell the server which
       // side he played for, so his goals land there (game_stats.played_for_team_id).
       for (const r of map.values()) {
