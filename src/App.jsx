@@ -154,30 +154,54 @@ function LegacyPostRedirect() {
   return null
 }
 
+/**
+ * The last season settings this browser saw. A returning visitor's pages start
+ * from this copy instead of waiting a full round trip to the database (≈0.4 s from
+ * Israel) before they may even ask for their own data; the fresh read still runs
+ * and replaces it a moment later. Storage can throw (private mode, blocked site
+ * data) — then it is simply a first visit again.
+ */
+const SEASON_CACHE_KEY = 'season-shell-v1'
+function readSeasonCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(SEASON_CACHE_KEY) || 'null')
+    return c && typeof c.mode === 'string' && Array.isArray(c.seasons) ? c : null
+  } catch { return null }
+}
+function writeSeasonCache(mode, seasons) {
+  try { localStorage.setItem(SEASON_CACHE_KEY, JSON.stringify({ mode, seasons })) } catch { /* ignore */ }
+}
+
 function App() {
-  const [seasonMode, setSeasonMode] = useState(null) // 'regular' or 'final_four'
-  const [seasonName, setSeasonName] = useState('')
-  const [seasons, setSeasons] = useState([])
+  const [cached] = useState(readSeasonCache)
+  const [seasonMode, setSeasonMode] = useState(cached?.mode ?? null) // 'regular' or 'final_four'
+  const [seasonName, setSeasonName] = useState(cached?.seasons.find(s => s.status === 'active')?.name || '')
+  const [seasons, setSeasons] = useState(cached?.seasons || [])
   // A page about one past-season thing (an old game) names its season here, so the
   // header's season badge + palette follow it (see usePinSeason in SeasonPicker).
   const [pinnedSeasonId, setPinnedSeasonId] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Only a first visit (nothing cached) waits on the read.
+  const [loading, setLoading] = useState(!cached)
 
   // Both reads in one round trip — the shell already waits on the mode, so the
   // name rides along for free rather than adding a second gate or letting the
   // labels pop in a beat late.
   useEffect(() => {
+    let failed = false
     Promise.all([
-      getLeagueSetting('season_mode').then(v => v || 'regular').catch(() => 'regular'),
-      getBrowsableSeasons().catch(() => []),
+      getLeagueSetting('season_mode').then(v => v || 'regular').catch(() => { failed = true; return 'regular' }),
+      getBrowsableSeasons().catch(() => { failed = true; return [] }),
     ])
       .then(([mode, list]) => {
+        // A failed read must not overwrite a good cached copy with the fallbacks.
+        if (failed && cached) return
         setSeasonMode(mode)
         setSeasons(list)
         setSeasonName(list.find(s => s.status === 'active')?.name || '')
+        if (!failed) writeSeasonCache(mode, list)
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [cached])
 
   // While the season settings are in flight the SHELL still renders — header,
   // nav, and the skeleton of whatever page the URL asks for — instead of the
