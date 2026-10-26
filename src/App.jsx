@@ -40,6 +40,7 @@ const MarketDetail = lazy(() => import('./pages/MarketDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Privacy = lazy(() => import('./pages/Privacy'))
+const Support = lazy(() => import('./pages/Support'))
 const MobileApp = lazy(() => import('./pages/MobileApp'))
 const Features = lazy(() => import('./pages/Features'))
 const Career = lazy(() => import('./pages/Career'))
@@ -249,6 +250,7 @@ function App() {
             <Route path="/me" element={<Profile />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/support" element={<Support />} />
             <Route path="/app" element={<MobileApp />} />
             <Route path="/guide" element={<Features />} />
             <Route path="/career" element={<Career />} />
