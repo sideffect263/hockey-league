@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { ChevronLeft } from "lucide-react"
-import { Trophy, Calendar, Flame, MapPin } from "@/components/icons/BrandIcons"
+import { Trophy, Calendar, Flame, MapPin, Table } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { standingsComparator } from "@/lib/utils"
 import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
@@ -42,7 +42,7 @@ export function StandingsWidget({ teams = [] }) {
   const barPct = (pts) => leaderPts > 0 ? Math.max(0, Math.min(100, ((pts || 0) / leaderPts) * 100)) : 0
   return (
     <div className="card overflow-hidden">
-      <WidgetHeader icon={<Trophy className="w-4 h-4 text-amber-500" />} title="טבלה" />
+      <WidgetHeader icon={<Table className="w-4 h-4" />} title="טבלה" />
       <div className="p-3 space-y-1.5">
         {top.length === 0 && (
           <p className="text-center text-xs text-slate-500 dark:text-slate-400 py-4">אין נתונים</p>

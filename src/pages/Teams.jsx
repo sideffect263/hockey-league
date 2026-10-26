@@ -5,8 +5,8 @@ import { standingsComparator } from "@/lib/utils"
 import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf, ageGroupsOf } from "@/lib/ageGroups"
 import { useAuth } from "@/lib/AuthContext"
 import CreateTeamModal from "@/components/CreateTeamModal"
-import { RefreshCw, ArrowLeft, Plus, Heart } from "lucide-react"
-import { Hourglass, TeamsIcon, BrandTile } from "@/components/icons/BrandIcons"
+import { RefreshCw, ArrowLeft, Plus } from "lucide-react"
+import { LikeOn as Heart, Hourglass, TeamsIcon, BrandTile } from "@/components/icons/BrandIcons"
 import { getFollowerCounts, fansLabel } from "@/lib/follows"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
@@ -170,7 +170,7 @@ export default function Teams() {
                         {team.city}{team.founded_year ? ` • ${team.founded_year}` : ''}
                         {fans[team.id] > 0 && (
                           <span className="inline-flex items-center gap-0.5 ms-2 text-rose-600 dark:text-rose-400 font-semibold">
-                            <Heart className="w-3 h-3" /> <span className="tabular-nums">{fansLabel(fans[team.id])}</span>
+                            <Heart className="w-4 h-4" /> <span className="tabular-nums">{fansLabel(fans[team.id])}</span>
                           </span>
                         )}
                       </p>

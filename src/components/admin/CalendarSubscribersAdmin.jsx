@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { Globe, RefreshCw, Info, Users } from "lucide-react"
-import { CalendarCheck, CalendarDays } from "@/components/icons/BrandIcons"
+import { Globe, RefreshCw } from "lucide-react"
+import { InfoIcon as Info, Squad as Users, CalendarCheck, CalendarDays } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { useTheme } from "@/lib/ThemeContext"
 import { singleColor } from "@/lib/chartPalette"

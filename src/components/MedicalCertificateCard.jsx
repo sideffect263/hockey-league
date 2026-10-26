@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { getMyMedical, uploadMedical } from "@/lib/medical"
-import { HeartPulse, Upload, CheckCircle2, XCircle, Loader2 } from "lucide-react"
-import { Clock, Medical } from "@/components/icons/BrandIcons"
+import { Upload, Loader2 } from "lucide-react"
+import { ApprovedStatus as CheckCircle2, Rejected as XCircle, Clock, Medical } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 
 /**

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { getMedicalRoster, openMedical, getPlayerMedicalCerts, revokeMedical, setMedicalExamDate, uploadMedical, reviewMedical } from "@/lib/medical"
-import { HeartPulse, RefreshCw, Search, Eye, Ban, X, Loader2, BadgeCheck, Link2Off, Wallet, Upload } from "lucide-react"
-import { CalendarClock } from "@/components/icons/BrandIcons"
+import { RefreshCw, Search, Eye, X, Loader2, Link2Off, Upload } from "lucide-react"
+import { Medical as HeartPulse, Declined as Ban, Verified as BadgeCheck, Wallet, CalendarClock } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
@@ -284,7 +284,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
                           </button>
                           <button onClick={() => openRevoke(r)}
                             className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
-                            <Ban className="w-3.5 h-3.5" /> ביטול
+                            <Ban className="w-4 h-4" /> ביטול
                           </button>
                         </div>
                       ) : (
@@ -383,7 +383,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
                 className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   modal.mode === "revoke" ? "bg-red-500 hover:bg-red-600" : "bg-brand hover:bg-brand-hover"}`}>
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : modal.mode === "revoke" ? <Ban className="w-3.5 h-3.5" /> : <CalendarClock className="w-4 h-4" />}
+                  : modal.mode === "revoke" ? <Ban className="w-4 h-4" /> : <CalendarClock className="w-4 h-4" />}
                 {modal.mode === "revoke" ? "ביטול האישור" : "שמירת התאריך"}
               </button>
               <button onClick={() => setModal(null)} disabled={busy}

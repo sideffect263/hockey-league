@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import {
-  ClipboardCheck, Plus, RefreshCw, Pencil, Trash2, Play, Square, ChevronDown, ChevronUp,
-  Star, ArrowUp, ArrowDown, X, ExternalLink,
-} from "lucide-react"
+import { Plus, RefreshCw, Trash2, Play, Square, ChevronDown, ChevronUp, Star, ArrowUp, ArrowDown, X, ExternalLink } from "lucide-react"
+import { GameForm as ClipboardCheck, EditIcon as Pencil } from "@/components/icons/BrandIcons"
 import {
   listSurveys, createSurvey, updateSurvey, deleteSurvey, setSurveyPosts, listVideoPosts,
   surveyResults, summarize, invalidateSurveyCache,
@@ -122,7 +120,7 @@ export default function SurveysAdmin() {
                       <button disabled={busy === s.id} onClick={() => setStatus(s, "active")}
                               className={`${BTN} !border-emerald-300 !text-emerald-700 dark:!text-emerald-300`}><Play className="w-3.5 h-3.5" /> הפעלה</button>
                     )}
-                    <button onClick={() => setEditing({ ...s, questions: s.questions.map(q => ({ ...q })) })} className={BTN}><Pencil className="w-3.5 h-3.5" /> עריכה</button>
+                    <button onClick={() => setEditing({ ...s, questions: s.questions.map(q => ({ ...q })) })} className={BTN}><Pencil className="w-4 h-4" /> עריכה</button>
                     <button disabled={busy === s.id} onClick={() => remove(s)} className={`${BTN} !text-red-600`}><Trash2 className="w-3.5 h-3.5" /></button>
                     <button onClick={() => setOpenId(isOpen ? null : s.id)} className={BTN}>
                       תוצאות {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}

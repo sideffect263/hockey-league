@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getSuggestionQueue, resolveCluster, hideCluster } from "@/lib/media"
-import { Camera, Check, EyeOff, RefreshCw, HelpCircle } from "lucide-react"
+import { Camera, Check, EyeOff, RefreshCw } from "lucide-react"
+import { Help as HelpCircle } from "@/components/icons/BrandIcons"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**

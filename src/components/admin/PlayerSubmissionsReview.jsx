@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getPendingPlayerSubmissions, approvePlayerSubmission, rejectPlayerSubmission } from "@/lib/playerSubmissions"
-import { Check, X, UserCheck, RefreshCw, AlertTriangle, Link2 } from "lucide-react"
+import { Check, X, RefreshCw, Link2 } from "lucide-react"
+import { PersonFollowing as UserCheck, Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { findLikelyDuplicates, linkToExistingCard } from "@/lib/duplicatePlayers"
 import { format } from "date-fns"
@@ -172,7 +173,7 @@ export default function PlayerSubmissionsReview({ teamsMap = {}, coachTeamIds = 
                 {dups[s.id]?.length > 0 && (
                   <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-2">
                     <p className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> ייתכן שכבר יש כרטיס לשחקן הזה — אישור ייצור כפילות
+                      <AlertTriangle className="w-4 h-4 shrink-0" /> ייתכן שכבר יש כרטיס לשחקן הזה — אישור ייצור כפילות
                     </p>
                     {dups[s.id].map(({ player: p, reason }) => (
                       <div key={p.id} className="flex flex-wrap items-center gap-2 text-xs">

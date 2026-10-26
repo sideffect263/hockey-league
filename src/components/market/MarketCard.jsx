@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Lock, CircleCheck, Ban, TrendingUp } from 'lucide-react'
-import { Clock, Flame } from "@/components/icons/BrandIcons"
+import { Lock } from "lucide-react"
+import { ApprovedStatus as CircleCheck, Declined as Ban, TrendUp as TrendingUp, Clock, Flame } from "@/components/icons/BrandIcons"
 import TeamLogo from '@/components/TeamLogo'
 import { pct, CONFLICT_COPY } from '@/lib/market'
 
@@ -24,12 +24,12 @@ export function StatusChip({ market }) {
   if (market.status === 'resolved') {
     return (
       <span className="stat-pill bg-brand/10 text-brand">
-        <CircleCheck className="w-3 h-3" /> הוכרע
+        <CircleCheck className="w-4 h-4" /> הוכרע
       </span>
     )
   }
   if (market.status === 'void') {
-    return <span className="stat-pill bg-surface-sunken text-fg-muted"><Ban className="w-3 h-3" /> בוטל</span>
+    return <span className="stat-pill bg-surface-sunken text-fg-muted"><Ban className="w-4 h-4" /> בוטל</span>
   }
   if (market.status === 'closed') {
     return <span className="stat-pill bg-surface-sunken text-fg-muted whitespace-nowrap shrink-0"><Lock className="w-3 h-3" /> סגור למסחר</span>
@@ -132,7 +132,7 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-brand font-semibold">
-              <TrendingUp className="w-3 h-3" /> יש לך פוזיציה פתוחה
+              <TrendingUp className="w-4 h-4" /> יש לך פוזיציה פתוחה
             </span>
           )}
         </div>

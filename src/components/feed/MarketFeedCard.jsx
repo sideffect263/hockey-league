@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { FeedCard, FeedCardHeader, FeedIcon, INSET } from "@/components/feed/FeedCardShell"
-import { Coins, TrendingUp, TrendingDown, Target, ChevronLeft, Users, Zap } from "lucide-react"
-import { Flame, Trophy, Medal } from "@/components/icons/BrandIcons"
+import { Target, ChevronLeft, Zap } from "lucide-react"
+import { Coin as Coins, TrendUp as TrendingUp, TrendDown as TrendingDown, Squad as Users, Flame, Trophy, Medal } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { SplitBar, useSideColors } from "@/components/market/MatchCard"
 import { pct, gameSides, matchdayLabel } from "@/lib/market"
@@ -95,7 +95,7 @@ function MatchdayCard({ item, teamsMap }) {
         {(item.games || []).map((g) => <MatchdayRow key={g.market_id} game={g} teamsMap={teamsMap} />)}
       </div>
       <p className="mt-2 flex items-center gap-1 text-[11px] text-fg-muted">
-        <Users className="w-3 h-3" />
+        <Users className="w-4 h-4" />
         {traders ? <><span className="mkt-num font-bold text-fg-soft">{traders}</span> הימורים פתוחים על הסיבוב</> : "עוד אין הימורים על הסיבוב — היה הראשון"}
       </p>
     </Shell>

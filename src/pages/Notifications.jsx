@@ -6,10 +6,10 @@ import {
   notificationText, notificationIcon, notificationBrandIcon, notificationHref, notificationPreview,
 } from "@/lib/notifications"
 import { useSeo } from "@/lib/seo"
-import { Bell, CheckCheck, ArrowRight, RefreshCw } from "lucide-react"
+import { CheckCheck, ArrowRight, RefreshCw } from "lucide-react"
+import { BrandIcon, BrandTile } from "@/components/icons/BrandIcons"
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
 import { sizedImage } from "@/lib/imageSize"
-import { BrandIcon } from "@/components/icons/BrandIcons"
 
 /**
  * Full notifications list.
@@ -58,7 +58,7 @@ export default function Notifications() {
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="page-title flex items-center gap-2">
-          <Bell className="w-5 h-5 text-brand" /> התראות
+          <BrandTile name="bell" className="w-10 h-10 -my-1.5" /> התראות
           {unread > 0 && (
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand text-brand-fg tabular-nums">{unread}</span>
           )}

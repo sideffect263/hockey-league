@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { UploadCloud, Image as ImageIcon, Loader2, Trash2, X, CheckCircle2, AlertTriangle, Lock } from "lucide-react"
-import { Film } from "@/components/icons/BrandIcons"
+import { UploadCloud, Image as ImageIcon, Loader2, Trash2, X, Lock } from "lucide-react"
+import { ApprovedStatus as CheckCircle2, Warning as AlertTriangle, Film } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import {
   canContributeGame, getGameUploads, deleteGameUpload, uploadGameVideo, uploadGameImage,
@@ -192,7 +192,7 @@ function QueueItem({ item, onNote, onRemove }) {
         </div>
       )}
       {item.state === "error" && item.error && (
-        <p className="flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {item.error}</p>
+        <p className="flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400"><AlertTriangle className="w-4 h-4 shrink-0" /> {item.error}</p>
       )}
     </li>
   )

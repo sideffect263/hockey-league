@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { FlaskConical, Plus, Loader2, ArrowRight, RotateCcw, Check, X, ChevronDown, Cpu, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { FlaskConical, Plus, Loader2, ArrowRight, RotateCcw, Check, X, ChevronDown, Cpu, Minus } from "lucide-react"
+import { TrendUp as TrendingUp, TrendDown as TrendingDown } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import Standings, { refreshStandings } from "./Standings"
 import { stageById } from "@/lib/pipelineMap"

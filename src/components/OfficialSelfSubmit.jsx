@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { HeartPulse, Loader2, Pencil, Check } from "lucide-react"
-import { Gavel } from "@/components/icons/BrandIcons"
+import { Loader2, Check } from "lucide-react"
+import { Medical as HeartPulse, EditIcon as Pencil, Gavel } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { applyAsOfficial, getMyOfficialRoles, OFFICIAL_ROLE_LABEL } from "@/lib/officials"
 import { getMyContact, saveMyContact, officialApplyError } from "@/lib/contact"
@@ -121,7 +121,7 @@ export default function OfficialSelfSubmit({ game }) {
           </span>
           <button onClick={() => setEditing(true)} aria-label="עריכת פרטי קשר"
             className="shrink-0 text-slate-400 hover:text-brand transition-colors">
-            <Pencil className="w-3 h-3" />
+            <Pencil className="w-4 h-4" />
           </button>
         </p>
       )}

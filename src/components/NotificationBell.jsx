@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, BellRing } from 'lucide-react'
+import { Bell, Bell as BellRing, BrandIcon } from "@/components/icons/BrandIcons"
 import { formatDistanceToNow } from 'date-fns'
 import { he } from 'date-fns/locale'
 import { useAuth } from '../lib/AuthContext'
@@ -11,7 +11,6 @@ import {
 import { pushSupported, pushStatus, enablePush } from '../lib/push'
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
 import { sizedImage } from "@/lib/imageSize"
-import { BrandIcon } from "@/components/icons/BrandIcons"
 
 function timeAgo(iso) {
   try { return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: he }) }
@@ -104,7 +103,7 @@ export default function NotificationBell() {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">התראות</h3>
               {push === 'on' && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                  <BellRing className="w-3 h-3" /> התראות דחיפה פעילות
+                  <BellRing className="w-4 h-4" /> התראות דחיפה פעילות
                 </span>
               )}
             </div>
@@ -114,7 +113,7 @@ export default function NotificationBell() {
                 disabled={pushBusy}
                 className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand hover:bg-brand-hover disabled:opacity-60 text-white text-xs font-semibold py-1.5 transition-colors"
               >
-                <BellRing className="w-3.5 h-3.5" />
+                <BellRing className="w-4 h-4" />
                 {pushBusy ? 'מפעיל…' : 'הפעל התראות דחיפה במכשיר הזה'}
               </button>
             )}

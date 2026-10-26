@@ -12,13 +12,13 @@ export const LEAGUE_CF_CODE = 'dcl73u4kznt1yvoc'   // the league's Cloudflare St
 
 /** What a creator can make. `pool` = media sources offered in step 2; `pick` = how many items. */
 export const CONTENT_TYPES = [
-  { id: 'goal', emoji: '🏒', title: 'גול או מהלך יפה', hint: 'קליפ אחד או כמה — גולים, הצלות, מהלכים', pool: ['lab_clip', 'post'], pick: [1, 10], worker: false },
-  { id: 'goals_summary', emoji: '🔥', title: 'תקציר גולים', hint: 'כל הגולים של יום המשחקים האחרון בסרטון אחד', pool: [], pick: [0, 0], worker: true },
-  { id: 'game_play', emoji: '🧠', title: 'מהלך משחק', hint: 'ראיתם משהו מעניין? סמנו את הרגע ותארו במילים — נכין סרטון ניתוח', pool: ['lab_clip', 'post', 'game_media'], pick: [1, 1], worker: true, brief: true, range: true },
-  { id: 'photo_post', emoji: '📸', title: 'פוסט תמונות', hint: 'תמונה אחת או קרוסלה מאלבומי המשחקים', pool: ['photo', 'game_media_image'], pick: [1, 10], worker: false },
-  { id: 'round_results', emoji: '📊', title: 'תוצאות המחזור', hint: 'סיכום כל התוצאות של יום משחקים', pool: ['photo', 'lab_clip'], pick: [0, 4], worker: false, gameDay: 'past' },
-  { id: 'round_preview', emoji: '📅', title: 'המחזור הבא', hint: 'המשחקים הקרובים — מתי, איפה ומי נגד מי', pool: ['photo'], pick: [0, 4], worker: false, gameDay: 'future' },
-  { id: 'game_story', emoji: '📖', title: 'סיפור משחק', hint: 'הסיפור הכתוב של משחק, מוכן לשיתוף', pool: [], pick: [0, 0], worker: false, story: true },
+  { id: 'goal', icon: 'goal', emoji: '🏒', title: 'גול או מהלך יפה', hint: 'קליפ אחד או כמה — גולים, הצלות, מהלכים', pool: ['lab_clip', 'post'], pick: [1, 10], worker: false },
+  { id: 'goals_summary', icon: 'hot', emoji: '🔥', title: 'תקציר גולים', hint: 'כל הגולים של יום המשחקים האחרון בסרטון אחד', pool: [], pick: [0, 0], worker: true },
+  { id: 'game_play', icon: 'sparkle', emoji: '🧠', title: 'מהלך משחק', hint: 'ראיתם משהו מעניין? סמנו את הרגע ותארו במילים — נכין סרטון ניתוח', pool: ['lab_clip', 'post', 'game_media'], pick: [1, 1], worker: true, brief: true, range: true },
+  { id: 'photo_post', icon: 'tag', emoji: '📸', title: 'פוסט תמונות', hint: 'תמונה אחת או קרוסלה מאלבומי המשחקים', pool: ['photo', 'game_media_image'], pick: [1, 10], worker: false },
+  { id: 'round_results', icon: 'table', emoji: '📊', title: 'תוצאות המחזור', hint: 'סיכום כל התוצאות של יום משחקים', pool: ['photo', 'lab_clip'], pick: [0, 4], worker: false, gameDay: 'past' },
+  { id: 'round_preview', icon: 'calendar', emoji: '📅', title: 'המחזור הבא', hint: 'המשחקים הקרובים — מתי, איפה ומי נגד מי', pool: ['photo'], pick: [0, 4], worker: false, gameDay: 'future' },
+  { id: 'game_story', icon: 'document', emoji: '📖', title: 'סיפור משחק', hint: 'הסיפור הכתוב של משחק, מוכן לשיתוף', pool: [], pick: [0, 0], worker: false, story: true },
 ]
 export const TYPE_BY_ID = Object.fromEntries(CONTENT_TYPES.map(t => [t.id, t]))
 

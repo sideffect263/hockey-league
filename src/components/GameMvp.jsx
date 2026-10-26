@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Star, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { Mvp } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { PlayerLink } from "@/components/EntityLinks"
 
@@ -34,7 +35,7 @@ export default function GameMvp({ game, stats = [], playersMap = {}, teamsMap = 
   return (
     <div className="card p-4 flex items-center gap-3 flex-wrap">
       <span className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-        <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
+        <Mvp className="w-6 h-6" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">MVP של המשחק</p>

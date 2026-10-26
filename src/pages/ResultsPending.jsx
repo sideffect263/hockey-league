@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { format } from "date-fns"
-import { ClipboardCheck, ChevronLeft, RefreshCw, CheckCircle2 } from "lucide-react"
+import { ChevronLeft, RefreshCw } from "lucide-react"
+import { ApprovedStatus as CheckCircle2, BrandTile } from "@/components/icons/BrandIcons"
 import { getGames, getTeams } from "@/lib/api"
 import { useAuth } from "@/lib/AuthContext"
 import TeamLogo from "@/components/TeamLogo"
@@ -50,7 +51,7 @@ export default function ResultsPending() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
       <div>
-        <h1 className="page-title flex items-center gap-2.5"><ClipboardCheck className="w-7 h-7 text-brand" /> הזנת תוצאות</h1>
+        <h1 className="page-title flex items-center gap-2.5"><BrandTile name="game-form" className="w-10 h-10 -my-1.5" /> הזנת תוצאות</h1>
         <p className="page-subtitle mt-1">משחקים ששוחקו ועוד אין להם תוצאה — צלמו את טופס השיפוט והמערכת תמלא את הנתונים</p>
       </div>
 

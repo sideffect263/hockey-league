@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
-import { User, Loader2, X } from "lucide-react"
-import { Film as Video } from "@/components/icons/BrandIcons"
+import { Loader2, X } from "lucide-react"
+import { Person as User, Film as Video } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { createPost } from "@/lib/api"
 import { uploadFeedVideo, MAX_FEED_VIDEO_MB } from "@/lib/feedVideo"

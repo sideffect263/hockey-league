@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { Megaphone, Loader2, Check } from "lucide-react"
+import { Loader2, Check } from "lucide-react"
+import { Announce as Megaphone } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { broadcastToGame, getGameAudienceSize, BROADCAST_MAX } from "@/lib/broadcast"
 
@@ -47,7 +48,7 @@ export default function GameBroadcast({ game }) {
     return (
       <button onClick={() => setOpen(true)}
         className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors">
-        <Megaphone className="w-3.5 h-3.5" /> שליחת הודעה למשתתפי המשחק
+        <Megaphone className="w-4 h-4" /> שליחת הודעה למשתתפי המשחק
       </button>
     )
   }
@@ -81,7 +82,7 @@ export default function GameBroadcast({ game }) {
       <div className="flex items-center gap-2">
         <button type="submit" disabled={sending || !message.trim()}
           className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-          {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Megaphone className="w-3.5 h-3.5" />} שליחה
+          {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Megaphone className="w-4 h-4" />} שליחה
         </button>
         <button type="button" onClick={() => { setOpen(false); setErr(null); setMessage("") }}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">

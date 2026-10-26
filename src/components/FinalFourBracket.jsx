@@ -1,7 +1,6 @@
 import { useMemo } from "react"
 import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
-import { ListOrdered } from "lucide-react"
-import { Trophy, Crown, Trophy as TrophyIcon } from "@/components/icons/BrandIcons"
+import { Table as ListOrdered, Trophy, Crown, Trophy as TrophyIcon } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"

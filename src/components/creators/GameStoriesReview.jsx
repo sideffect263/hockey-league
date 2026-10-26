@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { BookOpen, Check, Ban, Loader2, RefreshCw, ExternalLink, ArrowUp, ArrowDown, Trash2, Sparkles, ChevronRight, ChevronLeft, Image as ImageIcon, UploadCloud } from "lucide-react"
-import { Film } from "@/components/icons/BrandIcons"
+import { BookOpen, Check, Loader2, RefreshCw, ExternalLink, ArrowUp, ArrowDown, Trash2, ChevronRight, ChevronLeft, Image as ImageIcon, UploadCloud } from "lucide-react"
+import { Declined as Ban, Sparkle as Sparkles, Film } from "@/components/icons/BrandIcons"
 import {
   getStoriesForReview, saveGameStory, storyParagraphs, bodyFromTimeline, approveStoryRevision, discardStoryRevision,
   getMediaByIds, getEventsByIds, storyMediaIds, storyEventIds, getStoryPublishMode, setStoryPublishMode,
@@ -265,7 +265,7 @@ function StoryReviewCard({ story, onDone }) {
       {hasRevision && (
         <div className="px-4 pt-3">
           <div className="flex items-center gap-2 rounded-lg bg-sky-50 dark:bg-sky-900/30 px-3 py-2 text-xs font-semibold text-sky-900 dark:text-sky-200">
-            <Sparkles className="w-3.5 h-3.5 shrink-0" /> גרסה חדשה ממתינה לאישור
+            <Sparkles className="w-4 h-4 shrink-0" /> גרסה חדשה ממתינה לאישור
             {rev?.generated_at && <span className="font-normal opacity-80">· נכתבה {new Date(rev.generated_at).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}</span>}
           </div>
           <div role="tablist" className="mt-2 inline-grid grid-cols-2 gap-1 rounded-lg bg-surface-sunken p-1">
@@ -363,7 +363,7 @@ function StoryReviewCard({ story, onDone }) {
             )}
             <button onClick={() => { if (window.confirm("לדחות את הסיפור? הוא יוסתר מהאתר.")) act("rejected") }} disabled={!!busy}
               className="ms-auto inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:underline">
-              <Ban className="w-3.5 h-3.5" /> דחייה
+              <Ban className="w-4 h-4" /> דחייה
             </button>
           </div>
         </>

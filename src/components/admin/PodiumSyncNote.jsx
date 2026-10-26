@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { AlertTriangle } from "lucide-react"
+import { Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { getLastSync, isCloudflareBlock, CLOUDFLARE_BLOCKED } from "@/lib/podium"
 

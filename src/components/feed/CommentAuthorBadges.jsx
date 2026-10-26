@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BadgeCheck, Heart } from "lucide-react"
+import { Verified as BadgeCheck, LikeOn as Heart } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { getRoleBadges } from "@/lib/api"
 import { getFanBadges } from "@/lib/follows"
@@ -60,7 +60,7 @@ export default function CommentAuthorBadges({ authorId, playerId }) {
     <span className="inline-flex items-center gap-1 flex-wrap">
       {playerId && (
         <span title="מקושר לשחקן" className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">
-          <BadgeCheck className="w-3 h-3" /> שחקן
+          <BadgeCheck className="w-4 h-4" /> שחקן
         </span>
       )}
       <OgBadge number={og} size="sm" />
@@ -68,7 +68,7 @@ export default function CommentAuthorBadges({ authorId, playerId }) {
       {fan && (
         <span title={fan.since ? `אוהד/ת מאז ${new Date(fan.since).toLocaleDateString("he-IL", { month: "numeric", year: "numeric" })}` : undefined}
           className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-1.5 py-0.5 rounded-full max-w-[10rem]">
-          <Heart className="w-3 h-3 shrink-0" /> <span className="truncate">אוהד/ת {fan.teamName}</span>
+          <Heart className="w-4 h-4 shrink-0" /> <span className="truncate">אוהד/ת {fan.teamName}</span>
         </span>
       )}
     </span>

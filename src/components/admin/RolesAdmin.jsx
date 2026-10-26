@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { getProfiles, getAllRoles, grantRole, revokeRole, deleteUser, linkPlayer, GRANTABLE_ROLES, ROLE_LABEL, TEAM_SCOPED } from "@/lib/roles"
-import { Award, X, Plus, RefreshCw, Check, Loader2, Search, Trash2, Link2, Link2Off } from "lucide-react"
+import { X, Plus, RefreshCw, Check, Loader2, Search, Trash2, Link2, Link2Off } from "lucide-react"
+import { Admin as Award } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"

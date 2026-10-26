@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { Loader2, Plus, Minus, RefreshCw, Gavel, Ban, Lock, Unlock, Users, ListChecks, AlertTriangle, Check, Trash2, Droplets, Search, X } from 'lucide-react'
-import { CalendarClock } from "@/components/icons/BrandIcons"
+import { Loader2, Plus, Minus, RefreshCw, Gavel, Lock, Unlock, Check, Trash2, Droplets, Search, X } from "lucide-react"
+import { Declined as Ban, Squad as Users, Checklist as ListChecks, Warning as AlertTriangle, CalendarClock } from "@/components/icons/BrandIcons"
 import {
   getTraders, adjustCoins, resolveMarket, voidMarket, setMarketStatus, setMarketCloses,
   syncGameMarkets, createFutures, addOutcome, removeOutcome, setLiquidity,
@@ -361,12 +361,12 @@ function MarketRow({ market, traded, onChanged }) {
               there is nothing here to edit — only season markets are built by hand. */}
           {market.kind !== 'game' && (
             <button onClick={() => { setMode(mode === 'outcomes' ? null : 'outcomes'); setErr(null) }}
-              className="btn-secondary btn-sm"><ListChecks className="w-3 h-3" /> אפשרויות</button>
+              className="btn-secondary btn-sm"><ListChecks className="w-4 h-4" /> אפשרויות</button>
           )}
           <button onClick={() => { setMode(mode === 'resolve' ? null : 'resolve'); setErr(null) }}
             className="btn-secondary btn-sm"><Gavel className="w-3 h-3" /> הכרעה</button>
           <button onClick={() => { setMode(mode === 'void' ? null : 'void'); setErr(null) }}
-            className="btn-secondary btn-sm"><Ban className="w-3 h-3" /> ביטול</button>
+            className="btn-secondary btn-sm"><Ban className="w-4 h-4" /> ביטול</button>
         </div>
       )}
 
@@ -385,7 +385,7 @@ function MarketRow({ market, traded, onChanged }) {
       {mode === 'resolve' && (
         <div className="mt-3 pt-3 border-t border-line-subtle">
           <p className="flex items-start gap-1.5 text-[11px] text-fg-muted mb-2 leading-relaxed">
-            <AlertTriangle className="w-3.5 h-3.5 text-gold shrink-0 mt-px" />
+            <AlertTriangle className="w-4 h-4 text-gold shrink-0 mt-px" />
             הכרעה משלמת מיד לכל המחזיקים באפשרות שנבחרה, מטבע לכל מניה. אי אפשר לבטל.
           </p>
           <div className="flex items-center gap-2 flex-wrap">
@@ -409,12 +409,12 @@ function MarketRow({ market, traded, onChanged }) {
       {mode === 'void' && (
         <div className="mt-3 pt-3 border-t border-line-subtle">
           <p className="flex items-start gap-1.5 text-[11px] text-fg-muted mb-2 leading-relaxed">
-            <AlertTriangle className="w-3.5 h-3.5 text-gold shrink-0 mt-px" />
+            <AlertTriangle className="w-4 h-4 text-gold shrink-0 mt-px" />
             ביטול מחזיר לכל מהמר בדיוק את מה שהשקיע בשוק הזה, כולל קיזוז רווחים שכבר נמשכו.
           </p>
           <button disabled={busy} onClick={() => run(() => voidMarket(market.id, 'בוטל ידנית'))}
             className="btn btn-sm bg-neg text-white disabled:opacity-40">
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-4 h-4" />}
             אישור ביטול והחזר
           </button>
         </div>
@@ -625,7 +625,7 @@ function OutcomesEditor({ market, traded, onChanged }) {
           <button onClick={addEveryone} disabled={!missing.length || !!busy} className="btn-secondary btn-sm">
             {busy === 'bulk'
               ? <><Loader2 className="w-3 h-3 animate-spin" /> {bulk ? `${bulk.done}/${bulk.total}` : ''}</>
-              : <><Users className="w-3 h-3" /> כל הליגה</>}
+              : <><Users className="w-4 h-4" /> כל הליגה</>}
           </button>
         </div>
 

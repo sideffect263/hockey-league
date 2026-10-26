@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react"
-import { BrainCircuit, Box, Video, Sparkles, BarChart3, Images, Smartphone, FlaskConical, Camera, Loader2 } from "lucide-react"
-import { Film } from "@/components/icons/BrandIcons"
+import { BrainCircuit, Box, Images, Smartphone, FlaskConical, Camera, Loader2 } from "lucide-react"
+import { Film as Video, Sparkle as Sparkles, StatsIcon as BarChart3, Film } from "@/components/icons/BrandIcons"
 import VideoLab from "@/components/creators/VideoLab"
 import { MediaClusters } from "@/pages/Media"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"

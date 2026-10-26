@@ -4,8 +4,8 @@ import {
   getArchivedSeasons, getArchivedStandings,
   getArchivedPlayerStats, getArchivedGames
 } from "@/lib/api"
-import { Archive, Users, UserCheck, ArrowRight, RefreshCw } from "lucide-react"
-import { Trophy, Calendar, BrandTile } from "@/components/icons/BrandIcons"
+import { Archive, ArrowRight, RefreshCw } from "lucide-react"
+import { PersonFollowing as UserCheck, Trophy, Calendar, BrandTile } from "@/components/icons/BrandIcons"
 import { Crate } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"

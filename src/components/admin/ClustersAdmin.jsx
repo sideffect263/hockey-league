@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { getAllClusters, resolveCluster, reopenCluster, hideCluster } from "@/lib/media"
-import { Images, Check, Undo2, RefreshCw, HelpCircle, Loader2, Search, X, EyeOff } from "lucide-react"
+import { Images, Check, Undo2, RefreshCw, Loader2, Search, X, EyeOff } from "lucide-react"
+import { Help as HelpCircle } from "@/components/icons/BrandIcons"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 const PAGE = 30

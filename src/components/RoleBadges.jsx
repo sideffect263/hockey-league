@@ -1,5 +1,5 @@
-import { Shield, ShieldCheck, PenSquare, ClipboardList, BadgeCheck, UserCircle, HeartPulse, Code2 } from "lucide-react"
-import { Gavel } from "@/components/icons/BrandIcons"
+import { Shield, Code2 } from "lucide-react"
+import { EditIcon as PenSquare, Verified as BadgeCheck, Person as UserCircle, Gavel, BrandIcon, Admin, Manage, Medic, Coach } from "@/components/icons/BrandIcons"
 
 // Single source of truth for how a league role renders as a badge, so /me, the
 // player page and feed post authors all show the same label/icon/color per role.
@@ -8,11 +8,11 @@ export const ROLE_BADGE = {
   // admin=blue / coach=gold / player=green come from the palette remap (orange→blue,
   // amber→gold, emerald→green). judge + content_editor use tuned indigo/teal so the
   // whole role set harmonizes with the navy+blue+gold system (no stray purple/sky).
-  admin:          { label: "מנהל",      icon: Shield,        cls: "bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light" },
-  league_manager: { label: "מנהל ליגה", icon: ShieldCheck,   cls: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300" },
+  admin:          { label: "מנהל",      icon: Admin,         cls: "bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light" },
+  league_manager: { label: "מנהל ליגה", icon: Manage,        cls: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300" },
   judge:          { label: "שופט",      icon: Gavel,         cls: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300" },
-  medic:          { label: "חובש",      icon: HeartPulse,    cls: "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300" },
-  coach:          { label: "מאמן",      icon: ClipboardList, cls: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
+  medic:          { label: "חובש",      icon: Medic,         cls: "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300" },
+  coach:          { label: "מאמן",      icon: Coach,         cls: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
   content_editor: { label: "עורך תוכן", icon: PenSquare,     cls: "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-300" },
   developer:      { label: "מפתח/ת",    icon: Code2,         cls: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300" },
   player:         { label: "שחקן/ית",   icon: BadgeCheck,    cls: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
@@ -95,6 +95,7 @@ export function OgBadge({ number, size = "md", className = "" }) {
       title={`OG #${number} — אחד מ־25 השחקנים הראשונים שחיברו את החשבון לכרטיס השחקן`}
       className={`inline-flex items-center shrink-0 font-extrabold bg-gradient-to-l from-slate-900 to-slate-800 text-amber-300 ring-1 ring-amber-400/60 dark:from-amber-400/20 dark:to-amber-300/10 dark:text-amber-300 ${sizeCls} ${className}`}
     >
+      <BrandIcon name="og-badge" className={size === "sm" ? "w-4 h-4 -my-1" : "w-5 h-5 -my-1"} />
       <span className="tracking-wider">OG</span>
       <span className="opacity-80">#{number}</span>
     </span>

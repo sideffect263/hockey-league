@@ -1,10 +1,10 @@
 import { useState, useRef } from "react"
-import { X, Loader2, Users, CheckCircle2, Image as ImageIcon } from "lucide-react"
+import { X, Loader2, Image as ImageIcon } from "lucide-react"
+import { Squad as Users, ApprovedStatus as CheckCircle2, TeamIcon } from "@/components/icons/BrandIcons"
 import { AGE_GROUPS } from "@/lib/ageGroups"
 import { requestTeam, uploadTeamLogo } from "@/lib/api"
 import { isSafeImage, IMAGE_TYPE_MESSAGE } from "@/lib/imageType"
 import TeamLogo from "@/components/TeamLogo"
-import { TeamIcon } from "@/components/icons/BrandIcons"
 
 const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
 

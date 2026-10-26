@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, ArrowLeft, Check, Cpu, FileCode2, Footprints, Lightbulb, ListChecks, Loader2, LogOut, Plus, Target, Users, Workflow, HelpCircle, Lock, Mountain, Gauge, Compass, AlertTriangle, Sparkles, FlaskConical, Telescope } from "lucide-react"
-import { History } from "@/components/icons/BrandIcons"
+import { ArrowRight, ArrowLeft, Check, Cpu, FileCode2, Footprints, Lightbulb, Loader2, LogOut, Plus, Target, Workflow, Lock, Mountain, Gauge, Compass, FlaskConical, Telescope } from "lucide-react"
+import { Checklist as ListChecks, Squad as Users, Help as HelpCircle, Warning as AlertTriangle, Sparkle as Sparkles, History } from "@/components/icons/BrandIcons"
 import { LANES, STAGE_STATUS, RUNS_ON, stageById, stageOutputs } from "@/lib/pipelineMap"
 import { STORIES } from "@/lib/stageStories"
 import { WORK, TOOLS, LAB_FOCUS } from "@/lib/stageWork"

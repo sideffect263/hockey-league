@@ -1,5 +1,5 @@
-import { TrendingUp, TrendingDown, Minus, HeartPulse, Shield } from 'lucide-react'
-import { Trophy } from "@/components/icons/BrandIcons"
+import { Minus, Shield } from "lucide-react"
+import { TrendUp as TrendingUp, TrendDown as TrendingDown, Medical as HeartPulse, Trophy, TeamsIcon } from "@/components/icons/BrandIcons"
 import { cn } from '@/lib/utils'
 import { formatMoney } from '../engine'
 import { COUNTRY_FLAG } from '../clubs'
@@ -101,14 +101,14 @@ export default function SeasonRecap({ blocks, isGoalkeeper }) {
 
               {b.injuryWeeks > 0 && (
                 <span className="inline-flex items-center gap-1 text-danger-500">
-                  <HeartPulse className="size-3.5" aria-hidden="true" />
+                  <HeartPulse className="size-4" aria-hidden="true" />
                   פציעה · {b.injuryWeeks} שבועות
                 </span>
               )}
 
               {b.national && (
                 <span className="inline-flex items-center gap-1 text-info-500">
-                  <Shield className="size-3.5" aria-hidden="true" />
+                  <TeamsIcon className="size-4" aria-hidden="true" />
                   נבחרת · {b.national.caps} הופעות
                   {b.national.goals > 0 && `, ${b.national.goals} שערים`}
                 </span>

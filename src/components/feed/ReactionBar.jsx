@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Heart, MessageCircle, Send, Loader2, Share2 } from "lucide-react"
+import { Send, Loader2 } from "lucide-react"
+import { Comment as MessageCircle, Share as Share2, LikeOn, LikeOff } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { likeItem, unlikeItem, getItemComments, createItemComment, editItemComment, deleteItemComment } from "@/lib/reactions"
 import ModerationMenu from "@/components/feed/ModerationMenu"
@@ -144,7 +145,7 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
       <div className="flex items-center gap-4 py-1">
         <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
           className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
-          <Heart className={`w-6 h-6 ${liked ? "fill-current" : ""}`} />
+          {liked ? <LikeOn className="w-6 h-6" /> : <LikeOff className="w-6 h-6" />}
         </button>
         <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
           <MessageCircle className="w-6 h-6" />

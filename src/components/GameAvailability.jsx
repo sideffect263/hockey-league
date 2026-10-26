@@ -9,8 +9,8 @@ import {
 } from "@/lib/unavailability"
 import AddSquadPlayer from "@/components/AddSquadPlayer"
 import LoanFinder from "@/components/LoanFinder"
-import { Check, X, Loader2, AlertTriangle, Ban, UserMinus, Share2, Link2, BellRing } from "lucide-react"
-import { CalendarCheck, CalendarX, Goalkeeper } from "@/components/icons/BrandIcons"
+import { Check, X, Loader2, Link2 } from "lucide-react"
+import { Warning as AlertTriangle, Declined as Ban, PersonRemove as UserMinus, Share as Share2, Bell as BellRing, CalendarCheck, CalendarX, Goalkeeper } from "@/components/icons/BrandIcons"
 
 /**
  * Sheet row 11 — the coach posts the squad to WhatsApp. Plain text, because that is
@@ -334,7 +334,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
               {manual && canEdit && (
                 <button onClick={() => removeManual(p.id)} aria-label={`הסרת ${nameOf(p)} מהסגל`}
                   className="shrink-0 text-slate-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 transition-colors">
-                  <UserMinus className="w-3 h-3" />
+                  <UserMinus className="w-4 h-4" />
                 </button>
               )}
             </p>
@@ -369,7 +369,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
           {/* A refusal has to say WHY — a disabled button with no reason reads as a bug. */}
           {suspension && (
             <p className="flex items-center gap-1.5 text-[11px] text-red-600 dark:text-red-400">
-              <Ban className="w-3.5 h-3.5 shrink-0" />
+              <Ban className="w-4 h-4 shrink-0" />
               <span>{SUSPENDED_MSG}{suspension.reason ? ` — ${suspension.reason}` : ""}</span>
             </p>
           )}
@@ -386,7 +386,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
           )}
           {medOk === false && (
             <p className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{MED_MSG} — <Link to="/me" className="font-semibold underline">להעלאה</Link></span>
             </p>
           )}
@@ -495,8 +495,8 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
               {full && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${tooFew ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"}`}>{coming.length} מגיעים</span>
-                  {tooFew && <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"><AlertTriangle className="w-3 h-3" /> פחות מ-4</span>}
-                  {!gkComing && <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"><AlertTriangle className="w-3 h-3" /> אין שוער</span>}
+                  {tooFew && <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"><AlertTriangle className="w-4 h-4" /> פחות מ-4</span>}
+                  {!gkComing && <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"><AlertTriangle className="w-4 h-4" /> אין שוער</span>}
                 </div>
               )}
             </div>
@@ -510,7 +510,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
               <div className="mt-2">
                 <button onClick={() => nudge(tid)} disabled={nudging === tid}
                   className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-dashed border-brand/40 text-brand hover:bg-brand/5 transition-colors disabled:opacity-50">
-                  {nudging === tid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-3.5 h-3.5" />}
+                  {nudging === tid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-4 h-4" />}
                   תזכורת למי שלא ענה
                 </button>
                 {nudgeMsg[tid] && <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{nudgeMsg[tid]}</p>}
@@ -522,7 +522,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
             {blocked.length > 0 && (
               <div className="mt-3 p-2 rounded-lg border border-red-100 dark:border-red-900/40 bg-red-50 dark:bg-red-900/15 space-y-1">
                 <p className="flex items-center gap-1 text-[11px] font-semibold text-red-700 dark:text-red-300">
-                  <Ban className="w-3 h-3" /> חסומים לרישום ({blocked.length})
+                  <Ban className="w-4 h-4" /> חסומים לרישום ({blocked.length})
                 </p>
                 {blocked.map(p => {
                   const b = blockOf(p.id)
@@ -588,7 +588,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
                   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer")
                 }}
                 className="mt-2 ms-2 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
-                <Share2 className="w-3.5 h-3.5" /> ייצוא לוואטסאפ
+                <Share2 className="w-4 h-4" /> ייצוא לוואטסאפ
               </button>
             )}
 

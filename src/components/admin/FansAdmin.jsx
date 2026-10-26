@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Heart, RefreshCw, Loader2 } from "lucide-react"
+import { RefreshCw, Loader2 } from "lucide-react"
+import { LikeOn as Heart } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { getAdminFanOverview } from "@/lib/follows"
 import { ilDate } from "@/lib/ilTime"

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Handshake, TrendingUp, Users, Eye, Check, Loader2, ShieldCheck, Info, LogIn } from "lucide-react"
-import { CalendarDays, MapPin, Hourglass, Goalkeeper, TeamsIcon } from "@/components/icons/BrandIcons"
+import { Eye, Check, Loader2, LogIn } from "lucide-react"
+import { Loan as Handshake, TrendUp as TrendingUp, Approved as ShieldCheck, InfoIcon as Info, CalendarDays, MapPin, Hourglass, Goalkeeper, TeamsIcon, BrandTile } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { useSeo } from "@/lib/seo"
 import TeamLogo from "@/components/TeamLogo"
@@ -159,7 +159,7 @@ export default function Loans() {
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5"><Handshake className="w-7 h-7 text-brand" /> השאלות למשחקים</h1>
+        <h1 className="page-title flex items-center gap-2.5"><BrandTile name="loan" className="w-10 h-10 -my-1.5" /> השאלות למשחקים</h1>
         <p className="page-subtitle mt-1">לשחקני הנוער ולשוערים — לעלות לשחק בליגת הבוגרים</p>
       </motion.div>
 

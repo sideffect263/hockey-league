@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { getProfiles, getAllRoles, grantRole, revokeRole, moveRoleTeam } from "@/lib/roles"
-import { ClipboardList, X, Plus, RefreshCw, Check, Loader2, Search, Trash2, ArrowLeftRight, AlertTriangle } from "lucide-react"
+import { X, Plus, RefreshCw, Check, Loader2, Search, Trash2, ArrowLeftRight } from "lucide-react"
+import { ClipboardIcon as ClipboardList, Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -263,7 +264,7 @@ export default function CoachesAdmin({ teamsMap = {}, players = [] }) {
                   </button>
                 </div>
                 {list.length === 0
-                  ? <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"><AlertTriangle className="w-3.5 h-3.5" /> אין מאמן לקבוצה</p>
+                  ? <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"><AlertTriangle className="w-4 h-4" /> אין מאמן לקבוצה</p>
                   : <div className="divide-y divide-slate-100 dark:divide-slate-700">{list.map(coachRow)}</div>}
               </div>
             )

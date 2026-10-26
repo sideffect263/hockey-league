@@ -5,8 +5,8 @@ import { useAuth } from "@/lib/AuthContext"
 import { getAvailabilityForGames } from "@/lib/availability"
 import { getMyMedical } from "@/lib/medical"
 import { pushStatus, enablePush } from "@/lib/push"
-import { LogIn, Smartphone, UserPlus, Users, Bell, HeartPulse, ChevronLeft, Loader2 } from "lucide-react"
-import { Trophy, CalendarClock, CalendarCheck, CalendarX } from "@/components/icons/BrandIcons"
+import { LogIn, Smartphone, ChevronLeft, Loader2 } from "lucide-react"
+import { PersonAdd as UserPlus, Squad as Users, Bell, Medical as HeartPulse, CalendarClock, CalendarCheck, CalendarX, Table } from "@/components/icons/BrandIcons"
 import { entityPath } from '@/lib/slugs'
 import { useHasNativeApp } from "@/lib/appUsers"
 import { ilDate } from "@/lib/ilTime"
@@ -100,7 +100,7 @@ export default function QuickActions({ games = [], teamsMap = {} }) {
   const links = []
   if (!user) {
     links.push({ key: "signin", label: "התחברות / הרשמה", icon: LogIn, onClick: openAuth, primary: true })
-    links.push({ key: "standings", label: "טבלת הליגה", icon: Trophy, to: "/standings" })
+    links.push({ key: "standings", label: "טבלת הליגה", icon: Table, to: "/standings" })
     links.push({ key: "app", label: "הורדת האפליקציה", icon: Smartphone, to: "/app" })
   } else {
     if (!playerId) {

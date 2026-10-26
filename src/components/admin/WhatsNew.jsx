@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Sparkles, BookOpen, Rocket, ChevronDown, ShieldAlert } from "lucide-react"
+import { BookOpen, Rocket, ChevronDown } from "lucide-react"
+import { Sparkle as Sparkles, Warning as ShieldAlert } from "@/components/icons/BrandIcons"
 
 /**
  * Onboarding panel at the bottom of /admin: what each role finds in the panel, how to

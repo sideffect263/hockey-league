@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
-import { Camera, HelpCircle, Check, ExternalLink, RefreshCw, Send, Images, UserSearch, Play, ChevronRight, ChevronLeft, X } from "lucide-react"
-import { CalendarDays, Film, Live as Radio, PlayBadge, BrandTile } from "@/components/icons/BrandIcons"
+import { Camera, Check, ExternalLink, RefreshCw, Send, Images, UserSearch, Play, ChevronRight, ChevronLeft, X } from "lucide-react"
+import { Help as HelpCircle, CalendarDays, Film, Live as Radio, PlayBadge, BrandTile, TestGame } from "@/components/icons/BrandIcons"
 import { Camera as CameraIcon } from "@/components/icons/HockeyIcons"
 import { getMediaClusters, getSuggestionSummary, submitSuggestion, getResolvedCount, getPhotoIndex } from "@/lib/media"
 import { getAllGameVideos, videoThumb } from "@/lib/video"
@@ -63,7 +63,7 @@ export function MediaClusters() {
     <div className="space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <CameraIcon className="w-7 h-7 text-brand" /> מדיה — זיהוי שחקנים
+          <BrandTile name="tag" className="w-10 h-10 -my-1.5" /> מדיה — זיהוי שחקנים
         </h1>
         <p className="page-subtitle mt-1">
           {clusters.length} שחקנים עדיין לא זוהו · {resolved} כבר זוהו
@@ -255,7 +255,7 @@ function GameVideoCard({ item, teams }) {
         </div>
         <div className="absolute top-2 right-2 flex gap-1.5">
           {live && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-bold"><Radio className="w-4 h-4 animate-pulse" /> חי</span>}
-          {game.is_test && <span className="px-2 py-0.5 rounded-full bg-violet-600 text-white text-[11px] font-bold">🧪 בדיקה</span>}
+          {game.is_test && <span className="px-2 py-0.5 rounded-full bg-violet-600 text-white text-[11px] font-bold"><TestGame className="w-4 h-4 inline-block align-[-3px]" /> בדיקה</span>}
         </div>
         {parts.length > 1 && (
           <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/65 text-white text-[11px] font-semibold">{parts.length} חלקים</span>
@@ -423,7 +423,7 @@ function ClusterCard({ cluster, index, summary, onSubmitted }) {
           ? <img src={cluster.cover_url} alt="פני שחקן לא מזוהה" onError={() => setCoverError(true)} className="w-full object-cover" loading="lazy" />
           : <div className="aspect-video flex items-center justify-center text-slate-500"><HelpCircle className="w-8 h-8" /></div>}
         <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 text-white text-[11px] font-medium backdrop-blur-sm">
-          <HelpCircle className="w-3 h-3" /> {cluster.size} תמונות
+          <HelpCircle className="w-4 h-4" /> {cluster.size} תמונות
         </div>
         {count > 0 && (
           <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand/90 text-white text-[11px] font-semibold">
