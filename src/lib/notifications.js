@@ -116,9 +116,12 @@ function movedSummary(d) {
   const when = d.game_date
     ? new Date(d.game_date).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
     : ''
+  // reconfirm: a real move (another day / >2h) flagged every answer — ask for a new one.
+  const ask = d.reconfirm ? ' — נא לאשר הגעה מחדש' : ''
+  if (d.from_postponed) return `נקבע מועד חדש: ${when}${d.what === 'both' ? ` ב${d.venue || 'מגרש אחר'}` : ''}${ask}`
   if (d.what === 'venue') return `המשחק עבר ל${d.venue || 'מגרש אחר'}`
-  if (d.what === 'time')  return `המשחק נדחה ל־${when}`
-  return `המשחק עבר ל${d.venue || 'מגרש אחר'} ונדחה ל־${when}`
+  if (d.what === 'time')  return `המשחק הועבר ל־${when}${ask}`
+  return `המשחק עבר ל${d.venue || 'מגרש אחר'} ול־${when}${ask}`
 }
 
 // The officials digest is only useful if it leads with what's MISSING — that is the
@@ -213,6 +216,7 @@ export function notificationText(n) {
     // P4 — the league manager's own words come first; the fixture is context
     case 'lm_broadcast':           return `הודעת מנהל הליגה (${vs(d)}): ${d.message || ''}`
     case 'game_moved':             return `${vs(d)} — ${movedSummary(d)}`
+    case 'game_postponed':         return `${vs(d)} — המשחק נדחה, מועד חדש יפורסם`
     // P5 — you follow one of these teams and asked to be told
     case 'follow_game_alert':      return `מחר: ${vs(d)}`
     // P5 — a goal in a game you follow. Score reads away:home, per the RTL gotcha.
@@ -296,6 +300,7 @@ export function notificationIcon(n) {
     case 'lm_officials_digest':    return '⚖️'
     case 'lm_broadcast':           return '📢'
     case 'game_moved':             return '🌧️'
+    case 'game_postponed':         return '⏸️'
     case 'follow_game_alert':      return '⭐'
     case 'app_update':             return '⬇️'
     case 'goal_scored':            return ''
@@ -331,7 +336,7 @@ const BRAND_ICON = {
   loan_accepted: 'loan', loan_declined: 'declined', loan_cancelled: 'declined',
   loan_removed: 'person-remove', game_register_reminder: 'announce', game_register_nudge: 'reminder',
   game_form_sign: 'sign', coach_squad_digest: 'clipboard', lm_squad_digest: 'clipboard',
-  lm_officials_digest: 'officials', lm_broadcast: 'announce', game_moved: 'calendar-move',
+  lm_officials_digest: 'officials', lm_broadcast: 'announce', game_moved: 'calendar-move', game_postponed: 'calendar-move',
   follow_game_alert: 'star', app_update: 'app-update', goal_scored: 'goal',
   official_assigned: 'officials', official_application: 'document', official_application_approved: 'approved-status',
   official_application_rejected: 'rejected', market_resolved: 'trend-up', market_coins: 'coin',
@@ -385,6 +390,7 @@ export function notificationHref(n) {
     case 'lm_officials_digest':
     case 'lm_broadcast':
     case 'game_moved':
+    case 'game_postponed':
     case 'follow_game_alert':
     // loans: the invite card (player) and the loan desk (coach) both live on the game page
     case 'loan_join_request':

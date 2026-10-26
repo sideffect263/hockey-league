@@ -38,6 +38,7 @@ import SuspensionsAdmin from "@/components/admin/SuspensionsAdmin"
 import BirthDatesAdmin from "@/components/admin/BirthDatesAdmin"
 import UnavailabilityAdmin from "@/components/admin/UnavailabilityAdmin"
 import { getVenues } from "@/lib/venues"
+import { getGameAvailability } from "@/lib/availability"
 import { entityPath } from "@/lib/slugs"
 import OfficialsAdmin from "@/components/admin/OfficialsAdmin"
 import { getGameJudges, getGameJudgeOptions, setGameJudge } from "@/lib/officials"
@@ -510,6 +511,25 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
   }
 
   const handleSave = async () => {
+    // Moving a game to another day, or by more than 2h, asks everyone who already answered
+    // מגיע / לא מגיע to answer again (game-postpone-reconfirm.sql). Say so before saving,
+    // so the manager knows what pressing save sets off.
+    const before = editingGame && games.find(g => g.id === editingGame)
+    if (before && form.game_date && before.status !== 'completed' && form.status !== 'postponed') {
+      const oldT = new Date(before.game_date), newT = new Date(form.game_date)
+      const dayOf = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })
+      const realMove = newT > new Date()
+        && (dayOf(oldT) !== dayOf(newT) || Math.abs(newT - oldT) > 2 * 3600e3)
+      if (realMove) {
+        const answered = (await getGameAvailability(editingGame)).length
+        const msg = answered
+          ? `המשחק עובר למועד חדש. כל השחקנים והצוות יקבלו התראה, ו-${answered} השחקנים שכבר ענו מגיע / לא מגיע יתבקשו לאשר שוב. לשמור?`
+          : 'המשחק עובר למועד חדש וכל השחקנים והצוות יקבלו התראה. לשמור?'
+        if (!confirm(msg)) return
+      }
+    }
+    if (before && form.status === 'postponed' && before.status !== 'postponed'
+        && !confirm('המשחק יסומן כנדחה: כל השחקנים והצוות יקבלו התראה, והתזכורות יופסקו עד שייקבע מועד חדש. לשמור?')) return
     setSaving(true)
     try {
       const { judge_user_id, ...rest } = form

@@ -73,6 +73,8 @@ const MIN_PLAYERS = 4 // a team wants at least this many outfield + a goalkeeper
  */
 export default function GameAvailability({ game, myPlayerId, officialTeamIds = [], playerTeamId = null, publicView = false, nudgeTeamIds = [], teamsMap = {}, playersMap = {} }) {
   const [myStatus, setMyStatus] = useState(null)
+  // The game moved after he answered: the answer stands but has to be given again.
+  const [myStale, setMyStale] = useState(false)
   const [rows, setRows] = useState([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -126,7 +128,8 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
       publicView ? getPublicAttendance(game.id) : Promise.resolve([]),
     ]).then(([mine, all, med, susp, pub]) => {
       if (!alive) return
-      setMyStatus(mine)
+      setMyStatus(mine?.status ?? null)
+      setMyStale(!!mine?.needsReconfirm)
       setRows(all)
       setPublicRows(pub)
       setMedOk(myPlayerId ? med.has(myPlayerId) : null)
@@ -151,6 +154,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
     try {
       await setMyAvailability(game.id, status)
       setMyStatus(status)
+      setMyStale(false)
       if (status === "available") setMedOk(true)
       if (canSeeAny) refreshRows()
     } catch (e) {
@@ -212,7 +216,10 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
   // The official (RLS) rows win: they carry the manual-add note and side. The public rows
   // fill in everyone else's status — and their manual side, so a loan lands on the right team.
   const rowByPlayer = Object.fromEntries([...publicRows, ...rows].map(r => [r.player_id, r]))
-  const statusByPlayer = Object.fromEntries([...publicRows, ...rows].map(r => [r.player_id, r.status]))
+  // An answer flagged needs_reconfirm (the game moved after it was given) counts as "hasn't
+  // answered" — the same as the server's nudge and squad digests. `rows` win over
+  // `publicRows`, and only `rows` carry the flag.
+  const statusByPlayer = Object.fromEntries([...publicRows, ...rows].map(r => [r.player_id, r.needs_reconfirm ? null : r.status]))
   const nameOf = (p) => `${p?.first_name || ""} ${p?.last_name || ""}`.trim() || "שחקן"
 
   // A team's squad is its roster PLUS anyone manually added for it — a loaned
@@ -319,6 +326,11 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
           return (
             <p key={p.id} className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-300">
               <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-4 h-4 inline-block align-[-2px]" title="שוער" /></> : null}</span>
+              {row?.needs_reconfirm && (
+                <span className="shrink-0 text-[10px] text-amber-600 dark:text-amber-400" title="ענה/תה לפני שהמשחק הועבר">
+                  (קודם: {row.status === "available" ? "מגיע" : "לא מגיע"})
+                </span>
+              )}
               {manual && (
                 <span title={row.note || "נוסף ידנית"}
                   className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
@@ -351,6 +363,12 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
 
       {myPlayerId && (
         <div className="space-y-2">
+          {myStale && myStatus && (
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 rounded-lg px-2.5 py-1.5">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>המשחק הועבר למועד חדש. ענית "{myStatus === "available" ? "מגיע/ה" : "לא מגיע/ה"}" למועד הקודם — נא לאשר שוב.</span>
+            </p>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-slate-500 dark:text-slate-400">מגיע/ה למשחק?</span>
             <button onClick={() => choose("available")} disabled={saving || medOk === false || !!suspension || !!myBlock}

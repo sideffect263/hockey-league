@@ -8,17 +8,19 @@ import { supabase } from './supabase'
  * sees their team's).
  */
 
-/** The current user's availability status for a game ('available'|'unavailable'|null). */
+/** The current user's answer for a game: { status: 'available'|'unavailable', needsReconfirm }
+ *  or null. needsReconfirm = the game moved to another day / by more than 2h after he
+ *  answered (game-postpone-reconfirm.sql); answering again clears it. */
 export async function getMyAvailability(gameId, playerId) {
   if (!gameId || !playerId) return null
   const { data, error } = await supabase
     .from('game_availability')
-    .select('status')
+    .select('status,needs_reconfirm')
     .eq('game_id', gameId)
     .eq('player_id', playerId)
     .maybeSingle()
-  if (error) return null
-  return data?.status ?? null
+  if (error || !data) return null
+  return { status: data.status, needsReconfirm: !!data.needs_reconfirm }
 }
 
 /** Set the current user's availability via the self-scoped RPC. Signing up as
@@ -48,7 +50,7 @@ export async function getGameAvailability(gameId) {
   if (!gameId) return []
   const { data, error } = await supabase
     .from('game_availability')
-    .select('player_id,status,team_id,added_by,note')
+    .select('player_id,status,team_id,added_by,note,needs_reconfirm')
     .eq('game_id', gameId)
   if (error) return []
   return data || []

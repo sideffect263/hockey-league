@@ -34,7 +34,7 @@ const TYPE_LABEL = {
   post_like: "לייק לפוסט", post_comment: "תגובה לפוסט", tagged: "תיוג",
   claim_request: "בקשת שיוך לשחקן", claim_approved: "שיוך אושר", claim_rejected: "שיוך נדחה",
   role_granted: "קבלת תפקיד", content_report: "דיווח תוכן",
-  game_result: "תוצאת משחק", goal_scored: "גול", game_moved: "שינוי במשחק",
+  game_result: "תוצאת משחק", goal_scored: "גול", game_moved: "שינוי במשחק", game_postponed: "משחק נדחה",
   follow_game_alert: "משחק במעקב מחר",
   game_register_reminder: "תזכורת הגעה", game_register_nudge: "תזכורת הגעה חוזרת",
   game_form_sign: "חתימה על טופס", coach_squad_digest: "סיכום סגל למאמן",

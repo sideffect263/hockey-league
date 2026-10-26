@@ -495,6 +495,15 @@ export default function GameDetail() {
         <div id="availability" className="scroll-mt-20">
           <GameAvailability game={game} myPlayerId={myAvailPlayerId} officialTeamIds={officialTeamIds} playerTeamId={playerTeamId} publicView={!!user} nudgeTeamIds={nudgeTeamIds} teamsMap={teamsMap} playersMap={playersMap} />
         </div>
+      ) : game.status === "postponed" ? (
+        // Postponed with no new date: nothing to sign up for. When the manager sets a date
+        // the game is scheduled again and everyone is told (game-postpone-reconfirm.sql).
+        <div id="availability" className="card p-4 scroll-mt-20 flex items-center gap-3">
+          <CalendarCheck className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="flex-1 text-sm text-slate-700 dark:text-slate-200">
+            המשחק נדחה. מועד חדש יפורסם, ונעדכן בהתראה כשייקבע — אז אפשר יהיה לאשר הגעה.
+          </p>
+        </div>
       ) : game.status === "scheduled" && (!user || hash === "#availability") && (
         <div id="availability" className="card p-4 scroll-mt-20 flex items-center gap-3 flex-wrap">
           <CalendarCheck className="w-5 h-5 text-brand shrink-0" />

@@ -81,13 +81,19 @@ const unavailDay = (v: any) => (v ? new Date(v).toLocaleDateString("he-IL") : ""
 const unavailSpan = (d: Record<string, any>) =>
   d.ends_on ? `${unavailDay(d.starts_on)}–${unavailDay(d.ends_on)}` : `מ־${unavailDay(d.starts_on)}`;
 
+// Israel time, explicitly: the edge runtime is UTC, so without timeZone the push said
+// 14:30 for a 16:30 game.
 function movedSummary(d: Record<string, any>): string {
   const when = d.game_date
-    ? new Date(d.game_date).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })
+    ? new Date(d.game_date).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })
     : "";
+  // reconfirm: a real move (another day / >2h) — every מגיע / לא מגיע was flagged and
+  // has to be given again (game-postpone-reconfirm.sql).
+  const ask = d.reconfirm ? " — נא לאשר הגעה מחדש" : "";
+  if (d.from_postponed) return `נקבע מועד חדש: ${when}${d.what === "both" ? ` ב${d.venue ?? "מגרש אחר"}` : ""}${ask}`;
   if (d.what === "venue") return `המשחק עבר ל${d.venue ?? "מגרש אחר"}`;
-  if (d.what === "time")  return `המשחק נדחה ל־${when}`;
-  return `המשחק עבר ל${d.venue ?? "מגרש אחר"} ונדחה ל־${when}`;
+  if (d.what === "time")  return `המשחק הועבר ל־${when}${ask}`;
+  return `המשחק עבר ל${d.venue ?? "מגרש אחר"} ול־${when}${ask}`;
 }
 
 function officialsSummary(d: Record<string, any>): string {
@@ -180,6 +186,7 @@ function notificationText(n: NotificationRow, actorName: string): string {
     case "lm_officials_digest":    return `${vs(d)} — ${officialsSummary(d)}`;
     case "lm_broadcast":           return `הודעת מנהל הליגה (${vs(d)}): ${d.message ?? ""}`;
     case "game_moved":             return `${vs(d)} — ${movedSummary(d)}`;
+    case "game_postponed":         return `${vs(d)} — המשחק נדחה, מועד חדש יפורסם`;
     case "follow_game_alert":      return `מחר: ${vs(d)}`;
     case "goal_scored":            return `${d.scoring_team ?? ""} הבקיעה! ${vs(d)} ${d.away_score ?? ""}:${d.home_score ?? ""}`;
     // הוקי מרקט. A settlement push IS the payoff — landing it as "התראה חדשה"
@@ -259,6 +266,7 @@ function notificationHref(n: NotificationRow): string {
     case "lm_officials_digest":
     case "lm_broadcast":
     case "game_moved":
+    case "game_postponed":
     case "follow_game_alert":
     case "goal_scored":
     case "loan_join_request":
