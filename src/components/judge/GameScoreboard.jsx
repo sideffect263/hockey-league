@@ -18,6 +18,7 @@ import {
   Loader2, Check, Users, Flag,
 } from "lucide-react"
 import { StickBall } from "@/components/icons/HockeyIcons"
+import { Timeout } from "@/components/icons/BrandIcons"
 
 /* ============================================================================
  * Web judge scoreboard — a faithful mirror of the iOS `ScoreboardView`.
@@ -193,7 +194,7 @@ function TeamColumn({ side, engine, T, teamName, setPicker, onRemoveCard }) {
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold transition-opacity"
         style={{ ...TOUCH, background: T.panel, color: accent, opacity: canTimeout ? 1 : 0.25, fontSize: SB.timeout }}
         aria-label={HE.timeoutsUsed(engine._side(side).timeoutsThisPeriod, GameRules.maxTimeoutsPerPeriod)}>
-        <Hand className="w-[1.1em] h-[1.1em]" /> {HE.timeout}
+        <Timeout className="w-[1.1em] h-[1.1em]" /> {HE.timeout}
         <TimeoutDots used={engine._side(side).timeoutsThisPeriod} color={accent} />
       </button>
     </div>
@@ -465,6 +466,18 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
         r.clean_sheet = cs
         map.set(p.id, r)
       }
+      // Who played: the server adds every "מגיע" sign-up to the box score
+      // (supabase/judge-save-full-lineup.sql). The board adds what only it knows — a
+      // borrowed player played (0-goal row), a squad player the judge hid or who is
+      // blocked did not ({ absent: true }). Before 10/25 only scorers and carded players
+      // were saved, and everyone else was missing from the game page and his game log.
+      for (const [side, l] of [[TeamSide.home, lineup.home], [TeamSide.guest, lineup.guest]]) {
+        for (const id of l?.added || []) {
+          if (!map.has(id)) map.set(id, { player_id: id, goals: 0, blue_cards: 0, red_cards: 0, clean_sheet: false })
+        }
+        const out = new Set([...(l?.hidden || []), ...squadFor(side).filter(p => blockedOn(side, p.id)).map(p => p.id)])
+        for (const id of out) if (id && !map.has(id)) map.set(id, { player_id: id, absent: true })
+      }
       // A player borrowed in the lineup editor is on neither roster: tell the server which
       // side he played for, so his goals land there (game_stats.played_for_team_id).
       for (const r of map.values()) {
@@ -511,8 +524,13 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
 
   return (
     <div ref={wrapRef} dir="ltr"
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden"
-      style={{ background: T.bg, color: T.primaryText }}>
+      className="fixed inset-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto overscroll-contain"
+      style={{
+        background: T.bg, color: T.primaryText,
+        // a phone's browser bars / status bar eat into the viewport, so the board can be
+        // taller than what's visible — scroll instead of clipping the timeout/end/save rows
+        paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)",
+      }}>
 
       {/* subtle web-only chrome: close (→ list) + kiosk fullscreen (top-left in LTR) */}
       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
@@ -523,7 +541,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
 
       {/* board: HOME (left) · center · GUEST (right) — items-stretch so each
           column fills the full height and spreads its rows to use the space */}
-      <div className="flex-1 flex items-stretch justify-between gap-2" style={{ padding: "clamp(1rem,4vh,3.5rem) clamp(1rem,3vw,4rem)" }}>
+      <div className="flex-1 shrink-0 flex items-stretch justify-between gap-2" style={{ padding: "clamp(1rem,4vh,3.5rem) clamp(1rem,3vw,4rem)" }}>
         <TeamColumn side={TeamSide.home} engine={engine} T={T} teamName={home?.name} setPicker={setPicker} onRemoveCard={removeCard} />
 
         {/* center stack */}

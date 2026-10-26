@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext"
 import TeamLogo from "@/components/TeamLogo"
 import { JudgeSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, getOpenSubmissionStatuses } from "@/lib/gameFormResult"
+import { ilDate } from "@/lib/ilTime"
 
 /**
  * /results — games that have been played (kick-off passed) but have no result yet.
@@ -74,7 +75,7 @@ export default function ResultsPending() {
               <Link key={g.id} to={`/games/${g.id}/result`} className="card-hover p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap text-xs text-fg-muted">
-                    <span dir="ltr" className="tabular-nums">{format(new Date(g.game_date), "dd.MM.yyyy HH:mm")}</span>
+                    <span dir="ltr" className="tabular-nums">{format(ilDate(g.game_date), "dd.MM.yyyy HH:mm")}</span>
                     {g.venue && <span>· {g.venue}</span>}
                     {g.game_type && g.game_type !== "ליגה" && <span className="stat-pill badge-accent !py-0">{g.game_type}</span>}
                     {sub && <span className={`stat-pill !py-0 ${sub.cls}`}>{sub.text}</span>}

@@ -88,6 +88,25 @@ export function liveTimeouts(live) {
   return { home: n('home'), away: n('away'), max: 2 }
 }
 
+/**
+ * Each side's team fouls so far → { home, away }, or null when unknown. Judge boards from
+ * 2026-10-25 send `state.fouls`; older ones are read from the full snapshot (web board) or,
+ * failing that, counted from the play-by-play (its newest 40 events, so a long game may
+ * undercount until the judge updates the app).
+ */
+export function liveFouls(live) {
+  const f = live?.state?.fouls
+  if (f && Number.isFinite(f.home) && Number.isFinite(f.away)) return { home: f.home, away: f.away }
+  const snap = live?.state?.snapshot
+  if (snap && Number.isFinite(snap.home?.strikes) && Number.isFinite(snap.guest?.strikes)) {
+    return { home: snap.home.strikes, away: snap.guest.strikes }
+  }
+  const evs = live?.state?.events
+  if (!Array.isArray(evs)) return null
+  const n = (side) => evs.filter(e => e.type === 'foul' && e.side === side).length
+  return { home: n('home'), away: n('away') }
+}
+
 /** Is this live row in a break, and which kind? → 'timeout' | 'halftime' | null */
 export function liveBreak(live) {
   if (live?.phase !== 'breakTime') return null
@@ -120,6 +139,8 @@ export async function broadcastGameState(engine, gameId) {
         events: buildLiveEvents(engine),
         snapshot: engine.serialize(),
         timeouts: { home: engine.home?.timeoutsThisPeriod ?? 0, away: engine.guest?.timeoutsThisPeriod ?? 0, max: GameRules.maxTimeoutsPerPeriod },
+        // Team fouls so far (whole game, as on the board) → the stream's score bug (2026-10-25).
+        fouls: { home: engine.home?.strikes ?? 0, away: engine.guest?.strikes ?? 0 },
         // Half length → game_reports.period_ms (the form's timeout minutes).
         periodMS: engine.settings?.periodMS ?? null,
       },

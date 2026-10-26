@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { MapPin, Plus, Trash2, RefreshCw, Check, X, Pencil } from "lucide-react"
+import { Plus, Trash2, RefreshCw, Check, X, Pencil } from "lucide-react"
+import { MapPin } from "@/components/icons/BrandIcons"
 import { getAllVenues, createVenue, updateVenue, deleteVenue } from "@/lib/venues"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"

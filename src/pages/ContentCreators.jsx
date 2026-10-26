@@ -2,10 +2,8 @@ import { useState, useEffect } from "react"
 import { Navigate } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
-import {
-  Images, Flag, FolderPlus, Send, ExternalLink,
-  RefreshCw, Loader2, Check, Clock, Ban, Clapperboard, BookOpen, Upload
-} from "lucide-react"
+import { Images, Flag, FolderPlus, Send, ExternalLink, RefreshCw, Loader2, Check, Ban, Clapperboard, BookOpen, Upload } from "lucide-react"
+import { Clock } from "@/components/icons/BrandIcons"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"

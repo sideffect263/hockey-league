@@ -1,4 +1,5 @@
-import { Download, Clock, ShieldCheck, Trophy, BarChart3, Newspaper, Bell } from "lucide-react"
+import { Download, ShieldCheck, BarChart3, Newspaper, Bell } from "lucide-react"
+import { Trophy, Hourglass } from "@/components/icons/BrandIcons"
 import { Whistle } from "@/components/icons/HockeyIcons"
 import { Link } from "react-router-dom"
 
@@ -10,7 +11,7 @@ const APK_URL = "/rinkhockeyIL.apk"
 // This drifted three versions behind once (the page still offered 1.4.4 while 1.4.5 was
 // live), so it is only the label — the in-app update banner reads the real versionCode
 // that deploy-public.sh pulls out of the APK itself and writes to league_settings.
-const APK_VERSION = "1.5.1 (61)"
+const APK_VERSION = "1.5.3 (63)"
 const APK_SIZE = "‎25MB"
 
 // iOS: LIVE on the App Store since 2026-07-16 (v1.0, build 15 — READY_FOR_SALE).
@@ -126,7 +127,7 @@ export default function MobileApp() {
             </a>
           ) : (
             <div className="mt-4 inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-surface-sunken text-fg-muted text-sm font-bold cursor-not-allowed" aria-disabled="true">
-              <Clock className="w-5 h-5" /> בקרוב — ממתינה לאישור אפל
+              <Hourglass className="w-5 h-5" /> בקרוב — ממתינה לאישור אפל
             </div>
           )}
 

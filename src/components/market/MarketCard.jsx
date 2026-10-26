@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Lock, CircleCheck, Ban, Clock, TrendingUp, Flame } from 'lucide-react'
+import { Lock, CircleCheck, Ban, TrendingUp } from 'lucide-react'
+import { Clock, Flame } from "@/components/icons/BrandIcons"
 import TeamLogo from '@/components/TeamLogo'
 import { pct, CONFLICT_COPY } from '@/lib/market'
 

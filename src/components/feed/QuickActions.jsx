@@ -5,12 +5,11 @@ import { useAuth } from "@/lib/AuthContext"
 import { getAvailabilityForGames } from "@/lib/availability"
 import { getMyMedical } from "@/lib/medical"
 import { pushStatus, enablePush } from "@/lib/push"
-import {
-  LogIn, Trophy, Smartphone, UserPlus, Users, Bell,
-  CalendarClock, CalendarCheck, CalendarX, HeartPulse, ChevronLeft, Loader2,
-} from "lucide-react"
+import { LogIn, Smartphone, UserPlus, Users, Bell, HeartPulse, ChevronLeft, Loader2 } from "lucide-react"
+import { Trophy, CalendarClock, CalendarCheck, CalendarX } from "@/components/icons/BrandIcons"
 import { entityPath } from '@/lib/slugs'
 import { useHasNativeApp } from "@/lib/appUsers"
+import { ilDate } from "@/lib/ilTime"
 
 /**
  * "פעולות מהירות" — a context-aware quick-actions panel that sits under the feed
@@ -131,7 +130,7 @@ export default function QuickActions({ games = [], teamsMap = {} }) {
       {/* Player alerts — highest priority, attention-styled */}
       {nextGame && (() => {
         const g = nextGame.game
-        const sub = [opponentName(g), format(new Date(g.game_date), "d/M · HH:mm")].filter(Boolean).join(" · ")
+        const sub = [opponentName(g), format(ilDate(g.game_date), "d/M · HH:mm")].filter(Boolean).join(" · ")
         const cfg = nextGame.status === "available"
           ? { icon: CalendarCheck, tone: "green", label: "אישרת הגעה למשחק הקרוב" }
           : nextGame.status === "unavailable"

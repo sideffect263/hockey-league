@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { PlayCircle, Play, X, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react"
+import { Play, X, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react"
+import { VideoLibrary as PlayCircle, PlayBadge } from "@/components/icons/BrandIcons"
 import { parseYouTubeId, youTubeInText, withoutUrl } from "@/lib/video"
 import { noteFeedOpen } from "@/lib/feedImpressions"
 
@@ -101,9 +102,7 @@ export default function VideoRail({ feed, onShowAll }) {
                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <span className="absolute inset-0 flex items-center justify-center">
-                <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center transition-transform group-hover:scale-110">
-                  <Play className="w-5 h-5 text-white fill-white translate-x-[1px]" />
-                </span>
+                <PlayBadge className="w-12 h-12 drop-shadow transition-transform group-hover:scale-110" />
               </span>
               <span className="absolute bottom-1.5 right-2 left-2 text-[10px] font-semibold text-white/90 truncate">{v.source}</span>
             </div>

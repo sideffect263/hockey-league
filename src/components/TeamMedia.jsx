@@ -1,11 +1,13 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { Film, Play } from "lucide-react"
+import { Play } from "lucide-react"
+import { Film, MonitorPlay, PlayBadge } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { entityPath } from "@/lib/slugs"
+import { ilDate } from "@/lib/ilTime"
 
 /**
- * Team page media wall: the newest clip big, the next ones in a grid, full-game
+ * Team (and player) page media wall: the newest clip big, the next ones in a grid, full-game
  * videos as rows. Every item names its game. Filter chips appear only when there
  * is more than one kind. Items come from getTeamMedia().
  */
@@ -23,7 +25,7 @@ function gameLabel(item, teamId, teamsMap) {
   if (!g) return null
   const oppId = g.home_team_id === teamId ? g.away_team_id : g.home_team_id
   const opp = teamsMap[oppId]?.name
-  return `${opp ? `מול ${opp} · ` : ""}${format(new Date(g.game_date), "d/M")}`
+  return `${opp ? `מול ${opp} · ` : ""}${format(ilDate(g.game_date), "d/M")}`
 }
 
 function itemLink(item) {
@@ -39,13 +41,12 @@ function Poster({ item, className = "" }) {
 
 function PlayDot({ small }) {
   return (
-    <span className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 grid place-items-center shadow ${small ? "w-7 h-7" : "w-11 h-11"}`}>
-      <Play className={`${small ? "w-3.5 h-3.5" : "w-5 h-5"} text-slate-900 fill-slate-900 ms-0.5`} />
-    </span>
+    <PlayBadge variant="large" className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow ${small ? "w-8 h-8" : "w-12 h-12"}`} />
   )
 }
 
-export default function TeamMedia({ items, team, teamsMap }) {
+/** `title` overrides the "<team> בווידאו" heading (the player page passes the player's name). */
+export default function TeamMedia({ items, team, teamsMap, title }) {
   const [kind, setKind] = useState("all")
   const [showAll, setShowAll] = useState(false)
   const kinds = KINDS.map(k => ({ ...k, n: items.filter(i => i.kind === k.key).length })).filter(k => k.n)
@@ -61,7 +62,7 @@ export default function TeamMedia({ items, team, teamsMap }) {
     <div className="card overflow-hidden">
       <div className="px-5 pt-4 pb-1 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-          <Film className="w-4 h-4 text-brand" /> {team.name} בווידאו
+          <Film className="w-4 h-4 text-brand" /> {title || team.name} בווידאו
         </h2>
         <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{items.length} פריטים</span>
       </div>
@@ -116,7 +117,7 @@ export default function TeamMedia({ items, team, teamsMap }) {
               <PlayDot small />
             </span>
             <span className="min-w-0">
-              <span className="block font-bold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors">📺 {item.title}</span>
+              <span className="block font-bold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors"><MonitorPlay className="w-4 h-4 inline-block align-[-3px] me-1" />{item.title}</span>
               <span className="block text-xs text-slate-500 dark:text-slate-400 truncate">
                 {[gameLabel(item, team.id, teamsMap), item.cameras > 1 ? `${item.cameras} הקלטות` : null].filter(Boolean).join(" · ")}
               </span>
@@ -150,7 +151,7 @@ export function TeamMediaEmpty({ team, nextGame, teamsMap }) {
           <p className="font-bold text-sm text-slate-900 dark:text-white">עוד אין סרטונים של {team.name}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
             גולים ומשחקים מלאים יופיעו כאן אחרי משחק מצולם.
-            {nextGame && <> המשחק הבא: {format(new Date(nextGame.game_date), "d/M")}{opp ? ` מול ${opp.name}` : ""}.</>}
+            {nextGame && <> המשחק הבא: {format(ilDate(nextGame.game_date), "d/M")}{opp ? ` מול ${opp.name}` : ""}.</>}
           </p>
         </div>
       </div>

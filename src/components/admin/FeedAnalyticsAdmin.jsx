@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import {
-  Newspaper, Users, Repeat, Eye, Clock, RefreshCw, PlayCircle, FileText, Info,
-  Lightbulb, ArrowDownWideNarrow, Rss, Trophy, Monitor, Smartphone,
-} from "lucide-react"
+import { Newspaper, Users, Repeat, Eye, RefreshCw, PlayCircle, FileText, Info, Lightbulb, ArrowDownWideNarrow, Rss, Monitor, Smartphone } from "lucide-react"
+import { Clock, Trophy } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { useTheme } from "@/lib/ThemeContext"
 import { seriesColors, singleColor } from "@/lib/chartPalette"

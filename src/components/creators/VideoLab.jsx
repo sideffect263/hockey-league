@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  FlaskConical, RefreshCw, Loader2, Upload, ArrowRight, Play, Pause, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, Ban, HelpCircle, Eraser, Goal, Zap, Trash2, Check, Wand2, Newspaper, Undo2, ExternalLink,
-} from "lucide-react"
+import { FlaskConical, RefreshCw, Loader2, Upload, ArrowRight, Play, Pause, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Ban, HelpCircle, Eraser, Zap, Trash2, Check, Wand2, Newspaper, Undo2, ExternalLink } from "lucide-react"
+import { GoalIcon as Goal } from "@/components/icons/BrandIcons"
 import {
   getLabClips, getLabClip, getLabLabels, saveLabLabel, deleteLabLabel, updateLabClip, uploadLabClip, deleteLabClip, labUrl,
   getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions, getLabShots, getGameSides,
@@ -38,15 +36,22 @@ export default function VideoLab({ focus = null }) {
   const [clips, setClips] = useState(null)
   const [sortBy, setSortBy] = useState(() => { try { return localStorage.getItem("lab_sort") || "processed" } catch { return "processed" } })
   const changeSort = (v) => { setSortBy(v); try { localStorage.setItem("lab_sort", v) } catch { /* private mode */ } }
+  const [tagFilter, setTagFilter] = useState(() => { try { return localStorage.getItem("lab_tagged") || "all" } catch { return "all" } })
+  const changeTagFilter = (v) => { setTagFilter(v); try { localStorage.setItem("lab_tagged", v) } catch { /* private mode */ } }
+  const [q, setQ] = useState("")
   const sorted = useMemo(() => {
     if (!clips) return clips
     const t = (x) => (x ? new Date(x).getTime() : 0)
-    const arr = [...clips]
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    const arr = clips.filter(c =>
+      (tagFilter === "all" || (tagFilter === "untagged" ? !c.n_labels : c.n_labels > 0)) &&
+      words.every(w => (c.title || "").toLowerCase().includes(w)))
     if (sortBy === "processed") arr.sort((a, b) => t(b.processed_at) - t(a.processed_at))
     else if (sortBy === "updated") arr.sort((a, b) => t(b.updated_at) - t(a.updated_at))
     else if (sortBy === "title") arr.sort((a, b) => a.title.localeCompare(b.title, "he"))
     return arr
-  }, [clips, sortBy])
+  }, [clips, sortBy, tagFilter, q])
+  const untaggedN = clips ? clips.filter(c => !c.n_labels).length : 0
   const [error, setError] = useState(null)
   const [openId, setOpenId] = useState(() => new URLSearchParams(window.location.search).get("clip"))
   const [rinkId, setRinkId] = useState(() => new URLSearchParams(window.location.search).get("rink"))
@@ -116,7 +121,7 @@ export default function VideoLab({ focus = null }) {
         <div className="card p-8 text-center text-sm text-slate-500">אין עדיין קליפים במעבדה.</div>
       ) : (
         <>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-slate-500">מיון:</span>
           <select value={sortBy} onChange={e => changeSort(e.target.value)} className="filter-input py-1">
             <option value="processed">עובד לאחרונה</option>
@@ -124,7 +129,14 @@ export default function VideoLab({ focus = null }) {
             <option value="order">סדר מקורי</option>
             <option value="title">לפי שם</option>
           </select>
+          <select value={tagFilter} onChange={e => changeTagFilter(e.target.value)} className="filter-input py-1" aria-label="סינון לפי תיוג">
+            <option value="all">כל הקליפים</option>
+            <option value="untagged">עוד לא תויגו ({untaggedN})</option>
+            <option value="tagged">תויגו</option>
+          </select>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="חיפוש לפי שם (למשל: רמת ישי)" className="filter-input py-1 flex-1 min-w-[10rem]" />
         </div>
+        {sorted.length === 0 && <div className="card p-6 text-center text-sm text-slate-500">אין קליפים שמתאימים לסינון.</div>}
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {sorted.map(c => (
             <button key={c.id} onClick={() => open(c.id)}
@@ -141,6 +153,9 @@ export default function VideoLab({ focus = null }) {
                   <span className="font-semibold text-sm text-slate-900 dark:text-white flex-1 min-w-0 line-clamp-2">{c.title}</span>
                   <StatusPill status={c.status} />
                 </div>
+                <span className={`text-[11px] font-semibold block ${c.n_labels ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+                  {c.n_labels ? `תויגו ${c.n_labels} פריימים` : "עוד לא תויג"}
+                </span>
                 {c.processed_at && <span className="text-[11px] text-slate-400 block">עובד: {new Date(c.processed_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>}
                 <FeedBadge clip={c} />
                 {c.worker_note && <p className="text-xs text-slate-500 line-clamp-2">{c.worker_note}</p>}

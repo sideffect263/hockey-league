@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { ShieldPlus, Clock, Loader2 } from "lucide-react"
+import { ShieldPlus, Loader2 } from "lucide-react"
+import { Hourglass } from "@/components/icons/BrandIcons"
 import { getMyCoachRequest, requestCoachRole, cancelCoachRequest } from "@/lib/coachRequests"
 
 /**
@@ -43,7 +44,7 @@ export default function TeamCoachRequest({ teamId }) {
     return (
       <div className="ms-auto self-start shrink-0 flex items-center gap-2">
         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-          <Clock className="w-3.5 h-3.5" /> בקשת ניהול ממתינה
+          <Hourglass className="w-3.5 h-3.5" /> בקשת ניהול ממתינה
         </span>
         <button onClick={doCancel} disabled={busy}
           className="text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50">

@@ -1,4 +1,5 @@
-import { ChevronLeft, Trophy, ArrowUp, ArrowDown, Equal } from 'lucide-react'
+import { ChevronLeft, ArrowUp, ArrowDown, Equal } from 'lucide-react'
+import { Trophy } from "@/components/icons/BrandIcons"
 import { cn } from '@/lib/utils'
 import { formatMoney } from '../engine'
 import { COUNTRY_FLAG, BAND_BADGE, CONTINENTAL_LABEL } from '../clubs'

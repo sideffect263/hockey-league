@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import {
-  BookOpen, Check, Ban, Loader2, RefreshCw, ExternalLink, ArrowUp, ArrowDown, Trash2, Sparkles, Film, ChevronRight, ChevronLeft,
-  Image as ImageIcon, UploadCloud,
-} from "lucide-react"
+import { BookOpen, Check, Ban, Loader2, RefreshCw, ExternalLink, ArrowUp, ArrowDown, Trash2, Sparkles, ChevronRight, ChevronLeft, Image as ImageIcon, UploadCloud } from "lucide-react"
+import { Film } from "@/components/icons/BrandIcons"
 import {
   getStoriesForReview, saveGameStory, storyParagraphs, bodyFromTimeline, approveStoryRevision, discardStoryRevision,
   getMediaByIds, getEventsByIds, storyMediaIds, storyEventIds, getStoryPublishMode, setStoryPublishMode,

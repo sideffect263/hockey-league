@@ -1,4 +1,5 @@
-import { Globe, Smartphone, UserCircle, Users, Trophy, PenLine, Crown, Wrench, MessageSquareText, Star } from "lucide-react"
+import { Globe, Smartphone, UserCircle, Users, PenLine, Wrench, MessageSquareText, Star } from "lucide-react"
+import { Trophy, Crown } from "@/components/icons/BrandIcons"
 import { Player, Whistle } from "@/components/icons/HockeyIcons"
 import { useSeasonName } from "@/App"
 

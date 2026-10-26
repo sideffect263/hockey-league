@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Clock, MapPin, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck } from "@/components/icons/BrandIcons"
 import { useParams, Link, useLocation } from "react-router-dom"
-import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason } from "@/lib/api"
+import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason, getArchivedGames } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
-import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, MonitorPlay, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
+import { ArrowRight, ArrowLeft, Shield, Users, TrendingUp, RefreshCw, ClipboardCheck, Utensils, LogIn, UserPlus, HeartPulse } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -18,7 +19,7 @@ import GameBroadcast from "@/components/GameBroadcast"
 import { TeamLink, PlayerLink } from "@/components/EntityLinks"
 import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
-import { countsForStats, FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
+import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import GameChangeRequestModal from "@/components/GameChangeRequestModal"
 import GameChangeOpponentCard from "@/components/GameChangeOpponentCard"
 import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
@@ -28,6 +29,7 @@ import GameFormExport from "@/components/GameFormExport"
 import GameFormCard from "@/components/games/GameFormCard"
 import GameMvp from "@/components/GameMvp"
 import GameMarketCard from "@/components/games/GameMarketCard"
+import GameFans from "@/components/games/GameFans"
 import { usePinSeason } from "@/components/SeasonPicker"
 import GameStory from "@/components/games/GameStory"
 import GameMediaUpload from "@/components/games/GameMediaUpload"
@@ -35,6 +37,8 @@ import { MATCH_STATS_GAMES } from "@/lib/matchStats"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
+import { ilDate } from "@/lib/ilTime"
+import { headToHead, formBefore, gameSummary } from "@/lib/pageSummary"
 
 const statusCfg = {
   scheduled: { label: "מתוכנן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -54,9 +58,9 @@ const resultLabel = (r) => (r === 'win' ? 'ניצחון' : r === 'loss' ? 'הפ�
 function StatPills({ stat }) {
   return (
     <div className="flex gap-1.5 shrink-0">
-      {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5">⚽ {stat.goals}</span>}
-      {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-      {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
+      {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+      {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+      {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
     </div>
   )
 }
@@ -139,7 +143,10 @@ export default function GameDetail() {
         getGameAnySeason(id), getGameStatsByGameId(id), getTeams(), getPlayers(), getReferees(), getGames(), getLiveGame(id),
       ])
       if (!cur) { setError('notfound'); return }
-      setGame(cur.game); setStats(cur.stats ?? s ?? []); setTeams(t); setPlayers(p); setReferees(r); setGames(allGames); setLive(lg)
+      // An archived game's form + head-to-head come from ITS season — getGames() only
+      // sees the live one, which left both sections empty on every 2025-26 game.
+      const seasonGames = cur.stats ? await getArchivedGames(cur.game.season_id).catch(() => allGames) : allGames
+      setGame(cur.game); setStats(cur.stats ?? s ?? []); setTeams(t); setPlayers(p); setReferees(r); setGames(seasonGames); setLive(lg)
     } catch (err) {
       console.error(err)
       setError(err?.code === 'PGRST116' ? 'notfound' : 'error')
@@ -244,27 +251,22 @@ export default function GameDetail() {
 
   // ---- Head-to-head: other completed meetings between the two teams ----
   // Friendlies are excluded — this reflects the competitive record only.
-  const h2h = games
-    .filter(g => g.id !== game.id && g.status === 'completed' && countsForStats(g) && g.home_score != null && g.away_score != null &&
-      ((g.home_team_id === game.home_team_id && g.away_team_id === game.away_team_id) ||
-       (g.home_team_id === game.away_team_id && g.away_team_id === game.home_team_id)))
-    .sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
+  const h2h = headToHead(games, game)
 
   // ---- Pre-match form: each team's last 5 completed results BEFORE this game ----
-  const formBefore = (teamId) => games
-    .filter(g => g.status === 'completed' && countsForStats(g) && g.home_score != null && g.away_score != null &&
-      new Date(g.game_date) < new Date(game.game_date) &&
-      (g.home_team_id === teamId || g.away_team_id === teamId))
-    .sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
-    .slice(0, 5)
-    .map(g => {
-      const isHome = g.home_team_id === teamId
-      const my = isHome ? g.home_score : g.away_score
-      const opp = isHome ? g.away_score : g.home_score
-      return my > opp ? 'win' : my < opp ? 'loss' : 'tie'
-    })
-  const homeForm = formBefore(game.home_team_id)
-  const awayForm = formBefore(game.away_team_id)
+  const homeForm = formBefore(games, game, game.home_team_id)
+  const awayForm = formBefore(games, game, game.away_team_id)
+
+  // "על המשחק" — the same sentences api/seo.js gives search bots (keep them one source).
+  const summary = gameSummary({
+    game, home, away, h2h, seasonName: pastSeason?.name || null,
+    cards: { blue: blueCards, red: redCards },
+    scorers: scorers.map(s => {
+      const p = playersMap[s.player_id]
+      const side = sideOf(s) === game.home_team_id ? 'home' : sideOf(s) === game.away_team_id ? 'away' : null
+      return { name: s.is_guest_player ? s.guest_player_name : (p ? `${p.first_name} ${p.last_name}` : null), goals: s.goals, side }
+    }).filter(s => s.name && s.side),
+  })
 
   // A coach of either team may request a reschedule while the game is still
   // upcoming (scheduled or already postponed). Managers/admins edit games directly.
@@ -289,7 +291,7 @@ export default function GameDetail() {
         {/* Officials: jump straight to this game's scoreboard to run the clock / go live */}
         {canOfficiate && !done && (
           <Link to={`/judge/${id}`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-            <Radio className="w-3.5 h-3.5" /> לוח שיפוט
+            <Referee className="w-3.5 h-3.5" /> לוח שיפוט
           </Link>
         )}
         {/* Admin: the multi-camera control room — reachable before any camera exists */}
@@ -345,7 +347,7 @@ export default function GameDetail() {
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <span className="text-2xl font-extrabold text-slate-300 dark:text-slate-600 tabular-nums">{format(new Date(game.game_date), "HH:mm")}</span>
+                <span className="text-2xl font-extrabold text-slate-300 dark:text-slate-600 tabular-nums">{format(ilDate(game.game_date), "HH:mm")}</span>
                 <span className="text-[11px] text-slate-400 mt-0.5">שעת פתיחה</span>
               </div>
             )}
@@ -360,11 +362,11 @@ export default function GameDetail() {
         </div>
 
         <div className="flex items-center justify-center gap-x-4 gap-y-2 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
-          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>
+          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
           {/* Labelled: a bare name after the venue read as nothing (nobody saw it was the judge). */}
-          {refName && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
+          {refName && <span className="flex items-center gap-1"><Referee className="w-3.5 h-3.5" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
           {medics.length > 0 && <span className="flex items-center gap-1"><HeartPulse className="w-3.5 h-3.5" />חובש: {medics.map(m => m.name).filter(Boolean).join(', ')}</span>}
         </div>
 
@@ -389,6 +391,13 @@ export default function GameDetail() {
           </div>
         )}
       </motion.div>
+
+      {summary.length > 0 && (
+        <section className="card p-5">
+          <h2 className="font-bold text-sm text-slate-900 dark:text-white mb-2">על המשחק</h2>
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{summary.join(' ')}</p>
+        </section>
+      )}
 
       {/* ===== סיפור המשחק — written story (published, or a draft for editors) ===== */}
       {done && <GameStory gameId={game.id} home={home} away={away} />}
@@ -450,6 +459,9 @@ export default function GameDetail() {
 
       {/* ===== ADD TO CALENDAR (upcoming games) ===== */}
       <AddToCalendar game={game} teamsMap={teamsMap} />
+
+      {/* ===== FANS: each side's fans + "אני בא/ה לצפות" (upcoming) ===== */}
+      <GameFans game={game} home={home} away={away} />
 
       {/* ===== OFFICIAL SELF-SUBMIT (judge/medic apply for an upcoming game) ===== */}
       <OfficialSelfSubmit game={game} />
@@ -568,7 +580,7 @@ export default function GameDetail() {
                             <div className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg">
                               <span className="text-sm text-slate-500 dark:text-slate-400 truncate min-w-0">{ownGoalLabel(ownGoalsFor(tid))}</span>
                               <div className="flex gap-1.5 shrink-0">
-                                <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 !py-0 !px-1.5">⚽ {ownGoalsFor(tid)}</span>
+                                <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{ownGoalsFor(tid)}</span>
                               </div>
                             </div>
                           )}
@@ -627,7 +639,7 @@ export default function GameDetail() {
                       {name}
                     </PlayerLink>
                   </div>
-                  <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums shrink-0"><span>{stat.goals}</span><span>⚽</span></span>
+                  <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums shrink-0"><span>{stat.goals}</span><Ball className="w-3.5 h-3.5" /></span>
                 </div>
               )
             })}
@@ -637,7 +649,7 @@ export default function GameDetail() {
                   <TeamLogo team={teamsMap[tid]} size={6} />
                   <span className="font-medium text-sm text-slate-500 dark:text-slate-400 truncate">{ownGoalLabel(ownGoalsFor(tid))}</span>
                 </div>
-                <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-slate-500 dark:text-slate-400 text-sm tabular-nums shrink-0"><span>{ownGoalsFor(tid)}</span><span>⚽</span></span>
+                <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-slate-500 dark:text-slate-400 text-sm tabular-nums shrink-0"><span>{ownGoalsFor(tid)}</span><Ball className="w-3.5 h-3.5" /></span>
               </div>
             ))}
           </div>
@@ -701,7 +713,7 @@ export default function GameDetail() {
                   <Link key={g.id} to={entityPath('games', g)} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-2 min-w-0 text-xs text-slate-500 dark:text-slate-400">
                       <Calendar className="w-3.5 h-3.5 shrink-0" />
-                      <span>{format(new Date(g.game_date), "d/M/yyyy")}</span>
+                      <span>{format(ilDate(g.game_date), "d/M/yyyy")}</span>
                       <span className="text-slate-500 dark:text-slate-400">· {g.game_type}</span>
                     </div>
                     {/* dir=ltr isolates the standalone score so RTL can't split away:home

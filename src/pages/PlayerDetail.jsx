@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { GoalIcon as Ball, Hourglass, BlueCard, RedCard, Flame, HatTrick, Goalkeeper, Calendar, Award, Trophy } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { getPlayers, getTeams, getGames, getGameStats, getLeagueSetting, getPlayerRoleBadges } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -8,7 +9,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { useSeasonMode } from "@/App"
 import { getClaimContext, createClaim, cancelClaim } from "@/lib/claims"
 import { linkRequestErrorMessage } from "@/lib/linkRequests"
-import { ArrowRight, Shirt, Shield, Calendar, RefreshCw, UserPlus, Check, Clock, Award, Trophy, Flame, AtSign } from "lucide-react"
+import { ArrowRight, Shirt, Shield, RefreshCw, UserPlus, Check, AtSign } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -25,6 +26,11 @@ import { ShareFollowButton, FollowInvite } from "@/components/ShareFollow"
 import { PlayerDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { getPlayerMentions } from "@/lib/mentionsApi"
 import { sizedImage } from "@/lib/imageSize"
+import TeamMedia from "@/components/TeamMedia"
+import { getPlayerMedia } from "@/lib/teamMedia"
+import { ilDate } from "@/lib/ilTime"
+import { supabase } from "@/lib/supabase"
+import { playerSummary } from "@/lib/pageSummary"
 
 export default function PlayerDetail() {
   // The route param is a Hebrew slug (/players/יואב-תורגמן) or, for every link
@@ -49,6 +55,8 @@ export default function PlayerDetail() {
   const [claimErr, setClaimErr] = useState(null)
   const [accountBadges, setAccountBadges] = useState(null) // { isAdmin, roles } | null
   const [tagged, setTagged] = useState([]) // "תויג/ה ב…" — posts/comments this player is @-tagged in
+  const [pastSeasons, setPastSeasons] = useState([]) // archived-season lines, for "על השחקן"
+  const [media, setMedia] = useState(null) // the team-page media wall, scoped to the games this player played
 
   const playerName = player ? `${player.first_name} ${player.last_name}` : null
   useSeo({
@@ -61,6 +69,15 @@ export default function PlayerDetail() {
     if (id) loadData()
     else if (unknownRoute) { setError('השחקן לא נמצא'); setLoading(false) }
   }, [id, unknownRoute])
+
+  // The same archived-season rows PastSeasons lists — the summary sentence totals them.
+  useEffect(() => {
+    let alive = true
+    if (!player?.id) return
+    supabase.from("player_season_stats").select("goals, games_played, team_name, season:seasons(name)").eq("player_id", player.id)
+      .then(({ data }) => alive && setPastSeasons((data || []).filter(r => r.season).sort((a, b) => b.season.name.localeCompare(a.season.name))))
+    return () => { alive = false }
+  }, [player?.id])
 
   // Load claim state for this player once it (and the auth user) are known.
   useEffect(() => {
@@ -78,6 +95,21 @@ export default function PlayerDetail() {
     getPlayerMentions(player.id, 10).then(rows => alive && setTagged(rows))
     return () => { alive = false }
   }, [player?.id])
+
+  // Media wall: clips / photos / full games / stories from the games this player has a
+  // box-score row in, plus posts they're @-tagged in. Hidden when empty.
+  useEffect(() => {
+    let alive = true
+    setMedia(null)
+    if (!player?.id || !games.length) return
+    const played = new Set(gameStats.filter(s => s.player_id === player.id).map(s => s.game_id))
+    const myGames = games.filter(g => played.has(g.id))
+    const taggedPosts = tagged.filter(t => t.kind === 'post').map(t => (/^\/posts\/([^/?#]+)/.exec(t.href) || [])[1]).filter(Boolean)
+    getPlayerMedia(myGames, taggedPosts)
+      .then(m => { if (alive) setMedia(m) })
+      .catch(e => { console.error(e); if (alive) setMedia([]) })
+    return () => { alive = false }
+  }, [player?.id, games, gameStats, tagged])
 
   // Public league-role badges for the account (if any) linked to this player.
   useEffect(() => {
@@ -160,6 +192,14 @@ export default function PlayerDetail() {
     .map(s => ({ stat: s, game: gamesMap[s.game_id] }))
     .filter(x => x.game)
     .sort((a, b) => new Date(b.game.game_date) - new Date(a.game.game_date))
+
+  // "על השחקן" — the same sentences api/seo.js gives search bots (one source: lib/pageSummary).
+  const last = gameLog[0]?.game
+  const summary = playerSummary({
+    player, team,
+    past: pastSeasons.map(r => ({ seasonName: r.season.name, teamName: r.team_name, goals: r.goals, games_played: r.games_played })),
+    lastGame: last ? { ...last, home: teamsMap[last.home_team_id]?.name || 'בית', away: teamsMap[last.away_team_id]?.name || 'חוץ', goals: gameLog[0].stat.goals || 0 } : null,
+  })
 
   // Result (from the player's team perspective) for a given game.
   const resultOf = (game) => {
@@ -306,7 +346,7 @@ export default function PlayerDetail() {
           ) : pendingHere ? (
             <>
               <span className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
-                <Clock className="w-4 h-4" /> בקשת הבעלות נשלחה — ממתינה לאישור מנהל
+                <Hourglass className="w-4 h-4" /> בקשת הבעלות נשלחה — ממתינה לאישור מנהל
               </span>
               <button onClick={handleCancelClaim} disabled={claimBusy}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 shrink-0">
@@ -358,6 +398,11 @@ export default function PlayerDetail() {
         </div>
       )}
 
+      <section className="card p-5">
+        <h2 className="font-bold text-sm text-slate-900 dark:text-white mb-2">על השחקן</h2>
+        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{summary.join(' ')}</p>
+      </section>
+
       {/* Season totals */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 uppercase tracking-wide">סיכום עונה</h2>
@@ -398,9 +443,9 @@ export default function PlayerDetail() {
                 <h.icon className="w-3.5 h-3.5" /> {h.label}
               </span>
             ))}
-            {bigGames > 0 && <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light">🔥 {bigGames} משחקי ענק</span>}
-            {hatTricks > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">🎩 {hatTricks} שלושערים</span>}
-            {isGK && cleanSheets > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">🧤 {cleanSheets} שערים נקיים</span>}
+            {bigGames > 0 && <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light"><Flame className="w-3.5 h-3.5" />{bigGames} משחקי ענק</span>}
+            {hatTricks > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><HatTrick className="w-3.5 h-3.5" />{hatTricks} שלושערים</span>}
+            {isGK && cleanSheets > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Goalkeeper className="w-3.5 h-3.5" />{cleanSheets} שערים נקיים</span>}
           </div>
 
           {/* Individual milestone games */}
@@ -409,13 +454,13 @@ export default function PlayerDetail() {
               {milestoneGames.map(m => (
                 <div key={m.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-base leading-none shrink-0">{m.kind === 'big_game' ? '🔥' : '🎩'}</span>
+                    {m.kind === 'big_game' ? <Flame className="w-5 h-5" /> : <HatTrick className="w-5 h-5" />}
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
                         {m.kind === 'big_game' ? 'משחק ענק' : 'שלושער'} · {m.goals} שערים
                       </p>
                       <Link to={m.opp ? entityPath('teams', m.opp) : '#'} className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
-                        מול {m.opp?.name || '—'} · {format(new Date(m.game.game_date), "d/M/yyyy")}
+                        מול {m.opp?.name || '—'} · {format(ilDate(m.game.game_date), "d/M/yyyy")}
                       </Link>
                     </div>
                   </div>
@@ -428,6 +473,11 @@ export default function PlayerDetail() {
             </div>
           )}
         </motion.div>
+      )}
+
+      {media && media.length > 0 && (
+        <TeamMedia items={media} team={team || { id: player.team_id, name: "" }} teamsMap={teamsMap}
+          title={`${player.first_name || ""} ${player.last_name || ""}`.trim()} />
       )}
 
       {/* Where this player was @-tagged (player_mentions RPC). Hidden when empty. */}
@@ -504,7 +554,7 @@ export default function PlayerDetail() {
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{opp?.name || '—'}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })} · {isHome ? 'בית' : 'חוץ'}
+                      {format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })} · {isHome ? 'בית' : 'חוץ'}
                       {game.game_type === FRIENDLY_GAME_TYPE && (
                         <span className="text-violet-500 dark:text-violet-400 font-medium"> · ידידותי (לא נספר)</span>
                       )}
@@ -513,10 +563,10 @@ export default function PlayerDetail() {
                 </div>
                 {/* Player's per-game contribution + result score (left side in RTL) */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5">⚽ {stat.goals}</span>}
-                  {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5">🟦 {stat.blue_cards}</span>}
-                  {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0.5 !px-1.5">🟥 {stat.red_cards}</span>}
-                  {isGK && stat.clean_sheet && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5">🧤</span>}
+                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+                  {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+                  {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0.5 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
+                  {isGK && stat.clean_sheet && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><Goalkeeper className="w-3.5 h-3.5" title="שער נקי" /></span>}
                   {/* RTL score: away_score first, home_score last so each score lands
                       beside its team (see hockey-league-rtl-score-gotcha memory). */}
                   <span className={`text-sm font-bold px-2 py-1 rounded-md tabular-nums ${resultCls}`} title={result === 'win' ? 'ניצחון' : result === 'loss' ? 'הפסד' : 'תיקו'}>

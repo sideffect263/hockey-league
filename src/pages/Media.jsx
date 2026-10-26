@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
-import { Camera, HelpCircle, Check, ExternalLink, RefreshCw, Send, CalendarDays, Film, Images, UserSearch, Play, Radio, ChevronRight, ChevronLeft, X } from "lucide-react"
+import { Camera, HelpCircle, Check, ExternalLink, RefreshCw, Send, Images, UserSearch, Play, ChevronRight, ChevronLeft, X } from "lucide-react"
+import { CalendarDays, Film, Live as Radio, PlayBadge } from "@/components/icons/BrandIcons"
 import { Camera as CameraIcon } from "@/components/icons/HockeyIcons"
 import { getMediaClusters, getSuggestionSummary, submitSuggestion, getResolvedCount, getPhotoIndex } from "@/lib/media"
 import { getAllGameVideos, videoThumb } from "@/lib/video"
@@ -11,6 +12,7 @@ import { entityPath } from "@/lib/slugs"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { MediaClustersSkeleton } from "@/components/skeletons/PageSkeletons"
+import { ilDate } from "@/lib/ilTime"
 
 const PAGE = 24
 
@@ -249,9 +251,7 @@ function GameVideoCard({ item, teams }) {
         {thumbOk && <img src={thumb} alt="" loading="lazy" onError={() => setThumbOk(false)}
           className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />}
         <div className="absolute inset-0 grid place-items-center">
-          <span className="w-12 h-12 rounded-full bg-black/55 grid place-items-center text-white">
-            <Play className="w-5 h-5 fill-current translate-x-[-1px]" />
-          </span>
+          <PlayBadge className="w-12 h-12 drop-shadow" />
         </div>
         <div className="absolute top-2 right-2 flex gap-1.5">
           {live && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-bold"><Radio className="w-3 h-3 animate-pulse" /> חי</span>}
@@ -274,7 +274,7 @@ function GameVideoCard({ item, teams }) {
           </span>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400" dir="ltr" style={{ textAlign: "right" }}>
-          {format(new Date(game.game_date), "d/M/yyyy")}
+          {format(ilDate(game.game_date), "d/M/yyyy")}
         </p>
       </div>
     </Link>

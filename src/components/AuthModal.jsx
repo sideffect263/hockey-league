@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { APPLE_WEB_ENABLED, signInWithAppleWeb, AppleIcon } from "@/lib/appleWeb"
-import { X, Mail, Lock, User, Loader2, Clock, KeyRound } from "lucide-react"
+import { X, Mail, Lock, User, Loader2, KeyRound } from "lucide-react"
+import { Timeout } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
 
@@ -137,9 +138,9 @@ export default function AuthModal() {
         ) : sent === 'ratelimit' ? (
           <div className="text-center py-6">
             <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+              <Timeout className="w-7 h-7 text-amber-600 dark:text-amber-400" />
             </div>
-            <h3 id="auth-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">רגע, טיים־אאוט ⏱️</h3>
+            <h3 id="auth-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">רגע, טיים־אאוט</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
               שלחנו כבר כמה מיילים בזמן קצר, והשרת ביקש חילוף. שבו על הספסל דקה־שתיים ונסו שוב.
             </p>

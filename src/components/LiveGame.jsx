@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { GoalIcon as Ball, BlueCard, RedCard, Timeout, Break } from "@/components/icons/BrandIcons"
 import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import TeamLogo from "@/components/TeamLogo"
@@ -63,13 +64,13 @@ function TeamPanel({ team, score, fallbackName, timeouts }) {
 }
 
 const EVENT_META = {
-  goal:    { icon: "⚽", label: "שער", accent: "text-emerald-600 dark:text-emerald-400" },
-  ownGoal: { icon: "⚽", label: "שער עצמי", accent: "text-emerald-600 dark:text-emerald-400" },
-  blue:    { icon: "🟦", label: "כרטיס כחול", accent: "text-blue-600 dark:text-blue-400" },
-  red:     { icon: "🟥", label: "כרטיס אדום", accent: "text-red-600 dark:text-red-400" },
+  goal:    { icon: <Ball className="w-4 h-4 inline-block align-[-2px]" />, label: "שער", accent: "text-emerald-600 dark:text-emerald-400" },
+  ownGoal: { icon: <Ball className="w-4 h-4 inline-block align-[-2px]" />, label: "שער עצמי", accent: "text-emerald-600 dark:text-emerald-400" },
+  blue:    { icon: <BlueCard className="w-4 h-4 inline-block align-[-3px]" />, label: "כרטיס כחול", accent: "text-blue-600 dark:text-blue-400" },
+  red:     { icon: <RedCard className="w-4 h-4 inline-block align-[-3px]" />, label: "כרטיס אדום", accent: "text-red-600 dark:text-red-400" },
   foul:    { icon: "🚩", label: "עבירה", accent: "text-slate-500 dark:text-slate-400" },
-  timeout: { icon: "⏱️", label: "פסק זמן", accent: "text-amber-600 dark:text-amber-400" },
-  break:   { icon: "⏸️", label: "מנוחה", accent: "text-slate-500 dark:text-slate-400" },
+  timeout: { icon: <Timeout className="w-4 h-4 inline-block align-[-3px]" />, label: "פסק זמן", accent: "text-amber-600 dark:text-amber-400" },
+  break:   { icon: <Break className="w-4 h-4 inline-block align-[-3px]" />, label: "מנוחה", accent: "text-slate-500 dark:text-slate-400" },
 }
 
 // One row in the live play-by-play. Events arrive fully resolved (player name +

@@ -69,3 +69,18 @@ revoke all on function public.rt_stream_requests() from public, anon, authentica
 drop trigger if exists zz_rt_broadcast on public.stream_requests;
 create trigger zz_rt_broadcast after insert or update or delete on public.stream_requests
   for each row execute function public.rt_stream_requests();
+
+-- Admin: delete a request outright (2026-10-24, Ariel: "delete and remove completely").
+-- Gone from the control room. If that user presses "שדר" again, stream-golive files a NEW
+-- pending request. A stream that is already on air is not touched (that's its camera row).
+create or replace function public.delete_stream_request(p_id uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not coalesce(public.is_admin(), false) then
+    raise exception 'only the admin can delete stream requests' using errcode = '42501';
+  end if;
+  delete from public.stream_requests where id = p_id;
+  if not found then raise exception 'request not found' using errcode = 'P0002'; end if;
+end $$;
+revoke all on function public.delete_stream_request(uuid) from public, anon;
+grant execute on function public.delete_stream_request(uuid) to authenticated;

@@ -16,10 +16,31 @@ import { videoThumb, isLiveRow } from './video'
  */
 export async function getTeamMedia(teamId, games) {
   const gameIds = games.map(g => g.id)
-  const byGame = new Map(games.map(g => [g.id, g]))
   const postFilter = gameIds.length
     ? `team_id.eq.${teamId},game_id.in.(${gameIds.join(',')})`
     : `team_id.eq.${teamId}`
+  return collectMedia(postFilter, games)
+}
+
+/**
+ * The same wall for a player page: everything from the games the player actually
+ * played in (a game_stats row — `games`), plus the posts the player is @-tagged in
+ * (`taggedPostIds`, from player_mentions). Same items, same order as getTeamMedia.
+ */
+export async function getPlayerMedia(games, taggedPostIds = []) {
+  const gameIds = games.map(g => g.id)
+  const ids = [...new Set(taggedPostIds)].filter(id => /^[0-9a-f-]{36}$/i.test(id))
+  const parts = [
+    gameIds.length ? `game_id.in.(${gameIds.join(',')})` : null,
+    ids.length ? `id.in.(${ids.join(',')})` : null,
+  ].filter(Boolean)
+  if (!parts.length) return []
+  return collectMedia(parts.join(','), games)
+}
+
+async function collectMedia(postFilter, games) {
+  const gameIds = games.map(g => g.id)
+  const byGame = new Map(games.map(g => [g.id, g]))
 
   const [posts, videos, stories] = await Promise.all([
     supabase.from('posts')

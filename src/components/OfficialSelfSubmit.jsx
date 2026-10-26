@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { Gavel, HeartPulse, Loader2, Pencil, Check } from "lucide-react"
+import { HeartPulse, Loader2, Pencil, Check } from "lucide-react"
+import { Gavel } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { applyAsOfficial, getMyOfficialRoles, OFFICIAL_ROLE_LABEL } from "@/lib/officials"
 import { getMyContact, saveMyContact, officialApplyError } from "@/lib/contact"

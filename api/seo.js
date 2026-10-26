@@ -37,6 +37,7 @@ const GAME_LENGTH_MS = 90 * 60 * 1000
 
 import { postOg, postHeadline, postText, POST_SELECT } from './og.js'
 import { streamPlayer, streamThumb, streamHls, videoMetaFor, isoDuration } from './sitemap.js'
+import { gameSummary, playerSummary, headToHead, formBefore } from '../src/lib/pageSummary.js'
 
 class UpstreamError extends Error {}
 
@@ -66,8 +67,8 @@ async function archivedGame(key) {
   const data = await r.json()
   if (!data?.game) return null
   const g = data.game
-  const scorers = (data.stats || []).filter(st => st.goals > 0)
-  const ids = [...new Set(scorers.map(st => st.player_id).filter(Boolean))]
+  const rows = data.stats || []
+  const ids = [...new Set(rows.map(st => st.player_id).filter(Boolean))]
   const [teams, players] = await Promise.all([
     sb(`teams?id=in.(${g.home_team_id},${g.away_team_id})&select=id,name,slug,logo_url`),
     ids.length ? sb(`players?id=in.(${ids.join(',')})&select=slug,id,first_name,last_name,team_id`) : [],
@@ -76,7 +77,8 @@ async function archivedGame(key) {
   const player = (id) => players.find(p => p.id === id) || null
   return {
     g: { ...g, home: team(g.home_team_id), away: team(g.away_team_id) },
-    stats: scorers.map(st => ({ goals: st.goals, played_for_team_id: st.played_for_team_id, player: player(st.player_id) })),
+    stats: rows.map(st => ({ goals: st.goals || 0, blue_cards: st.blue_cards || 0, red_cards: st.red_cards || 0, played_for_team_id: st.played_for_team_id,
+      is_guest_player: st.is_guest_player, guest_player_name: st.guest_player_name, player: player(st.player_id) })),
   }
 }
 
@@ -207,6 +209,55 @@ function scorersHtml(g, stats, h, a) {
   const home = list('home'), away = list('away')
   if (!home && !away) return ''
   return `<h2>מבקיעים</h2>` + (home ? `<h3>${esc(h)}</h3><ul>${home}</ul>` : '') + (away ? `<h3>${esc(a)}</h3><ul>${away}</ul>` : '')
+}
+
+const sideOfStat = (g, st) => {
+  const t = st.played_for_team_id || st.player?.team_id
+  return t === g.home_team_id ? 'home' : t === g.away_team_id ? 'away' : null
+}
+const statName = (st) => (st.is_guest_player ? st.guest_player_name : st.player ? fullName(st.player) : null)
+
+// "הרכבים וסטטיסטיקות" — every player with a line in the box score, per side (GameDetail.jsx).
+function boxScoreHtml(g, stats, h, a) {
+  const line = (st) => {
+    const bits = [st.goals > 0 && `${st.goals} ${st.goals === 1 ? 'שער' : 'שערים'}`, st.blue_cards > 0 && `${st.blue_cards} כחול`, st.red_cards > 0 && `${st.red_cards} אדום`].filter(Boolean)
+    const n = st.player ? link(path('players', st.player.slug || st.player.id), fullName(st.player)) : esc(statName(st) || 'שחקן')
+    return `<li>${n}${bits.length ? ` — ${esc(bits.join(', '))}` : ''}</li>`
+  }
+  const side = (k) => stats.filter(st => !st.is_guest_player && sideOfStat(g, st) === k).map(line).join('')
+  const guests = stats.filter(st => st.is_guest_player).map(line).join('')
+  const home = side('home'), away = side('away')
+  if (!home && !away && !guests) return ''
+  return `<h2>הרכבים וסטטיסטיקות</h2>` + (home ? `<h3>${esc(h)}</h3><ul>${home}</ul>` : '') + (away ? `<h3>${esc(a)}</h3><ul>${away}</ul>` : '') +
+    (guests ? `<h3>אורחים</h3><ul>${guests}</ul>` : '')
+}
+
+const RESULT_HE = { win: 'נ', tie: 'ת', loss: 'ה' }
+// "לפני המשחק" — recent form + head-to-head, as GameDetail.jsx shows them (with links to those games).
+function beforeGameHtml(game, seasonGames, h2h, h, a) {
+  const form = (tid) => formBefore(seasonGames, game, tid)
+  const fh = form(game.home_team_id), fa = form(game.away_team_id)
+  const fLine = (name, f) => `<li>${esc(name)}: ${f.length ? esc(f.map(r => RESULT_HE[r]).join(' ')) : 'אין משחקים קודמים'}</li>`
+  const meet = (x) => {
+    const t = `${x.home?.name || x.home_team_name || ''} ${x.home_score} - ${x.away_score} ${x.away?.name || x.away_team_name || ''}`
+    return `<li>${x.slug ? link(path('games', x.slug), t) : esc(t)} — ${esc([fmtDate(x.game_date), x.game_type].filter(Boolean).join(' · '))}</li>`
+  }
+  return `<h2>לפני המשחק</h2><h3>כושר אחרון</h3><p>5 משחקים אחרונים · נ ניצחון · ת תיקו · ה הפסד</p><ul>${fLine(h, fh)}${fLine(a, fa)}</ul>` +
+    (h2h.length ? `<h3>מפגשים קודמים</h3><ul>${h2h.map(meet).join('')}</ul>` : '')
+}
+
+/** The game's season, as both pages need it: every game of that season (form, head-to-head)
+ *  and its name when it is a finished one (GameDetail's usePinSeason shows past seasons only). */
+async function seasonContext(seasonId) {
+  if (!seasonId) return { games: [], name: null }
+  const [s] = await sb(`seasons?id=eq.${seasonId}&select=name,status`)
+  if (s?.status === 'archived') {
+    const rows = await sb('rpc/season_games_detail', { method: 'POST', body: JSON.stringify({ p_season_id: seasonId }) })
+    return { games: rows.map(r => ({ ...r, home: { name: r.home_team_name }, away: { name: r.away_team_name } })), name: s.name }
+  }
+  const rows = await sb(`games?season_id=eq.${seasonId}&select=id,slug,game_date,status,game_type,tournament_id,home_team_id,away_team_id,home_score,away_score,` +
+    'home:teams!games_home_team_id_fkey(name),away:teams!games_away_team_id_fkey(name)')
+  return { games: rows, name: s && s.status !== 'active' ? s.name : null }
 }
 
 const PERIOD_HE = { '1': 'מחצית 1', '2': 'מחצית 2', 'הארכה 1': 'הארכה 1', 'הארכה 2': 'הארכה 2' }
@@ -392,6 +443,12 @@ const BUILDERS = {
     const past = history.filter(h => h.season).sort((a, b) => b.season.name.localeCompare(a.season.name))
     const pastLine = past.length ? ` בעונות קודמות: ${past.map(h => `${h.season.name} — ${h.goals} שערים ב-${h.games_played} משחקים`).join('; ')}.` : ''
     const url = `${site}${path('players', p.slug || p.id)}`
+    const lg = games[0]
+    const summary = playerSummary({
+      player: p, team: p.team,
+      past: past.map(h => ({ seasonName: h.season.name, teamName: h.team_name, goals: h.goals, games_played: h.games_played })),
+      lastGame: lg ? { ...lg.game, home: lg.game.home?.name || 'בית', away: lg.game.away?.name || 'חוץ', goals: lg.goals || 0 } : null,
+    })
     return {
       title: `${name} | ${SITE_NAME}`, canonicalPath: path('players', p.slug || p.id), image: p.photo_url, ogType: 'profile',
       desc: `${name} — ${facts.join(' · ')}.${pastLine} פרופיל שחקן בליגת הוקי הגלגיליות הישראלית.`.slice(0, 300),
@@ -406,6 +463,7 @@ const BUILDERS = {
       ],
       body: `<h1>${esc(name)}</h1>` + img(p.photo_url, name, 160) +
         (p.team ? `<p>קבוצה: ${img(p.team.logo_url, `סמל ${p.team.name}`, 32)} ${link(path('teams', p.team.slug || p.team.id), p.team.name)}</p>` : '') +
+        `<section><h2>על השחקן</h2><p>${esc(summary.join(' '))}</p></section>` +
         `<h2>העונה הנוכחית</h2><ul><li>עמדה: ${esc(posHe(p.position))}</li>` +
         (p.jersey_number != null ? `<li>מספר: ${esc(p.jersey_number)}</li>` : '') +
         `<li>שערים: ${p.goals || 0}</li><li>משחקים: ${p.games_played || 0}</li>` +
@@ -450,7 +508,7 @@ const BUILDERS = {
   },
 
   async game(key, match, { site }) {
-    let [g] = await sb(`games?${match}&select=${GAME_SELECT},created_at,home_team_id,away_team_id,home_logo:teams!games_home_team_id_fkey(logo_url),away_logo:teams!games_away_team_id_fkey(logo_url)`)
+    let [g] = await sb(`games?${match}&select=${GAME_SELECT},created_at,season_id,home_team_id,away_team_id,home_own_goals,away_own_goals,home_logo:teams!games_home_team_id_fkey(logo_url),away_logo:teams!games_away_team_id_fkey(logo_url)`)
     let stats
     if (!g) {
       const old = await archivedGame(key)
@@ -459,15 +517,17 @@ const BUILDERS = {
     }
     // Same facts as the game page: the box score (a loaned player counts for the side he
     // played for) and "היילייטס ופוסטים מהמשחק" — which is also how Google finds /posts/<id>.
-    const [liveStats, posts, [story], broadcasts] = await Promise.all([
-      stats ? null : sb(`game_stats?game_id=eq.${g.id}&goals=gt.0&select=goals,played_for_team_id,player:players(slug,id,first_name,last_name,team_id)`),
+    const [liveStats, posts, [story], broadcasts, season] = await Promise.all([
+      stats ? null : sb(`game_stats?game_id=eq.${g.id}&select=goals,blue_cards,red_cards,played_for_team_id,is_guest_player,guest_player_name,player:players(slug,id,first_name,last_name,team_id)`),
       sb(`posts?game_id=eq.${g.id}&deleted_at=is.null&select=${POST_SELECT},created_at&order=created_at.desc&limit=20`),
       // סיפור המשחק — published only (anon RLS), the same text GameStory.jsx shows.
       sb(`game_stories?game_id=eq.${g.id}&status=eq.published&select=title,summary,body,moments,timeline,hero_image_url,published_at,updated_at`),
       // The broadcast / full-game videos GameVideo.jsx plays (Cloudflare live input → recording, YouTube).
       sb(`game_videos?game_id=eq.${g.id}&hidden=eq.false&kind=eq.full&select=id,provider,video_id,cf_customer_code,title,created_at&order=created_at.asc`),
+      seasonContext(g.season_id),
     ])
     stats = stats || liveStats
+    const scorerStats = stats.filter(st => st.goals > 0)
     const cfCasts = broadcasts.filter(v => v.provider === 'cloudflare' && v.video_id && v.cf_customer_code)
     const ytCasts = broadcasts.filter(v => v.provider === 'youtube' && v.video_id)
     const metas = await videoMetaFor(sb, [...cfCasts.map(v => v.video_id), ...posts.map(p => p.video_uid)])
@@ -486,6 +546,12 @@ const BUILDERS = {
     const eventStatus = g.status === 'cancelled' ? 'EventCancelled' : g.status === 'postponed' ? 'EventPostponed' : 'EventScheduled'
     const teams = [teamRef(site, g.home), teamRef(site, g.away)].filter(Boolean)
     const castName = `${h} נגד ${a}`
+    const h2h = headToHead(season.games, g)
+    const summary = gameSummary({
+      game: g, home: { name: h }, away: { name: a }, h2h, seasonName: season.name,
+      cards: { blue: stats.reduce((n, st) => n + (st.blue_cards || 0), 0), red: stats.reduce((n, st) => n + (st.red_cards || 0), 0) },
+      scorers: scorerStats.map(st => ({ name: statName(st), goals: st.goals, side: sideOfStat(g, st) })).filter(s => s.name && s.side),
+    })
     return {
       // A live game changes by the minute — let the edge refresh it quickly.
       cache: live ? 's-maxage=60, stale-while-revalidate=60' : null,
@@ -516,7 +582,9 @@ const BUILDERS = {
           thumbnailUrl: [`https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`], uploadDate: v.created_at,
           embedUrl: `https://www.youtube.com/embed/${v.video_id}`, url, inLanguage: 'he-IL', about: { '@id': `${url}#event` },
         })),
-        ...videos.map(p => videoLd(site, p, metas[p.video_uid], { gameUrl: url })),
+        // NOT the game's goal clips: each one's watch page is /posts/<id> (its own VideoObject there). Listing
+        // them here made Google attach a clip to the GAME page and report "video isn't on a watch page"
+        // (Search Console, 2026-10-19). The clips stay as links in the body (highlightsHtml).
         ...(story ? [{
           '@type': 'NewsArticle', '@id': `${url}#story`, headline: story.title.slice(0, 110), description: story.summary,
           articleBody: story.body, inLanguage: 'he-IL', url, mainEntityOfPage: url,
@@ -530,13 +598,15 @@ const BUILDERS = {
         (g.home ? `<li>בית: ${link(path('teams', g.home.slug), h)}</li>` : '') +
         (g.away ? `<li>חוץ: ${link(path('teams', g.away.slug), a)}</li>` : '') +
         (when ? `<li>${esc(when)}</li>` : '') + (g.game_type ? `<li>סוג: ${esc(g.game_type)}</li>` : '') + `</ul>` +
+        (summary.length ? `<section><h2>על המשחק</h2><p>${esc(summary.join(' '))}</p></section>` : '') +
         (cfCasts.length ? `<h2>${live ? 'שידור חי' : 'שידור המשחק'}</h2>` + cfCasts.map((v, i) => `<figure>${videoTag({
           code: v.cf_customer_code, uid: v.video_id, meta: metas[v.video_id], title: `${castName}${cfCasts.length > 1 ? ` — חלק ${i + 1}` : ''}`,
           poster: streamThumb(v.cf_customer_code, v.video_id, live ? null : 60) })}` +
           (cfCasts.length > 1 || metas[v.video_id]?.duration_s ? `<figcaption>${esc([cfCasts.length > 1 ? `חלק ${i + 1}` : '', durText(metas[v.video_id]?.duration_s)].filter(Boolean).join(' · '))}</figcaption>` : '') +
           `</figure>`).join('') : '') +
         (ytCasts.length ? ytCasts.map(v => `<figure><iframe src="https://www.youtube.com/embed/${esc(v.video_id)}" title="${esc(`המשחק המלא: ${castName}`)}" width="640" height="360" loading="lazy" allowfullscreen></iframe></figure>`).join('') : '') +
-        storyHtml(story, citedMedia) + scorersHtml(g, stats, h, a) + highlightsHtml(posts),
+        storyHtml(story, citedMedia) + highlightsHtml(posts) + (g.status === 'completed' ? boxScoreHtml(g, stats, h, a) : '') +
+        scorersHtml(g, scorerStats, h, a) + beforeGameHtml(g, season.games, h2h, h, a),
     }
   },
 
@@ -727,7 +797,11 @@ export default async function handler(req, res) {
     }
     if (!data) {
       res.setHeader('Cache-Control', 's-maxage=300')
-      return res.status(404).send(render(site, { title: `הדף לא נמצא | ${SITE_NAME}`, desc: DEFAULT_DESC, body: '<h1>הדף לא נמצא</h1>' }, { noindex: true }))
+      // A player / team / game / post URL that resolves to nothing was almost always a real
+      // page that has since been deleted (merged duplicate, removed player). 410 Gone tells
+      // Google so, and it drops the URL faster than on a 404 — Search Console flagged two such
+      // player pages as "not found" on 2026-10-22. Unknown site paths stay 404.
+      return res.status(DETAIL_BUILDERS[type] && id ? 410 : 404).send(render(site, { title: `הדף לא נמצא | ${SITE_NAME}`, desc: DEFAULT_DESC, body: '<h1>הדף לא נמצא</h1>' }, { noindex: true }))
     }
     res.setHeader('Cache-Control', data.cache || 's-maxage=3600, stale-while-revalidate=86400')
     return res.status(200).send(render(site, data))

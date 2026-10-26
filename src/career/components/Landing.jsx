@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Trophy, ChevronLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
+import { Trophy } from "@/components/icons/BrandIcons"
 import { cn } from '@/lib/utils'
 import { FOREIGN_CLUBS, BAND_LABEL, COUNTRY_FLAG } from '../clubs'
 import Setup from './Setup'

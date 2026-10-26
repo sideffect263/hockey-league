@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { PenLine, Crown, CheckCircle2, Circle, RotateCcw } from "lucide-react"
+import { PenLine, CheckCircle2, Circle, RotateCcw } from "lucide-react"
+import { Captain } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { useAuth } from "@/lib/AuthContext"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -141,7 +142,7 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
               <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{team?.name}</div>
               {canSetCaptain(side) ? (
                 <label className="flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                  <Captain className="w-4 h-4 shrink-0" />
                   <select
                     aria-label={`קפטן ${team?.name || ""}`}
                     value={capId || ""}
@@ -155,7 +156,7 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
                 </label>
               ) : (
                 <div className="flex items-center gap-2 text-sm text-slate-800 dark:text-slate-100">
-                  <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                  <Captain className="w-4 h-4 shrink-0" />
                   {capId ? fullName(playersById[capId]) || "—" : <span className="text-slate-400">לא נקבע קפטן</span>}
                 </div>
               )}

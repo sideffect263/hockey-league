@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import {
-  UserCircle, Shield, Gavel, UserCheck, LogIn, LogOut, Sun, Moon,
-  Save, Loader2, Clock, ChevronLeft, UserPlus, Trophy, Unlink, Camera, KeyRound, CheckCircle2,
-  SlidersHorizontal
-} from "lucide-react"
+import { UserCircle, Shield, UserCheck, LogIn, LogOut, Sun, Moon, Save, Loader2, ChevronLeft, UserPlus, Trophy, Unlink, Camera, KeyRound, CheckCircle2, SlidersHorizontal } from "lucide-react"
+import { Gavel, Hourglass } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { useTheme } from "@/lib/ThemeContext"
 import { getMyProfile, updateMyProfile, getPlayerPhotos, disconnectPairing, uploadAvatar } from "@/lib/profile"
@@ -288,7 +285,7 @@ export default function Profile() {
       ) : !linkState ? null : (pendingClaim || pendingSubmission) ? (
         <div className="card p-4 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
           <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+            <Hourglass className="w-5 h-5 text-amber-500 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
                 {pendingClaim ? "בקשת השיוך ממתינה לאישור המאמן או מנהל הליגה" : "כרטיס השחקן שלך ממתין לאישור המאמן"}

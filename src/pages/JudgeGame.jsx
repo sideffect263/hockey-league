@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { getGameById, getTeams, getPlayers } from "@/lib/api"
-import { ArrowRight, Calendar, Clock, MapPin, RefreshCw, Gavel } from "lucide-react"
+import { ArrowRight, RefreshCw } from "lucide-react"
+import { Calendar, Clock, MapPin, Gavel } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import JudgeGate from "@/components/judge/JudgeGate"
 import GameScoreboard from "@/components/judge/GameScoreboard"
 import { JudgeGameSkeleton } from "@/components/skeletons/PageSkeletons"
+import { ilDate } from "@/lib/ilTime"
 
 const statusCfg = {
   scheduled: { label: "מתוכנן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -86,7 +88,7 @@ function JudgeGameView() {
                 <span>{game.away_score}</span><span className="text-slate-300 dark:text-slate-600 mx-1.5">:</span><span>{game.home_score}</span>
               </div>
             ) : (
-              <div className="text-xl font-bold text-slate-300 dark:text-slate-600">{format(new Date(game.game_date), "HH:mm")}</div>
+              <div className="text-xl font-bold text-slate-300 dark:text-slate-600">{format(ilDate(game.game_date), "HH:mm")}</div>
             )}
           </div>
           <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
@@ -96,8 +98,8 @@ function JudgeGameView() {
           </div>
         </div>
         <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "d/M/yyyy")}</span>
-          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>
+          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "d/M/yyyy")}</span>
+          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
         </div>
       </motion.div>

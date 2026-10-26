@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  Coins, LayoutGrid, Wallet, Trophy, Settings, CalendarDays, Star, History, Gift,
-  ChevronDown, TrendingUp, TrendingDown, Lock, Target,
-} from 'lucide-react'
+import { Coins, LayoutGrid, Wallet, Settings, Star, Gift, ChevronDown, TrendingUp, TrendingDown, Lock, Target } from 'lucide-react'
+import { Trophy, CalendarDays, History } from "@/components/icons/BrandIcons"
 import { useAuth } from '@/lib/AuthContext'
 import {
   loadBoard, cachedBoard, invalidateBoard, pickFeaturedList, groupByMatchday, holdsAny,

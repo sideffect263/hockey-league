@@ -4,7 +4,8 @@ import {
   getArchivedSeasons, getArchivedStandings,
   getArchivedPlayerStats, getArchivedGames
 } from "@/lib/api"
-import { Archive, Trophy, Users, UserCheck, Calendar, ArrowRight, RefreshCw } from "lucide-react"
+import { Archive, Users, UserCheck, ArrowRight, RefreshCw } from "lucide-react"
+import { Trophy, Calendar } from "@/components/icons/BrandIcons"
 import { Crate } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
@@ -12,6 +13,7 @@ import TeamLogo from "@/components/TeamLogo"
 import { useSlugId } from "@/lib/slugs"
 import { ArchiveSkeleton, ArchiveSeasonSkeleton, StatisticsSkeleton } from "@/components/skeletons/PageSkeletons"
 import { Stats } from "@/components/icons/HockeyIcons"
+import { ilDate } from "@/lib/ilTime"
 
 // The live /statistics page, run on this season's archived data (its own chunk).
 const SeasonStatistics = lazy(() => import("./Statistics"))
@@ -313,7 +315,7 @@ function SeasonDetail({ routeKey }) {
                   </div>
                   <div className="flex items-center gap-2 ms-3 shrink-0">
                     <span dir="ltr" className="text-[10px] text-slate-400">
-                      {game.game_date ? format(new Date(game.game_date), "d/M/yy") : '—'}
+                      {game.game_date ? format(ilDate(game.game_date), "d/M/yy") : '—'}
                     </span>
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
                       {game.playoff_round || game.game_type}

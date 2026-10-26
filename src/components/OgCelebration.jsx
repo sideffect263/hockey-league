@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { X } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { supabase } from "@/lib/supabase"
+import { Flame } from "@/components/icons/BrandIcons"
 
 /**
  * One-time surprise for the 25 OG players (players.og_number, see supabase/og-badge.sql).
@@ -113,7 +114,7 @@ export default function OgCelebration() {
           onClick={close}
           className="mt-6 w-full py-3 rounded-xl bg-amber-400 text-slate-900 font-extrabold hover:bg-amber-300 transition-colors"
         >
-          יאללה! 🔥
+          יאללה! <Flame className="w-5 h-5 inline-block align-[-3px]" />
         </button>
         <Link
           to={`/players/${playerSlug}`}

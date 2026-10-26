@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowRight, MapPin, CalendarDays, Lock, Coins, Droplets, Sparkles } from 'lucide-react'
+import { ArrowRight, Lock, Coins, Droplets, Sparkles } from 'lucide-react'
+import { MapPin, CalendarDays } from "@/components/icons/BrandIcons"
 import { useAuth } from '@/lib/AuthContext'
 import {
   loadBoard, cachedBoard, getTrades, gameSides,
@@ -103,7 +104,7 @@ export default function MarketDetail() {
         {market.game?.game_date && (
           <span className="flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5" />
-            <span dir="ltr">{new Date(market.game.game_date).toLocaleString('he-IL', {
+            <span dir="ltr">{new Date(market.game.game_date).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem',
               day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
             })}</span>
           </span>

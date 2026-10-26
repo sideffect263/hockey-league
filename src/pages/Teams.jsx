@@ -5,7 +5,9 @@ import { standingsComparator } from "@/lib/utils"
 import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf, ageGroupsOf } from "@/lib/ageGroups"
 import { useAuth } from "@/lib/AuthContext"
 import CreateTeamModal from "@/components/CreateTeamModal"
-import { RefreshCw, ArrowLeft, Plus, Clock } from "lucide-react"
+import { RefreshCw, ArrowLeft, Plus, Heart } from "lucide-react"
+import { Hourglass } from "@/components/icons/BrandIcons"
+import { getFollowerCounts, fansLabel } from "@/lib/follows"
 import { Teams as TeamsIcon } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
@@ -23,6 +25,8 @@ export default function Teams() {
   const [ageTab, setAgeTab] = useState(DEFAULT_AGE)
   const [showCreate, setShowCreate] = useState(false)
   const [myPending, setMyPending] = useState([])
+  // Real fans per team (the team's own players are not counted — fans-v2.sql).
+  const [fans, setFans] = useState({})
 
   useEffect(() => { loadData() }, [])
   useEffect(() => { if (isLinkedPlayer) refreshMyRequests() }, [isLinkedPlayer])
@@ -35,7 +39,9 @@ export default function Teams() {
   const loadData = async () => {
     try {
       setLoading(true); setError(null)
-      setTeams(await getTeams())
+      const list = await getTeams()
+      setTeams(list)
+      getFollowerCounts('team', list.map(t => t.id)).then(setFans).catch(() => {})
     } catch (err) { console.error(err); setError("שגיאה בטעינת הנתונים") }
     finally { setLoading(false) }
   }
@@ -62,6 +68,13 @@ export default function Teams() {
     ? [...visible].sort(standingsComparator)
     : [...visible].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'he'))
 
+  // "Most-supported" board: only teams that actually have fans, top 5.
+  const fanBoard = visible
+    .map(t => ({ team: t, n: fans[t.id] || 0 }))
+    .filter(r => r.n > 0)
+    .sort((a, b) => b.n - a.n || (a.team.name || '').localeCompare(b.team.name || '', 'he'))
+    .slice(0, 5)
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -85,7 +98,7 @@ export default function Teams() {
         </div>
         {myPending.length > 0 && (
           <div className="mt-3 card p-3 flex items-center gap-2.5 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
-            <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+            <Hourglass className="w-4 h-4 text-amber-500 shrink-0" />
             <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
               הקבוצה "{myPending[0].name}" ממתינה לאישור מנהל הליגה
             </p>
@@ -111,6 +124,27 @@ export default function Teams() {
         })}
       </div>
 
+      {fanBoard.length > 0 && (
+        <div className="card p-4">
+          <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white mb-3">
+            <Heart className="w-4 h-4 text-rose-500" /> הכי הרבה אוהדים
+          </h2>
+          <ol className="flex gap-2 overflow-x-auto nav-scroll -mx-1 px-1">
+            {fanBoard.map((r, i) => (
+              <li key={r.team.id} className="shrink-0">
+                <Link to={entityPath('teams', r.team)}
+                  className="flex items-center gap-2 ps-2 pe-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors">
+                  <span className="text-[11px] font-extrabold text-slate-400 tabular-nums w-3 text-center">{i + 1}</span>
+                  <TeamLogo team={r.team} size={6} />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 max-w-[9rem] truncate">{r.team.name}</span>
+                  <span className="text-xs font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">{r.n}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {sorted.length === 0 ? (
         <div className="card p-10 flex flex-col items-center text-center gap-2">
           <TeamsIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
@@ -133,7 +167,14 @@ export default function Teams() {
                         {isSenior && <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">#{index + 1}</span>}
                         {!isSenior && <span className="text-[10px] font-bold text-brand dark:text-brand-light bg-brand/10 dark:bg-brand/20 px-1.5 py-0.5 rounded">{AGE_LABEL[ageTab]}</span>}
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{team.city}{team.founded_year ? ` • ${team.founded_year}` : ''}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {team.city}{team.founded_year ? ` • ${team.founded_year}` : ''}
+                        {fans[team.id] > 0 && (
+                          <span className="inline-flex items-center gap-0.5 ms-2 text-rose-600 dark:text-rose-400 font-semibold">
+                            <Heart className="w-3 h-3" /> <span className="tabular-nums">{fansLabel(fans[team.id])}</span>
+                          </span>
+                        )}
+                      </p>
                     </div>
                     {isSenior && <div className="hidden sm:flex items-center gap-5 text-center">
                       <div>

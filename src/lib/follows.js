@@ -86,3 +86,60 @@ export async function getFollowerCounts(targetType, ids) {
   if (error) return {}
   return Object.fromEntries((data || []).map(r => [r.target_id, Number(r.followers) || 0]))
 }
+
+/*
+ * Fans v2 (2026-10-19, supabase/fans-v2.sql). A player is NOT a fan of his own team:
+ * every count below already leaves out the team's own players, server-side.
+ */
+
+// The viewer's own teams as a player — the fan button reads "הקבוצה שלי" there.
+let rosterCache = { userId: null, ids: null }
+export async function getMyRosterTeamIds() {
+  const user = await sessionUser()
+  if (!user) return new Set()
+  if (rosterCache.userId === user.id && rosterCache.ids) return rosterCache.ids
+  const { data, error } = await supabase.rpc('my_roster_team_ids')
+  const ids = new Set(error ? [] : (data || []).map(r => (typeof r === 'string' ? r : r.my_roster_team_ids)).filter(Boolean))
+  rosterCache = { userId: user.id, ids }
+  return ids
+}
+
+/** One fan badge per user: the team they've been a fan of longest → { [userId]: { teamId, teamName, since } }. */
+export async function getFanBadges(userIds) {
+  const list = [...new Set((userIds || []).filter(Boolean))]
+  if (!list.length) return {}
+  const { data, error } = await supabase.rpc('fan_badges', { p_user_ids: list })
+  if (error) return {}
+  return Object.fromEntries((data || []).map(r => [r.user_id, { teamId: r.team_id, teamName: r.team_name, since: r.since }]))
+}
+
+/** Fans of each side + "coming to watch" counts for one game. null when hidden/unknown. */
+export async function getGameFanSummary(gameId) {
+  const { data, error } = await supabase.rpc('game_fan_summary', { p_game: gameId })
+  if (error) return null
+  return data || null
+}
+
+/** Mark / unmark "אני בא/ה לצפות". Returns the fresh summary. */
+export async function setGameWatch(gameId, on) {
+  const { data, error } = await supabase.rpc('set_game_watch', { p_game: gameId, p_on: on })
+  if (error) throw error
+  return data
+}
+
+/** Coach / admin / league manager: { fans, notify, new_30d, weekly:[{week,total}], next_game }. */
+export async function getTeamFanStats(teamId) {
+  const { data, error } = await supabase.rpc('team_fan_stats', { p_team: teamId })
+  if (error) return null
+  return data
+}
+
+/** Admin / league manager: one row per team. */
+export async function getAdminFanOverview() {
+  const { data, error } = await supabase.rpc('admin_fan_overview')
+  if (error) throw error
+  return data || []
+}
+
+/** "אוהד אחד" / "12 אוהדים" — Hebrew does not pluralise like English. */
+export const fansLabel = (n) => (Number(n) === 1 ? "אוהד אחד" : `${Number(n) || 0} אוהדים`)

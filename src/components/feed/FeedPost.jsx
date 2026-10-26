@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react"
+import { GoalIcon as Ball, BlueCard, RedCard, Flame, HatTrick, Crown, Trophy, MapPin } from "@/components/icons/BrandIcons"
 import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
-import { Crown, Flame, Trophy, MapPin, FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2, Link2, Unlink } from "lucide-react"
+import { FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2, Link2, Unlink } from "lucide-react"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment, setPostGame } from "@/lib/api"
@@ -66,7 +67,7 @@ function ItemReactions({ post, likedItems, itemLikeCounts, itemCommentCounts, bl
 // full 1280px source cost (Google Photos oversizing was the page's biggest payload).
 const sizedUrl = (url, w = 1000) => (url ? url.replace(/=w\d+(-h\d+)?.*$/, `=w${w}`) : url)
 
-function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
+function EventPhoto({ photo, itemKey, candidates = [], onRefreshed, game }) {
   const { isAdmin, isContentEditor } = useAuth()
   const [current, setCurrent] = useState(photo)
   const [busy, setBusy] = useState(false)
@@ -174,8 +175,9 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
 
   return (
     <div className="relative mt-3">
-      <a href={current.detail_url} target="_blank" rel="noopener noreferrer"
-         className="group block relative sm:rounded-xl overflow-hidden bg-slate-900">
+      {/* A game's photo opens that game (Ariel 2026-10-25: same on web and both apps; the
+          Google Photos page it used to open is gone). Season cards' photos open nothing. */}
+      <PhotoFrame to={game ? entityPath('games', game) : null}>
         <img ref={imgRef} src={sizedUrl(current.image_url)} alt="" loading="lazy"
              onError={() => setImgError(true)}
              width={hasDims ? current.width : undefined}
@@ -204,9 +206,8 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
         <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3 pt-6 pb-2">
           <Camera className="w-3.5 h-3.5 text-white/80 shrink-0" />
           <span className="text-[11px] font-medium text-white/90 truncate">{caption}</span>
-          <ExternalLink className="w-3 h-3 text-white/50 mr-auto shrink-0" />
         </div>
-      </a>
+      </PhotoFrame>
 
       {/* Admins + content editors: swap the auto-matched photo for the next candidate. */}
       {canEdit && (
@@ -230,6 +231,11 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed }) {
       )}
     </div>
   )
+}
+
+function PhotoFrame({ to, children }) {
+  const cls = "group block relative sm:rounded-xl overflow-hidden bg-slate-900"
+  return to ? <Link to={to} className={cls}>{children}</Link> : <div className={cls}>{children}</div>
 }
 
 /* ---- Score (respects RTL gotcha: away first, home last) ---- */
@@ -364,7 +370,7 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
           label={tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'} />
       </div>
 
-      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
+      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={game} />
 
       {/* Links — one small line, like "למשחק המלא" under a video post. */}
       <div className={`mt-2 flex items-center gap-4 text-xs font-semibold ${INSET}`}>
@@ -402,9 +408,9 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
                                 <div key={stat.id} className="flex items-center justify-between py-1 text-xs">
                                   <PlayerLink playerId={stat.player_id} className="text-slate-700 dark:text-slate-300 hover:text-brand transition-colors">{p?.first_name} {p?.last_name}</PlayerLink>
                                   <div className="flex gap-1.5">
-                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5">⚽ {stat.goals}</span>}
-                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
+                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
                                   </div>
                                 </div>
                               )
@@ -424,9 +430,9 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
                                 {stat.guest_player_original_team && <span className="text-slate-500 dark:text-slate-400"> ({stat.guest_player_original_team})</span>}
                               </span>
                               <div className="flex gap-1.5">
-                                {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5">⚽ {stat.goals}</span>}
-                                {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-                                {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
+                                {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+                                {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+                                {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
                               </div>
                             </div>
                           ))}
@@ -450,7 +456,7 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
 function MilestonePost({ post, onPhotoRefreshed, ...rx }) {
   const { kind, name, playerId, teamName, goals, home, away, game } = post.data
   const bigGame = kind === 'big_game'
-  const emoji = bigGame ? '🔥' : '🎩'
+  const emoji = bigGame ? <Flame className="w-5 h-5" /> : <HatTrick className="w-5 h-5" />
   const label = bigGame ? 'משחק ענק' : 'שלושער'
 
   return (
@@ -472,7 +478,7 @@ function MilestonePost({ post, onPhotoRefreshed, ...rx }) {
           <TeamLink team={away} className="hover:text-brand transition-colors">{away?.name}</TeamLink>
         </p>
       </div>
-      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
+      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={game} />
       <ItemReactions post={post} {...rx} />
     </FeedCard>
   )

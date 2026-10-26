@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
-import {
-  ArrowRight, ArrowLeft, Check, Loader2, Copy, Download, Send, Trash2, X, Search, Play, Film, Image as ImageIcon,
-  Sparkles, Smartphone, Monitor, AlertTriangle, Clapperboard, ChevronDown, Upload,
-} from "lucide-react"
+import { ArrowRight, ArrowLeft, Check, Loader2, Copy, Download, Send, Trash2, X, Search, Play, Image as ImageIcon, Sparkles, Smartphone, Monitor, AlertTriangle, Clapperboard, ChevronDown, Upload } from "lucide-react"
+import { Film, Flame } from "@/components/icons/BrandIcons"
 import FeedVideo from "@/components/feed/FeedVideo"
 import { getGames, getTeams } from "@/lib/api"
 import { deleteFeedDraft, publishFeedDraft, requestGoalReel, getLatestGoalReel, goalReelDownloadUrl } from "@/lib/feedDrafts"
@@ -45,7 +43,7 @@ export default function Studio({ onCountChange }) {
 
   const gameById = useMemo(() => Object.fromEntries(ctx.games.map(g => [g.id, g])), [ctx.games])
   const teamName = useCallback((id) => ctx.teams[id]?.name || "", [ctx.teams])
-  const gameLabel = useCallback((g) => g ? `${teamName(g.home_team_id)} – ${teamName(g.away_team_id)} · ${new Date(g.game_date).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" })}` : "", [teamName])
+  const gameLabel = useCallback((g) => g ? `${teamName(g.home_team_id)} – ${teamName(g.away_team_id)} · ${new Date(g.game_date).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric" })}` : "", [teamName])
 
   if (type) {
     return <Wizard type={TYPE_BY_ID[type]} ctx={{ ...ctx, gameById, teamName, gameLabel }}
@@ -459,7 +457,7 @@ function DayPicker({ which, games, teamName, day, onPick }) {
           return (
             <button key={d.day} onClick={() => onPick(d)}
               className={`text-start rounded-xl border-2 p-3 ${active ? "border-brand bg-brand/[0.05]" : "border-slate-200 dark:border-slate-700 hover:border-slate-300"}`}>
-              <p className="font-bold text-sm text-slate-900 dark:text-white">{new Date(d.games[0].game_date).toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "numeric" })}</p>
+              <p className="font-bold text-sm text-slate-900 dark:text-white">{new Date(d.games[0].game_date).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", weekday: "long", day: "numeric", month: "numeric" })}</p>
               {/* RTL row: home team on the right, so the score reads away:home inside an LTR run (CLAUDE.md gotcha). */}
               <ul className="mt-1 space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
                 {d.games.map(g => (
@@ -573,7 +571,7 @@ function GoalsSummary({ onCancel, onDone }) {
   return (
     <div className="card p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2"><span className="text-2xl">🔥</span> תקציר גולים</h2>
+        <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2"><Flame className="w-7 h-7" /> תקציר גולים</h2>
         <button onClick={onCancel} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500"><X className="w-4 h-4" /> סגירה</button>
       </div>
       <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">

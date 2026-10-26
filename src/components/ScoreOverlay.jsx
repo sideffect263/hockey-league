@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak } from "@/lib/live"
+import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak, liveFouls } from "@/lib/live"
 import { sizedImage } from "@/lib/imageSize"
 
 // Broadcast-style score bug drawn over the live video: crests, names, score, clock, period.
@@ -70,6 +70,7 @@ export function clockMsAt(live, at) {
 
 export function ScoreBug({ live, remainingMS, home, away, position = "top-right" }) {
   const to = liveTimeouts(live)
+  const fouls = liveFouls(live)
   const brk = liveBreak(live)
   const mm = String(Math.floor(remainingMS / 60000)).padStart(2, "0")
   const ss = String(Math.floor((remainingMS % 60000) / 1000)).padStart(2, "0")
@@ -79,8 +80,8 @@ export function ScoreBug({ live, remainingMS, home, away, position = "top-right"
     <div className={`pointer-events-none absolute top-[3cqw] ${position === "top-left" ? "left-[3cqw]" : "right-[3cqw]"} flex items-stretch rounded-[0.6em] overflow-hidden shadow-lg select-none`}
       style={{ fontSize: "clamp(10px, 2.3cqw, 30px)" }} aria-label="תוצאה">
       {/* RTL row: the first child is rightmost, so home sits on the right (house rule). */}
-      <Side team={home} score={live.home_score ?? 0} timeouts={to ? { used: to.home, max: to.max } : null} />
-      <Side team={away} score={live.away_score ?? 0} timeouts={to ? { used: to.away, max: to.max } : null} />
+      <Side team={home} score={live.home_score ?? 0} timeouts={to ? { used: to.home, max: to.max } : null} fouls={fouls?.home} />
+      <Side team={away} score={live.away_score ?? 0} timeouts={to ? { used: to.away, max: to.max } : null} fouls={fouls?.away} />
       <div className="flex items-center gap-[0.5em] px-[0.7em] bg-white text-[#0E2350] font-extrabold tabular-nums">
         <span dir="ltr">{mm}:{ss}</span>
         {brk === "timeout"
@@ -92,7 +93,7 @@ export function ScoreBug({ live, remainingMS, home, away, position = "top-right"
   )
 }
 
-function Side({ team, score, timeouts }) {
+function Side({ team, score, timeouts, fouls }) {
   const [imgError, setImgError] = useState(false)
   useEffect(() => { setImgError(false) }, [team?.logo_url])
   return (
@@ -109,6 +110,11 @@ function Side({ team, score, timeouts }) {
             <span key={i} className={`block w-[0.38em] h-[0.38em] rounded-full border border-amber-400 ${i < timeouts.used ? "bg-amber-400" : ""}`} />
           ))}
         </span>
+      )}
+      {/* team fouls so far — amber from 9 on: the 10th is a direct free hit (house rule) */}
+      {Number.isFinite(fouls) && (
+        <span className={`text-[0.7em] font-bold tabular-nums leading-none ${fouls >= 9 ? "text-amber-300" : "text-white/70"}`}
+          aria-label={`עבירות קבוצה: ${fouls}`} title="עבירות קבוצה">ע׳{fouls}</span>
       )}
       <span className="font-extrabold tabular-nums min-w-[1.6em] text-center self-stretch grid place-items-center bg-black/30 px-[0.35em]">{score}</span>
     </div>

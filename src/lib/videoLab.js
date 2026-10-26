@@ -13,11 +13,12 @@ export function labUrl(path) {
 }
 
 // List without the (large) track; the editor loads it per clip.
+// List view: + how many frames are tagged (PostgREST count embed), so the lab can filter "not tagged yet".
 export async function getLabClips() {
-  const { data, error } = await supabase.from('video_lab_clips').select(CLIP_COLS)
+  const { data, error } = await supabase.from('video_lab_clips').select(CLIP_COLS + ',labels:video_lab_labels(count)')
     .order('sort', { ascending: true }).order('created_at', { ascending: true })
   if (error) throw error
-  return data || []
+  return (data || []).map(({ labels, ...c }) => ({ ...c, n_labels: labels?.[0]?.count ?? 0 }))
 }
 
 export async function getLabClip(id) {

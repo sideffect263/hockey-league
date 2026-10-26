@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react'
-import { X, Download, Image, Calendar, Swords, Loader2, Sparkles } from 'lucide-react'
+import { X, Download, Image, Loader2, Sparkles } from 'lucide-react'
+import { Calendar, MatchFallback as Swords } from "@/components/icons/BrandIcons"
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { generateMatchDayPoster, generateSingleMatchPoster, downloadCanvas } from '@/lib/posterGenerator'
+import { ilDate } from "@/lib/ilTime"
 
 export default function PosterGenerator({ games, teams, teamsMap, onClose }) {
   const [tab, setTab] = useState('matchday')
@@ -16,10 +18,10 @@ export default function PosterGenerator({ games, teams, teamsMap, onClose }) {
 
   const scheduledGames = games.filter(g => g.status === 'scheduled')
 
-  const uniqueDates = [...new Set(scheduledGames.map(g => format(new Date(g.game_date), 'yyyy-MM-dd')))].sort()
+  const uniqueDates = [...new Set(scheduledGames.map(g => format(ilDate(g.game_date), 'yyyy-MM-dd')))].sort()
 
   const gamesOnDate = selectedDate
-    ? scheduledGames.filter(g => format(new Date(g.game_date), 'yyyy-MM-dd') === selectedDate)
+    ? scheduledGames.filter(g => format(ilDate(g.game_date), 'yyyy-MM-dd') === selectedDate)
         .sort((a, b) => new Date(a.game_date) - new Date(b.game_date))
     : []
 
@@ -147,7 +149,7 @@ export default function PosterGenerator({ games, teams, teamsMap, onClose }) {
                   <option value="">— בחר תאריך —</option>
                   {uniqueDates.map(d => (
                     <option key={d} value={d}>
-                      {format(new Date(d), 'dd/MM/yyyy')} ({scheduledGames.filter(g => format(new Date(g.game_date), 'yyyy-MM-dd') === d).length} משחקים)
+                      {format(new Date(d), 'dd/MM/yyyy')} ({scheduledGames.filter(g => format(ilDate(g.game_date), 'yyyy-MM-dd') === d).length} משחקים)
                     </option>
                   ))}
                 </select>
@@ -158,7 +160,7 @@ export default function PosterGenerator({ games, teams, teamsMap, onClose }) {
                   {gamesOnDate.map(g => (
                     <div key={g.id} className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300">
                       <span>{teamsMap[g.home_team_id]?.name} vs {teamsMap[g.away_team_id]?.name}</span>
-                      <span className="text-xs text-slate-400">{format(new Date(g.game_date), 'HH:mm')}</span>
+                      <span className="text-xs text-slate-400">{format(ilDate(g.game_date), 'HH:mm')}</span>
                     </div>
                   ))}
                 </div>
@@ -178,7 +180,7 @@ export default function PosterGenerator({ games, teams, teamsMap, onClose }) {
                 <option value="">— בחר משחק —</option>
                 {scheduledGames.sort((a, b) => new Date(a.game_date) - new Date(b.game_date)).map(g => (
                   <option key={g.id} value={g.id}>
-                    {teamsMap[g.home_team_id]?.name} vs {teamsMap[g.away_team_id]?.name} — {format(new Date(g.game_date), 'dd/MM HH:mm')}
+                    {teamsMap[g.home_team_id]?.name} vs {teamsMap[g.away_team_id]?.name} — {format(ilDate(g.game_date), 'dd/MM HH:mm')}
                   </option>
                 ))}
               </select>

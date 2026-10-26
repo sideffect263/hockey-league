@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react"
 import { addPlayerToSquad, getTeamMemberIds } from "@/lib/squad"
 import { canBeBorrowed, getPlayerLoanAges, YOUTH_MAX_AGE } from "@/lib/birthDate"
 import { UserPlus, Loader2, X, Users } from "lucide-react"
+import { Goalkeeper } from "@/components/icons/BrandIcons"
 
 /**
  * Manual squad addition (sheet rows 7, 8, 13). A coach adds a loaned goalkeeper or a
@@ -146,7 +147,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
                 a fake 0 (75 of the league's 95 have none). */}
             {list.map(p => (
               <option key={p.id} value={p.id}>
-                {p.jersey_number ?? "–"} · {p.first_name} {p.last_name}{p.position === "Goalkeeper" ? " 🧤" : ""}
+                {p.jersey_number ?? "–"} · {p.first_name} {p.last_name}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}
               </option>
             ))}
           </optgroup>

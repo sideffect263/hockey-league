@@ -114,7 +114,7 @@ const span = (d) => (d.ends_on ? `${day(d.starts_on)}–${day(d.ends_on)}` : `מ
 // the reader has to act on; the old one is only there to make the change legible.
 function movedSummary(d) {
   const when = d.game_date
-    ? new Date(d.game_date).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+    ? new Date(d.game_date).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
     : ''
   if (d.what === 'venue') return `המשחק עבר ל${d.venue || 'מגרש אחר'}`
   if (d.what === 'time')  return `המשחק נדחה ל־${when}`
@@ -188,6 +188,7 @@ export function notificationText(n) {
     // the sentence reads the same regardless of which side is home.
     // Loan invites (supabase/loan-requests.sql). The invite itself must say who is asking
     // and for which game — it is the one the player has to answer.
+    case 'stream_approved': return `אושרת לשדר את ${vs(d)} 🎥 — לחצו כדי להתחיל לשדר`
     case 'loan_call':      return `${d.team_name || 'קבוצה'} מחפשת ${d.need === 'gk' ? 'שוער' : 'שחקן שדה'} בהשאלה למשחק ${vs(d)} — רוצה לשחק?`
     case 'loan_join_request':  return `${d.player_name || 'שחקן'}${d.age != null ? ` (${d.age})` : ''} מבקש/ת לשחק בהשאלה ב${d.team_name || 'קבוצה'} — ${vs(d)}`
     case 'loan_join_approved': return `אושרת! את/ה בסגל של ${d.team_name || 'הקבוצה'} למשחק ${vs(d)} 🎉`
@@ -277,6 +278,7 @@ export function notificationIcon(n) {
     case 'tournament_invite':          return '🏆'
     case 'tournament_invite_accepted': return '✅'
     case 'tournament_invite_declined': return '⛔'
+    case 'stream_approved':    return '🎥'
     case 'loan_call':          return '📣'
     case 'loan_join_request':  return '🙋'
     case 'loan_join_approved': return '🤝'
@@ -305,6 +307,24 @@ export function notificationIcon(n) {
     case 'market_coins':    return '🪙'
     default:               return '🔔'
   }
+}
+
+// The league's own icon (components/icons/BrandIcons, by file name) for the types that
+// have one; null → fall back to notificationIcon's emoji. Kept apart from notificationIcon
+// because that one is also plain text (admin tallies, tests).
+const BRAND_ICON = {
+  game_result: 'goal', goal_scored: 'goal',
+  game_change_request: 'calendar-move', game_change_opponent: 'calendar-move', game_moved: 'calendar-move',
+  medical_submitted: 'medic', medical_pending_manager: 'medic', medical_approved: 'medic',
+  medical_date_changed: 'medic', unavailability_reported: 'medic',
+  medical_coach_approved: 'waiting',
+  medical_expiring: 'reminder', medical_expiring_player: 'reminder', game_register_nudge: 'reminder',
+  tournament_invite: 'trophy',
+  stream_approved: 'broadcast',
+  lm_officials_digest: 'officials', official_assigned: 'officials',
+}
+export function notificationBrandIcon(n) {
+  return BRAND_ICON[n?.type] || null
 }
 
 // A server-written in-app path, or the feed. Never an absolute / protocol-relative URL.
@@ -366,6 +386,7 @@ export function notificationHref(n) {
     case 'game_form_sign':        return n.entity_id ? `/games/${n.entity_id}#game-form` : '/games'
     // a team's call for players → the youth loan page, where the ask button is
     case 'loan_call':             return '/loans'
+    case 'stream_approved':       return n.entity_id ? `/games/${n.entity_id}` : '/games'
     case 'app_update':            return '/app'
     case 'goal_scored':           return n.entity_id ? `/games/${n.entity_id}` : '/games'
     // reviewers land on the /admin review tabs. The claims tab stacks five queues, so

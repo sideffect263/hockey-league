@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { BookOpen, PenLine, Goal, Sparkles } from "lucide-react"
+import { BookOpen } from "lucide-react"
+import { GoalIcon as Goal } from "@/components/icons/BrandIcons"
 import { getGameStory, getMediaByIds, getEventsByIds, storyMediaIds, storyEventIds, storyParagraphs, streamThumbUrl } from "@/lib/gameStories"
-import { useAuth } from "@/lib/AuthContext"
 import { BeatHeader, BeatEvidence } from "@/components/games/StoryEvidence"
 
 /**
  * סיפור המשחק — the story of a finished game as an evidence-backed TIMELINE (game_stories.timeline):
  * each beat sits on a vertical line with the footage / sources that back it right beside it.
- * Visitors see it once published; editors also see a draft (amber) and a note when a newer
- * version waits for review. Old stories without a timeline fall back to body paragraphs.
+ * Shown ONLY once approved (published) in /creators — to everyone alike, editors included, so the
+ * page is exactly what visitors and crawlers get. Drafts and pending revisions are reviewed in
+ * /creators?tab=stories, never previewed here (the draft card was in the way, 2026-10-20).
+ * Old stories without a timeline fall back to body paragraphs.
  * api/seo.js prints the same title/summary/body for crawlers — keep them in step.
  *
  * Props: gameId (required); home / away — optional team rows, for the goal accent colour.
  */
 export default function GameStory({ gameId, home = null, away = null }) {
-  const { isAdmin, isContentEditor } = useAuth()
-  const isEditor = isAdmin || isContentEditor
   const [story, setStory] = useState(null)
   const [media, setMedia] = useState({})
   const [events, setEvents] = useState({})
@@ -34,9 +34,7 @@ export default function GameStory({ gameId, home = null, away = null }) {
     return () => { alive = false }
   }, [gameId])
 
-  if (!story || story.status === "rejected") return null
-  const draft = story.status !== "published"
-  if (draft && !isEditor) return null
+  if (!story || story.status !== "published") return null
   const timeline = (Array.isArray(story.timeline) ? story.timeline : []).filter(b => b && (b.title || b.text))
   const paras = storyParagraphs(story.body)
   const moments = Array.isArray(story.moments) ? story.moments : []
@@ -48,19 +46,7 @@ export default function GameStory({ gameId, home = null, away = null }) {
   const awayColor = away?.primary_color || null
 
   return (
-    <article className={`card overflow-hidden ${draft ? "ring-2 ring-amber-400/60" : ""}`} aria-labelledby="game-story-title">
-      {draft && (
-        <Link to="/creators?tab=stories"
-          className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200 hover:underline">
-          <PenLine className="w-3.5 h-3.5 shrink-0" /> טיוטה — רק עורכים רואים. לבדיקה ופרסום ב־יוצרי תוכן ←
-        </Link>
-      )}
-      {!draft && isEditor && story.pending_revision && (
-        <Link to="/creators?tab=stories"
-          className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-200 hover:underline">
-          <Sparkles className="w-3.5 h-3.5 shrink-0" /> גרסה חדשה ממתינה לאישור ←
-        </Link>
-      )}
+    <article className="card overflow-hidden" aria-labelledby="game-story-title">
       {heroSrc && (
         <img src={heroSrc} alt={story.title} loading="lazy" className="w-full aspect-video object-cover bg-surface-sunken" />
       )}

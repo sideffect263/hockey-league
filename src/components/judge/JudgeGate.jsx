@@ -1,5 +1,6 @@
 import { useAuth } from "@/lib/AuthContext"
-import { Gavel, Lock } from "lucide-react"
+import { Lock } from "lucide-react"
+import { Gavel } from "@/components/icons/BrandIcons"
 import { JudgeSkeleton } from "@/components/skeletons/PageSkeletons"
 
 /**

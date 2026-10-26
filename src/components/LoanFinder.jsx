@@ -4,7 +4,8 @@ import {
   LOAN_BLOCK_LABEL, LOAN_FIELD_TARGET,
 } from "@/lib/loans"
 import { addPlayerToSquad } from "@/lib/squad"
-import { Search, Send, X, Loader2, Handshake, UserPlus, ChevronDown, Clock, Check, Megaphone } from "lucide-react"
+import { Search, Send, X, Loader2, Handshake, UserPlus, ChevronDown, Check, Megaphone } from "lucide-react"
+import { Hourglass, Goalkeeper } from "@/components/icons/BrandIcons"
 
 /**
  * The coach's loan desk for one team in one game (supabase/loan-requests.sql).
@@ -203,7 +204,7 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
         <ul className="space-y-1">
           {openRequests.map(r => (
             <li key={r.id} className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
-              <span className="truncate">{r.player_name}{r.position === "Goalkeeper" ? " 🧤" : ""}</span>
+              <span className="truncate">{r.player_name}{r.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}</span>
               <span className="text-[10px] text-slate-400 truncate">({r.team_name || "ללא קבוצה"})</span>
               <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded ${STATUS[r.status].cls}`}>
                 {r.initiated_by === "player" && r.status === "pending" ? `ביקש/ה להצטרף${r.age != null ? ` · בן/בת ${r.age}` : ""}` : STATUS[r.status].label}
@@ -284,7 +285,7 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
                           {c.jersey_number != null && <span className="text-slate-400 font-normal">{c.jersey_number} · </span>}
-                          {fullName(c)}{c.position === "Goalkeeper" ? " 🧤" : ""}
+                          {fullName(c)}{c.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}
                         </p>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                           {c.team_name || "ללא קבוצה"}{c.age != null ? ` · בן/בת ${c.age}` : " · אין תאריך לידה"}
@@ -293,7 +294,7 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
                       </div>
                       {inv ? (
                         <span className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded ${STATUS[inv.status].cls}`}>
-                          {inv.status === "pending" ? <Clock className="w-3 h-3" /> : <Check className="w-3 h-3" />} {STATUS[inv.status].label}
+                          {inv.status === "pending" ? <Hourglass className="w-3 h-3" /> : <Check className="w-3 h-3" />} {STATUS[inv.status].label}
                         </span>
                       ) : (
                         <button onClick={() => invite(c)} disabled={busyId === c.player_id || slotsForTab === 0}

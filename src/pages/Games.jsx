@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee } from "@/components/icons/BrandIcons"
 import { Link } from "react-router-dom"
 import { getGames, getTeams, getPlayers, getReferees, getGameStats } from "@/lib/api"
-import { Calendar, Clock, MapPin, Trophy, Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
-import { Crossed } from "@/components/icons/HockeyIcons"
+import { Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -18,6 +18,7 @@ import { useSeasonName } from "@/App"
 import { entityPath } from "@/lib/slugs"
 import { GamesSkeleton } from "@/components/skeletons/PageSkeletons"
 import GamesCalendar from "@/components/games/GamesCalendar"
+import { ilDate } from "@/lib/ilTime"
 
 export default function Games() {
   const { coachTeamIds, profile } = useAuth()
@@ -131,7 +132,7 @@ export default function Games() {
     return true
   })
   const filtered = dateFilter
-    ? calendarGames.filter(g => format(new Date(g.game_date), 'yyyy-MM-dd') === dateFilter)
+    ? calendarGames.filter(g => format(ilDate(g.game_date), 'yyyy-MM-dd') === dateFilter)
     : calendarGames
 
   const completed = filtered.filter(g => g.status === 'completed')
@@ -145,8 +146,8 @@ export default function Games() {
   // already just one day.
   const sortedCompleted = [...completed].sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
   const lastRoundDay = !dateFilter && sortedCompleted.length
-    ? format(new Date(sortedCompleted[0].game_date), 'yyyy-MM-dd') : null
-  const inLastRound = (g) => lastRoundDay && format(new Date(g.game_date), 'yyyy-MM-dd') === lastRoundDay
+    ? format(ilDate(sortedCompleted[0].game_date), 'yyyy-MM-dd') : null
+  const inLastRound = (g) => lastRoundDay && format(ilDate(g.game_date), 'yyyy-MM-dd') === lastRoundDay
   const lastRound = sortedCompleted.filter(inLastRound)
   const olderResults = sortedCompleted.filter(g => !inLastRound(g))
 
@@ -243,7 +244,7 @@ export default function Games() {
                 </div>
               ) : (
                 <div className="text-lg font-bold text-slate-300 dark:text-slate-600">
-                  {format(new Date(game.game_date), "HH:mm")}
+                  {format(ilDate(game.game_date), "HH:mm")}
                 </div>
               )}
             </div>
@@ -264,9 +265,9 @@ export default function Games() {
 
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
             {/* Upcoming games already show the time in place of the score. */}
-            {done && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(new Date(game.game_date), "HH:mm")}</span>}
+            {done && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>}
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
             {/* Kiosk — only when someone has actually said. null stays silent. */}
             {game.kiosk_open != null && (
@@ -274,7 +275,7 @@ export default function Games() {
                 <Utensils className="w-3.5 h-3.5" />{game.kiosk_open ? 'דוכן פתוח' : 'אין דוכן'}
               </span>
             )}
-            {ref && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{ref}</span>}
+            {ref && <span className="flex items-center gap-1"><Referee className="w-3.5 h-3.5" />{ref}</span>}
             <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" /></span>
           </div>
 
@@ -294,9 +295,9 @@ export default function Games() {
     <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
       <span className="truncate text-slate-700 dark:text-slate-300">{name}</span>
       <span className="flex gap-1 shrink-0">
-        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5">⚽ {s.goals}</span>}
-        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {s.blue_cards}</span>}
-        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {s.red_cards}</span>}
+        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{s.goals}</span>}
+        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{s.blue_cards}</span>}
+        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{s.red_cards}</span>}
       </span>
     </div>
   )
@@ -395,7 +396,7 @@ export default function Games() {
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
               <Trophy className="w-4 h-4 text-amber-500" /> המחזור האחרון
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(new Date(lastRound[0].game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(ilDate(lastRound[0].game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
             </h2>
             <div className="grid gap-3">{lastRound.map(g => GameCard({ game: g }))}</div>
           </div>
