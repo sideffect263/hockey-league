@@ -291,7 +291,7 @@ export default function Layout({ children }) {
               home link rather than inside it — a control nested in a link is invalid. */}
           <div className="flex items-center gap-2.5 shrink-0">
             <Link to="/" className="shrink-0">
-              <img src="/logos/crest-256.png" alt="ליגת הוקי" data-header-crest className="size-10 object-contain" />
+              <img src="/logos/mark-256.png" alt="ליגת הוקי" data-header-logo className="size-10 object-contain" />
             </Link>
             <div className="leading-none">
               {/* Not an <h1>: the site wordmark repeats on every route, so tagging it

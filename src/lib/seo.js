@@ -19,7 +19,7 @@ export const SITE_NAME = 'ליגת הוקי הגלגיליות הישראלית'
 export const DEFAULT_DESCRIPTION = 'ליגת הוקי הגלגיליות הישראלית — טבלת הליגה המעודכנת, תוצאות ולוח משחקים, סטטיסטיקות שחקנים וקבוצות, שידורים חיים, גלריית תמונות וטורנירים. כל מה שקורה במגרש, במקום אחד.'
 const DEFAULT_IMAGE = `${SITE_URL}/logos/main-logo.png`
 // The official crest, 512² — the league's logo in Google results. Same as api/seo.js LOGO_PATH.
-const LOGO = `${SITE_URL}/logos/crest-full-512.png`
+const LOGO = `${SITE_URL}/logos/mark-512.png`
 // The league's official profiles (Google knowledge panel). Same list as api/seo.js SAME_AS + index.html.
 export const SAME_AS = ['https://www.instagram.com/skateisrael_rinkhockey/']
 // Large image / video previews in Search and Discover.

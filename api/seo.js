@@ -26,7 +26,7 @@ const DEFAULT_DESC = 'ליגת הוקי הגלגיליות הישראלית — 
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 // The official crest (512², transparent) — Google's logo for the league in results.
-export const LOGO_PATH = '/logos/crest-full-512.png'
+export const LOGO_PATH = '/logos/mark-512.png'
 // The league's official profiles. Google uses sameAs to tie them to the league (knowledge
 // panel). Keep in step with organizationJsonLd() in src/lib/seo.js and index.html.
 export const SAME_AS = ['https://www.instagram.com/skateisrael_rinkhockey/']

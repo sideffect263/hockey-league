@@ -42,7 +42,7 @@ export function mcpLandingHtml({ endpoint, site, tools }) {
 <meta name="twitter:title" content="הליגה, בתוך Claude">
 <meta name="twitter:description" content="שאלו את ה-AI מתי המשחק הבא, איפה, מה המצב בטבלה ומי מלך השערים.">
 <meta name="twitter:image" content="${site}/og/mcp.jpg">
-<link rel="icon" href="${site}/logos/crest-256.png">
+<link rel="icon" href="${site}/logos/mark-256.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap">
 <style>
@@ -109,7 +109,7 @@ export function mcpLandingHtml({ endpoint, site, tools }) {
 </head>
 <body>
 <header class="hero">
-  <img src="${site}/logos/crest-256.png" alt="">
+  <img src="${site}/logos/mark-256.png" alt="">
   <h1>הליגה, <span>בתוך Claude</span></h1>
   <p>חברו את ליגת הוקי הגלגיליות לעוזר ה-AI שלכם ושאלו אותו בעברית רגילה: מתי המשחק הבא, איפה, מה המצב בטבלה ומי מלך השערים.</p>
 </header>
