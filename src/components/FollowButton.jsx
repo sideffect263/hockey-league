@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { UserPlus, UserCheck, Bell, BellOff, Loader2, Shirt } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { follow, unfollow, setFollowNotify, getMyFollows, getFollowerCounts, getMyRosterTeamIds, fansLabel } from "@/lib/follows"
+import { PersonFollow, PersonFollowing } from "@/components/icons/BrandIcons"
 
 /**
  * Follow a team or a player (P5 / sheet row 24).
@@ -103,7 +104,7 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
               : "bg-brand text-brand-fg hover:bg-brand-hover"
         }`}>
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          : following ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+          : following ? <PersonFollowing className="w-4 h-4" /> : <PersonFollow className="w-4 h-4" />}
         {following ? "אוהד/ת ✓" : "אוהד/ת"}
         {showCount && count != null && count > 0 && (
           <span className="tabular-nums opacity-70">{count}</span>

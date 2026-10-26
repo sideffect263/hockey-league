@@ -264,7 +264,7 @@ function ResultTeam({ team, side, isWin, isLoss, label }) {
       <TeamLogo team={team} size={12} />
       <div className={`min-w-0 ${reverse ? "text-left" : ""}`}>
         <p className={`text-sm sm:text-[15px] truncate flex items-center gap-1 group-hover:text-brand transition-colors ${reverse ? "flex-row-reverse" : ""} ${isWin ? "font-extrabold text-emerald-700 dark:text-emerald-300" : isLoss ? "font-semibold text-slate-500 dark:text-slate-400" : "font-bold text-slate-900 dark:text-white"}`}>
-          {isWin && <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+          {isWin && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
           <span className="truncate">{team?.name}</span>
         </p>
         <p className={`text-[11px] ${isWin ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-slate-500 dark:text-slate-400"}`}>{label}</p>
@@ -355,7 +355,7 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
           {game.game_type === FRIENDLY_GAME_TYPE && <span className="stat-pill badge-neutral !py-0.5">ידידותי</span>}
           {game.series_game && <span className="stat-pill badge-info !py-0.5">משחק {game.series_game}</span>}
         </>}
-        meta={<><span>{fmtDate(post.date)}</span>{game.venue && <><span>·</span><span className="inline-flex items-center gap-0.5"><MapPin className="w-3 h-3" />{game.venue}</span></>}</>}
+        meta={<><span>{fmtDate(post.date)}</span>{game.venue && <><span>·</span><span className="inline-flex items-center gap-0.5"><MapPin className="w-4 h-4" />{game.venue}</span></>}</>}
       />
 
       {/* Match row — the score is the hero; winning side tinted + trophy-marked.
@@ -408,9 +408,9 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
                                 <div key={stat.id} className="flex items-center justify-between py-1 text-xs">
                                   <PlayerLink playerId={stat.player_id} className="text-slate-700 dark:text-slate-300 hover:text-brand transition-colors">{p?.first_name} {p?.last_name}</PlayerLink>
                                   <div className="flex gap-1.5">
-                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
-                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
-                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
+                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{stat.goals}</span>}
+                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{stat.blue_cards}</span>}
+                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{stat.red_cards}</span>}
                                   </div>
                                 </div>
                               )
@@ -430,9 +430,9 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
                                 {stat.guest_player_original_team && <span className="text-slate-500 dark:text-slate-400"> ({stat.guest_player_original_team})</span>}
                               </span>
                               <div className="flex gap-1.5">
-                                {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
-                                {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
-                                {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
+                                {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{stat.goals}</span>}
+                                {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{stat.blue_cards}</span>}
+                                {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{stat.red_cards}</span>}
                               </div>
                             </div>
                           ))}

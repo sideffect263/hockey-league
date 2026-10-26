@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Clock, MapPin, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Clock, MapPin, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck, Squad, Medic, PersonClaim } from "@/components/icons/BrandIcons"
 import { useParams, Link, useLocation } from "react-router-dom"
 import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason, getArchivedGames } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
@@ -58,9 +58,9 @@ const resultLabel = (r) => (r === 'win' ? 'ניצחון' : r === 'loss' ? 'הפ�
 function StatPills({ stat }) {
   return (
     <div className="flex gap-1.5 shrink-0">
-      {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
-      {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
-      {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
+      {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{stat.goals}</span>}
+      {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{stat.blue_cards}</span>}
+      {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{stat.red_cards}</span>}
     </div>
   )
 }
@@ -291,13 +291,13 @@ export default function GameDetail() {
         {/* Officials: jump straight to this game's scoreboard to run the clock / go live */}
         {canOfficiate && !done && (
           <Link to={`/judge/${id}`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-            <Referee className="w-3.5 h-3.5" /> לוח שיפוט
+            <Referee className="w-4 h-4" /> לוח שיפוט
           </Link>
         )}
         {/* Admin: the multi-camera control room — reachable before any camera exists */}
         {isAdmin && !done && (
           <Link to={`/games/${id}/control`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-surface-sunken transition-colors">
-            <MonitorPlay className="w-3.5 h-3.5" /> חדר שידור
+            <MonitorPlay className="w-4 h-4" /> חדר שידור
           </Link>
         )}
         {canEnterFromForm && (
@@ -362,12 +362,12 @@ export default function GameDetail() {
         </div>
 
         <div className="flex items-center justify-center gap-x-4 gap-y-2 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
-          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
-          <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
+          <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+          <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(ilDate(game.game_date), "HH:mm")}</span>
+          <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{game.venue || '—'}</span>
           {/* Labelled: a bare name after the venue read as nothing (nobody saw it was the judge). */}
-          {refName && <span className="flex items-center gap-1"><Referee className="w-3.5 h-3.5" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
-          {medics.length > 0 && <span className="flex items-center gap-1"><HeartPulse className="w-3.5 h-3.5" />חובש: {medics.map(m => m.name).filter(Boolean).join(', ')}</span>}
+          {refName && <span className="flex items-center gap-1"><Referee className="w-4 h-4" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
+          {medics.length > 0 && <span className="flex items-center gap-1"><Medic className="w-4 h-4" />חובש: {medics.map(m => m.name).filter(Boolean).join(', ')}</span>}
         </div>
 
         {/* Food kiosk (דוכן נקניקיות). Tri-state: null renders NOTHING — silence here
@@ -436,7 +436,7 @@ export default function GameDetail() {
             ) : (
               <button onClick={() => setShowChangeModal(true)}
                 className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-                <CalendarClock className="w-3.5 h-3.5" /> בקשת שינוי
+                <CalendarClock className="w-4 h-4" /> בקשת שינוי
               </button>
             )}
           </div>
@@ -509,7 +509,7 @@ export default function GameDetail() {
             </button>
           ) : !profile?.player_id && (
             <Link to="/me" className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-              <UserPlus className="w-3.5 h-3.5" /> שיוך לשחקן
+              <PersonClaim className="w-4 h-4" /> שיוך לשחקן
             </Link>
           )}
         </div>
@@ -545,7 +545,7 @@ export default function GameDetail() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
             <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-              <Users className="w-4 h-4 text-brand" /> הרכבים וסטטיסטיקות
+              <Squad className="w-4 h-4" /> הרכבים וסטטיסטיקות
             </h2>
           </div>
           <div className="p-4 sm:p-5">
@@ -580,7 +580,7 @@ export default function GameDetail() {
                             <div className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg">
                               <span className="text-sm text-slate-500 dark:text-slate-400 truncate min-w-0">{ownGoalLabel(ownGoalsFor(tid))}</span>
                               <div className="flex gap-1.5 shrink-0">
-                                <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{ownGoalsFor(tid)}</span>
+                                <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{ownGoalsFor(tid)}</span>
                               </div>
                             </div>
                           )}
@@ -639,7 +639,7 @@ export default function GameDetail() {
                       {name}
                     </PlayerLink>
                   </div>
-                  <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums shrink-0"><span>{stat.goals}</span><Ball className="w-3.5 h-3.5" /></span>
+                  <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums shrink-0"><span>{stat.goals}</span><Ball className="w-5 h-5 -my-1" /></span>
                 </div>
               )
             })}
@@ -649,7 +649,7 @@ export default function GameDetail() {
                   <TeamLogo team={teamsMap[tid]} size={6} />
                   <span className="font-medium text-sm text-slate-500 dark:text-slate-400 truncate">{ownGoalLabel(ownGoalsFor(tid))}</span>
                 </div>
-                <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-slate-500 dark:text-slate-400 text-sm tabular-nums shrink-0"><span>{ownGoalsFor(tid)}</span><Ball className="w-3.5 h-3.5" /></span>
+                <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-slate-500 dark:text-slate-400 text-sm tabular-nums shrink-0"><span>{ownGoalsFor(tid)}</span><Ball className="w-5 h-5 -my-1" /></span>
               </div>
             ))}
           </div>
@@ -700,7 +700,7 @@ export default function GameDetail() {
             <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <Swords className="w-3.5 h-3.5 text-brand" /> מפגשים קודמים
+                  <Swords className="w-4 h-4 text-brand" /> מפגשים קודמים
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">מנקודת מבט {home?.name || 'הבית'}</p>
               </div>
@@ -712,7 +712,7 @@ export default function GameDetail() {
                 return (
                   <Link key={g.id} to={entityPath('games', g)} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-2 min-w-0 text-xs text-slate-500 dark:text-slate-400">
-                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <Calendar className="w-4 h-4 shrink-0" />
                       <span>{format(ilDate(g.game_date), "d/M/yyyy")}</span>
                       <span className="text-slate-500 dark:text-slate-400">· {g.game_type}</span>
                     </div>

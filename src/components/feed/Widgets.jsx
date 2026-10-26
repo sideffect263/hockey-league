@@ -113,10 +113,10 @@ export function NextGameWidget({ games = [], teams = [] }) {
             </div>
             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
               {/* date and time are two separate LTR runs — without dir=ltr the RTL context prints the time first */}
-              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />
+              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />
                 <span dir="ltr" className="tabular-nums">{format(ilDate(next.game_date), "d/M/yyyy HH:mm")}</span>
               </span>
-              {next.venue && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{next.venue}</span>}
+              {next.venue && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{next.venue}</span>}
             </div>
           </>
         ) : (

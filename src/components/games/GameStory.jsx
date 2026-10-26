@@ -108,7 +108,7 @@ function StoryBeat({ beat, media, events, homeColor, awayColor }) {
       {goal ? (
         <span className="absolute -start-[13px] top-0 flex items-center justify-center size-6 rounded-full text-white ring-4 ring-surface shadow-sm"
           style={{ backgroundColor: accent }} aria-hidden="true">
-          <Goal className="w-3.5 h-3.5" />
+          <Goal className="w-4 h-4" />
         </span>
       ) : (
         <span className={`absolute -start-[7px] top-1.5 size-3 rounded-full ring-4 ring-surface ${isEvent ? "bg-brand" : "bg-line"}`} aria-hidden="true" />

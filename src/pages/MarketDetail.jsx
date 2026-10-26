@@ -103,14 +103,14 @@ export default function MarketDetail() {
       <div className="flex items-center gap-4 flex-wrap text-[11px] text-fg-subtle mb-5">
         {market.game?.game_date && (
           <span className="flex items-center gap-1.5">
-            <CalendarDays className="w-3.5 h-3.5" />
+            <CalendarDays className="w-4 h-4" />
             <span dir="ltr">{new Date(market.game.game_date).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem',
               day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
             })}</span>
           </span>
         )}
         {market.game?.venue && (
-          <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{market.game.venue}</span>
+          <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" />{market.game.venue}</span>
         )}
         {market.status === 'open' && closesIn(market.closes_at) && (
           <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" />נסגר {closesIn(market.closes_at)}</span>

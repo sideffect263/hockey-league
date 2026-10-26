@@ -87,7 +87,7 @@ export default function Tournaments() {
                       <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light">{AGE_LABEL[t.age_group] || t.age_group}</span>
                       <span className={`stat-pill ${st.cls}`}>{st.label}</span>
                     </div>
-                    {range && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> <span dir="ltr">{range}</span></p>}
+                    {range && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1"><Calendar className="w-4 h-4" /> <span dir="ltr">{range}</span></p>}
                   </div>
                   <ChevronLeft className="w-5 h-5 text-slate-300 dark:text-slate-600 shrink-0" />
                 </Link>

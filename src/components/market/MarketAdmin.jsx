@@ -355,7 +355,7 @@ function MarketRow({ market, traded, onChanged }) {
               market's is its fixture's date, rewritten on every reschedule. */}
           {market.kind !== 'game' && (
             <button onClick={() => { setMode(mode === 'deadline' ? null : 'deadline'); setErr(null) }}
-              className="btn-secondary btn-sm"><CalendarClock className="w-3 h-3" /> מועד סגירה</button>
+              className="btn-secondary btn-sm"><CalendarClock className="w-4 h-4" /> מועד סגירה</button>
           )}
           {/* A game market's three options are generated from the fixture, so
               there is nothing here to edit — only season markets are built by hand. */}

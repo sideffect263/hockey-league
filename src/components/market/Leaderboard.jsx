@@ -57,7 +57,7 @@ export default function Leaderboard() {
             <p className="text-[11px] text-fg-muted">
               {ahead
                 ? <>עוד <span className="mkt-coin">{fmtCoins(Number(ahead.total) - Number(me.total))}</span> כדי לעקוף את {ahead.display_name}</>
-                : <span className="inline-flex items-center gap-1">אתה בראש הטבלה — תחזיק מעמד <Crown className="w-3.5 h-3.5" /></span>}
+                : <span className="inline-flex items-center gap-1">אתה בראש הטבלה — תחזיק מעמד <Crown className="w-4 h-4" /></span>}
             </p>
           </div>
           <span className={`mkt-num font-black ${Number(me.total) >= START_BALANCE ? 'text-pos' : 'text-neg'}`}>{fmtCoins(me.total)}</span>

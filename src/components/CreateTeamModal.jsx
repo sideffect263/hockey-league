@@ -4,6 +4,7 @@ import { AGE_GROUPS } from "@/lib/ageGroups"
 import { requestTeam, uploadTeamLogo } from "@/lib/api"
 import { isSafeImage, IMAGE_TYPE_MESSAGE } from "@/lib/imageType"
 import TeamLogo from "@/components/TeamLogo"
+import { TeamIcon } from "@/components/icons/BrandIcons"
 
 const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
 
@@ -77,7 +78,7 @@ export default function CreateTeamModal({ onClose, onCreated }) {
         ) : (
           <div className="p-6">
             <div className="flex items-center gap-2 mb-1">
-              <Users className="w-5 h-5 text-brand" />
+              <TeamIcon className="w-5 h-5 text-brand" />
               <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">פתיחת קבוצה חדשה</h3>
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">הקבוצה תישלח לאישור מנהל הליגה. לאחר אישור תהיו המאמן/ת שלה.</p>

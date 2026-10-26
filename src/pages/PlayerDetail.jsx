@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, Hourglass, BlueCard, RedCard, Flame, HatTrick, Goalkeeper, Calendar, Award, Trophy } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, Hourglass, BlueCard, RedCard, Flame, HatTrick, Goalkeeper, Calendar, Award, Trophy, PersonClaim } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { getPlayers, getTeams, getGames, getGameStats, getLeagueSetting, getPlayerRoleBadges } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -383,7 +383,7 @@ export default function PlayerDetail() {
               <span className="text-sm text-slate-600 dark:text-slate-300">זה אתה?</span>
               <button onClick={handleClaim} disabled={claimBusy}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50 shrink-0">
-                <UserPlus className="w-3.5 h-3.5" /> {claimBusy ? 'שולח...' : 'בקש בעלות על הפרופיל'}
+                <PersonClaim className="w-4 h-4" /> {claimBusy ? 'שולח...' : 'בקש בעלות על הפרופיל'}
               </button>
             </>
           )}
@@ -443,9 +443,9 @@ export default function PlayerDetail() {
                 <h.icon className="w-3.5 h-3.5" /> {h.label}
               </span>
             ))}
-            {bigGames > 0 && <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light"><Flame className="w-3.5 h-3.5" />{bigGames} משחקי ענק</span>}
-            {hatTricks > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><HatTrick className="w-3.5 h-3.5" />{hatTricks} שלושערים</span>}
-            {isGK && cleanSheets > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Goalkeeper className="w-3.5 h-3.5" />{cleanSheets} שערים נקיים</span>}
+            {bigGames > 0 && <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light"><Flame className="w-4 h-4" />{bigGames} משחקי ענק</span>}
+            {hatTricks > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><HatTrick className="w-4 h-4" />{hatTricks} שלושערים</span>}
+            {isGK && cleanSheets > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Goalkeeper className="w-4 h-4" />{cleanSheets} שערים נקיים</span>}
           </div>
 
           {/* Individual milestone games */}
@@ -563,10 +563,10 @@ export default function PlayerDetail() {
                 </div>
                 {/* Player's per-game contribution + result score (left side in RTL) */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
-                  {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
-                  {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0.5 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
-                  {isGK && stat.clean_sheet && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><Goalkeeper className="w-3.5 h-3.5" title="שער נקי" /></span>}
+                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{stat.goals}</span>}
+                  {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{stat.blue_cards}</span>}
+                  {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0.5 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{stat.red_cards}</span>}
+                  {isGK && stat.clean_sheet && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><Goalkeeper className="w-4 h-4" title="שער נקי" /></span>}
                   {/* RTL score: away_score first, home_score last so each score lands
                       beside its team (see hockey-league-rtl-score-gotcha memory). */}
                   <span className={`text-sm font-bold px-2 py-1 rounded-md tabular-nums ${resultCls}`} title={result === 'win' ? 'ניצחון' : result === 'loss' ? 'הפסד' : 'תיקו'}>

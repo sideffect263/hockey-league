@@ -3,6 +3,7 @@ import { X, Loader2, UserPlus, CheckCircle2 } from "lucide-react"
 import { getTeams } from "@/lib/api"
 import { createPlayerSubmission } from "@/lib/playerSubmissions"
 import { linkRequestErrorMessage } from "@/lib/linkRequests"
+import { PersonAdd } from "@/components/icons/BrandIcons"
 
 const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
 
@@ -81,7 +82,7 @@ export default function PlayerCardSubmission({ onClose, onSubmitted, initialName
         ) : (
           <div className="p-6">
             <div className="flex items-center gap-2 mb-1">
-              <UserPlus className="w-5 h-5 text-brand" />
+              <PersonAdd className="w-5 h-5 text-brand" />
               <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">צור כרטיס שחקן</h3>
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
@@ -129,7 +130,7 @@ export default function PlayerCardSubmission({ onClose, onSubmitted, initialName
 
             <button onClick={submit} disabled={!canSubmit}
               className="mt-5 w-full py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <PersonAdd className="w-4 h-4" />}
               שליחה לאישור
             </button>
           </div>

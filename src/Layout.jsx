@@ -17,7 +17,8 @@ import {
   Handshake,
   Code2
 } from "lucide-react"
-import { Rink, Standings, Crossed, Teams, Player, Whistle, Stats, Camera, Edit, Clipboard } from "./components/icons/HockeyIcons"
+import { Stats, Edit, Clipboard } from "./components/icons/HockeyIcons"
+import { RinkIcon, Trophy as BrandTrophy, MatchFallback, TeamsIcon, PlayerIcon, Referee, VideoLibrary, Person } from "@/components/icons/BrandIcons"
 import { useAuth } from "./lib/AuthContext"
 import AuthModal from "./components/AuthModal"
 import OnboardingModal from "./components/OnboardingModal"
@@ -27,18 +28,21 @@ import ChatDrawer from "./components/ChatDrawer"
 import LiveEditPanel from "./components/liveedit/LiveEditPanel"
 import { sizedImage } from "@/lib/imageSize"
 
-// Nav uses the hockey icons in `mono`, so the brand-color ball accent becomes
-// currentColor and stays visible on the active tab's solid-brand background.
-const NavRink = (p) => <Rink mono {...p} />
-const NavStandings = (p) => <Standings mono {...p} />
-const NavGames = (p) => <Crossed mono {...p} />
-const NavTeams = (p) => <Teams mono {...p} />
-const NavPlayers = (p) => <Player mono {...p} />
-const NavWhistle = (p) => <Whistle mono {...p} />
+// Nav uses the league's own icons (BrandIcons) where a meaning has one. Their accents
+// (orange ball, brand-blue/white fills) stay readable on the active tab's tint and on
+// the mobile menu's solid brand fill, so no `mono` variant is needed. The in-house
+// HockeyIcons stay `mono` for the meanings the brand set doesn't cover yet.
+const NavRink = (p) => <RinkIcon {...p} />
+const NavStandings = (p) => <BrandTrophy {...p} />
+const NavGames = (p) => <MatchFallback {...p} />
+const NavTeams = (p) => <TeamsIcon {...p} />
+const NavPlayers = (p) => <PlayerIcon {...p} />
+const NavWhistle = (p) => <Referee {...p} />
 const NavStats = (p) => <Stats mono {...p} />
-const NavCamera = (p) => <Camera mono {...p} />
+const NavCamera = (p) => <VideoLibrary {...p} />
 const NavEdit = (p) => <Edit mono {...p} />
 const NavClipboard = (p) => <Clipboard mono {...p} />
+const NavMe = (p) => <Person {...p} />
 
 /**
  * Close a navbar dropdown on outside click, Escape, or route change. Every menu
@@ -199,7 +203,7 @@ function AvatarMenu({ user, profile, roleNav, isActivePage, signOut }) {
       {open && (
         <MenuPanel className="end-0">
           <MenuItem
-            item={{ title: "הדף שלי", url: "/me", icon: UserCircle }}
+            item={{ title: "הדף שלי", url: "/me", icon: NavMe }}
             active={isActivePage("/me")}
             onClick={() => setOpen(false)}
           />
@@ -247,7 +251,7 @@ export default function Layout({ children }) {
   ]
 
   const moreNav = [
-    { title: "טורנירים", url: "/tournaments", icon: Swords },
+    { title: "טורנירים", url: "/tournaments", icon: NavStandings },
     // Shown to everyone again: the face-naming tool left /creators for /devs (2026-10-15),
     // so content editors no longer have a copy of it in their workspace.
     { title: "מדיה", url: "/media", icon: NavCamera },
