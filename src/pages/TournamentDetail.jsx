@@ -112,7 +112,7 @@ export default function TournamentDetail() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-5 sm:p-6">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center shrink-0">
-            <Trophy className="w-7 h-7 text-brand" />
+            <Trophy className="w-10 h-10" />
           </div>
           <div className="min-w-0">
             <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{tournament.name}</h1>

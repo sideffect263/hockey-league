@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee, Squad } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee, Squad, BrandTile } from "@/components/icons/BrandIcons"
 import { Link } from "react-router-dom"
 import { getGames, getTeams, getPlayers, getReferees, getGameStats } from "@/lib/api"
 import { Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
@@ -335,7 +335,7 @@ export default function Games() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <Crossed className="w-7 h-7 text-brand" /> משחקים
+          <BrandTile name="match-fallback" className="w-10 h-10 -my-1.5" /> משחקים
         </h1>
         <p className="page-subtitle mt-1">לוח משחקים ותוצאות{seasonName && ` עונת ${seasonName}`}</p>
       </motion.div>
