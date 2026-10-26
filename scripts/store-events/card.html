@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<!-- Game-day In-App Event card (design, not illustration), 2026-10-26 — approved by Ariel.
+     ?mode=card (1920x1080) | detail (1080x1920). store-events.mjs injects window.EVENT (the day's
+     games, crests as data: URIs) before this runs. No dates/times/scores in the art: Apple shows the
+     event's date itself, and the art can't change once the event is published. -->
+<style>
+@font-face { font-family: Heebo; src: url(assets/Heebo-Variable.ttf); font-weight: 100 900; }
+:root { --ink:#0D1322; --navy:#0F1729; --deep:#1E2A78; --blue:#3B4FC4; --bright:#4E6DF0; --light:#8AA0FF; --gold:#E5B843; --red:#D7544F; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: var(--W); height: var(--H); overflow: hidden; background: var(--ink); font-family: Heebo, sans-serif; color: #fff; }
+.stage { position: relative; width: var(--W); height: var(--H); overflow: hidden;
+  background: radial-gradient(120% 90% at 85% 10%, #2a3aa0 0%, var(--deep) 30%, var(--navy) 62%, var(--ink) 100%); }
+/* faint rink lines as a graphic */
+.lines { position: absolute; inset: 0; opacity: .16; }
+.glow { position: absolute; width: 1100px; height: 1100px; border-radius: 50%; filter: blur(40px);
+  background: radial-gradient(circle, rgba(229,184,67,.30), rgba(229,184,67,0) 62%); }
+.kicker { font-weight: 700; letter-spacing: .5px; color: var(--gold); display: flex; align-items: center; gap: 14px; }
+.kicker .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 6px rgba(215,84,79,.25); }
+.title { font-weight: 900; line-height: .92; letter-spacing: -1px; }
+.title b { color: var(--gold); font-weight: 900; }
+.sub { font-weight: 500; color: #c9d3ff; }
+.matches { display: flex; flex-direction: column; }
+.m { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: rgba(255,255,255,.06);
+  border: 1px solid rgba(138,160,255,.22); border-radius: 22px; backdrop-filter: blur(4px); }
+.side { display: flex; align-items: center; gap: 18px; font-weight: 800; white-space: nowrap; }
+.side.away { flex-direction: row-reverse; justify-content: flex-start; }
+.crest { background: #fff; border-radius: 50%; display: grid; place-items: center; flex: none; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.crest img { width: 76%; height: 76%; object-fit: contain; }
+.vs { font-weight: 800; color: var(--light); text-align: center; }
+/* phone */
+.phone { position: absolute; border-radius: 74px; background: #05070d; padding: 18px;
+  box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 0 0 3px #2b3350 inset, 0 0 0 1px #3d4770; }
+.screen { width: 100%; height: 100%; border-radius: 58px; overflow: hidden; background: #0b1020; position: relative; }
+.island { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 30%; height: 34px; border-radius: 20px; background: #000; z-index: 3; }
+.status { height: 72px; display: flex; justify-content: space-between; align-items: center; padding: 0 44px; font-weight: 700; font-size: 26px; direction: ltr; }
+.apphead { padding: 6px 30px 18px; font-weight: 900; font-size: 44px; display: flex; align-items: center; gap: 14px; }
+.apphead .live { font-size: 22px; font-weight: 800; background: var(--red); padding: 4px 14px; border-radius: 999px; }
+.video { position: relative; margin: 0 22px; border-radius: 26px; overflow: hidden; aspect-ratio: 16/9; background: #000; }
+.video img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 40%; }
+.bug { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; gap: 10px; background: rgba(15,23,41,.92);
+  border-radius: 12px; padding: 6px 12px; font-weight: 900; font-size: 24px; direction: rtl; }
+.bug .c { width: 34px; height: 34px; } .bug .sc { direction: ltr; color: #fff; padding: 0 4px; }
+.bug .lv { background: var(--red); border-radius: 8px; padding: 0 8px; font-size: 18px; }
+.ctrl { position: absolute; left: 0; right: 0; bottom: 0; height: 52px; background: linear-gradient(transparent, rgba(0,0,0,.65)); }
+.ctrl i { position: absolute; bottom: 16px; height: 6px; border-radius: 3px; }
+.ctrl .tr { left: 18px; right: 18px; background: rgba(255,255,255,.3); } .ctrl .pg { right: 18px; width: 42%; background: var(--red); }
+.gcard { margin: 22px; border-radius: 26px; background: #141b33; border: 2px solid rgba(215,84,79,.55); padding: 22px 24px; }
+.gcard .chip { display: inline-block; font-size: 20px; font-weight: 800; color: #ffd1cf; background: rgba(215,84,79,.22); border-radius: 999px; padding: 3px 14px; }
+.gcard .row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 16px; }
+.gcard .t { display: flex; flex-direction: column; align-items: center; gap: 8px; font-weight: 800; font-size: 24px; }
+.gcard .t .crest { width: 74px; height: 74px; }
+.gcard .s { font-weight: 900; font-size: 54px; direction: ltr; }
+.next { margin: 0 22px; border-radius: 22px; background: #121831; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 22px; color: #c9d3ff; margin-bottom: 14px; }
+.next .pair { display: flex; align-items: center; gap: 10px; } .next .crest { width: 46px; height: 46px; }
+.tabbar { position: absolute; bottom: 22px; left: 22px; right: 22px; height: 92px; border-radius: 46px; background: rgba(255,255,255,.09); display: flex; justify-content: space-around; align-items: center; }
+.tabbar i { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.22); } .tabbar i.on { background: var(--bright); }
+.brand { font-weight: 800; color: #9fb0ff; letter-spacing: .3px; direction: ltr; }
+.fade { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(rgba(13,19,34,0), rgba(13,19,34,.85)); }
+</style></head>
+<body>
+<div class="stage" id="stage"></div>
+<script>
+const q = new URLSearchParams(location.search), mode = q.get('mode') || 'card'
+const W = mode === 'detail' ? 1080 : 1920, H = mode === 'detail' ? 1920 : 1080
+document.documentElement.style.setProperty('--W', W + 'px'); document.documentElement.style.setProperty('--H', H + 'px')
+// Home team on the RIGHT (league-wide rule), so in RTL the home side comes first.
+// window.EVENT = { games: [{ home: [name, crestDataUri], away: [...] }, …] } — set by store-events.mjs.
+const GAMES = (window.EVENT && window.EVENT.games) || []
+const FEATURE = GAMES[GAMES.length - 1] // the evening game is on the phone
+const crest = (src, s) => `<span class="crest" style="width:${s}px;height:${s}px"><img src="${src}"></span>`
+const rinkLines = (w, h) => `<svg class="lines" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><g fill="none" stroke="#8AA0FF" stroke-width="3">
+  <rect x="${w*.04}" y="${h*.06}" width="${w*.92}" height="${h*.88}" rx="60"/><line x1="${w/2}" y1="${h*.06}" x2="${w/2}" y2="${h*.94}"/>
+  <circle cx="${w/2}" cy="${h/2}" r="${Math.min(w,h)*.16}"/><rect x="${w*.04}" y="${h*.3}" width="${w*.12}" height="${h*.4}"/><rect x="${w*.84}" y="${h*.3}" width="${w*.12}" height="${h*.4}"/></g></svg>`
+const phone = (x, y, w, h) => `<div class="phone" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;transform:rotate(${mode==='card'?-6:0}deg)"><div class="screen">
+  <div class="island"></div><div class="status"><span>20:14</span><span></span></div>
+  <div class="apphead">חי עכשיו <span class="live">LIVE</span></div>
+  <div class="video"><img src="assets/rink.png"><div class="bug"><span class="lv">LIVE</span>${crest(FEATURE.home[1], 34)}<span class="sc">0 : 0</span>${crest(FEATURE.away[1], 34)}</div>
+    <div class="ctrl"><i class="tr"></i><i class="pg"></i></div></div>
+  <div class="gcard"><span class="chip">● שידור חי</span><div class="row">
+    <div class="t">${crest(FEATURE.home[1], 74)}${FEATURE.home[0]}</div><div class="s">0 : 0</div><div class="t">${crest(FEATURE.away[1], 74)}${FEATURE.away[0]}</div></div></div>
+  ${GAMES.slice(0, -1).slice(-2).map((g) => `<div class="next"><span class="pair">${crest(g.home[1], 46)} ${g.home[0]}</span><span>vs</span><span class="pair">${g.away[0]} ${crest(g.away[1], 46)}</span></div>`).join('')}
+  <div class="tabbar"><i class="on"></i><i></i><i></i><i></i></div></div></div>`
+const matches = (cs, fs, gap, pad) => `<div class="matches" style="gap:${gap}px">${GAMES.map((g) => `<div class="m" style="padding:${pad}px ${pad*1.4}px">
+  <div class="side home" style="font-size:${fs}px">${crest(g.home[1], cs)}<span>${g.home[0]}</span></div><div class="vs" style="font-size:${fs*.8}px;padding:0 ${pad}px">VS</div>
+  <div class="side away" style="font-size:${fs}px">${crest(g.away[1], cs)}<span>${g.away[0]}</span></div></div>`).join('')}</div>`
+const S = document.getElementById('stage')
+if (mode === 'card') {
+  S.innerHTML = `${rinkLines(W, H)}<div class="glow" style="right:-300px;top:-420px"></div>
+  <div style="position:absolute;right:110px;top:96px;width:900px">
+    <div class="kicker" style="font-size:34px"><span class="dot"></span>ליגת הוקי גלגיליות</div>
+    <div class="title" style="font-size:168px;margin-top:18px">יום <b>משחקים</b></div>
+    <div class="sub" style="font-size:40px;margin-top:22px">כל משחק בשידור חי, תוצאות בזמן אמת</div>
+    <div style="margin-top:48px">${GAMES.length > 3 ? matches(64, 32, 12, 12) : matches(78, 38, 18, 18)}</div>
+  </div>
+  ${phone(150, 120, 540, 1110)}
+  <div class="fade" style="height:230px"></div>`
+} else {
+  S.innerHTML = `${rinkLines(W, H)}<div class="glow" style="right:-420px;top:-460px"></div>
+  <div style="position:absolute;right:80px;left:80px;top:150px">
+    <div class="kicker" style="font-size:36px"><span class="dot"></span>ליגת הוקי גלגיליות</div>
+    <div class="title" style="font-size:172px;margin-top:20px">יום <b>משחקים</b></div>
+    <div class="sub" style="font-size:42px;margin-top:22px">כל משחק בשידור חי, תוצאות בזמן אמת</div>
+    <div style="margin-top:56px">${GAMES.length > 3 ? matches(72, 34, 16, 16) : matches(84, 38, 22, 22)}</div>
+  </div>
+  ${phone(170, 1130, 740, 1520)}
+  <div class="fade" style="height:300px"></div>`
+}
+</script>
+</body></html>
