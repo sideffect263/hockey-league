@@ -171,7 +171,7 @@ export default function MedicalPodiumReview() {
                     {item.expires_at && <> · בתוקף עד {format(new Date(item.expires_at), "d/M/yyyy")}</>}
                   </p>
                   <p className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-4 h-4" />
                     ממתין {days === 0 ? "מהיום" : `${days} ${days === 1 ? "יום" : "ימים"}`}
                     {item.coach_name && <> · אישר {item.coach_name}</>}
                   </p>

@@ -88,7 +88,7 @@ export default function CareerCard({ state, config, choices, onRestart }) {
                 key={name}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-chip bg-gold/15 text-2xs text-gold"
               >
-                <Trophy className="size-3" aria-hidden="true" />
+                <Trophy className="size-4" aria-hidden="true" />
                 {name}
                 {n > 1 && <span className="font-bold">×{n}</span>}
               </span>

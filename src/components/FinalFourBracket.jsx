@@ -275,7 +275,7 @@ function DirectQualifier({ team, delay }) {
       className="bg-gold/[0.06] rounded-xl border border-gold/30 p-3 shadow-sm"
     >
       <div className="flex items-center gap-1.5 mb-2">
-        <Crown className="w-3.5 h-3.5 text-gold" />
+        <Crown className="w-4 h-4 text-gold" />
         <span className="text-[10px] font-bold text-gold">מקום 1 — ישיר לחצי הגמר</span>
       </div>
       <div className="flex items-center gap-2 p-2 bg-white/60 dark:bg-slate-800/60 rounded-lg">

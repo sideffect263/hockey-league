@@ -122,7 +122,7 @@ export default function SeasonRecap({ blocks, isGoalkeeper }) {
                     key={t}
                     className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/15 text-2xs font-semibold text-gold"
                   >
-                    <Trophy className="size-3" aria-hidden="true" />
+                    <Trophy className="size-4" aria-hidden="true" />
                     {t}
                   </span>
                 ))}

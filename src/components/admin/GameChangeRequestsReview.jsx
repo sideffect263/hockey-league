@@ -101,7 +101,7 @@ export default function GameChangeRequestsReview({ teamsMap = {} }) {
 
                 {r.proposed_venue && (
                   <div className="flex items-center gap-2 text-sm flex-wrap">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                     <span className="text-slate-400 line-through">{g.venue || r.original_venue || "—"}</span>
                     <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
                     <span className="font-bold text-slate-900 dark:text-white">{r.proposed_venue}</span>

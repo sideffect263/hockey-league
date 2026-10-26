@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Handshake, TrendingUp, Users, Eye, Check, Loader2, ShieldCheck, Info, LogIn } from "lucide-react"
-import { CalendarDays, MapPin, Hourglass, Goalkeeper } from "@/components/icons/BrandIcons"
+import { CalendarDays, MapPin, Hourglass, Goalkeeper, TeamsIcon } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { useSeo } from "@/lib/seo"
 import TeamLogo from "@/components/TeamLogo"
@@ -191,7 +191,7 @@ export default function Loans() {
 
       <section className="space-y-2">
         <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
-          <Users className="w-5 h-5 text-brand" /> קבוצות שמחפשות שחקנים
+          <TeamsIcon className="w-5 h-5 text-brand" /> קבוצות שמחפשות שחקנים
         </h2>
         {board.length === 0 ? (
           <div className="card p-6 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -211,8 +211,8 @@ export default function Loans() {
                 </div>
               </div>
               <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-slate-600 dark:text-slate-300">
-                <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" /> {when(c.game_date)}</span>
-                {c.venue && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {c.venue}</span>}
+                <span className="inline-flex items-center gap-1"><CalendarDays className="w-4 h-4" /> {when(c.game_date)}</span>
+                {c.venue && <span className="inline-flex items-center gap-1"><MapPin className="w-4 h-4" /> {c.venue}</span>}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {c.need_field && (
@@ -220,7 +220,7 @@ export default function Loans() {
                     שחקני שדה · {c.field_slots === 1 ? "מקום אחד" : `${c.field_slots} מקומות`}
                   </span>
                 )}
-                {c.need_gk && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand inline-flex items-center gap-1">שוער <Goalkeeper className="w-3.5 h-3.5" /></span>}
+                {c.need_gk && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand inline-flex items-center gap-1">שוער <Goalkeeper className="w-4 h-4" /></span>}
               </div>
               {c.note && <p className="text-xs text-slate-600 dark:text-slate-300">„{c.note}”</p>}
               <div className="flex items-center justify-end">{actionFor(c)}</div>

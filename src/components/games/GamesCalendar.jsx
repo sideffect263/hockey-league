@@ -156,7 +156,7 @@ export default function GamesCalendar({ games, teamsMap, selectedDate, onSelectD
                     <FileText className="w-3.5 h-3.5" /> CSV
                   </button>
                   <button type="button" onClick={() => setSubOpen(s => !s)} aria-expanded={subOpen} className="btn btn-primary btn-sm">
-                    <CalendarPlus className="w-3.5 h-3.5" /> סנכרון ליומן
+                    <CalendarPlus className="w-4 h-4" /> סנכרון ליומן
                   </button>
                 </div>
               </div>
@@ -390,7 +390,7 @@ function SubscribePanel({ team, onClose }) {
       {mode === "ios" && (
         <>
           <div className="flex flex-wrap gap-2">
-            <a href={webcal} className="btn btn-primary btn-sm"><CalendarPlus className="w-3.5 h-3.5" /> הוספה ליומן האייפון</a>
+            <a href={webcal} className="btn btn-primary btn-sm"><CalendarPlus className="w-4 h-4" /> הוספה ליומן האייפון</a>
             {copyBtn("btn-ghost")}
           </div>
           <p className="text-[11px] text-fg-subtle">אישור אחד ב"הירשם", וזהו.</p>

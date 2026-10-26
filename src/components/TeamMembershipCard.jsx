@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Users, Loader2, LogOut, Plus, Check } from "lucide-react"
-import { Clock } from "@/components/icons/BrandIcons"
+import { Clock, TeamsIcon } from "@/components/icons/BrandIcons"
 import { getTeams } from "@/lib/api"
 import { getMyJoinRequest, requestTeamJoin, cancelTeamJoin, leaveTeamById, getMyMemberships, joinErrorText } from "@/lib/teamMembership"
 import { AGE_LABEL, DEFAULT_AGE, ageOf } from "@/lib/ageGroups"
@@ -59,7 +59,7 @@ export default function TeamMembershipCard({ player, onChange }) {
   return (
     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 space-y-2">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-        <Users className="w-3.5 h-3.5 text-brand" /> הקבוצות שלי
+        <TeamsIcon className="w-4 h-4 text-brand" /> הקבוצות שלי
       </div>
 
       {/* Current memberships — one per age group */}
@@ -88,7 +88,7 @@ export default function TeamMembershipCard({ player, onChange }) {
       {/* Pending request / request-to-join a (further) team */}
       {pending ? (
         <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
-          <Clock className="w-3.5 h-3.5 shrink-0" />
+          <Clock className="w-4 h-4 shrink-0" />
           <span className="flex-1 min-w-0">בקשת הצטרפות ל־<b>{pending.teams?.name || "קבוצה"}</b> ממתינה לאישור המאמן</span>
           <button onClick={doCancel} disabled={busy} className="font-semibold text-slate-400 hover:text-red-500 transition-colors shrink-0">ביטול</button>
         </div>

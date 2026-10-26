@@ -315,8 +315,11 @@ export function notificationIcon(n) {
 const BRAND_ICON = {
   game_result: 'goal', goal_scored: 'goal',
   game_change_request: 'calendar-move', game_change_opponent: 'calendar-move', game_moved: 'calendar-move',
-  medical_submitted: 'medic', medical_pending_manager: 'medic', medical_approved: 'medic',
-  medical_date_changed: 'medic', unavailability_reported: 'medic',
+  medical_submitted: 'medical', medical_pending_manager: 'medical', medical_approved: 'medical',
+  medical_date_changed: 'medical', medical_reinspection: 'medical', unavailability_reported: 'injury',
+  coach_request: 'coach', claim_request: 'person-claim', claim_approved: 'person-following',
+  player_submission_request: 'person-add', player_submission_approved: 'person-following',
+  team_join_request: 'teams', team_join_approved: 'teams', follow_game_alert: 'person-follow',
   medical_coach_approved: 'waiting',
   medical_expiring: 'reminder', medical_expiring_player: 'reminder', game_register_nudge: 'reminder',
   tournament_invite: 'trophy',

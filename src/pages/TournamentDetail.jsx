@@ -9,7 +9,7 @@ import TournamentTeamsManager from "@/components/TournamentTeamsManager"
 import ScheduleGenerator from "@/components/ScheduleGenerator"
 import TournamentStandings from "@/components/TournamentStandings"
 import { ArrowRight, RefreshCw, Users, Check, X } from "lucide-react"
-import { Trophy, Calendar, MapPin } from "@/components/icons/BrandIcons"
+import { Trophy, Calendar, MapPin, TeamsIcon } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -119,7 +119,7 @@ export default function TournamentDetail() {
             <div className="flex items-center gap-2 flex-wrap mt-2">
               <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light">{AGE_LABEL[tournament.age_group] || tournament.age_group}</span>
               <span className={`stat-pill ${st.cls}`}>{st.label}</span>
-              {range && <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> <span dir="ltr">{range}</span></span>}
+              {range && <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><Calendar className="w-4 h-4" /> <span dir="ltr">{range}</span></span>}
             </div>
             {tournament.notes && <p className="text-sm text-slate-500 dark:text-slate-400 mt-3">{tournament.notes}</p>}
           </div>
@@ -157,7 +157,7 @@ export default function TournamentDetail() {
       {teamIds.length > 0 && (
         <div className="card p-5">
           <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mb-3">
-            <Users className="w-4 h-4 text-brand" /> קבוצות משתתפות ({teamIds.length})
+            <TeamsIcon className="w-4 h-4 text-brand" /> קבוצות משתתפות ({teamIds.length})
           </h2>
           <div className="flex flex-wrap gap-2">
             {teamIds.map(tid => {
@@ -217,7 +217,7 @@ export default function TournamentDetail() {
           </div>
         )}
         {games.some(g => g.venue) && (
-          <p className="text-[11px] text-slate-400 mt-3 flex items-center gap-1"><MapPin className="w-3 h-3" /> המשחקים מתקיימים במגרשי הטורניר</p>
+          <p className="text-[11px] text-slate-400 mt-3 flex items-center gap-1"><MapPin className="w-4 h-4" /> המשחקים מתקיימים במגרשי הטורניר</p>
         )}
       </div>
     </div>
