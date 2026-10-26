@@ -57,7 +57,7 @@ export default function FeaturedMarket({ market, trades, activity }) {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0">
             <span className="stat-pill bg-brand/10 text-brand mb-2">
-              <Flame className="w-3 h-3" /> שוק מוביל
+              <Flame className="w-4 h-4" /> שוק מוביל
             </span>
             <h2 className="text-lg sm:text-xl font-black text-fg-strong leading-snug">
               <Link to={href} className="hover:text-brand transition-colors">{market.title}</Link>

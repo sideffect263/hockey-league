@@ -37,7 +37,7 @@ export function StatusChip({ market }) {
   const t = closesIn(market.closes_at)
   return (
     <span className="stat-pill bg-pos/10 text-pos whitespace-nowrap shrink-0">
-      <Clock className="w-3 h-3" /> {t ? `נסגר ${t}` : 'פתוח'}
+      <Clock className="w-4 h-4" /> {t ? `נסגר ${t}` : 'פתוח'}
     </span>
   )
 }
@@ -106,7 +106,7 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
               <div className="relative flex items-center gap-2 min-w-0 flex-1">
                 <OutcomeFace outcome={o} size={6} />
                 <span className="text-[13px] font-semibold text-fg-soft truncate">{o.label}</span>
-                {leading && <Flame className="w-3 h-3 text-gold shrink-0" />}
+                {leading && <Flame className="w-4 h-4 text-gold shrink-0" />}
                 {myShares[o.id]?.shares > 0 && (
                   <span className="stat-pill bg-brand/15 text-brand text-[10px] px-1.5 py-0 shrink-0">שלי</span>
                 )}

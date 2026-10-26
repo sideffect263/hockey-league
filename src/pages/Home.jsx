@@ -10,6 +10,7 @@ import { TeamLink } from "@/components/EntityLinks"
 import FinalFourBracket from "@/components/FinalFourBracket"
 import { useSeasonName } from "@/App"
 import { StandingsSkeleton } from "@/components/skeletons/PageSkeletons"
+import { TeamIcon } from "@/components/icons/BrandIcons"
 
 // The dev deployment says so on the page, so nobody mistakes it for the league's
 // site — and the league's site must never say it. Decided from the hostname at
@@ -175,7 +176,7 @@ export default function Home() {
 
       {seniorTeams.length === 0 && !error && (
         <div className="text-center py-16">
-          <Users className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+          <TeamIcon className="w-12 h-12 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-slate-500 dark:text-slate-400">אין קבוצות רשומות</h3>
         </div>
       )}

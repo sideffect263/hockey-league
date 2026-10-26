@@ -72,7 +72,7 @@ function JudgeGameView() {
       {/* Match header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
-          <span className="flex items-center gap-1.5 text-xs font-bold text-brand dark:text-brand-light"><Gavel className="w-3.5 h-3.5" /> לוח שיפוט</span>
+          <span className="flex items-center gap-1.5 text-xs font-bold text-brand dark:text-brand-light"><Gavel className="w-4 h-4" /> לוח שיפוט</span>
           <span className={`stat-pill ${st.cls} mr-auto`}>{st.label}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -98,9 +98,9 @@ function JudgeGameView() {
           </div>
         </div>
         <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "d/M/yyyy")}</span>
-          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
-          <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
+          <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(ilDate(game.game_date), "d/M/yyyy")}</span>
+          <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(ilDate(game.game_date), "HH:mm")}</span>
+          <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{game.venue || '—'}</span>
         </div>
       </motion.div>
 

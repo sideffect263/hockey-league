@@ -280,7 +280,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
                         <div className="flex items-center gap-1.5">
                           <button onClick={() => openManage(r)}
                             className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                            <CalendarClock className="w-3.5 h-3.5" /> תאריך
+                            <CalendarClock className="w-4 h-4" /> תאריך
                           </button>
                           <button onClick={() => openRevoke(r)}
                             className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
@@ -383,7 +383,7 @@ export default function MedicalRosterAdmin({ canManage = true }) {
                 className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   modal.mode === "revoke" ? "bg-red-500 hover:bg-red-600" : "bg-brand hover:bg-brand-hover"}`}>
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : modal.mode === "revoke" ? <Ban className="w-3.5 h-3.5" /> : <CalendarClock className="w-3.5 h-3.5" />}
+                  : modal.mode === "revoke" ? <Ban className="w-3.5 h-3.5" /> : <CalendarClock className="w-4 h-4" />}
                 {modal.mode === "revoke" ? "ביטול האישור" : "שמירת התאריך"}
               </button>
               <button onClick={() => setModal(null)} disabled={busy}

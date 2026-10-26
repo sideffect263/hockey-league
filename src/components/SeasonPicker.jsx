@@ -100,7 +100,7 @@ export default function SeasonPicker() {
             : "bg-brand/10 text-brand-strong dark:text-brand-light hover:bg-brand/20"
         }`}
       >
-        {isPast && <History className="w-3 h-3" aria-hidden="true" />}
+        {isPast && <History className="w-4 h-4" aria-hidden="true" />}
         עונת {season.name}
         {hasPast && <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />}
       </button>

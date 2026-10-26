@@ -451,7 +451,7 @@ export default function Statistics({ season = null }) {
               onChange={setRaceMode}
               options={[
                 { id: 'team', label: 'קבוצה', icon: <Shield className="w-3 h-3" /> },
-                { id: 'player', label: 'שחקן', icon: <Player className="w-3 h-3" /> },
+                { id: 'player', label: 'שחקן', icon: <Player className="w-4 h-4" /> },
               ]}
             />
           }
@@ -511,7 +511,7 @@ export default function Statistics({ season = null }) {
                 value={hatMode}
                 onChange={setHatMode}
                 options={[
-                  { id: 'player', label: 'שחקן', icon: <Player className="w-3 h-3" /> },
+                  { id: 'player', label: 'שחקן', icon: <Player className="w-4 h-4" /> },
                   { id: 'team', label: 'קבוצה', icon: <Shield className="w-3 h-3" /> },
                 ]}
               />
@@ -558,7 +558,7 @@ export default function Statistics({ season = null }) {
           <AwardCard title="משחקי-על (5+ שערים)" icon={<Flame className="w-4 h-4" />} data={awardBig} valueOf={p => p.bigGames} badge="bg-amber-500" empty="אין" note={STATS_NOTE} />
           <AwardCard title="דאבלים (2 שערים)" icon={<Target className="w-4 h-4 text-slate-500" />} data={awardBrace} valueOf={p => p.braces} badge="bg-slate-700 dark:bg-slate-500" empty="אין" note={STATS_NOTE} />
           <AwardCard title="שוערי הברזל" icon={<Glove className="w-4 h-4 text-blue-500" />} data={awardClean} valueOf={p => p.clean_sheets} unit="נקיות" badge="bg-blue-500" empty="אין" />
-          <AwardCard title="כרטיסים כחולים" icon={<BlueCard className="w-4 h-4" />} data={awardBlue} valueOf={p => p.blue_cards} badge="bg-blue-500" empty="אין" />
+          <AwardCard title="כרטיסים כחולים" icon={<BlueCard className="w-5 h-5 -my-1" />} data={awardBlue} valueOf={p => p.blue_cards} badge="bg-blue-500" empty="אין" />
         </div>
       </div>
 
@@ -599,7 +599,7 @@ export default function Statistics({ season = null }) {
 
         {activeTab === "cards" && (
           <div className="space-y-4">
-            <List title="כרטיסים כחולים" icon={<BlueCard className="w-4 h-4" />} data={bluePlayers} tKey="blue" empty="אין"
+            <List title="כרטיסים כחולים" icon={<BlueCard className="w-5 h-5 -my-1" />} data={bluePlayers} tKey="blue" empty="אין"
               render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.blue_cards} color="bg-blue-500" />} />
             <List title="כחולים לפי קבוצה" icon={<Shield className="w-4 h-4 text-blue-500" />} data={blueTeams} tKey="blueT" empty="אין"
               render={(t, i) => (
@@ -611,7 +611,7 @@ export default function Statistics({ season = null }) {
                   <span className="bg-blue-500 text-white text-xs font-bold px-2.5 py-1 rounded-md">{t.total_blue}</span>
                 </Link>
               )} />
-            <List title="כרטיסים אדומים" icon={<RedCard className="w-4 h-4" />} data={redPlayers} tKey="red" empty="אין"
+            <List title="כרטיסים אדומים" icon={<RedCard className="w-5 h-5 -my-1" />} data={redPlayers} tKey="red" empty="אין"
               render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.red_cards} color="bg-red-500" />} />
           </div>
         )}

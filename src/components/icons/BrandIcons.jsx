@@ -24,6 +24,8 @@ for (const [p, src] of Object.entries(RAW)) {
   inline[k] = { viewBox, body }
 }
 
+// Nothing renders below 16px (min-w-4): the small drawings are made for 16–24px and
+// lose their detail under that.
 // Tailwind w-N / size-N in quarter-rems; 8 = 32px, the README's large threshold.
 function isLargeClass(className = "") {
   const m = /(?:^|\s)(?:size|w)-(\d+(?:\.\d+)?)(?:\s|$)/.exec(className)
@@ -46,11 +48,11 @@ export function BrandIcon({ name, variant, className = "w-4 h-4", size, title, s
   const a11y = title ? { role: "img", "aria-label": title } : { "aria-hidden": props["aria-label"] ? undefined : "true" }
   if (inline[k]) {
     const { viewBox, body } = inline[k]
-    return <svg xmlns="http://www.w3.org/2000/svg" viewBox={viewBox} className={`shrink-0 ${className}`} style={st2}
+    return <svg xmlns="http://www.w3.org/2000/svg" viewBox={viewBox} className={`shrink-0 min-w-4 min-h-4 ${className}`} style={st2}
                 {...a11y} {...props} dangerouslySetInnerHTML={{ __html: (title ? `<title>${title}</title>` : "") + body }} />
   }
   return <img src={urls[k]} alt={title || props["aria-label"] || ""} draggable={false}
-              className={`shrink-0 inline-block object-contain ${className}`} style={st2} {...props} />
+              className={`shrink-0 min-w-4 min-h-4 inline-block object-contain ${className}`} style={st2} {...props} />
 }
 
 const mk = (name, displayName) => {
@@ -105,6 +107,19 @@ export const OgBadge = mk("og-badge", "OgBadge")
 export const MatchFallback = mk("match-fallback", "MatchFallback")
 export const RinkIcon = mk("rink", "RinkIcon")
 export const PlayerIcon = mk("player-pose-1", "PlayerIcon")
+export const TeamsIcon = mk("teams", "TeamsIcon")
+export const TeamIcon = mk("team", "TeamIcon")
+export const Squad = mk("squad", "Squad")
+export const Person = mk("person", "Person")
+export const Profile = mk("profile", "Profile")
+export const PersonAdd = mk("person-add", "PersonAdd")
+export const PersonFollow = mk("person-follow", "PersonFollow")
+export const PersonFollowing = mk("person-following", "PersonFollowing")
+export const PersonClaim = mk("person-claim", "PersonClaim")
+export const PersonRemove = mk("person-remove", "PersonRemove")
+export const Coach = mk("coach", "Coach")
+export const Medical = mk("medical", "Medical")
+export const Injury = mk("injury", "Injury")
 
 const MEDAL = ["medal-1", "medal-2", "medal-3"]
 // Podium medal for 0-based rank (0..2); null past the podium.

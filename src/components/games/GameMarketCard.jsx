@@ -86,7 +86,7 @@ function MarketCardBody({ odds, teamsMap }) {
           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>
         </div>
         {open && chip?.kind === "close" && traded && (
-          <span className="stat-pill bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold shrink-0"><Flame className="w-3 h-3" /> משחק צמוד</span>
+          <span className="stat-pill bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold shrink-0"><Flame className="w-4 h-4" /> משחק צמוד</span>
         )}
       </div>
 
@@ -181,7 +181,7 @@ function Side({ o, color, odds, chip, winner, showTrend }) {
       <div className="relative">
         <TeamLogo team={o.team} size={12} />
         {winner === o && (
-          <span className="absolute -top-2 -end-2 w-6 h-6 rounded-full bg-gold text-slate-900 flex items-center justify-center shadow"><Crown className="w-3.5 h-3.5" /></span>
+          <span className="absolute -top-2 -end-2 w-6 h-6 rounded-full bg-gold text-slate-900 flex items-center justify-center shadow"><Crown className="w-4 h-4" /></span>
         )}
       </div>
       <p className="mt-1.5 text-[13px] font-semibold text-slate-900 dark:text-white truncate max-w-full">{o.name}</p>

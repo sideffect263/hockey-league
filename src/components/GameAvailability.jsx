@@ -318,7 +318,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
           const pending = absences.find(u => u.player_id === p.id && u.status === "pending")
           return (
             <p key={p.id} className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-300">
-              <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}</span>
+              <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-4 h-4 inline-block align-[-2px]" title="שוער" /></> : null}</span>
               {manual && (
                 <span title={row.note || "נוסף ידנית"}
                   className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
@@ -375,7 +375,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
           )}
           {!suspension && myBlock && (
             <p className="flex items-start gap-1.5 text-[11px] text-red-600 dark:text-red-400">
-              <CalendarX className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <CalendarX className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
                 {UNAVAILABLE_MSG} — {kindLabel(myBlock.kind)} <Span block={absenceRange(myBlock)} />
                 {myBlock.reason ? ` · ${myBlock.reason}` : ""}
@@ -396,7 +396,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
               each fixture separately, and the coach never learns why. */}
           {myPending ? (
             <div className="flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
-              <CalendarX className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <CalendarX className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
                 דיווח ההיעדרות שלך ממתין לאישור המאמן/ת: {kindLabel(myPending.kind)}{" "}
                 <Span block={absenceRange(myPending)} />
@@ -445,14 +445,14 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
               </p>
               <button type="submit" disabled={rBusy}
                 className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity disabled:opacity-40">
-                {rBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarX className="w-3.5 h-3.5" />}
+                {rBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarX className="w-4 h-4" />}
                 שליחת הדיווח
               </button>
             </form>
           ) : !myBlock && (
             <button onClick={() => setReportOpen(true)}
               className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors">
-              <CalendarX className="w-3.5 h-3.5" /> דיווח על היעדרות ממושכת
+              <CalendarX className="w-4 h-4" /> דיווח על היעדרות ממושכת
             </button>
           )}
 
@@ -528,7 +528,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
                   const b = blockOf(p.id)
                   return (
                     <p key={p.id} className="flex items-center gap-1.5 flex-wrap text-xs text-slate-700 dark:text-slate-300">
-                      <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}</span>
+                      <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-4 h-4 inline-block align-[-2px]" title="שוער" /></> : null}</span>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{b.label}</span>
                       <span className="text-[10px]"><Span block={b} /></span>
                       {b.detail && <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{b.detail}</span>}
@@ -543,7 +543,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
             {pendingRows.length > 0 && (
               <div className="mt-3 p-2 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/15 space-y-2">
                 <p className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                  <CalendarX className="w-3 h-3" /> בקשות היעדרות לאישורך ({pendingRows.length})
+                  <CalendarX className="w-4 h-4" /> בקשות היעדרות לאישורך ({pendingRows.length})
                 </p>
                 {pendingRows.map(u => {
                   const r = absenceRange(u)

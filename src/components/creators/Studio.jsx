@@ -362,7 +362,7 @@ function MediaPool({ sources, max, selected, onChange, ctx, preferGame, goalsFir
                   <div className="p-2 bg-white dark:bg-slate-900">
                     <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 leading-snug">{item.label}</p>
                     <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
-                      {isVideo ? <Film className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
+                      {isVideo ? <Film className="w-4 h-4" /> : <ImageIcon className="w-3 h-3" />}
                       {item.isGoal ? "גול · " : ""}{item.duration ? `${Math.round(item.duration)} שנ׳ · ` : ""}
                       {item.gameId && ctx.gameById[item.gameId] ? ctx.gameLabel(ctx.gameById[item.gameId]) : SOURCE_LABEL[item.source]}
                     </p>

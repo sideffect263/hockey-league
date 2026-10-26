@@ -89,7 +89,7 @@ function MatchdayCard({ item, teamsMap }) {
   const first = item.games?.[0]
   const traders = (item.games || []).reduce((s, g) => s + (g.traders || 0), 0)
   return (
-    <Shell kind="matchday" icon={<Flame className="w-3.5 h-3.5 text-orange-500" />}
+    <Shell kind="matchday" icon={<Flame className="w-4 h-4 text-orange-500" />}
       title={`היחסים לסיבוב · ${first ? matchdayLabel(first.game_date) : ""}`} cta="להמר על הסיבוב">
       <div className="divide-y divide-line-subtle">
         {(item.games || []).map((g) => <MatchdayRow key={g.market_id} game={g} teamsMap={teamsMap} />)}
@@ -185,7 +185,7 @@ function PodiumCard({ item }) {
   const order = [top[1], top[0], top[2]]
   const lift = ["mt-4", "mt-0", "mt-7"]
   return (
-    <Shell kind="podium" icon={<Trophy className="w-3.5 h-3.5 text-gold" />} title="טבלת המהמרים השבועית" cta="לטבלה המלאה">
+    <Shell kind="podium" icon={<Trophy className="w-4 h-4 text-gold" />} title="טבלת המהמרים השבועית" cta="לטבלה המלאה">
       <div className="flex items-start justify-center gap-3">
         {order.map((u, i) => u && (
           <div key={u.user_id} className={`flex-1 max-w-[120px] flex flex-col items-center text-center ${lift[i]}`}>

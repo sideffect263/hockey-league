@@ -327,7 +327,7 @@ function PartTabs({ videos, selected, onSelect }) {
             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${on
               ? "bg-brand text-white"
               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
-            {isLiveRow(v) && <Radio className={`w-3.5 h-3.5 ${on ? "" : "text-red-500"} animate-pulse`} />}
+            {isLiveRow(v) && <Radio className={`w-4 h-4 ${on ? "" : "text-red-500"} animate-pulse`} />}
             {label}
           </button>
         )
@@ -459,7 +459,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
         {isAdmin && (
           <Link to={`/games/${gameId}/control`}
             className="flex items-center gap-1 text-xs font-semibold text-brand hover:underline">
-            <MonitorPlay className="w-3.5 h-3.5" /> חדר שידור
+            <MonitorPlay className="w-4 h-4" /> חדר שידור
           </Link>
         )}
         {video && canStream && (
@@ -511,7 +511,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
                     <button onClick={() => seek(m.video_seconds)}
                       className="flex-1 flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-right">
                       <span dir="ltr" className="text-xs font-bold tabular-nums text-orange-500 shrink-0 w-12 text-left">{fmtClock(m.video_seconds)}</span>
-                      <span className={`stat-pill !py-0 !px-1.5 shrink-0 inline-flex items-center gap-1 ${KINDS[m.kind]?.cls}`}>{KINDS[m.kind]?.icon ? <BrandIcon name={KINDS[m.kind].icon} className="w-3 h-3" /> : KINDS[m.kind]?.emoji} {KINDS[m.kind]?.he}</span>
+                      <span className={`stat-pill !py-0 !px-1.5 shrink-0 inline-flex items-center gap-1 ${KINDS[m.kind]?.cls}`}>{KINDS[m.kind]?.icon ? <BrandIcon name={KINDS[m.kind].icon} className="w-4 h-4" /> : KINDS[m.kind]?.emoji} {KINDS[m.kind]?.he}</span>
                       <span className="text-sm text-slate-700 dark:text-slate-300 truncate">{m.label || ""}</span>
                     </button>
                     {canMark && (

@@ -75,7 +75,7 @@ export default function Timeline({ blocks, highlightFrom = 0 }) {
                       key={t}
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-chip bg-gold/15 text-3xs text-gold"
                     >
-                      <Trophy className="size-2.5" aria-hidden="true" />
+                      <Trophy className="size-4" aria-hidden="true" />
                       {t}
                     </span>
                   ))}

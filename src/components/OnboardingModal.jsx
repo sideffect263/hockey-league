@@ -6,6 +6,7 @@ import { getMyLinkState, getLinkedPlayerIds, linkRequestErrorMessage, splitName 
 import PlayerCardSubmission from "@/components/PlayerCardSubmission"
 import { getPlayers, getTeams } from "@/lib/api"
 import { getMyBirthDate, setPlayerBirthDate } from "@/lib/birthDate"
+import { PersonAdd } from "@/components/icons/BrandIcons"
 
 /**
  * First-run onboarding prompt: once a freshly signed-in account is resolved and
@@ -236,7 +237,7 @@ export default function OnboardingModal() {
         ) : (
           <>
             <div className="w-12 h-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-              <UserPlus className="w-6 h-6 text-brand" />
+              <PersonAdd className="w-6 h-6 text-brand" />
             </div>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">שיחקת בליגה?</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -262,7 +263,7 @@ export default function OnboardingModal() {
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">לא מצאנו אותך?</p>
                   <button onClick={() => setPhase("create")}
                     className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors">
-                    <UserPlus className="w-3.5 h-3.5" /> יצירת כרטיס שחקן חדש
+                    <PersonAdd className="w-4 h-4" /> יצירת כרטיס שחקן חדש
                   </button>
                 </div>
               ) : !q.trim() ? (

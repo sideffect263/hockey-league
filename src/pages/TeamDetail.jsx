@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, Calendar, Clock, Captain, Live as Radio } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, Calendar, Clock, Captain, Live as Radio, Squad, Medical } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -349,7 +349,7 @@ export default function TeamDetail() {
         <div className={`px-5 py-4 flex items-center justify-between gap-3 ${showRoster ? 'border-b border-slate-100 dark:border-slate-700' : ''}`}>
           <button onClick={() => setRosterOpen(o => !o)} disabled={canEdit} aria-expanded={showRoster}
             className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white disabled:cursor-default">
-            <Users className="w-4 h-4 text-brand" /> סגל
+            <Squad className="w-4 h-4" /> סגל
             {!canEdit && <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showRoster ? 'rotate-180' : ''}`} />}
           </button>
           <div className="flex items-center gap-3 shrink-0">
@@ -383,12 +383,12 @@ export default function TeamDetail() {
                 </span>
                 {player.is_referee && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">REF</span>}
                 {team.captain_player_id === player.id && (
-                  <span title="קפטן הקבוצה" className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><Captain className="w-3.5 h-3.5" /></span>
+                  <span title="קפטן הקבוצה" className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><Captain className="w-4 h-4" /></span>
                 )}
                 {canEdit && (
                   medicalApproved.has(player.id)
-                    ? <span title="בדיקה רפואית מאושרת" className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"><HeartPulse className="w-3 h-3" /></span>
-                    : <span title="אין בדיקה רפואית מאושרת" className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"><HeartPulse className="w-3 h-3" /></span>
+                    ? <span title="בדיקה רפואית מאושרת" className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"><Medical className="w-4 h-4" /></span>
+                    : <span title="אין בדיקה רפואית מאושרת" className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"><Medical className="w-4 h-4" /></span>
                 )}
               </div>
               <div className="flex items-center gap-3 text-xs shrink-0">
@@ -397,10 +397,10 @@ export default function TeamDetail() {
                     title={team.captain_player_id === player.id ? "הסר קפטן" : "קבע כקפטן"}
                     aria-label={team.captain_player_id === player.id ? "הסר קפטן" : "קבע כקפטן"}
                     className={`p-1 rounded-md transition-colors ${team.captain_player_id === player.id ? 'text-amber-500' : 'opacity-30 grayscale hover:opacity-100 hover:grayscale-0'}`}>
-                    <Captain className="w-3.5 h-3.5" />
+                    <Captain className="w-4 h-4" />
                   </button>
                 )}
-                {ownGoals(player) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{ownGoals(player)}</span><Ball className="w-3.5 h-3.5" /></span>}
+                {ownGoals(player) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{ownGoals(player)}</span><Ball className="w-5 h-5 -my-1" /></span>}
                 {(loanGoals[player.id]?.goals || 0) > 0 && (
                   <span title={`שערים במשחקי השאלה לקבוצות אחרות (${loanGoals[player.id].games} מש׳)`}
                     className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
@@ -469,7 +469,7 @@ export default function TeamDetail() {
                     </div>
                   </div>
                   <span dir="ltr" className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light shrink-0 tabular-nums">
-                    <Clock className="w-3 h-3" /> {format(ilDate(game.game_date), "HH:mm")}
+                    <Clock className="w-4 h-4" /> {format(ilDate(game.game_date), "HH:mm")}
                   </span>
                 </Link>
               )

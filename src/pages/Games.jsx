@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee, Squad } from "@/components/icons/BrandIcons"
 import { Link } from "react-router-dom"
 import { getGames, getTeams, getPlayers, getReferees, getGameStats } from "@/lib/api"
 import { Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
@@ -202,7 +202,7 @@ export default function Games() {
             {game.series_game && <span className="stat-pill bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">משחק {game.series_game}</span>}
             {att && (
               <span className={`stat-pill inline-flex items-center gap-1 ${att.tooFew ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"}`} title="מגיעים מהקבוצה שלך">
-                <Users className="w-3 h-3" /> {att.count}{!att.gk && <AlertTriangle className="w-3 h-3 text-red-500" />}
+                <Squad className="w-4 h-4" /> {att.count}{!att.gk && <AlertTriangle className="w-3 h-3 text-red-500" />}
               </span>
             )}
             {game.status === "scheduled" && myAvail[game.id] === "available" && (
@@ -223,7 +223,7 @@ export default function Games() {
               <TeamLogo team={home} size={10} />
               <div className="min-w-0 max-w-full text-center sm:text-start">
                 <p className={`text-sm leading-tight flex items-center justify-center sm:justify-start gap-1 ${homeWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : awayWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
-                  {homeWin && <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                  {homeWin && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
                   <span className="line-clamp-2 break-words">{home?.name}</span>
                 </p>
                 <p className={`text-[11px] ${homeWin ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>{tie ? 'תיקו' : homeWin ? 'מנצחת' : 'בית'}</p>
@@ -253,7 +253,7 @@ export default function Games() {
               <TeamLogo team={away} size={10} />
               <div className="min-w-0 max-w-full text-center sm:text-left">
                 <p className={`text-sm leading-tight flex items-center justify-center sm:justify-start gap-1 flex-row-reverse ${awayWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : homeWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
-                  {awayWin && <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                  {awayWin && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
                   <span className="line-clamp-2 break-words">{away?.name}</span>
                 </p>
                 <p className={`text-[11px] ${awayWin ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>{tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'}</p>
@@ -265,17 +265,17 @@ export default function Games() {
 
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
+            <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
             {/* Upcoming games already show the time in place of the score. */}
-            {done && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>}
-            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
+            {done && <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(ilDate(game.game_date), "HH:mm")}</span>}
+            <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{game.venue || '—'}</span>
             {/* Kiosk — only when someone has actually said. null stays silent. */}
             {game.kiosk_open != null && (
               <span className={`flex items-center gap-1 font-semibold ${game.kiosk_open ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                 <Utensils className="w-3.5 h-3.5" />{game.kiosk_open ? 'דוכן פתוח' : 'אין דוכן'}
               </span>
             )}
-            {ref && <span className="flex items-center gap-1"><Referee className="w-3.5 h-3.5" />{ref}</span>}
+            {ref && <span className="flex items-center gap-1"><Referee className="w-4 h-4" />{ref}</span>}
             <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" /></span>
           </div>
 
@@ -295,9 +295,9 @@ export default function Games() {
     <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
       <span className="truncate text-slate-700 dark:text-slate-300">{name}</span>
       <span className="flex gap-1 shrink-0">
-        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{s.goals}</span>}
-        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{s.blue_cards}</span>}
-        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{s.red_cards}</span>}
+        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{s.goals}</span>}
+        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{s.blue_cards}</span>}
+        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{s.red_cards}</span>}
       </span>
     </div>
   )

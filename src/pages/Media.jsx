@@ -254,7 +254,7 @@ function GameVideoCard({ item, teams }) {
           <PlayBadge className="w-12 h-12 drop-shadow" />
         </div>
         <div className="absolute top-2 right-2 flex gap-1.5">
-          {live && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-bold"><Radio className="w-3 h-3 animate-pulse" /> חי</span>}
+          {live && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-bold"><Radio className="w-4 h-4 animate-pulse" /> חי</span>}
           {game.is_test && <span className="px-2 py-0.5 rounded-full bg-violet-600 text-white text-[11px] font-bold">🧪 בדיקה</span>}
         </div>
         {parts.length > 1 && (
@@ -435,7 +435,7 @@ function ClusterCard({ cluster, index, summary, onSubmitted }) {
       <div className="p-3 flex flex-col gap-2 flex-1">
         {Array.isArray(cluster.albums) && cluster.albums.length > 0 && (
           <p className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-            <CalendarDays className="w-3 h-3 shrink-0" />
+            <CalendarDays className="w-4 h-4 shrink-0" />
             <span className="truncate">
               {cluster.albums[0].title}
               {cluster.albums.length > 1 ? ` +${cluster.albums.length - 1}` : ""}

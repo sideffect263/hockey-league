@@ -4,7 +4,7 @@ import { getPlayers, getTeams } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
 import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
 import { UserCheck, Search, RefreshCw } from "lucide-react"
-import { PlayerIcon } from "@/components/icons/BrandIcons"
+import { PlayerIcon, Profile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import PlayerAvatar from "@/components/PlayerAvatar"
 import { OgBadge, RoleBadge, deriveRoleItems } from "@/components/RoleBadges"
@@ -168,7 +168,7 @@ export default function Players() {
 
       {filtered.length === 0 && (
         <div className="text-center py-16">
-          <UserCheck className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+          <Profile className="w-12 h-12 mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-slate-500 dark:text-slate-400">אין שחקנים תואמים</h2>
         </div>
       )}

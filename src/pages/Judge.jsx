@@ -5,7 +5,7 @@ import { getAvailabilityForOfficialBatch } from "@/lib/availability"
 import { getMyApprovedGameIds } from "@/lib/officials"
 import { useAuth } from "@/lib/AuthContext"
 import { RefreshCw, ChevronLeft, Users, AlertTriangle } from "lucide-react"
-import { Gavel, Calendar, MapPin, Clock } from "@/components/icons/BrandIcons"
+import { Gavel, Calendar, MapPin, Clock, Squad } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -85,7 +85,7 @@ function JudgePicker() {
   }
   const AttChip = ({ att }) => (
     <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded ${att.tooFew ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"}`}>
-      <Users className="w-3 h-3" /> {att.count}{!att.gk && <AlertTriangle className="w-3 h-3 text-red-500" />}
+      <Squad className="w-4 h-4" /> {att.count}{!att.gk && <AlertTriangle className="w-3 h-3 text-red-500" />}
     </span>
   )
 
@@ -138,9 +138,9 @@ function JudgePicker() {
                     </div>
                   )}
                   <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "d/M/yyyy")}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
-                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(ilDate(game.game_date), "d/M/yyyy")}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(ilDate(game.game_date), "HH:mm")}</span>
+                    <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{game.venue || '—'}</span>
                     <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">
                       פתח לוח שיפוט <ChevronLeft className="w-3.5 h-3.5" />
                     </span>

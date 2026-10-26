@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react"
 import { addPlayerToSquad, getTeamMemberIds } from "@/lib/squad"
 import { canBeBorrowed, getPlayerLoanAges, YOUTH_MAX_AGE } from "@/lib/birthDate"
 import { UserPlus, Loader2, X, Users } from "lucide-react"
-import { Goalkeeper } from "@/components/icons/BrandIcons"
+import { Goalkeeper, PersonAdd } from "@/components/icons/BrandIcons"
 
 /**
  * Manual squad addition (sheet rows 7, 8, 13). A coach adds a loaned goalkeeper or a
@@ -121,7 +121,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
     return (
       <button onClick={() => setOpen(true)}
         className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors">
-        <UserPlus className="w-3.5 h-3.5" /> {ownOnly ? "הוספת שחקן מהקבוצה" : "הוספת שחקן ידנית"}
+        <PersonAdd className="w-4 h-4" /> {ownOnly ? "הוספת שחקן מהקבוצה" : "הוספת שחקן ידנית"}
       </button>
     )
   }
@@ -147,7 +147,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
                 a fake 0 (75 of the league's 95 have none). */}
             {list.map(p => (
               <option key={p.id} value={p.id}>
-                {p.jersey_number ?? "–"} · {p.first_name} {p.last_name}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}
+                {p.jersey_number ?? "–"} · {p.first_name} {p.last_name}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-4 h-4 inline-block align-[-2px]" title="שוער" /></> : null}
               </option>
             ))}
           </optgroup>
@@ -210,7 +210,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
 
       <button type="submit" disabled={saving || !playerId || dobPending || blocked || (needsTick && !ageOk)}
         className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
-        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PersonAdd className="w-4 h-4" />}
         הוספה לסגל
       </button>
     </form>
