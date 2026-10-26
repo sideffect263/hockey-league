@@ -2,8 +2,8 @@ import { useState, useEffect } from "react"
 import { Navigate } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
-import { Images, Flag, FolderPlus, Send, ExternalLink, RefreshCw, Loader2, Check, Ban, Clapperboard, BookOpen, Upload } from "lucide-react"
-import { Clock } from "@/components/icons/BrandIcons"
+import { Images, FolderPlus, Send, ExternalLink, RefreshCw, Loader2, Check, BookOpen, Upload } from "lucide-react"
+import { Report as Flag, Declined as Ban, Film as Clapperboard, Clock, BrandTile } from "@/components/icons/BrandIcons"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
@@ -65,7 +65,7 @@ function CreatorsWorkspace() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <EditIcon className="w-7 h-7 text-brand" /> יוצרי תוכן
+          <BrandTile name="edit" className="w-10 h-10 -my-1.5" /> יוצרי תוכן
         </h1>
         <p className="page-subtitle mt-1">סטודיו ליצירת תוכן, סיפורי משחקים, העלאת וידאו, דיווחים ואלבומים חדשים</p>
       </motion.div>

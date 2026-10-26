@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react"
-import { X, Loader2, UserPlus, CheckCircle2 } from "lucide-react"
+import { X, Loader2 } from "lucide-react"
+import { ApprovedStatus as CheckCircle2, PersonAdd } from "@/components/icons/BrandIcons"
 import { getTeams } from "@/lib/api"
 import { createPlayerSubmission } from "@/lib/playerSubmissions"
 import { linkRequestErrorMessage } from "@/lib/linkRequests"
-import { PersonAdd } from "@/components/icons/BrandIcons"
 
 const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
 

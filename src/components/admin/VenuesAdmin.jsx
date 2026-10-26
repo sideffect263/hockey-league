@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { Plus, Trash2, RefreshCw, Check, X, Pencil } from "lucide-react"
-import { MapPin } from "@/components/icons/BrandIcons"
+import { Plus, Trash2, RefreshCw, Check, X } from "lucide-react"
+import { EditIcon as Pencil, MapPin } from "@/components/icons/BrandIcons"
 import { getAllVenues, createVenue, updateVenue, deleteVenue } from "@/lib/venues"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
@@ -107,7 +107,7 @@ export default function VenuesAdmin() {
                   </>
                 ) : (
                   <>
-                    <button onClick={() => { setEditId(v.id); setEditName(v.name); setError(null) }} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { setEditId(v.id); setEditName(v.name); setError(null) }} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"><Pencil className="w-4 h-4" /></button>
                     <button onClick={() => toggle(v)} disabled={busy === v.id} className="text-[11px] font-semibold px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">{v.is_active ? "השבת" : "הפעל"}</button>
                     <button onClick={() => remove(v)} disabled={busy === v.id} className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5" /></button>
                   </>

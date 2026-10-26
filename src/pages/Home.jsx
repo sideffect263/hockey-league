@@ -2,14 +2,14 @@ import { useState, useEffect } from "react"
 import { getTeams, getGames, getLeagueSetting } from "@/lib/api"
 import { standingsComparator } from "@/lib/utils"
 import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
-import { Users, RefreshCw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
+import { TeamIcon, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
 import { TeamLink } from "@/components/EntityLinks"
 import FinalFourBracket from "@/components/FinalFourBracket"
 import { useSeasonName } from "@/App"
 import { StandingsSkeleton } from "@/components/skeletons/PageSkeletons"
-import { TeamIcon, BrandTile } from "@/components/icons/BrandIcons"
 
 // The dev deployment says so on the page, so nobody mistakes it for the league's
 // site — and the league's site must never say it. Decided from the hostname at
@@ -58,7 +58,7 @@ export default function Home() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <BrandTile name="trophy" className="w-10 h-10 -my-1.5" />
+          <BrandTile name="table" className="w-10 h-10 -my-1.5" />
           טבלת הליגה
         </h1>
         <p className="page-subtitle mt-1">דירוג קבוצות{seasonName && ` עונת ${seasonName}`}{IS_DEV_SITE && ' · סביבת בדיקות'}</p>

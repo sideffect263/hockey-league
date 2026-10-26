@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Coins, TrendingUp, TrendingDown, Users, Lock, ChevronLeft, Sparkles } from "lucide-react"
-import { Crown, Flame, Trophy } from "@/components/icons/BrandIcons"
+import { Lock, ChevronLeft } from "lucide-react"
+import { Coin as Coins, TrendUp as TrendingUp, TrendDown as TrendingDown, Squad as Users, Sparkle as Sparkles, Crown, Trophy, CloseGame } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { pct, coins } from "@/lib/market"
@@ -86,7 +86,7 @@ function MarketCardBody({ odds, teamsMap }) {
           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>
         </div>
         {open && chip?.kind === "close" && traded && (
-          <span className="stat-pill bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold shrink-0"><Flame className="w-4 h-4" /> משחק צמוד</span>
+          <span className="stat-pill bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold shrink-0"><CloseGame className="w-4 h-4" /> משחק צמוד</span>
         )}
       </div>
 
@@ -158,7 +158,7 @@ function MarketCardBody({ odds, teamsMap }) {
         {/* ── meta + CTA ── */}
         <div className="flex items-center gap-3 flex-wrap">
           <p className="flex-1 min-w-[10rem] flex items-center flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-            <Users className="w-3 h-3 shrink-0" />
+            <Users className="w-4 h-4 shrink-0" />
             <span className="whitespace-nowrap"><span className="mkt-num font-bold text-slate-700 dark:text-slate-200">{odds.traders || 0}</span> מהמרים</span>
             {Number(odds.volume) > 0 && <span className="whitespace-nowrap">· <span className="mkt-coin">{coins(odds.volume)}</span> מטבעות בשוק</span>}
             {open && odds.closes_at && <span className="whitespace-nowrap">· נסגר {closesLabel(odds.closes_at)}</span>}
@@ -190,7 +190,7 @@ function Side({ o, color, odds, chip, winner, showTrend }) {
         {mult && <span className="mkt-num text-[11px] text-slate-500 dark:text-slate-400" dir="ltr">×{mult}</span>}
         {t != null && (
           <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${t > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`} title="ב-48 שעות">
-            {t > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {t > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span className="mkt-num" dir="ltr">{t > 0 ? `+${t}` : t}</span> נק׳
           </span>
         )}
@@ -272,7 +272,7 @@ function Cta({ odds, traded }) {
   if (odds.block) return link("לצפייה בשוק")
   return (
     <Link to={href} className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-gold text-slate-900 hover:brightness-110 transition shadow-sm shrink-0">
-      <Coins className="w-3.5 h-3.5" /> {traded ? "להמר על המשחק" : "להיות הראשון להמר"}
+      <Coins className="w-4 h-4" /> {traded ? "להמר על המשחק" : "להיות הראשון להמר"}
     </Link>
   )
 }

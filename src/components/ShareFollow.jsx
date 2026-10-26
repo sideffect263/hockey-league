@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Share2, BellRing, Check, Loader2, X } from "lucide-react"
+import { Check, Loader2, X } from "lucide-react"
+import { Share as Share2, Bell as BellRing } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { follow } from "@/lib/follows"
 
@@ -32,7 +33,7 @@ export function ShareFollowButton({ targetType, name, onDark = false }) {
       className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors ${onDark
         ? "border-white/25 bg-white/10 text-white hover:bg-white/20"
         : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
-      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Share2 className="w-3.5 h-3.5" />} שיתוף לחברים
+      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Share2 className="w-4 h-4" />} שיתוף לחברים
     </button>
   )
 }
@@ -87,7 +88,7 @@ export function FollowInvite({ targetType, targetId, name }) {
       {state !== "done" && (
         <button onClick={accept} disabled={state === "busy"}
           className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity disabled:opacity-50">
-          {state === "busy" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-3.5 h-3.5" />}
+          {state === "busy" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-4 h-4" />}
           אוהד/ת + התראות
         </button>
       )}

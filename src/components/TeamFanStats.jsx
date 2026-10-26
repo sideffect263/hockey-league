@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Heart } from "lucide-react"
+import { LikeOn as Heart } from "@/components/icons/BrandIcons"
 import { getTeamFanStats } from "@/lib/follows"
 
 /**

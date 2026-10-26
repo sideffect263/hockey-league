@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
-import { AlertTriangle } from "lucide-react"
-import { Crown } from "@/components/icons/BrandIcons"
+import { Warning as AlertTriangle, Crown } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { getLeagueSetting, setLeagueSetting } from "@/lib/api"
 

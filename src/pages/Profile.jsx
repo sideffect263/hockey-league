@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { UserCircle, Shield, UserCheck, LogIn, LogOut, Sun, Moon, Save, Loader2, ChevronLeft, UserPlus, Trophy, Unlink, Camera, KeyRound, CheckCircle2, SlidersHorizontal } from "lucide-react"
-import { Gavel, Hourglass, PersonAdd } from "@/components/icons/BrandIcons"
+import { Shield, LogIn, LogOut, Sun, Moon, Save, Loader2, ChevronLeft, Trophy, Unlink, Camera, KeyRound, SlidersHorizontal } from "lucide-react"
+import { Person as UserCircle, PersonFollowing as UserCheck, ApprovedStatus as CheckCircle2, Gavel, Hourglass, PersonAdd, Manage } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { useTheme } from "@/lib/ThemeContext"
 import { getMyProfile, updateMyProfile, getPlayerPhotos, disconnectPairing, uploadAvatar } from "@/lib/profile"
@@ -368,7 +368,7 @@ export default function Profile() {
           )}
           {isAdmin && (
             <Link to="/admin" className="card card-hover p-4 flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center shrink-0"><Shield className="w-5 h-5" /></div>
+              <div className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center shrink-0"><Manage className="w-5 h-5" /></div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-slate-900 dark:text-white">ניהול הליגה</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">משחקים, שחקנים ובקשות בעלות</p>

@@ -2,8 +2,8 @@ import { useState, useEffect } from "react"
 import { getPendingManagerMedical, approveMedicalPodium, revokeMedical, openMedical } from "@/lib/medical"
 import { getUnmatchedAthletes } from "@/lib/podium"
 import PodiumSyncNote from "@/components/admin/PodiumSyncNote"
-import { ShieldCheck, Check, X, Eye, RefreshCw, BadgeCheck, Link2Off, Wallet, RotateCcw, UserPlus } from "lucide-react"
-import { Clock } from "@/components/icons/BrandIcons"
+import { Check, X, Eye, RefreshCw, Link2Off, RotateCcw } from "lucide-react"
+import { Approved as ShieldCheck, Verified as BadgeCheck, Wallet, PersonAdd as UserPlus, Clock } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 
 /**

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { getMyLoanRequests, respondLoan, cancelLoan } from "@/lib/loans"
 import { setMyAvailability } from "@/lib/availability"
-import { Handshake, Check, X, Loader2 } from "lucide-react"
+import { Check, X, Loader2 } from "lucide-react"
+import { Loan as Handshake } from "@/components/icons/BrandIcons"
 
 /**
  * The invited player's side of a loan (supabase/loan-requests.sql). He decides — not his

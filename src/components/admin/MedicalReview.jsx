@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getPendingMedical, reviewMedical, openMedical } from "@/lib/medical"
-import { HeartPulse, Check, X, Eye, RefreshCw } from "lucide-react"
+import { Check, X, Eye, RefreshCw } from "lucide-react"
+import { Medical as HeartPulse } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 
 /**

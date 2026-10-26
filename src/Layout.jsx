@@ -17,8 +17,7 @@ import {
   Handshake,
   Code2
 } from "lucide-react"
-import { Stats, Edit, Clipboard } from "./components/icons/HockeyIcons"
-import { RinkIcon, Trophy as BrandTrophy, MatchFallback, TeamsIcon, PlayerIcon, Referee, VideoLibrary, Person } from "@/components/icons/BrandIcons"
+import { RinkIcon, Trophy as BrandTrophy, MatchFallback, TeamsIcon, PlayerIcon, Referee, VideoLibrary, Person, Table, StatsIcon, EditIcon, Manage, Loan, DocumentIcon, PlayerPose, Market, GameForm } from "@/components/icons/BrandIcons"
 import { useAuth } from "./lib/AuthContext"
 import AuthModal from "./components/AuthModal"
 import OnboardingModal from "./components/OnboardingModal"
@@ -31,17 +30,23 @@ import { sizedImage } from "@/lib/imageSize"
 // Nav uses the league's own icons (BrandIcons) where a meaning has one. Their accents
 // (orange ball, brand-blue/white fills) stay readable on the active tab's tint and on
 // the mobile menu's solid brand fill, so no `mono` variant is needed. The in-house
-// HockeyIcons stay `mono` for the meanings the brand set doesn't cover yet.
+// Every item has brand art now (the final 154-file set).
 const NavRink = (p) => <RinkIcon {...p} />
-const NavStandings = (p) => <BrandTrophy {...p} />
+const NavStandings = (p) => <Table {...p} />
+const NavTournaments = (p) => <BrandTrophy {...p} />
 const NavGames = (p) => <MatchFallback {...p} />
 const NavTeams = (p) => <TeamsIcon {...p} />
 const NavPlayers = (p) => <PlayerIcon {...p} />
 const NavWhistle = (p) => <Referee {...p} />
-const NavStats = (p) => <Stats mono {...p} />
+const NavStats = (p) => <StatsIcon {...p} />
 const NavCamera = (p) => <VideoLibrary {...p} />
-const NavEdit = (p) => <Edit mono {...p} />
-const NavClipboard = (p) => <Clipboard mono {...p} />
+const NavEdit = (p) => <EditIcon {...p} />
+const NavClipboard = (p) => <Manage {...p} />
+const NavLoans = (p) => <Loan {...p} />
+const NavGuide = (p) => <DocumentIcon {...p} />
+const NavCareer = (p) => <PlayerPose pose={4} {...p} />
+const NavMarket = (p) => <Market {...p} />
+const NavResults = (p) => <GameForm {...p} />
 const NavMe = (p) => <Person {...p} />
 
 /**
@@ -247,23 +252,23 @@ export default function Layout({ children }) {
     { title: "שחקנים", url: "/players", icon: NavPlayers },
     // Shown to everyone — the page itself tells a visitor who it is for.
     // Short label: the header row has to fit a 1024px laptop next to a signed-in avatar cluster.
-    { title: "השאלות", url: "/loans", icon: Handshake },
+    { title: "השאלות", url: "/loans", icon: NavLoans },
   ]
 
   const moreNav = [
-    { title: "טורנירים", url: "/tournaments", icon: NavStandings },
+    { title: "טורנירים", url: "/tournaments", icon: NavTournaments },
     // Shown to everyone again: the face-naming tool left /creators for /devs (2026-10-15),
     // so content editors no longer have a copy of it in their workspace.
     { title: "מדיה", url: "/media", icon: NavCamera },
-    { title: "מדריך", url: "/guide", icon: BookOpen },
+    { title: "מדריך", url: "/guide", icon: NavGuide },
     // Unlike הוקי מרקט below, the career game is public: it needs no account,
     // touches no league data, and is the one page here a visitor who has never
     // heard of the sport might actually stay on.
-    { title: "ליגיונר", url: "/career", icon: Gamepad2 },
+    { title: "ליגיונר", url: "/career", icon: NavCareer },
     // הוקי מרקט is signed-in only: the page is gated to 18+ league players
     // anyway, and the public site should not advertise a betting board to the
     // youth-team visitors who make up much of its traffic.
-    ...(user ? [{ title: "הוקי מרקט", url: "/market", icon: Coins }] : []),
+    ...(user ? [{ title: "הוקי מרקט", url: "/market", icon: NavMarket }] : []),
   ]
 
   // Role tools — shown inside the avatar menu (desktop) and inline (mobile).
@@ -272,7 +277,7 @@ export default function Layout({ children }) {
     ...((isAdmin || coachTeamIds.length > 0 || isJudgeRole || isLeagueManager) ? [{ title: "ניהול", url: "/admin", icon: NavClipboard }] : []),
     ...(hasRole("judge") ? [{ title: "שיפוט", url: "/judge", icon: NavWhistle }] : []),
     // Results from the handwritten form: referees + league managers (never coaches).
-    ...((isAdmin || isJudgeRole || isLeagueManager) ? [{ title: "הזנת תוצאות", url: "/results", icon: ClipboardCheck }] : []),
+    ...((isAdmin || isJudgeRole || isLeagueManager) ? [{ title: "הזנת תוצאות", url: "/results", icon: NavResults }] : []),
     ...((isContentEditor || isAdmin) ? [{ title: "יוצרי תוכן", url: "/creators", icon: NavEdit }] : []),
   ]
 

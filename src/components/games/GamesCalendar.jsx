@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { format } from "date-fns"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List, FileSpreadsheet, FileText, Copy, Check, X } from "lucide-react"
-import { CalendarDays, CalendarPlus } from "@/components/icons/BrandIcons"
+import { ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List, FileSpreadsheet, Copy, Check, X } from "lucide-react"
+import { DocumentIcon as FileText, CalendarDays, CalendarPlus } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { entityPath } from "@/lib/slugs"
 import { toCsv, toXlsx, downloadBlob } from "@/lib/scheduleExport"
@@ -153,7 +153,7 @@ export default function GamesCalendar({ games, teamsMap, selectedDate, onSelectD
                     <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
                   </button>
                   <button type="button" onClick={exportCsv} disabled={!sorted.length} className="btn btn-secondary btn-sm">
-                    <FileText className="w-3.5 h-3.5" /> CSV
+                    <FileText className="w-4 h-4" /> CSV
                   </button>
                   <button type="button" onClick={() => setSubOpen(s => !s)} aria-expanded={subOpen} className="btn btn-primary btn-sm">
                     <CalendarPlus className="w-4 h-4" /> סנכרון ליומן

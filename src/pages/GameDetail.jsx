@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Clock, MapPin, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck, Squad, Medic, PersonClaim } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Clock, MapPin, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck, Squad, Medic, PersonClaim, TrendUp as TrendingUp, GameForm as ClipboardCheck } from "@/components/icons/BrandIcons"
 import { useParams, Link, useLocation } from "react-router-dom"
 import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason, getArchivedGames } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
-import { ArrowRight, ArrowLeft, Shield, Users, TrendingUp, RefreshCw, ClipboardCheck, Utensils, LogIn, UserPlus, HeartPulse } from "lucide-react"
+import { ArrowRight, ArrowLeft, Shield, RefreshCw, Utensils, LogIn } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -302,7 +302,7 @@ export default function GameDetail() {
         )}
         {canEnterFromForm && (
           <Link to={`/games/${id}/result`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-surface-sunken transition-colors">
-            <ClipboardCheck className="w-3.5 h-3.5" /> הזנת תוצאה מטופס
+            <ClipboardCheck className="w-4 h-4" /> הזנת תוצאה מטופס
           </Link>
         )}
         {/* Played: officials + the two coaches can pull the filled refereeing form */}

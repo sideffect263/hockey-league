@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { Plus, Trash2, ChevronRight, ChevronLeft, AlertTriangle, Loader2, Sparkles, Wand2 } from "lucide-react"
-import { CalendarDays } from "@/components/icons/BrandIcons"
+import { Plus, Trash2, ChevronRight, ChevronLeft, Loader2 } from "lucide-react"
+import { Warning as AlertTriangle, Sparkle as Sparkles, Sparkle as Wand2, CalendarDays } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import {
   getSeasons, createPlannedSeason, getSeasonGames, clearPlannedSeasonFixtures,
@@ -330,7 +330,7 @@ export default function SeasonCalendar() {
 
                 {dayConflicts.length > 0 && (
                   <div className="flex items-center gap-1 mb-1" title={dayConflicts.join(" · ")}>
-                    <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                     <span className="hidden sm:inline text-[9px] text-amber-600 dark:text-amber-400 truncate">{dayConflicts[0]}</span>
                   </div>
                 )}
@@ -387,7 +387,7 @@ export default function SeasonCalendar() {
                   </span>
                   {conflicts[key]?.length > 0 && (
                     <span className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 min-w-0">
-                      <AlertTriangle className="w-3 h-3 shrink-0" /><span className="truncate">{conflicts[key][0]}</span>
+                      <AlertTriangle className="w-4 h-4 shrink-0" /><span className="truncate">{conflicts[key][0]}</span>
                     </span>
                   )}
                 </div>
@@ -588,7 +588,7 @@ function GenerateSchedule({ season, teams, existingCount, onCancel, onDone, onJu
               <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 space-y-1">
                 {preview.warnings.map((w, i) => (
                   <p key={i} className="text-[11px] text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
-                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" /> {w}
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {w}
                   </p>
                 ))}
               </div>
@@ -596,7 +596,7 @@ function GenerateSchedule({ season, teams, existingCount, onCancel, onDone, onJu
 
             {existingCount > 0 && (
               <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 בעונה כבר יש {existingCount} משחקים. הלוח החדש <strong>יתווסף</strong> אליהם ולא יחליף אותם.
               </p>
             )}

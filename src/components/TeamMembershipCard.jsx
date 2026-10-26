@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Users, Loader2, LogOut, Plus, Check } from "lucide-react"
+import { Loader2, LogOut, Plus, Check } from "lucide-react"
 import { Clock, TeamsIcon } from "@/components/icons/BrandIcons"
 import { getTeams } from "@/lib/api"
 import { getMyJoinRequest, requestTeamJoin, cancelTeamJoin, leaveTeamById, getMyMemberships, joinErrorText } from "@/lib/teamMembership"

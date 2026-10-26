@@ -310,24 +310,34 @@ export function notificationIcon(n) {
 }
 
 // The league's own icon (components/icons/BrandIcons, by file name) for the types that
-// have one; null → fall back to notificationIcon's emoji. Kept apart from notificationIcon
+// have one (every type since the final set), the bell for anything new. Kept apart from notificationIcon
 // because that one is also plain text (admin tallies, tests).
 const BRAND_ICON = {
-  game_result: 'goal', goal_scored: 'goal',
-  game_change_request: 'calendar-move', game_change_opponent: 'calendar-move', game_moved: 'calendar-move',
-  medical_submitted: 'medical', medical_pending_manager: 'medical', medical_approved: 'medical',
-  medical_date_changed: 'medical', medical_reinspection: 'medical', unavailability_reported: 'injury',
-  coach_request: 'coach', claim_request: 'person-claim', claim_approved: 'person-following',
-  player_submission_request: 'person-add', player_submission_approved: 'person-following',
-  team_join_request: 'teams', team_join_approved: 'teams', follow_game_alert: 'person-follow',
-  medical_coach_approved: 'waiting',
-  medical_expiring: 'reminder', medical_expiring_player: 'reminder', game_register_nudge: 'reminder',
-  tournament_invite: 'trophy',
-  stream_approved: 'broadcast',
-  lm_officials_digest: 'officials', official_assigned: 'officials',
+  announcement: 'announce', post_like: 'like-on', post_comment: 'comment',
+  tagged: 'tag', claim_approved: 'approved-status', claim_rejected: 'rejected',
+  role_granted: 'verified', claim_request: 'person-claim', content_report: 'report',
+  game_result: 'goal', game_change_request: 'calendar-move', game_change_opponent: 'calendar-move',
+  game_change_approved: 'approved-status', game_change_rejected: 'rejected', team_join_request: 'join-team',
+  team_join_approved: 'approved-status', team_join_rejected: 'rejected', coach_request: 'coach',
+  coach_request_rejected: 'rejected', player_submission_request: 'new', player_submission_approved: 'approved-status',
+  player_submission_rejected: 'rejected', medical_submitted: 'medical', medical_pending_manager: 'medical',
+  medical_coach_approved: 'waiting', medical_reinspection: 'medical', medical_approved: 'medical',
+  medical_rejected: 'rejected', medical_expiring: 'reminder', coach_open_items: 'clipboard',
+  unavailability_reported: 'injury', unavailability_approved: 'approved-status', unavailability_rejected: 'rejected',
+  medical_revoked: 'declined', medical_date_changed: 'medical', medical_expiring_player: 'reminder',
+  tournament_invite: 'trophy', tournament_invite_accepted: 'approved-status', tournament_invite_declined: 'declined',
+  stream_approved: 'broadcast', loan_call: 'announce', loan_join_request: 'person-claim',
+  loan_join_approved: 'loan', loan_join_declined: 'declined', loan_request: 'loan',
+  loan_accepted: 'loan', loan_declined: 'declined', loan_cancelled: 'declined',
+  loan_removed: 'person-remove', game_register_reminder: 'announce', game_register_nudge: 'reminder',
+  game_form_sign: 'sign', coach_squad_digest: 'clipboard', lm_squad_digest: 'clipboard',
+  lm_officials_digest: 'officials', lm_broadcast: 'announce', game_moved: 'calendar-move',
+  follow_game_alert: 'star', app_update: 'app-update', goal_scored: 'goal',
+  official_assigned: 'officials', official_application: 'document', official_application_approved: 'approved-status',
+  official_application_rejected: 'rejected', market_resolved: 'trend-up', market_coins: 'coin',
 }
 export function notificationBrandIcon(n) {
-  return BRAND_ICON[n?.type] || null
+  return BRAND_ICON[n?.type] || 'bell'
 }
 
 // A server-written in-app path, or the feed. Never an absolute / protocol-relative URL.

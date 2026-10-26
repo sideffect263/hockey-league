@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { X, Search, UserPlus, Eye, EyeOff } from "lucide-react"
+import { X, Search, Eye, EyeOff } from "lucide-react"
+import { PersonAdd as UserPlus } from "@/components/icons/BrandIcons"
 import { TeamSide } from "@/lib/game/rules"
 import { ineligibleReasons, isBlocked, isChecked } from "@/lib/eligibility"
 import { EligibilityChips, OverrideButton, EligibilityWarning } from "@/components/judge/Eligibility"

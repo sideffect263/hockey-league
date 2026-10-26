@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { Newspaper, Users, Repeat, Eye, RefreshCw, PlayCircle, FileText, Info, Lightbulb, ArrowDownWideNarrow, Rss, Monitor, Smartphone } from "lucide-react"
-import { Clock, Trophy } from "@/components/icons/BrandIcons"
+import { Newspaper, Repeat, Eye, RefreshCw, PlayCircle, Lightbulb, ArrowDownWideNarrow, Rss, Monitor, Smartphone } from "lucide-react"
+import { Squad as Users, DocumentIcon as FileText, InfoIcon as Info, Clock, Trophy } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { useTheme } from "@/lib/ThemeContext"
 import { seriesColors, singleColor } from "@/lib/chartPalette"
@@ -237,7 +237,7 @@ function Body({ d, dark }) {
       </div>
 
       <div className="flex items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400 px-1">
-        <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <p>
           כניסות ומבקרים נספרים בכל הפלטפורמות, כולל אורחים. נתוני עומק (כרטיסים, זמן, לחיצות) נאספים כרגע רק ממשתמשים
           מחוברים באתר — {dp.tracked_viewers ?? 0} צופים — כי האפליקציות עדיין לא מדווחות על כרטיסים. התמונה האמיתית רחבה יותר.

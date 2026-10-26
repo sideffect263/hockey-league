@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { Cake, Check, Loader2, Pencil } from "lucide-react"
+import { Check, Loader2 } from "lucide-react"
+import { Birthday as Cake, EditIcon as Pencil } from "@/components/icons/BrandIcons"
 import { getMyBirthDate, setPlayerBirthDate, ageFromBirthDate, getMyBirthdayCelebration, setMyBirthdayCelebration } from "@/lib/birthDate"
 
 /**
@@ -67,7 +68,7 @@ export default function BirthDateCard({ playerId }) {
             {age != null && <span className="text-slate-400 text-xs"> · גיל {age}</span>}
           </span>
           <button onClick={() => setEditing(true)} aria-label="עריכת תאריך לידה"
-            className="ms-auto text-slate-400 hover:text-brand transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+            className="ms-auto text-slate-400 hover:text-brand transition-colors"><Pencil className="w-4 h-4" /></button>
         </div>
         {celebrate != null && (
           <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">

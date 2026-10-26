@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, ArrowLeft, Check, Loader2, Copy, Download, Send, Trash2, X, Search, Play, Image as ImageIcon, Sparkles, Smartphone, Monitor, AlertTriangle, Clapperboard, ChevronDown, Upload } from "lucide-react"
-import { Film, Flame } from "@/components/icons/BrandIcons"
+import { ArrowRight, ArrowLeft, Check, Loader2, Copy, Download, Send, Trash2, X, Search, Play, Image as ImageIcon, Smartphone, Monitor, ChevronDown, Upload } from "lucide-react"
+import { Sparkle as Sparkles, Warning as AlertTriangle, Film as Clapperboard, Film, Flame, BrandIcon } from "@/components/icons/BrandIcons"
 import FeedVideo from "@/components/feed/FeedVideo"
 import { getGames, getTeams } from "@/lib/api"
 import { deleteFeedDraft, publishFeedDraft, requestGoalReel, getLatestGoalReel, goalReelDownloadUrl } from "@/lib/feedDrafts"
@@ -61,7 +61,7 @@ export default function Studio({ onCountChange }) {
           {CONTENT_TYPES.map(t => (
             <button key={t.id} onClick={() => setType(t.id)}
               className="group text-start rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-4 hover:border-brand hover:bg-brand/[0.04] dark:hover:bg-brand/10 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-              <span className="text-3xl leading-none" aria-hidden>{t.emoji}</span>
+              <BrandIcon name={t.icon} className="w-9 h-9" />
               <span className="block mt-2 font-bold text-slate-900 dark:text-white group-hover:text-brand">{t.title}</span>
               <span className="block mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{t.hint}</span>
             </button>
@@ -156,7 +156,7 @@ function KitWizard({ type, ctx, onCancel, onCreated }) {
     <div className="card p-4 sm:p-6 space-y-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-          <span className="text-2xl" aria-hidden>{type.emoji}</span> {type.title}
+          <BrandIcon name={type.icon} className="w-7 h-7" /> {type.title}
         </h2>
         <button onClick={onCancel} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white">
           <X className="w-4 h-4" /> ביטול
@@ -658,7 +658,7 @@ function KitCard({ kit, game, gameLabel, teamName, onGone, onChange }) {
   return (
     <article className={`card p-4 sm:p-5 space-y-4 ${published ? "opacity-60" : ""}`}>
       <header className="flex items-center gap-2 flex-wrap text-xs">
-        <span className="text-lg" aria-hidden>{type?.emoji || "📝"}</span>
+        <BrandIcon name={type?.icon || "document"} className="w-5 h-5" />
         <span className="font-bold text-sm text-slate-900 dark:text-white">{type?.title || "טיוטה לפיד"}</span>
         <span className={`px-2 py-0.5 rounded-full font-bold ${state.cls}`}>{state.label}</span>
         <span className="text-slate-400">{stamp}</span>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { PenLine, CheckCircle2, Circle, RotateCcw } from "lucide-react"
-import { Captain } from "@/components/icons/BrandIcons"
+import { Circle, RotateCcw } from "lucide-react"
+import { EditIcon as PenLine, ApprovedStatus as CheckCircle2, Captain } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { useAuth } from "@/lib/AuthContext"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -193,14 +193,14 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
                   <>
                     <img src={savedSig} alt="החתימה השמורה שלך" className="h-8 w-auto max-w-[110px] rounded bg-white px-1 shrink-0" />
                     <button onClick={() => approveWithSaved(role)} disabled={busy} className="btn-primary btn-sm shrink-0">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> אישור וחתימה
+                      <CheckCircle2 className="w-4 h-4" /> אישור וחתימה
                     </button>
                     <button onClick={() => setPadRole(role)} disabled={busy} className="text-[11px] font-semibold text-brand shrink-0">חתימה חדשה</button>
                   </>
                 )}
                 {mine && !sig && !savedSig && (
                   <button onClick={() => setPadRole(role)} disabled={busy} className="btn-primary btn-sm shrink-0">
-                    <PenLine className="w-3.5 h-3.5" /> חתום
+                    <PenLine className="w-4 h-4" /> חתום
                   </button>
                 )}
                 {mine && sig?.is_mine && (

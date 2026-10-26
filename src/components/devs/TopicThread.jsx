@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { MessageSquare, Send, Trash2, Loader2 } from "lucide-react"
+import { Send, Trash2, Loader2 } from "lucide-react"
+import { Comment as MessageSquare } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { NOTE_KINDS, parseNote, relTime } from "@/lib/devs"
 import { sizedImage } from "@/lib/imageSize"

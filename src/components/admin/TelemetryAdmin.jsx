@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, MousePointerClick, Eye, Users, RefreshCw, Smartphone, Monitor } from 'lucide-react'
+import { Activity, MousePointerClick, Eye, RefreshCw, Smartphone, Monitor } from "lucide-react"
+import { Warning as AlertTriangle, Squad as Users } from "@/components/icons/BrandIcons"
 import { supabase } from '@/lib/supabase'
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 

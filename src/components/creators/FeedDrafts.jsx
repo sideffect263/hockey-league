@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Link } from "react-router-dom"
-import { Send, Trash2, Loader2, Check, Plus, X, StickyNote, ExternalLink, Clapperboard, Download, AlertTriangle } from "lucide-react"
-import { Film as Video } from "@/components/icons/BrandIcons"
+import { Send, Trash2, Loader2, Check, Plus, X, StickyNote, ExternalLink, Download } from "lucide-react"
+import { Film as Clapperboard, Warning as AlertTriangle, Film as Video } from "@/components/icons/BrandIcons"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import { getFeedDrafts, createFeedDraft, updateFeedDraft, deleteFeedDraft, publishFeedDraft, requestGoalReel, getLatestGoalReel, goalReelDownloadUrl } from "@/lib/feedDrafts"
 import { uploadFeedVideo, MAX_FEED_VIDEO_MB } from "@/lib/feedVideo"
@@ -255,7 +255,7 @@ function GoalReelButton({ onReady }) {
         </span>
       )}
       {!running && fresh && reel.status === "error" && (
-        <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400"><AlertTriangle className="w-3.5 h-3.5" /> {reel.note}</span>
+        <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400"><AlertTriangle className="w-4 h-4" /> {reel.note}</span>
       )}
       {err && <span className="text-xs text-red-600">{err}</span>}
     </div>

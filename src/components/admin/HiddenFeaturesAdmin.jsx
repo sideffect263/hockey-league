@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { Star, BellRing, Megaphone, Send, Loader2, RefreshCw, AlertTriangle, X } from "lucide-react"
+import { Send, Loader2, RefreshCw, X } from "lucide-react"
+import { Star, Bell as BellRing, Announce as Megaphone, Warning as AlertTriangle, Announce } from "@/components/icons/BrandIcons"
 import {
   getHiddenSettings, setHiddenSetting, DEFAULTS, parseAnnouncement, suggestAnnouncementId,
   buildAnnouncement, countBroadcastRecipients, sendBroadcast, getRecentBroadcasts, broadcastError,
@@ -405,7 +406,7 @@ function BroadcastPanel({ teams }) {
           <ul className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
             {recent.map((b) => (
               <li key={b.id} className="py-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <span className="font-semibold text-slate-800 dark:text-slate-100">📣 {b.title}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100"><Announce className="w-4 h-4 inline-block align-[-3px]" /> {b.title}</span>
                 <span className="text-xs text-slate-500">{audLabel(b.audience)} · <span dir="ltr">{b.recipients}</span> נמענים</span>
                 <span className="text-xs text-slate-400" dir="ltr">{new Date(b.created_at).toLocaleString("he-IL")}</span>
                 <span className="text-xs text-slate-400">{b.sent_email}</span>

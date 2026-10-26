@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react"
-import { MoreHorizontal, Pencil, Trash2, Flag, Ban, Loader2, Check, X, Tag } from "lucide-react"
+import { MoreHorizontal, Trash2, Loader2, Check, X } from "lucide-react"
+import { EditIcon as Pencil, Report as Flag, Declined as Ban, Tag } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { reportContent, blockUser, REPORT_REASONS, DETAILS_MAX } from "@/lib/moderation"
 
@@ -111,7 +112,7 @@ export default function ModerationMenu({ targetType, targetId, authorId, onEdit,
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={handleBlock} disabled={busy}
                       className="flex-1 flex items-center justify-center gap-1 text-xs font-bold px-2 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50">
-                      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />} כן, חסום
+                      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-4 h-4" />} כן, חסום
                     </button>
                     <button type="button" onClick={() => setConfirm(null)} disabled={busy}
                       className="flex-1 text-xs font-semibold px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
@@ -125,7 +126,7 @@ export default function ModerationMenu({ targetType, targetId, authorId, onEdit,
             <>
               <button type="button" role="menuitem" onClick={handleEdit}
                 className={`${item} text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700`}>
-                <Pencil className="w-3.5 h-3.5" /> עריכה
+                <Pencil className="w-4 h-4" /> עריכה
               </button>
               <button type="button" role="menuitem" onClick={() => setConfirm('delete')}
                 className={`${item} text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40`}>
@@ -136,11 +137,11 @@ export default function ModerationMenu({ targetType, targetId, authorId, onEdit,
             <>
               <button type="button" role="menuitem" onClick={() => { setOpen(false); setShowReport(true) }}
                 className={`${item} text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700`}>
-                <Flag className="w-3.5 h-3.5" /> דיווח
+                <Flag className="w-4 h-4" /> דיווח
               </button>
               <button type="button" role="menuitem" onClick={() => setConfirm('block')}
                 className={`${item} text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40`}>
-                <Ban className="w-3.5 h-3.5" /> חסימת משתמש
+                <Ban className="w-4 h-4" /> חסימת משתמש
               </button>
             </>
           )}
@@ -156,7 +157,7 @@ export default function ModerationMenu({ targetType, targetId, authorId, onEdit,
           {!confirm && extraItems.map(it => (
             <button key={it.key} type="button" role="menuitem" onClick={() => { close(); it.onClick() }}
               className={`${item} text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border-t border-slate-100 dark:border-slate-700`}>
-              <Tag className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{it.label}</span>
+              <Tag className="w-4 h-4 shrink-0" /> <span className="truncate">{it.label}</span>
             </button>
           ))}
         </div>
@@ -246,7 +247,7 @@ function ReportModal({ targetType, targetId, onClose }) {
             <div className="flex items-center gap-2 mt-3">
               <button type="submit" disabled={busy}
                 className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50">
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flag className="w-3.5 h-3.5" />} שליחת דיווח
+                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flag className="w-4 h-4" />} שליחת דיווח
               </button>
               <button type="button" onClick={onClose} disabled={busy}
                 className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowRight, Check, X, HelpCircle, Loader2, ListChecks, RotateCcw, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowRight, Check, X, Loader2, RotateCcw, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Help as HelpCircle, Checklist as ListChecks } from "@/components/icons/BrandIcons"
 import { getMatchRuns, getMatchRun, reviewMatchEvent, addMissedEvent, deleteMatchEvent } from "@/lib/videoLab"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 

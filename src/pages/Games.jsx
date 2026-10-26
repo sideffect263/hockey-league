@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee, Squad, BrandTile } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee, Squad, BrandTile, Warning as AlertTriangle, ApprovedStatus as CheckCircle2, Rejected as XCircle } from "@/components/icons/BrandIcons"
 import { Link } from "react-router-dom"
 import { getGames, getTeams, getPlayers, getReferees, getGameStats } from "@/lib/api"
-import { Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
+import { Shield, X, ArrowLeft, RefreshCw, Utensils } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -202,17 +202,17 @@ export default function Games() {
             {game.series_game && <span className="stat-pill bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">משחק {game.series_game}</span>}
             {att && (
               <span className={`stat-pill inline-flex items-center gap-1 ${att.tooFew ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"}`} title="מגיעים מהקבוצה שלך">
-                <Squad className="w-4 h-4" /> {att.count}{!att.gk && <AlertTriangle className="w-3 h-3 text-red-500" />}
+                <Squad className="w-4 h-4" /> {att.count}{!att.gk && <AlertTriangle className="w-4 h-4 text-red-500" />}
               </span>
             )}
             {game.status === "scheduled" && myAvail[game.id] === "available" && (
               <span className="stat-pill inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" title="אישרת הגעה למשחק">
-                <CheckCircle2 className="w-3 h-3" /> מגיע/ה
+                <CheckCircle2 className="w-4 h-4" /> מגיע/ה
               </span>
             )}
             {game.status === "scheduled" && myAvail[game.id] === "unavailable" && (
               <span className="stat-pill inline-flex items-center gap-1 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" title="סימנת שלא תגיע/י">
-                <XCircle className="w-3 h-3" /> לא מגיע/ה
+                <XCircle className="w-4 h-4" /> לא מגיע/ה
               </span>
             )}
           </div>
@@ -356,7 +356,7 @@ export default function Games() {
             <Trophy className="w-4 h-4" /> ליגה
           </button>
           <button onClick={() => setActiveCompetition("פלייאוף")} className={activeCompetition === "פלייאוף" ? "tab-active" : "tab-inactive"}>
-            <Shield className="w-4 h-4" /> פלייאוף
+            <Trophy className="w-4 h-4" /> פלייאוף
           </button>
           <button onClick={() => setActiveCompetition(FRIENDLY_GAME_TYPE)} className={activeCompetition === FRIENDLY_GAME_TYPE ? "tab-active" : "tab-inactive"}>
             <Crossed className="w-4 h-4" /> ידידותי

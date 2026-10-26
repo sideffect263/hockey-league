@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, Box, Loader2, Play, Pause, Info } from "lucide-react"
+import { ArrowRight, Box, Loader2, Play, Pause } from "lucide-react"
+import { InfoIcon as Info } from "@/components/icons/BrandIcons"
 import { getScenes, getScene } from "@/lib/scene3d/scenes"
 import { createReplay, EVENT_NAME, SHOT_OUTCOME, whoLabel } from "@/lib/scene3d/replay"
 import { loadYouTubeApi } from "@/lib/youtubeApi"

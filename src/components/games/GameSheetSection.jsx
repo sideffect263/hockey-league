@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { Camera, ClipboardList, Pencil, X } from "lucide-react"
+import { Camera, X } from "lucide-react"
+import { ClipboardIcon as ClipboardList, EditIcon as Pencil } from "@/components/icons/BrandIcons"
 import { summarizeReport, setGameSheet, removeGameFormPhoto } from "@/lib/gameFormData"
 import { uploadGameFormPhotos, signFormPhotos } from "@/lib/gameFormResult"
 
@@ -110,7 +111,7 @@ export default function GameSheetSection({ game, home, away, reportRow, canEdit,
         {sourceLabel && <span className="text-[11px] text-slate-500 dark:text-slate-400">· {sourceLabel}</span>}
         {canEdit && !editing && (
           <button onClick={startEdit} className="ms-auto inline-flex items-center gap-1 text-[12px] font-semibold text-brand">
-            <Pencil className="w-3.5 h-3.5" /> עריכה
+            <Pencil className="w-4 h-4" /> עריכה
           </button>
         )}
       </div>

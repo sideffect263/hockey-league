@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Flame, HatTrick, Crown, Trophy, MapPin } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Flame, HatTrick, Crown, Trophy, MapPin, DocumentIcon as FileText, Comment as MessageCircle, Verified as BadgeCheck, Birthday as Cake, Share as Share2, LikeOn, LikeOff, BrandIcon, Birthday } from "@/components/icons/BrandIcons"
 import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
-import { FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2, Link2, Unlink } from "lucide-react"
+import { ChevronDown, Send, Loader2, Camera, ExternalLink, Check, RefreshCw, ArrowLeft, Globe, Link2, Unlink } from "lucide-react"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment, setPostGame } from "@/lib/api"
@@ -379,7 +379,7 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
         </Link>
         {stats.length > 0 && (
           <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
-            <FileText className="w-3.5 h-3.5" />
+            <FileText className="w-4 h-4" />
             {open ? 'סגור פרטים' : 'פרטים'}
             <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
           </button>
@@ -498,7 +498,7 @@ function BirthdayBody({ player, team, body, showPhoto = false, fallbackPhoto }) 
         {fullName ? (
           <>
             <p className="text-sm text-slate-700 dark:text-slate-200">
-              יום הולדת שמח ל<PlayerLink playerId={player.id} className="font-bold text-slate-900 dark:text-white hover:text-brand transition-colors">{fullName}</PlayerLink>! 🎂
+              יום הולדת שמח ל<PlayerLink playerId={player.id} className="font-bold text-slate-900 dark:text-white hover:text-brand transition-colors">{fullName}</PlayerLink>! <Birthday className="w-5 h-5 inline-block align-[-4px]" />
             </p>
             {(player.jersey_number != null || team?.name) && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -762,11 +762,11 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
             </PlayerLink>
             {linkedPlayerId ? (
               <span title="מקושר לשחקן — לחצו לעמוד השחקן" className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">
-                <BadgeCheck className="w-3 h-3" /> שחקן
+                <BadgeCheck className="w-4 h-4" /> שחקן
               </span>
             ) : bday ? (
               <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">
-                <Cake className="w-3 h-3" /> יום הולדת
+                <Cake className="w-4 h-4" /> יום הולדת
               </span>
             ) : ext ? null : (
               <span title="חשבון שאינו מקושר לשחקן" className="shrink-0 text-[10px] font-medium text-slate-500 dark:text-slate-400">אורח/ת</span>
@@ -862,7 +862,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
                 {heartPop && (
                   <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.3, opacity: 0 }}
                     transition={{ duration: 0.25 }} className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <Heart className="w-20 h-20 text-white fill-white drop-shadow-lg" />
+                    <BrandIcon name="like" variant="large" className="w-20 h-20 drop-shadow-lg" />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -899,7 +899,7 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
         <div className="flex items-center gap-4 py-1">
           <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
             className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
-            <Heart className={`w-6 h-6 ${liked ? "fill-current" : ""}`} />
+            {liked ? <LikeOn className="w-6 h-6" /> : <LikeOff className="w-6 h-6" />}
           </button>
           <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
             <MessageCircle className="w-6 h-6" />

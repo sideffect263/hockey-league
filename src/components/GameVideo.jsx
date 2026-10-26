@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { BrandIcon, Film as Video, Live as Radio, MonitorPlay } from "@/components/icons/BrandIcons"
+import { BrandIcon, Film as Video, Live as Radio, MonitorPlay, Tag } from "@/components/icons/BrandIcons"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Trash2, ExternalLink, Tag, Camera, Eye, Stethoscope } from "lucide-react"
+import { Trash2, ExternalLink, Camera, Eye, Stethoscope } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
@@ -26,7 +26,7 @@ const KINDS = {
   penalty:   { he: "עונשין", emoji: "🟥", icon: "card-red", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300", dot: "bg-red-500" },
   period:    { he: "תקופה",  emoji: "⏱", icon: "clock", cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300", dot: "bg-indigo-500" },
   save:      { he: "הצלה",   emoji: "🧤", icon: "save", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
-  highlight: { he: "שיא",    emoji: "⭐", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-500" },
+  highlight: { he: "שיא",    emoji: "⭐", icon: "star", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-500" },
   other:     { he: "אחר",    emoji: "📍", icon: "location", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300", dot: "bg-slate-400" },
 }
 
@@ -585,7 +585,7 @@ function MarkerForm({ player, videoRef, home, away, players, onAdded }) {
     return (
       <button onClick={capture} disabled={!player}
         className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:text-orange-700 disabled:opacity-50 transition-colors">
-        <Tag className="w-3.5 h-3.5" /> סמן את המיקום הנוכחי
+        <Tag className="w-4 h-4" /> סמן את המיקום הנוכחי
       </button>
     )
   }

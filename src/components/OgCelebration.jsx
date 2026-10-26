@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { X } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { supabase } from "@/lib/supabase"
-import { Flame } from "@/components/icons/BrandIcons"
+import { BrandIcon, Celebrate } from "@/components/icons/BrandIcons"
 
 /**
  * One-time surprise for the 25 OG players (players.og_number, see supabase/og-badge.sql).
@@ -91,14 +91,14 @@ export default function OgCelebration() {
           <X className="w-5 h-5" />
         </button>
 
-        <p className="text-sm font-bold text-amber-300/80">🎉 הפתעה!</p>
+        <p className="text-sm font-bold text-amber-300/80"><Celebrate className="w-4 h-4 inline-block align-[-3px]" /> הפתעה!</p>
         <motion.div
           initial={reduce ? false : { scale: 0.3, rotate: -12 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.25 }}
           className="mx-auto mt-4 mb-5 w-36 h-36 rounded-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 shadow-[0_0_60px_rgba(251,191,36,0.45)] ring-4 ring-amber-200/40"
         >
-          <span className="text-5xl font-black tracking-wider text-slate-900 leading-none">OG</span>
+          <BrandIcon name="og-badge" className="w-20 h-20" title="OG" />
           <span dir="ltr" className="text-2xl font-extrabold text-slate-900/80 mt-1">#{number}</span>
         </motion.div>
 
@@ -114,7 +114,7 @@ export default function OgCelebration() {
           onClick={close}
           className="mt-6 w-full py-3 rounded-xl bg-amber-400 text-slate-900 font-extrabold hover:bg-amber-300 transition-colors"
         >
-          יאללה! <Flame className="w-5 h-5 inline-block align-[-3px]" />
+          יאללה! <Celebrate className="w-5 h-5 inline-block align-[-3px]" />
         </button>
         <Link
           to={`/players/${playerSlug}`}

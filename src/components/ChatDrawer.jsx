@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { MessageCircle, X, ArrowRight, Send, Plus, Search } from 'lucide-react'
+import { X, ArrowRight, Send, Plus, Search } from "lucide-react"
+import { Comment as MessageCircle } from "@/components/icons/BrandIcons"
 import { formatDistanceToNow, format } from 'date-fns'
 import { he } from 'date-fns/locale'
 import { useAuth } from '../lib/AuthContext'

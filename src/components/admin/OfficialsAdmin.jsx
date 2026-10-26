@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
-import { HeartPulse, AlertTriangle, X, Check, RefreshCw, Coins, Download, Copy, ClipboardCheck } from "lucide-react"
-import { Gavel } from "@/components/icons/BrandIcons"
+import { X, Check, RefreshCw, Download, Copy } from "lucide-react"
+import { Medical as HeartPulse, Warning as AlertTriangle, Coin as Coins, GameForm as ClipboardCheck, Gavel } from "@/components/icons/BrandIcons"
 import {
   OFFICIAL_ROLE_LABEL, listAssignableOfficials, getOfficialsOverview, getOfficialRates,
   getOfficialsPaylog, assignOfficial, removeOfficial, setOfficialRate, reviewOfficialApplication,
@@ -113,7 +113,7 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
     }
     return (
       <div className="flex items-center gap-1.5">
-        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" title={`חסר ${OFFICIAL_ROLE_LABEL[role]}`} />
+        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" title={`חסר ${OFFICIAL_ROLE_LABEL[role]}`} />
         <select defaultValue="" onChange={e => doAssign(game.id, e.target.value, role)} disabled={busy === `${game.id}:${role}`}
           className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/30 max-w-[150px]">
           <option value="">{`שבץ ${OFFICIAL_ROLE_LABEL[role]}…`}</option>
@@ -205,7 +205,7 @@ export default function OfficialsAdmin({ games = [], teamsMap = {} }) {
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2"><Coins className="w-4 h-4 text-brand" /> תשלומים (משחקים שהסתיימו)</h3>
           <div className="flex items-center gap-1.5">
             <button onClick={copyTemplate} disabled={!paylog.length} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">
-              {copied ? <ClipboardCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />} {copied ? "הועתק" : "העתק טקסט"}
+              {copied ? <ClipboardCheck className="w-4 h-4 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />} {copied ? "הועתק" : "העתק טקסט"}
             </button>
             <button onClick={exportCsv} disabled={!paylog.length} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40"><Download className="w-3.5 h-3.5" /> CSV</button>
           </div>

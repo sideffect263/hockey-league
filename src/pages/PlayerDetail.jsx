@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, Hourglass, BlueCard, RedCard, Flame, HatTrick, Goalkeeper, Calendar, Award, Trophy, PersonClaim } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, Hourglass, BlueCard, RedCard, Flame, HatTrick, Goalkeeper, Calendar, Award, Trophy, PersonClaim, PlayerIcon as Shirt, PersonAdd as UserPlus, Tag as AtSign, PlayerPose } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { getPlayers, getTeams, getGames, getGameStats, getLeagueSetting, getPlayerRoleBadges } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { useSeasonMode } from "@/App"
 import { getClaimContext, createClaim, cancelClaim } from "@/lib/claims"
 import { linkRequestErrorMessage } from "@/lib/linkRequests"
-import { ArrowRight, Shirt, Shield, RefreshCw, UserPlus, Check, AtSign } from "lucide-react"
+import { ArrowRight, Shield, RefreshCw, Check } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -310,7 +310,7 @@ export default function PlayerDetail() {
             </div>
             <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
               <span className={`stat-pill ${isGK ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
-                <Shield className="w-3.5 h-3.5" /> {positionLabel}
+                {isGK ? <Goalkeeper className="w-4 h-4" /> : <PlayerPose pose={2} className="w-4 h-4" />} {positionLabel}
               </span>
               <OgBadge number={player.og_number} />
               {player.age != null && (
@@ -318,7 +318,7 @@ export default function PlayerDetail() {
               )}
               {player.jersey_number != null && (
                 <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                  <Shirt className="w-3.5 h-3.5" /> {player.jersey_number}
+                  <Shirt className="w-4 h-4" /> {player.jersey_number}
                 </span>
               )}
               {player.is_core && <span className="stat-pill bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light">ליבה</span>}
@@ -375,7 +375,7 @@ export default function PlayerDetail() {
               <span className="text-sm text-slate-600 dark:text-slate-300">שיחקת בליגה? דרוש/י בעלות על הפרופיל</span>
               <button onClick={openAuth}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors shrink-0">
-                <UserPlus className="w-3.5 h-3.5" /> התחברות
+                <UserPlus className="w-4 h-4" /> התחברות
               </button>
             </>
           ) : ( /* canClaim */

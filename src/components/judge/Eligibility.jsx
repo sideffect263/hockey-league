@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { AlertTriangle, ShieldCheck } from "lucide-react"
+import { Warning as AlertTriangle, Approved as ShieldCheck } from "@/components/icons/BrandIcons"
 import { REASON, REASON_LABEL } from "@/lib/eligibility"
 
 /* ============================================================================
@@ -23,7 +23,7 @@ export function EligibilityChips({ reasons, T, overridden = false }) {
       ))}
       {overridden && (
         <span className="flex items-center gap-0.5 text-[9px] font-bold whitespace-nowrap" style={{ color: T.passive }} title="אושר ע״י מנהל">
-          <ShieldCheck className="w-3 h-3" /> אושר
+          <ShieldCheck className="w-4 h-4" /> אושר
         </span>
       )}
     </span>
@@ -57,7 +57,7 @@ export function OverrideButton({ T, onConfirm, name }) {
 export function EligibilityWarning({ T }) {
   return (
     <p className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px]" style={{ background: `${T.strike}1a`, color: T.strike }}>
-      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+      <AlertTriangle className="w-4 h-4 shrink-0" />
       לא ניתן לבדוק השעיות ואישורים רפואיים — אף שחקן לא נחסם
     </p>
   )

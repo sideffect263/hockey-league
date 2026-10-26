@@ -1,5 +1,5 @@
-import { Download, ShieldCheck, BarChart3, Newspaper, Bell } from "lucide-react"
-import { Trophy, Hourglass } from "@/components/icons/BrandIcons"
+import { Download, Newspaper } from "lucide-react"
+import { Approved as ShieldCheck, StatsIcon as BarChart3, Bell, Trophy, Hourglass } from "@/components/icons/BrandIcons"
 import { Whistle } from "@/components/icons/HockeyIcons"
 import { Link } from "react-router-dom"
 

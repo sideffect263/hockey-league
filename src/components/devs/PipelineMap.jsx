@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { ChevronDown, Lightbulb, Search, Users, MessageSquare, Workflow, X } from "lucide-react"
+import { ChevronDown, Lightbulb, Search, Workflow, X } from "lucide-react"
+import { Squad as Users, Comment as MessageSquare } from "@/components/icons/BrandIcons"
 import { LANES, STAGES, STAGE_STATUS } from "@/lib/pipelineMap"
 import { WORK } from "@/lib/stageWork"
 import VideoFlow from "@/components/video/VideoFlow"
@@ -106,8 +107,8 @@ function StageCard({ stage, members, notes, joined, onOpen }) {
         {w.helpWanted && <span className="font-bold px-1.5 py-0.5 rounded-full bg-brand text-white">מחפשים עזרה</span>}
         {joined && <span className="font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">הצטרפת</span>}
         <span className="inline-flex items-center gap-2 ms-auto">
-          <span className="inline-flex items-center gap-0.5"><Users className="w-3 h-3" />{members ?? "…"}</span>
-          <span className="inline-flex items-center gap-0.5"><MessageSquare className="w-3 h-3" />{notes}</span>
+          <span className="inline-flex items-center gap-0.5"><Users className="w-4 h-4" />{members ?? "…"}</span>
+          <span className="inline-flex items-center gap-0.5"><MessageSquare className="w-4 h-4" />{notes}</span>
         </span>
       </span>
     </button>

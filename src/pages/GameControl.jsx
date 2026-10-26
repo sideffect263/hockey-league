@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Eye, EyeOff, Lock, LockOpen, Pencil, Check, Minus, Plus, LayoutGrid, Wand2, Hand, X, Trash2, AlertTriangle, Settings2, ChevronDown, Wifi, WifiOff } from "lucide-react"
-import { MonitorPlay, Live as Radio, Film, Broadcast, Hourglass } from "@/components/icons/BrandIcons"
+import { ArrowRight, Eye, EyeOff, Lock, LockOpen, Check, Minus, Plus, LayoutGrid, Hand, X, Trash2, Settings2, ChevronDown, Wifi, WifiOff } from "lucide-react"
+import { EditIcon as Pencil, Sparkle as Wand2, Warning as AlertTriangle, MonitorPlay, Live as Radio, Film, Broadcast, Hourglass } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { useSlugId } from "@/lib/slugs"
 import { getGameById, getTeams } from "@/lib/api"
@@ -387,7 +387,7 @@ function CameraName({ camera, onRename }) {
   ) : (
     <>
       <span className="flex-1 min-w-0 truncate font-bold text-sm">{camera.label}</span>
-      <IconBtn label="שנה שם" onClick={() => setEditing(true)}><Pencil className="w-3.5 h-3.5" /></IconBtn>
+      <IconBtn label="שנה שם" onClick={() => setEditing(true)}><Pencil className="w-4 h-4" /></IconBtn>
     </>
   )
 }

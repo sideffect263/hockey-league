@@ -4,8 +4,8 @@ import {
   LOAN_BLOCK_LABEL, LOAN_FIELD_TARGET,
 } from "@/lib/loans"
 import { addPlayerToSquad } from "@/lib/squad"
-import { Search, Send, X, Loader2, Handshake, UserPlus, ChevronDown, Check, Megaphone } from "lucide-react"
-import { Hourglass, Goalkeeper } from "@/components/icons/BrandIcons"
+import { Search, Send, X, Loader2, ChevronDown, Check } from "lucide-react"
+import { Loan as Handshake, PersonAdd as UserPlus, Announce as Megaphone, Hourglass, Goalkeeper } from "@/components/icons/BrandIcons"
 
 /**
  * The coach's loan desk for one team in one game (supabase/loan-requests.sql).
@@ -175,7 +175,7 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
       {summary.open && (anyRoom || call.need_field || call.need_gk) && (
         <div className="p-2 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 space-y-1.5">
           <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-            <Megaphone className="w-3.5 h-3.5 text-brand" /> מחפשים שחקנים? פרסמו בעמוד ההשאלות
+            <Megaphone className="w-4 h-4 text-brand" /> מחפשים שחקנים? פרסמו בעמוד ההשאלות
           </p>
           <div className="flex items-center gap-1.5 flex-wrap">
             {[["field", "שחקן שדה", call.need_field, summary.field_slots], ["gk", "שוער", call.need_gk, summary.gk_slots]].map(([k, label, on, slots]) => (
@@ -300,7 +300,7 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
                         <button onClick={() => invite(c)} disabled={busyId === c.player_id || slotsForTab === 0}
                           className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity disabled:opacity-40">
                           {busyId === c.player_id ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : c.has_account ? <Send className="w-3 h-3" /> : <UserPlus className="w-3 h-3" />}
+                            : c.has_account ? <Send className="w-3 h-3" /> : <UserPlus className="w-4 h-4" />}
                           {c.has_account ? "הזמנה" : "הוספה"}
                         </button>
                       )}

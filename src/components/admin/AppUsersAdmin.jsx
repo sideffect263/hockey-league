@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { Smartphone, Users, UserCheck, AlertTriangle, RefreshCw, Search, Monitor, Info, Merge, Loader2, CheckCircle2 } from "lucide-react"
+import { Smartphone, RefreshCw, Search, Monitor, Merge, Loader2 } from "lucide-react"
+import { Squad as Users, PersonFollowing as UserCheck, Warning as AlertTriangle, InfoIcon as Info, ApprovedStatus as CheckCircle2 } from "@/components/icons/BrandIcons"
 import { getAppUsers, mergeAccounts } from "@/lib/appUsers"
 import { entityPath } from "@/lib/slugs"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
