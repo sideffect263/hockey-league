@@ -13,6 +13,9 @@
 -- and the own profile may not change player_id (no player ownership). Everything else raises
 -- 42501 "sandbox_account". Sandbox users also SEE test games/teams (can_see_test()).
 --
+-- 2026-10-26: the guard was missing on 36 tables added since. Re-run the attach loop below
+-- after adding ANY public table — a table the guard doesn't name refuses every sandbox write.
+--
 -- Down: supabase/sandbox-accounts-down.sql
 
 create table if not exists public.sandbox_accounts (
@@ -74,7 +77,9 @@ begin
 
   -- Personal plumbing: harmless, needed for the app to work, never visible to other users.
   if t in ('app_events', 'feed_impressions', 'push_subscriptions', 'user_contact',
-           'user_blocks', 'content_reports', 'notifications', 'follows') then
+           'user_blocks', 'content_reports', 'notifications', 'follows',
+           'saved_signatures', 'live_activity_start_tokens', 'live_activity_tokens',
+           'video_survey_responses') then
     return coalesce(new, old);
   end if;
 
@@ -93,7 +98,9 @@ begin
           and (tg_op <> 'UPDATE' or coalesce((o->>'is_test')::boolean, false));
   elsif t in ('game_stats', 'live_game_state', 'game_officials', 'game_reports', 'game_signatures',
               'game_broadcast', 'game_videos', 'game_availability', 'game_change_requests',
-              'game_form_submissions', 'game_reminder_log', 'markets', 'player_suspensions') then
+              'game_form_submissions', 'game_reminder_log', 'markets', 'player_suspensions',
+              'loan_requests', 'loan_calls', 'game_watchers', 'stream_requests', 'match_stat_votes',
+              'game_media', 'game_events', 'game_camera_activity', 'live_activity_games') then
     gid := coalesce(r->>'game_id', r->>'issued_game_id')::uuid;
     ok := gid is not null and public.is_test_game(gid);
     if ok and tg_op = 'UPDATE' then
