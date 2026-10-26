@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { UploadCloud, Film, Image as ImageIcon, Loader2, Trash2, X, CheckCircle2, AlertTriangle, Lock } from "lucide-react"
+import { UploadCloud, Image as ImageIcon, Loader2, Trash2, X, CheckCircle2, AlertTriangle, Lock } from "lucide-react"
+import { Film } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import {
   canContributeGame, getGameUploads, deleteGameUpload, uploadGameVideo, uploadGameImage,

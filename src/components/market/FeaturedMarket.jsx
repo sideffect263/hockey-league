@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Flame, Users, BarChart3, ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Users, BarChart3, ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Flame } from "@/components/icons/BrandIcons"
 import { coins as fmtCoins, pct, getTrades } from '@/lib/market'
 import { StatusChip, OutcomeFace } from '@/components/market/MarketCard'
 import PriceChart, { useSeriesColors } from '@/components/market/PriceChart'

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Ball } from '../components/icons/HockeyIcons'
+import { GoalIcon as Ball, Hourglass, BlueCard, RedCard, Flame, HatTrick, Goalkeeper, Calendar, Award, Trophy } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { getPlayers, getTeams, getGames, getGameStats, getLeagueSetting, getPlayerRoleBadges } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { useSeasonMode } from "@/App"
 import { getClaimContext, createClaim, cancelClaim } from "@/lib/claims"
 import { linkRequestErrorMessage } from "@/lib/linkRequests"
-import { ArrowRight, Shirt, Shield, Calendar, RefreshCw, UserPlus, Check, Clock, Award, Trophy, Flame, AtSign } from "lucide-react"
+import { ArrowRight, Shirt, Shield, RefreshCw, UserPlus, Check, AtSign } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -346,7 +346,7 @@ export default function PlayerDetail() {
           ) : pendingHere ? (
             <>
               <span className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
-                <Clock className="w-4 h-4" /> בקשת הבעלות נשלחה — ממתינה לאישור מנהל
+                <Hourglass className="w-4 h-4" /> בקשת הבעלות נשלחה — ממתינה לאישור מנהל
               </span>
               <button onClick={handleCancelClaim} disabled={claimBusy}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 shrink-0">
@@ -443,9 +443,9 @@ export default function PlayerDetail() {
                 <h.icon className="w-3.5 h-3.5" /> {h.label}
               </span>
             ))}
-            {bigGames > 0 && <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light">🔥 {bigGames} משחקי ענק</span>}
-            {hatTricks > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">🎩 {hatTricks} שלושערים</span>}
-            {isGK && cleanSheets > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">🧤 {cleanSheets} שערים נקיים</span>}
+            {bigGames > 0 && <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light"><Flame className="w-3.5 h-3.5" />{bigGames} משחקי ענק</span>}
+            {hatTricks > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><HatTrick className="w-3.5 h-3.5" />{hatTricks} שלושערים</span>}
+            {isGK && cleanSheets > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Goalkeeper className="w-3.5 h-3.5" />{cleanSheets} שערים נקיים</span>}
           </div>
 
           {/* Individual milestone games */}
@@ -454,7 +454,7 @@ export default function PlayerDetail() {
               {milestoneGames.map(m => (
                 <div key={m.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-base leading-none shrink-0">{m.kind === 'big_game' ? '🔥' : '🎩'}</span>
+                    {m.kind === 'big_game' ? <Flame className="w-5 h-5" /> : <HatTrick className="w-5 h-5" />}
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
                         {m.kind === 'big_game' ? 'משחק ענק' : 'שלושער'} · {m.goals} שערים
@@ -563,10 +563,10 @@ export default function PlayerDetail() {
                 </div>
                 {/* Player's per-game contribution + result score (left side in RTL) */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3 h-3" />{stat.goals}</span>}
-                  {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5">🟦 {stat.blue_cards}</span>}
-                  {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0.5 !px-1.5">🟥 {stat.red_cards}</span>}
-                  {isGK && stat.clean_sheet && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5">🧤</span>}
+                  {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0.5 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+                  {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+                  {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0.5 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
+                  {isGK && stat.clean_sheet && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0.5 !px-1.5"><Goalkeeper className="w-3.5 h-3.5" title="שער נקי" /></span>}
                   {/* RTL score: away_score first, home_score last so each score lands
                       beside its team (see hockey-league-rtl-score-gotcha memory). */}
                   <span className={`text-sm font-bold px-2 py-1 rounded-md tabular-nums ${resultCls}`} title={result === 'win' ? 'ניצחון' : result === 'loss' ? 'הפסד' : 'תיקו'}>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowRight, MapPin, CalendarDays, Lock, Coins, Droplets, Sparkles } from 'lucide-react'
+import { ArrowRight, Lock, Coins, Droplets, Sparkles } from 'lucide-react'
+import { MapPin, CalendarDays } from "@/components/icons/BrandIcons"
 import { useAuth } from '@/lib/AuthContext'
 import {
   loadBoard, cachedBoard, getTrades, gameSides,

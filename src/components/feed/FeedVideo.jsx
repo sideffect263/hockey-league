@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Volume2, VolumeX, Play } from "lucide-react"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
+import { PlayBadge } from "@/components/icons/BrandIcons"
 
 // Cloudflare Stream's player SDK: wraps the Stream iframe in a media-element-like object
 // (play() / pause() / muted), so our own uploads get the same on-screen autoplay rules.
@@ -239,9 +240,7 @@ export default function FeedVideo({ videoId, poster, title, provider = "youtube"
             <div className="w-full h-full bg-slate-800" />
           )}
           <span className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-            <span className="w-14 h-14 rounded-full bg-black/65 group-hover:bg-brand transition-colors flex items-center justify-center shadow-lg">
-              <Play className="w-6 h-6 text-white fill-current ms-0.5" />
-            </span>
+            <PlayBadge className="w-14 h-14 drop-shadow-lg transition-transform group-hover:scale-105" />
           </span>
           <span className="sr-only">{title}</span>
         </button>

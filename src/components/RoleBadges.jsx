@@ -1,4 +1,5 @@
-import { Shield, ShieldCheck, Gavel, PenSquare, ClipboardList, BadgeCheck, UserCircle, HeartPulse, Code2 } from "lucide-react"
+import { Shield, ShieldCheck, PenSquare, ClipboardList, BadgeCheck, UserCircle, HeartPulse, Code2 } from "lucide-react"
+import { Gavel } from "@/components/icons/BrandIcons"
 
 // Single source of truth for how a league role renders as a badge, so /me, the
 // player page and feed post authors all show the same label/icon/color per role.

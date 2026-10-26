@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { CalendarCheck, LogIn, UserPlus, Loader2, ArrowRight } from "lucide-react"
+import { LogIn, UserPlus, Loader2, ArrowRight } from "lucide-react"
+import { CalendarCheck } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { getGames } from "@/lib/api"
 import { entityPath } from "@/lib/slugs"

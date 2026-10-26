@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import {
-  TestTube2, RefreshCw, Copy, Check, Info, Smartphone, Search, AlertTriangle, CheckCircle2,
-  Clock, MessageCircle, Store, Plus, Globe,
-} from "lucide-react"
+import { TestTube2, RefreshCw, Copy, Check, Info, Smartphone, Search, AlertTriangle, CheckCircle2, MessageCircle, Store, Plus, Globe } from "lucide-react"
+import { Clock } from "@/components/icons/BrandIcons"
 import {
   getAndroidTesters, getAndroidTesterHealth, getAndroidTesterStatus, setAndroidTesterStatus, getAndroidLatestVersion,
   getAndroidTesterActivity,

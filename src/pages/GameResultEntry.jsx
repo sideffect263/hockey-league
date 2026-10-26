@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react"
-import { Ball } from '../components/icons/HockeyIcons'
+import { GoalIcon as Ball, BlueCard, RedCard } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { format } from "date-fns"
 import { ArrowRight, Camera, ImagePlus, X, Loader2, Sparkles, AlertTriangle, CheckCircle2, PencilLine, Minus, Plus, RefreshCw, FileImage, ChevronDown } from "lucide-react"
@@ -220,7 +220,7 @@ function TeamSection({ team, side, roster, state, setRow, own, setOwn, score, un
           <p className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5" />
             לא זוהה בסגל: “{u.written_name || "—"}”{u.number != null && <span dir="ltr"> #{u.number}</span>}
-            <span className="font-normal inline-flex items-center gap-1">· <Ball className="w-3 h-3" /> {u.goals || 0} · 🟦 {u.blue_cards || 0} · 🟥 {u.red_cards || 0}</span>
+            <span className="font-normal inline-flex items-center gap-1">· <Ball className="w-3.5 h-3.5" /> {u.goals || 0} · <BlueCard className="w-3.5 h-3.5" /> {u.blue_cards || 0} · <RedCard className="w-3.5 h-3.5" /> {u.red_cards || 0}</span>
           </p>
           <div className="flex flex-wrap gap-2 items-center">
             <select defaultValue="" onChange={e => e.target.value && onAssign(u, e.target.value)}
@@ -259,8 +259,8 @@ function TeamSection({ team, side, roster, state, setRow, own, setOwn, score, un
                   {low && <p className="text-[11px] text-amber-700 dark:text-amber-400">לבדוק: {ai.note || `נכתב “${ai.written || ""}”`}</p>}
                 </div>
                 <StatCell icon={<Ball className="w-3.5 h-3.5" />}><Stepper label="שערים" tone="emerald" value={r.goals} max={30} onChange={v => setRow(p.id, { goals: v })} /></StatCell>
-                <StatCell icon="🟦"><Stepper label="כרטיסים כחולים" tone="blue" value={r.blue} max={3} onChange={v => setRow(p.id, { blue: v })} /></StatCell>
-                <StatCell icon="🟥"><Stepper label="כרטיס אדום" tone="red" value={r.red} max={1} onChange={v => setRow(p.id, { red: v })} /></StatCell>
+                <StatCell icon={<BlueCard className="w-3.5 h-3.5" />}><Stepper label="כרטיסים כחולים" tone="blue" value={r.blue} max={3} onChange={v => setRow(p.id, { blue: v })} /></StatCell>
+                <StatCell icon={<RedCard className="w-3.5 h-3.5" />}><Stepper label="כרטיס אדום" tone="red" value={r.red} max={1} onChange={v => setRow(p.id, { red: v })} /></StatCell>
               </div>
             </div>
           )

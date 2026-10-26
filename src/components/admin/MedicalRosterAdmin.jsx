@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { getMedicalRoster, openMedical, getPlayerMedicalCerts, revokeMedical, setMedicalExamDate, uploadMedical, reviewMedical } from "@/lib/medical"
-import { HeartPulse, RefreshCw, Search, Eye, Ban, CalendarClock, X, Loader2, BadgeCheck, Link2Off, Wallet, Upload } from "lucide-react"
+import { HeartPulse, RefreshCw, Search, Eye, Ban, X, Loader2, BadgeCheck, Link2Off, Wallet, Upload } from "lucide-react"
+import { CalendarClock } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"

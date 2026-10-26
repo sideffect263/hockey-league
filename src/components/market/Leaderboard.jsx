@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trophy } from 'lucide-react'
+import { Trophy, Crown } from "@/components/icons/BrandIcons"
 import { getLeaderboard, coins as fmtCoins, START_BALANCE } from '@/lib/market'
 import { useAuth } from '@/lib/AuthContext'
 
@@ -57,7 +57,7 @@ export default function Leaderboard() {
             <p className="text-[11px] text-fg-muted">
               {ahead
                 ? <>עוד <span className="mkt-coin">{fmtCoins(Number(ahead.total) - Number(me.total))}</span> כדי לעקוף את {ahead.display_name}</>
-                : 'אתה בראש הטבלה — תחזיק מעמד 👑'}
+                : <span className="inline-flex items-center gap-1">אתה בראש הטבלה — תחזיק מעמד <Crown className="w-3.5 h-3.5" /></span>}
             </p>
           </div>
           <span className={`mkt-num font-black ${Number(me.total) >= START_BALANCE ? 'text-pos' : 'text-neg'}`}>{fmtCoins(me.total)}</span>

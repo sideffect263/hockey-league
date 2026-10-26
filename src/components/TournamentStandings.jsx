@@ -1,7 +1,7 @@
 import { standingsComparator } from "@/lib/utils"
 import TeamLogo from "@/components/TeamLogo"
 import { TeamLink } from "@/components/EntityLinks"
-import { Trophy } from "lucide-react"
+import { Trophy } from "@/components/icons/BrandIcons"
 
 // Tournament standings from completed games (win=3, tie=1 — matches the league's
 // server-side recompute). Seeds all participants so teams with 0 games still show.

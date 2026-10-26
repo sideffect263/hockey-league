@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
-import { X, Download, Image, Calendar, Swords, Loader2, Sparkles } from 'lucide-react'
+import { X, Download, Image, Loader2, Sparkles } from 'lucide-react'
+import { Calendar, MatchFallback as Swords } from "@/components/icons/BrandIcons"
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { generateMatchDayPoster, generateSingleMatchPoster, downloadCanvas } from '@/lib/posterGenerator'

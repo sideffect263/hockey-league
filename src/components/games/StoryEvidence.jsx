@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Play, FileText, Table2, ClipboardList, Video, PenLine, ListChecks, Image as ImageIcon, ShieldCheck, ShieldQuestion } from "lucide-react"
 import { streamIframeUrl, streamThumbUrl } from "@/lib/gameStories"
+import { PlayBadge } from "@/components/icons/BrandIcons"
 
 /*
  * Shared pieces of the evidence-backed game timeline: the beat's evidence (a lazy Stream
@@ -147,9 +148,7 @@ export function EvidenceMedia({ cite, row, compact = false }) {
             aria-label={caption ? `ניגון: ${caption}` : "ניגון הקטע"}>
             {thumb && <img src={thumb} alt="" loading="lazy" onError={() => setThumbFallback(f => f + 1)} className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />}
             <span className="absolute inset-0 flex items-center justify-center">
-              <span className="flex items-center justify-center size-12 rounded-full bg-black/60 text-white ring-2 ring-white/70 group-hover:scale-105 transition-transform">
-                <Play className="w-5 h-5 translate-x-[1px] fill-current" />
-              </span>
+              <PlayBadge className="size-12 drop-shadow group-hover:scale-105 transition-transform" />
             </span>
             {start > 0 && (
               <span dir="ltr" className="absolute bottom-2 left-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">

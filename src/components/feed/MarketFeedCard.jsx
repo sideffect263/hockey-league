@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { FeedCard, FeedCardHeader, FeedIcon, INSET } from "@/components/feed/FeedCardShell"
-import { Coins, Flame, TrendingUp, TrendingDown, Target, Trophy, ChevronLeft, Users, Zap } from "lucide-react"
+import { Coins, TrendingUp, TrendingDown, Target, ChevronLeft, Users, Zap } from "lucide-react"
+import { Flame, Trophy, Medal } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { SplitBar, useSideColors } from "@/components/market/MatchCard"
 import { pct, gameSides, matchdayLabel } from "@/lib/market"
@@ -178,7 +179,6 @@ function ResultsCard({ item, teamsMap }) {
 }
 
 /* ---- podium: weekly top 3 ---- */
-const MEDALS = ["🥇", "🥈", "🥉"]
 function PodiumCard({ item }) {
   const top = item.top || []
   // Visual podium order: 2nd · 1st · 3rd (1st in the middle, raised).
@@ -189,7 +189,7 @@ function PodiumCard({ item }) {
       <div className="flex items-start justify-center gap-3">
         {order.map((u, i) => u && (
           <div key={u.user_id} className={`flex-1 max-w-[120px] flex flex-col items-center text-center ${lift[i]}`}>
-            <span className="text-xl leading-none mb-1">{MEDALS[top.indexOf(u)]}</span>
+            <Medal rank={top.indexOf(u)} className="w-6 h-6 mb-1" />
             {u.avatar_url
               ? <img src={sizedImage(u.avatar_url, 48)} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-gold/40" referrerPolicy="no-referrer" loading="lazy" />
               : <div className="w-12 h-12 rounded-full bg-surface-sunken ring-2 ring-gold/40 flex items-center justify-center text-lg font-black text-fg-muted">{(u.name || "?").trim().charAt(0)}</div>}

@@ -13,11 +13,8 @@ import {
   getLeagueSetting,
   closeSeason, getArchivedSeasons, getCurrentSeason
 } from "@/lib/api"
-import {
-  Shield, Calendar, UserCheck, Users, Settings, LogOut, Trash2, UserMinus, Plus,
-  Pencil, X, Check, Save, ChevronDown, UserPlus, Crown, Trophy,
-  Archive, AlertTriangle, Image, Flag, CalendarClock
-} from "lucide-react"
+import { Shield, UserCheck, Users, Settings, LogOut, Trash2, UserMinus, Plus, Pencil, X, Check, Save, ChevronDown, UserPlus, Archive, AlertTriangle, Image, Flag } from "lucide-react"
+import { Calendar, Crown, Trophy, CalendarClock } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
 import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf } from "@/lib/ageGroups"

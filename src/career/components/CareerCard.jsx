@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Trophy, Share2, Check, RotateCcw } from 'lucide-react'
+import { Share2, Check, RotateCcw } from 'lucide-react'
+import { Trophy } from "@/components/icons/BrandIcons"
 import { cn } from '@/lib/utils'
 import { careerSummary, careerGrade, formatMoney } from '../engine'
 import { shareUrl } from '../storage'

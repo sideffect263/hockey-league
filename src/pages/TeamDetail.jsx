@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Ball } from '../components/icons/HockeyIcons'
+import { GoalIcon as Ball, Calendar, Clock, Captain, Live as Radio } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -8,7 +8,7 @@ import { requestTeamJoin, joinErrorText } from "@/lib/teamMembership"
 import { standingsComparator } from "@/lib/utils"
 import { ageOf, DEFAULT_AGE, AGE_LABEL } from "@/lib/ageGroups"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
-import { ArrowRight, Users, Calendar, Clock, RefreshCw, Pencil, HeartPulse, Crown, ChevronDown, Radio, Star } from "lucide-react"
+import { ArrowRight, Users, RefreshCw, Pencil, HeartPulse, ChevronDown, Star } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -383,7 +383,7 @@ export default function TeamDetail() {
                 </span>
                 {player.is_referee && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">REF</span>}
                 {team.captain_player_id === player.id && (
-                  <span title="קפטן הקבוצה" className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><Crown className="w-3 h-3" />C</span>
+                  <span title="קפטן הקבוצה" className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><Captain className="w-3.5 h-3.5" /></span>
                 )}
                 {canEdit && (
                   medicalApproved.has(player.id)
@@ -396,8 +396,8 @@ export default function TeamDetail() {
                   <button onClick={(e) => toggleCaptain(e, player.id)} disabled={captainBusy}
                     title={team.captain_player_id === player.id ? "הסר קפטן" : "קבע כקפטן"}
                     aria-label={team.captain_player_id === player.id ? "הסר קפטן" : "קבע כקפטן"}
-                    className={`p-1 rounded-md transition-colors ${team.captain_player_id === player.id ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 hover:text-amber-500'}`}>
-                    <Crown className="w-3.5 h-3.5" />
+                    className={`p-1 rounded-md transition-colors ${team.captain_player_id === player.id ? 'text-amber-500' : 'opacity-30 grayscale hover:opacity-100 hover:grayscale-0'}`}>
+                    <Captain className="w-3.5 h-3.5" />
                   </button>
                 )}
                 {ownGoals(player) > 0 && <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400"><span>{ownGoals(player)}</span><Ball className="w-3.5 h-3.5" /></span>}

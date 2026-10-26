@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Link } from "react-router-dom"
-import { Send, Trash2, Loader2, Check, Video, Plus, X, StickyNote, ExternalLink, Clapperboard, Download, AlertTriangle } from "lucide-react"
+import { Send, Trash2, Loader2, Check, Plus, X, StickyNote, ExternalLink, Clapperboard, Download, AlertTriangle } from "lucide-react"
+import { Film as Video } from "@/components/icons/BrandIcons"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import { getFeedDrafts, createFeedDraft, updateFeedDraft, deleteFeedDraft, publishFeedDraft, requestGoalReel, getLatestGoalReel, goalReelDownloadUrl } from "@/lib/feedDrafts"
 import { uploadFeedVideo, MAX_FEED_VIDEO_MB } from "@/lib/feedVideo"

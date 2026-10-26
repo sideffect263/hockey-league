@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { BookOpen, Goal } from "lucide-react"
+import { BookOpen } from "lucide-react"
+import { GoalIcon as Goal } from "@/components/icons/BrandIcons"
 import { getGameStory, getMediaByIds, getEventsByIds, storyMediaIds, storyEventIds, storyParagraphs, streamThumbUrl } from "@/lib/gameStories"
 import { BeatHeader, BeatEvidence } from "@/components/games/StoryEvidence"
 

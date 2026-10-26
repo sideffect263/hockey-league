@@ -3,7 +3,8 @@ import {
   getUnavailability, reportUnavailability, decideUnavailability, clearUnavailability,
   unavailabilityState, UNAVAILABILITY_KINDS, KIND_LABEL, todayISO,
 } from "@/lib/unavailability"
-import { CalendarOff, RefreshCw, Plus, Check, X, Undo2, Loader2, Clock } from "lucide-react"
+import { RefreshCw, Plus, Check, X, Undo2, Loader2 } from "lucide-react"
+import { CalendarOff, Clock } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 

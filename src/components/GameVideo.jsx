@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Ball } from './icons/HockeyIcons'
+import { BrandIcon, Film as Video, Live as Radio, MonitorPlay } from "@/components/icons/BrandIcons"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Video, Radio, Trash2, ExternalLink, Tag, Camera, Eye, Stethoscope, MonitorPlay } from "lucide-react"
+import { Trash2, ExternalLink, Tag, Camera, Eye, Stethoscope } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
@@ -20,14 +20,14 @@ import { playWHEP, hasTurn } from "@/lib/whep"
 // The viewer count on a live stream hides below this.
 const MIN_VIEWERS_SHOWN = 15
 
-// Marker kinds → Hebrew label + emoji + pill colour (reuses the StatPills palette).
+// Marker kinds → Hebrew label + brand icon (emoji where none, and in <option>s) + pill colour (reuses the StatPills palette).
 const KINDS = {
-  goal:      { he: "גול",   emoji: "⚽", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", dot: "bg-emerald-500" },
-  penalty:   { he: "עונשין", emoji: "🟥", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300", dot: "bg-red-500" },
-  period:    { he: "תקופה",  emoji: "⏱", cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300", dot: "bg-indigo-500" },
-  save:      { he: "הצלה",   emoji: "🧤", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
+  goal:      { he: "גול",   emoji: "⚽", icon: "goal", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", dot: "bg-emerald-500" },
+  penalty:   { he: "עונשין", emoji: "🟥", icon: "card-red", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300", dot: "bg-red-500" },
+  period:    { he: "תקופה",  emoji: "⏱", icon: "clock", cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300", dot: "bg-indigo-500" },
+  save:      { he: "הצלה",   emoji: "🧤", icon: "save", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
   highlight: { he: "שיא",    emoji: "⭐", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-500" },
-  other:     { he: "אחר",    emoji: "📍", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300", dot: "bg-slate-400" },
+  other:     { he: "אחר",    emoji: "📍", icon: "location", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300", dot: "bg-slate-400" },
 }
 
 // ---- YouTube IFrame API: load the script once, resolve when window.YT is ready.
@@ -511,7 +511,7 @@ export default function GameVideo({ game, home, away, players = [] }) {
                     <button onClick={() => seek(m.video_seconds)}
                       className="flex-1 flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-right">
                       <span dir="ltr" className="text-xs font-bold tabular-nums text-orange-500 shrink-0 w-12 text-left">{fmtClock(m.video_seconds)}</span>
-                      <span className={`stat-pill !py-0 !px-1.5 shrink-0 inline-flex items-center gap-1 ${KINDS[m.kind]?.cls}`}>{m.kind === "goal" ? <Ball className="w-3 h-3" /> : KINDS[m.kind]?.emoji} {KINDS[m.kind]?.he}</span>
+                      <span className={`stat-pill !py-0 !px-1.5 shrink-0 inline-flex items-center gap-1 ${KINDS[m.kind]?.cls}`}>{KINDS[m.kind]?.icon ? <BrandIcon name={KINDS[m.kind].icon} className="w-3 h-3" /> : KINDS[m.kind]?.emoji} {KINDS[m.kind]?.he}</span>
                       <span className="text-sm text-slate-700 dark:text-slate-300 truncate">{m.label || ""}</span>
                     </button>
                     {canMark && (
