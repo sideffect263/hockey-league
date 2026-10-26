@@ -50,6 +50,7 @@ import TelemetryAdmin from "@/components/admin/TelemetryAdmin"
 import UserAnalyticsAdmin from "@/components/admin/UserAnalyticsAdmin"
 import FansAdmin from "@/components/admin/FansAdmin"
 import FeedAnalyticsAdmin from "@/components/admin/FeedAnalyticsAdmin"
+import StreamAudienceAdmin from "@/components/admin/StreamAudienceAdmin"
 import CalendarSubscribersAdmin from "@/components/admin/CalendarSubscribersAdmin"
 import AppUsersAdmin from "@/components/admin/AppUsersAdmin"
 import AndroidTestersAdmin from "@/components/admin/AndroidTestersAdmin"
@@ -63,7 +64,7 @@ import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import SurveysAdmin from "@/components/admin/SurveysAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart, Radio } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { ilDate } from "@/lib/ilTime"
@@ -92,6 +93,7 @@ const tabs = [
   { id: "analytics", label: "ניתוח משתמשים", icon: LineChartIcon },
   { id: "fans", label: "אוהדים", icon: Heart },
   { id: "feed_analytics", label: "ניתוח פיד", icon: Newspaper },
+  { id: "stream_audience", label: "צפייה בשידורים", icon: Radio },
   { id: "surveys", label: "סקרים", icon: ClipboardCheck },
   { id: "calendar_subs", label: "מנויי יומן", icon: CalendarCheck },
   { id: "telemetry", label: "טלמטריה", icon: Activity },
@@ -281,6 +283,7 @@ export default function Admin() {
               {currentTab === "analytics" && <UserAnalyticsAdmin />}
               {currentTab === "fans" && <FansAdmin />}
               {currentTab === "feed_analytics" && <FeedAnalyticsAdmin />}
+              {currentTab === "stream_audience" && <StreamAudienceAdmin />}
               {currentTab === "surveys" && isAdmin && <SurveysAdmin />}
               {currentTab === "calendar_subs" && <CalendarSubscribersAdmin />}
               {currentTab === "telemetry" && <TelemetryAdmin />}
