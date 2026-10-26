@@ -217,12 +217,15 @@ const handlers = {
     if (error) return { error }
     const limit = clampInt(args.limit, 10, 1, 50)
     let q = 'players?select=first_name,last_name,jersey_number,team_id,goals,games_played,slug' +
-      `&goals=gt.0&is_referee=is.false&order=goals.desc,games_played.asc&limit=${limit}`
+      // Field players, like the site's widget. NOT is_referee=false: referees here are
+      // players too (it hid the league's top scorer).
+      `&goals=gt.0&position=eq.Field%20Player&order=goals.desc,games_played.asc&limit=${limit}`
     if (picked) q += `&team_id=in.(${picked.map(t => t.id).join(',')})`
     const rows = await sb(q)
     return {
       scorers: rows.map((p, i) => ({
-        rank: i + 1, player: `${p.first_name} ${p.last_name}`.trim(), number: p.jersey_number,
+        // Tied players share a rank (1, 2, 3, 4, 4, 4), same as the site.
+        rank: rows.findIndex(r => r.goals === p.goals) + 1, player: `${p.first_name} ${p.last_name}`.trim(), number: p.jersey_number,
         team: byId[p.team_id]?.name || null, goals: p.goals, games: p.games_played,
         url: `${SITE}/players/${p.slug}`,
       })),
