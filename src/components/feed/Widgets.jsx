@@ -129,10 +129,14 @@ export function NextGameWidget({ games = [], teams = [] }) {
 
 export function LeadersWidget({ players = [], teams = [] }) {
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
-  const top = players
+  const ranked = players
     .filter(p => p.position === 'Field Player' && (p.goals || 0) > 0)
-    .sort((a, b) => (b.goals || 0) - (a.goals || 0))
-    .slice(0, 5)
+    .sort((a, b) => (b.goals || 0) - (a.goals || 0) || `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`, 'he'))
+  // Top 5, but never split a tie: everyone level with the 5th player is shown too,
+  // and tied players share a rank (1, 2, 3, 4, 4, 4, 4).
+  const cutoff = ranked[4]?.goals || 0
+  const top = ranked.filter((p, i) => i < 5 || (p.goals || 0) === cutoff)
+  const rankOf = (i) => top.findIndex(p => (p.goals || 0) === (top[i].goals || 0))
 
   return (
     <div className="card overflow-hidden">
@@ -143,7 +147,7 @@ export function LeadersWidget({ players = [], teams = [] }) {
         )}
         {top.map((p, i) => (
           <div key={p.id} className="flex items-center gap-2.5 px-1.5 py-1">
-            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${medal(i)}`}>{i + 1}</span>
+            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${medal(rankOf(i))}`}>{rankOf(i) + 1}</span>
             <div className="flex-1 min-w-0">
               <Link to={entityPath('players', p)} className="block group">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{p.first_name} {p.last_name}</p>
