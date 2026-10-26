@@ -132,6 +132,68 @@ export const Coach = mk("coach", "Coach")
 export const Medical = mk("medical", "Medical")
 export const Injury = mk("injury", "Injury")
 
+// Round 3 (the final 154-file set): the rest of README's meanings.
+export const LikeOn = mk("like-on", "LikeOn")
+export const LikeOff = mk("like-off", "LikeOff")
+export const Comment = mk("comment", "Comment")
+export const Tag = mk("tag", "Tag")
+export const Untag = mk("untag", "Untag")
+export const Share = mk("share", "Share")
+export const ShareAlt = mk("share-alt", "ShareAlt")
+export const Bell = mk("bell", "Bell")
+export const BellNew = mk("bell-new", "BellNew")
+export const BellOff = mk("bell-off", "BellOff")
+export const Announce = mk("announce", "Announce")
+export const Celebrate = mk("celebrate", "Celebrate")
+export const Birthday = mk("birthday", "Birthday")
+export const NewBadge = mk("new", "NewBadge")
+export const Sparkle = mk("sparkle", "Sparkle")
+export const GameForm = mk("game-form", "GameForm")
+export const Sign = mk("sign", "Sign")
+export const ClipboardIcon = mk("clipboard", "ClipboardIcon")
+export const Checklist = mk("checklist", "Checklist")
+export const EditIcon = mk("edit", "EditIcon")
+export const DocumentIcon = mk("document", "DocumentIcon")
+export const Report = mk("report", "Report")
+export const Foul = mk("foul", "Foul")
+export const Star = mk("star", "Star")
+export const StarOff = mk("star-off", "StarOff")
+export const Mvp = mk("mvp", "Mvp")
+export const Table = mk("table", "Table")
+export const MovedUp = mk("moved-up", "MovedUp")
+export const MovedDown = mk("moved-down", "MovedDown")
+export const Market = mk("market", "Market")
+export const Coin = mk("coin", "Coin")
+export const Wallet = mk("wallet", "Wallet")
+export const TrendUp = mk("trend-up", "TrendUp")
+export const TrendDown = mk("trend-down", "TrendDown")
+export const StatsIcon = mk("stats", "StatsIcon")
+export const CloseGame = mk("close-game", "CloseGame")
+export const Verified = mk("verified", "Verified")
+export const Admin = mk("admin", "Admin")
+export const Manage = mk("manage", "Manage")
+export const Approved = mk("approved", "Approved")
+export const ApprovedStatus = mk("approved-status", "ApprovedStatus")
+export const Rejected = mk("rejected", "Rejected")
+export const Declined = mk("declined", "Declined")
+export const Warning = mk("warning", "Warning")
+export const InfoIcon = mk("info", "InfoIcon")
+export const Help = mk("help", "Help")
+export const Loan = mk("loan", "Loan")
+export const JoinTeam = mk("join-team", "JoinTeam")
+export const AppUpdate = mk("app-update", "AppUpdate")
+export const TestGame = mk("test-game", "TestGame")
+
+// The four traced player poses: 1 stick out front, 2 stride, 3 ready, 4 lunge.
+export function PlayerPose({ pose = 1, ...props }) {
+  return <BrandIcon name={`player-pose-${pose}`} {...props} />
+}
+
+// The referee holding up the card, for a card moment (large art only).
+export function RefereeCard({ color: c, ...props }) {
+  return <BrandIcon name={`referee-${c}`} variant="large" {...props} />
+}
+
 const MEDAL = ["medal-1", "medal-2", "medal-3"]
 // Podium medal for 0-based rank (0..2); null past the podium.
 export function Medal({ rank, ...props }) {

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { setPlayerBirthDate, ageFromBirthDate, YOUTH_MAX_AGE } from "@/lib/birthDate"
-import { Cake, RefreshCw, Search, Check, Loader2, AlertTriangle } from "lucide-react"
+import { RefreshCw, Search, Check, Loader2 } from "lucide-react"
+import { Birthday as Cake, Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -172,7 +173,7 @@ export default function BirthDatesAdmin({ players = [], teamsMap = {}, membersBy
                     <tr key={r.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-2 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                         <span className="flex items-center gap-1.5">
-                          {!r.dob && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="חסר תאריך לידה" />}
+                          {!r.dob && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" aria-label="חסר תאריך לידה" />}
                           {r.first_name} {r.last_name}
                           {r.position === "Goalkeeper" && (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">GK</span>

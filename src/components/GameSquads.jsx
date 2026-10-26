@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ClipboardList } from "lucide-react"
+import { ClipboardIcon as ClipboardList } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { PlayerLink } from "@/components/EntityLinks"
 import { getPublicAttendance } from "@/lib/availability"

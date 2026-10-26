@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FlaskConical, RefreshCw, Loader2, Upload, ArrowRight, Play, Pause, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Ban, HelpCircle, Eraser, Zap, Trash2, Check, Wand2, Newspaper, Undo2, ExternalLink } from "lucide-react"
-import { GoalIcon as Goal } from "@/components/icons/BrandIcons"
+import { FlaskConical, RefreshCw, Loader2, Upload, ArrowRight, Play, Pause, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eraser, Zap, Trash2, Check, Newspaper, Undo2, ExternalLink } from "lucide-react"
+import { Declined as Ban, Help as HelpCircle, Sparkle as Wand2, GoalIcon as Goal } from "@/components/icons/BrandIcons"
 import {
   getLabClips, getLabClip, getLabLabels, saveLabLabel, deleteLabLabel, updateLabClip, uploadLabClip, deleteLabClip, labUrl,
   getPostBrief, requestFeedSwap, getLabClipStatus, getLabVersions, getLabShots, getGameSides,

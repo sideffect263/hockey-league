@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { BarChart3, Table2 } from 'lucide-react'
+import { Table2 } from "lucide-react"
+import { StatsIcon as BarChart3 } from "@/components/icons/BrandIcons"
 
 /**
  * Card shell for every chart on the page.
@@ -48,7 +49,7 @@ export default function ChartCard({
           <div className="shrink-0">{toolbar}</div>
         ) : table ? (
           <div className="flex shrink-0 rounded-lg bg-slate-100 dark:bg-slate-700/50 p-0.5" role="tablist" aria-label="תצוגה">
-            <ToggleBtn active={view === 'chart'} onClick={() => setView('chart')} icon={<BarChart3 className="w-3 h-3" />} label="תרשים" />
+            <ToggleBtn active={view === 'chart'} onClick={() => setView('chart')} icon={<BarChart3 className="w-4 h-4" />} label="תרשים" />
             <ToggleBtn active={view === 'table'} onClick={() => setView('table')} icon={<Table2 className="w-3 h-3" />} label="טבלה" />
           </div>
         ) : null}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Lock, Cake, Loader2, ArrowLeft, Coins } from 'lucide-react'
+import { Lock, Loader2, ArrowLeft } from "lucide-react"
+import { Birthday as Cake, Coin as Coins } from "@/components/icons/BrandIcons"
 import { useAuth } from '@/lib/AuthContext'
 import { setPlayerBirthDate, ageFromBirthDate } from '@/lib/birthDate'
 import { BLOCK_COPY, START_BALANCE } from '@/lib/market'

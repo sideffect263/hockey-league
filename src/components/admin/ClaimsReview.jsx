@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getPendingClaims, approveClaim, rejectClaim } from "@/lib/claims"
-import { Check, X, UserPlus, RefreshCw } from "lucide-react"
+import { Check, X, RefreshCw } from "lucide-react"
+import { PersonAdd as UserPlus } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"

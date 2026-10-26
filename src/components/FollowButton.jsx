@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
-import { UserPlus, UserCheck, Bell, BellOff, Loader2, Shirt } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { Bell, BellOff, PlayerIcon as Shirt, PersonFollow, PersonFollowing } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { follow, unfollow, setFollowNotify, getMyFollows, getFollowerCounts, getMyRosterTeamIds, fansLabel } from "@/lib/follows"
-import { PersonFollow, PersonFollowing } from "@/components/icons/BrandIcons"
 
 /**
  * Follow a team or a player (P5 / sheet row 24).
@@ -81,7 +81,7 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
       <span title={targetType === "team" ? "את/ה משחק/ת בקבוצה — שחקנים לא נספרים כאוהדים שלה" : "שחקן לא נספר כאוהד של עצמו"}
         className={`inline-flex items-center gap-1.5 font-bold rounded-xl ${pad} ${
           onDark ? "bg-white/15 text-white ring-1 ring-white/25" : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200"}`}>
-        <Shirt className="w-3.5 h-3.5" />
+        <Shirt className="w-4 h-4" />
         {targetType === "team" ? "הקבוצה שלי" : "האוהדים שלך"}
         {showCount && count != null && (
           <span className="tabular-nums opacity-70">· {fansLabel(count)}</span>
@@ -124,7 +124,7 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
                 ? "bg-brand/10 text-brand"
                 : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
           }`}>
-          {notify ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+          {notify ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
         </button>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getPendingCoachRequests, reviewCoachRequest } from "@/lib/coachRequests"
-import { Check, X, ShieldPlus, RefreshCw } from "lucide-react"
+import { Check, X, RefreshCw } from "lucide-react"
+import { Coach as ShieldPlus } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"

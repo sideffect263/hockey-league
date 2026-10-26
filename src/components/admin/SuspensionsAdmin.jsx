@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { getActiveSuspensions, issueSuspension, clearSuspension } from "@/lib/suspensions"
-import { Ban, RefreshCw, Plus, Undo2, Loader2 } from "lucide-react"
+import { RefreshCw, Plus, Undo2, Loader2 } from "lucide-react"
+import { Declined as Ban } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -95,7 +96,7 @@ export default function SuspensionsAdmin({ players = [], teamsMap = {}, canManag
           <div className="flex items-center gap-2">
             <button type="submit" disabled={busy === "new" || !playerId}
               className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              {busy === "new" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />} הרחק למשחק אחד
+              {busy === "new" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-4 h-4" />} הרחק למשחק אחד
             </button>
             <button type="button" onClick={() => { setAdding(false); setError(null) }}
               className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">

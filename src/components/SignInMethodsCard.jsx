@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { Link2, CheckCircle2, Loader2, AlertTriangle } from "lucide-react"
+import { Link2, Loader2 } from "lucide-react"
+import { ApprovedStatus as CheckCircle2, Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { APPLE_WEB_ENABLED, linkAppleWeb, AppleIcon } from "@/lib/appleWeb"
 
@@ -87,7 +88,7 @@ export default function SignInMethodsCard() {
       <div className="flex flex-wrap gap-2">
         {[...providers].map(p => (
           <span key={p} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-            <CheckCircle2 className="w-3.5 h-3.5" /> {LABEL[p] || p}
+            <CheckCircle2 className="w-4 h-4" /> {LABEL[p] || p}
           </span>
         ))}
       </div>

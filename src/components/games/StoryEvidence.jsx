@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { Play, FileText, Table2, ClipboardList, Video, PenLine, ListChecks, Image as ImageIcon, ShieldCheck, ShieldQuestion } from "lucide-react"
+import { Play, Table2, Image as ImageIcon } from "lucide-react"
+import { ClipboardIcon as ClipboardList, Film as Video, EditIcon as PenLine, Checklist as ListChecks, Approved as ShieldCheck, Help as ShieldQuestion, PlayBadge, GameForm, Table } from "@/components/icons/BrandIcons"
 import { streamIframeUrl, streamThumbUrl } from "@/lib/gameStories"
-import { PlayBadge } from "@/components/icons/BrandIcons"
 
 /*
  * Shared pieces of the evidence-backed game timeline: the beat's evidence (a lazy Stream
@@ -29,7 +29,7 @@ const EVENT_KIND = {
 
 const SOURCE = {
   judge: { label: "מקור: לוח השיפוט", icon: ClipboardList },
-  form: { label: "מקור: טופס השיפוט", icon: FileText },
+  form: { label: "מקור: טופס השיפוט", icon: GameForm },
   video: { label: "מקור: וידאו", icon: Video },
   editor: { label: "מקור: עורך", icon: PenLine },
   box: { label: "תוצאות המשחק", icon: ListChecks },
@@ -37,11 +37,11 @@ const SOURCE = {
 
 const STAT = {
   box_score: { label: "תוצאות המשחק", icon: ListChecks },
-  table: { label: "טבלת הליגה", icon: Table2 },
-  standings: { label: "טבלת הליגה", icon: Table2 },
-  form: { label: "טופס השיפוט", icon: FileText },
-  season: { label: "נתוני העונה", icon: Table2 },
-  h2h: { label: "מפגשים קודמים", icon: Table2 },
+  table: { label: "טבלת הליגה", icon: Table },
+  standings: { label: "טבלת הליגה", icon: Table },
+  form: { label: "טופס השיפוט", icon: GameForm },
+  season: { label: "נתוני העונה", icon: Table },
+  h2h: { label: "מפגשים קודמים", icon: Table },
   player_stats: { label: "סטטיסטיקת שחקנים", icon: ListChecks },
 }
 
@@ -73,11 +73,11 @@ export function BeatHeader({ beat, homeColor, awayColor }) {
 export function VerifiedBadge({ verified }) {
   return verified ? (
     <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-      <ShieldCheck className="w-3 h-3" /> מאומת
+      <ShieldCheck className="w-4 h-4" /> מאומת
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-      <ShieldQuestion className="w-3 h-3" /> לא מאומת
+      <ShieldQuestion className="w-4 h-4" /> לא מאומת
     </span>
   )
 }

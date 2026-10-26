@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { UserX, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { PersonRemove as UserX } from "@/components/icons/BrandIcons"
 import { getBlockedProfiles, unblockUser } from "@/lib/moderation"
 
 /**

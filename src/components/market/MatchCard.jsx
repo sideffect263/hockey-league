@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Lock, Users, TrendingUp, ChevronLeft } from 'lucide-react'
+import { Lock, ChevronLeft } from "lucide-react"
+import { Squad as Users, TrendUp as TrendingUp } from "@/components/icons/BrandIcons"
 import TeamLogo from '@/components/TeamLogo'
 import { useTheme } from '@/lib/ThemeContext'
 import { seriesTeamColors } from '@/lib/teamMarkColor'
@@ -61,7 +62,7 @@ function Side({ outcome, color, align, mine }) {
         {mine && (
           <span className="absolute -top-1 -end-1 w-4 h-4 rounded-full bg-brand ring-2 ring-surface flex items-center justify-center"
             title="יש לך פוזיציה כאן">
-            <TrendingUp className="w-2.5 h-2.5 text-brand-fg" />
+            <TrendingUp className="w-4 h-4 text-brand-fg" />
           </span>
         )}
       </div>
@@ -122,7 +123,7 @@ export default function MatchCard({ market, positions = {}, conflict = null, act
         ) : (
           <>
             <span className="flex items-center gap-1 text-fg-muted">
-              <Users className="w-3 h-3" />
+              <Users className="w-4 h-4" />
               {activity?.traders
                 ? <>{activity.traders === 1 ? 'מהמר אחד' : <><span className="mkt-num font-bold text-fg-soft">{activity.traders}</span> מהמרים</>}</>
                 : 'עוד אין הימורים — היה הראשון'}

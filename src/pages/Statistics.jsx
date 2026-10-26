@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames, getReferees, getGameStats, getSeasonStatisticsData } from "@/lib/api"
-import { BarChart3, Shield, ChevronDown, ChevronUp, RefreshCw, TrendingUp, Zap, Target, Star } from "lucide-react"
-import { Crown, Trophy, Flame, PlayerIcon as Player, Goalkeeper as Glove, Cards, Referee as Whistle, BlueCard, RedCard, GoalIcon as Goal, MatchFallback as Crossed, HatTrick } from "@/components/icons/BrandIcons"
+import { Shield, ChevronDown, ChevronUp, RefreshCw, Zap, Target } from "lucide-react"
+import { TrendUp as TrendingUp, Crown, Trophy, Flame, PlayerIcon as Player, Goalkeeper as Glove, Cards, Referee as Whistle, BlueCard, RedCard, GoalIcon as Goal, MatchFallback as Crossed, HatTrick, Mvp, TeamsIcon, BrandTile, PlayerPose } from "@/components/icons/BrandIcons"
 import { StickBall, Stats } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
@@ -411,7 +411,7 @@ export default function Statistics({ season = null }) {
       {!season && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="page-title flex items-center gap-2.5">
-            <Stats className="w-7 h-7 text-brand" /> סטטיסטיקות
+            <BrandTile name="stats" className="w-10 h-10 -my-1.5" /> סטטיסטיקות
           </h1>
           <p className="page-subtitle mt-1">נתוני ביצועים{seasonName && ` עונת ${seasonName}`}</p>
         </motion.div>
@@ -450,8 +450,8 @@ export default function Statistics({ season = null }) {
               value={raceMode}
               onChange={setRaceMode}
               options={[
-                { id: 'team', label: 'קבוצה', icon: <Shield className="w-3 h-3" /> },
-                { id: 'player', label: 'שחקן', icon: <Player className="w-4 h-4" /> },
+                { id: 'team', label: 'קבוצה', icon: <TeamsIcon className="w-4 h-4" /> },
+                { id: 'player', label: 'שחקן', icon: <PlayerPose pose={3} className="w-4 h-4" /> },
               ]}
             />
           }
@@ -511,8 +511,8 @@ export default function Statistics({ season = null }) {
                 value={hatMode}
                 onChange={setHatMode}
                 options={[
-                  { id: 'player', label: 'שחקן', icon: <Player className="w-4 h-4" /> },
-                  { id: 'team', label: 'קבוצה', icon: <Shield className="w-3 h-3" /> },
+                  { id: 'player', label: 'שחקן', icon: <PlayerPose pose={3} className="w-4 h-4" /> },
+                  { id: 'team', label: 'קבוצה', icon: <TeamsIcon className="w-4 h-4" /> },
                 ]}
               />
               <SegToggle
@@ -553,7 +553,7 @@ export default function Statistics({ season = null }) {
           <Trophy className="w-5 h-5 text-amber-500" /> הישגים ותארים
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <AwardCard title="MVP של המשחק" icon={<Star className="w-4 h-4 text-amber-500" />} data={awardMvp} valueOf={p => p.mvps} badge="bg-amber-500" empty="טרם נבחרו MVP העונה" />
+          <AwardCard title="MVP של המשחק" icon={<Mvp className="w-5 h-5" />} data={awardMvp} valueOf={p => p.mvps} badge="bg-amber-500" empty="טרם נבחרו MVP העונה" />
           <AwardCard title="מלכי השלישיות" icon={<HatTrick className="w-4 h-4" />} data={awardHat} valueOf={p => p.hatTricks} badge="bg-brand" empty="אין שלישיות" note={STATS_NOTE} />
           <AwardCard title="משחקי-על (5+ שערים)" icon={<Flame className="w-4 h-4" />} data={awardBig} valueOf={p => p.bigGames} badge="bg-amber-500" empty="אין" note={STATS_NOTE} />
           <AwardCard title="דאבלים (2 שערים)" icon={<Target className="w-4 h-4 text-slate-500" />} data={awardBrace} valueOf={p => p.braces} badge="bg-slate-700 dark:bg-slate-500" empty="אין" note={STATS_NOTE} />
@@ -601,7 +601,7 @@ export default function Statistics({ season = null }) {
           <div className="space-y-4">
             <List title="כרטיסים כחולים" icon={<BlueCard className="w-5 h-5 -my-1" />} data={bluePlayers} tKey="blue" empty="אין"
               render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.blue_cards} color="bg-blue-500" />} />
-            <List title="כחולים לפי קבוצה" icon={<Shield className="w-4 h-4 text-blue-500" />} data={blueTeams} tKey="blueT" empty="אין"
+            <List title="כחולים לפי קבוצה" icon={<TeamsIcon className="w-4 h-4 text-blue-500" />} data={blueTeams} tKey="blueT" empty="אין"
               render={(t, i) => (
                 <Link key={t.id} to={entityPath('teams', t)} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors group">
                   <div className="flex items-center gap-2.5">

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<path d="M20.27 12.86 L15.71 13.76 L16.82 18.28 L12.95 15.70 L10.54 19.67 L9.64 15.11 L5.12 16.22 L7.70 12.35 L3.73 9.94 L8.29 9.04 L7.18 4.52 L11.05 7.10 L13.46 3.13 L14.36 7.69 L18.88 6.58 L16.30 10.45 Z" fill="#FBBF24" stroke="#B45309" stroke-width=".7" stroke-linejoin="round"/>
+<path d="M16.32 12.97 L13.92 13.16 L13.94 15.57 L12.11 14.00 L10.43 15.72 L10.24 13.32 L7.83 13.34 L9.40 11.51 L7.68 9.83 L10.08 9.64 L10.06 7.23 L11.89 8.80 L13.57 7.08 L13.76 9.48 L16.17 9.46 L14.60 11.29 Z" fill="#FEF3C7"/>
+<g transform="translate(1 0)"><path d="M2 2.6 L15 15.4 C16 16.4 17.6 16.2 18.2 15" fill="none" stroke="#141B2E" stroke-width="3.4" stroke-linecap="round"/><path d="M2 2.6 L15 15.4 C16 16.4 17.6 16.2 18.2 15" fill="none" stroke="#C68B4E" stroke-width="2.2" stroke-linecap="round"/><path d="M2 2.6 L5 5.6" stroke="#3B4FC4" stroke-width="2.4" stroke-linecap="round"/></g>
+<g transform="translate(23 0) scale(-1 1)"><path d="M2 2.6 L15 15.4 C16 16.4 17.6 16.2 18.2 15" fill="none" stroke="#141B2E" stroke-width="3.4" stroke-linecap="round"/><path d="M2 2.6 L15 15.4 C16 16.4 17.6 16.2 18.2 15" fill="none" stroke="#E5B843" stroke-width="2.2" stroke-linecap="round"/><path d="M2 2.6 L5 5.6" stroke="#DC2626" stroke-width="2.4" stroke-linecap="round"/></g>
+<circle cx="12" cy="20.4" r="2" fill="#EA580C" stroke="#7A2A06" stroke-width=".4"/><circle cx="11.4" cy="19.8" r=".55" fill="#fff" opacity=".85"/>
+<g transform="translate(19.6 4.4)"><circle r="3.8" fill="#DC2626" stroke="#fff" stroke-width=".9"/><text y="2" text-anchor="middle" font-family="Helvetica Neue, Arial" font-weight="900" font-size="5.8" fill="#fff">!</text></g>
+</svg>

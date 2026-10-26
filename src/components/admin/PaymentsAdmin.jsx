@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react"
 import { getPaymentOverview, getUnmatchedAthletes, linkPodiumAthlete, createPlayerForAthlete } from "@/lib/podium"
 import PodiumSyncNote from "@/components/admin/PodiumSyncNote"
 import { getTeams } from "@/lib/api"
-import { Wallet, Check, X, Link2Off, Link2, Search, UserPlus } from "lucide-react"
+import { Check, X, Link2Off, Link2, Search } from "lucide-react"
+import { Wallet, PersonAdd as UserPlus } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 
 /**
@@ -207,7 +208,7 @@ export default function PaymentsAdmin() {
                   </button>
                   <button onClick={() => setCreating(u.podium_id)}
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity">
-                    <UserPlus className="w-3.5 h-3.5" /> יצירת כרטיס
+                    <UserPlus className="w-4 h-4" /> יצירת כרטיס
                   </button>
                 </div>
               )}

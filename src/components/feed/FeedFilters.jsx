@@ -1,10 +1,10 @@
-import { LayoutGrid, MessageSquare, Globe, PlayCircle } from "lucide-react"
-import { Trophy, Flame } from "@/components/icons/BrandIcons"
+import { LayoutGrid, Globe, PlayCircle } from "lucide-react"
+import { Comment as MessageSquare, Trophy, Flame, VideoLibrary } from "@/components/icons/BrandIcons"
 import { parseYouTubeId, youTubeInText } from "@/lib/video"
 
 export const FEED_FILTERS = [
   { key: "all", label: "הכל", icon: LayoutGrid },
-  { key: "video", label: "וידאו", icon: PlayCircle },
+  { key: "video", label: "וידאו", icon: VideoLibrary },
   { key: "posts", label: "פוסטים", icon: MessageSquare },
   { key: "results", label: "תוצאות", icon: Trophy },
   { key: "highlights", label: "שיאים", icon: Flame },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, Calendar, Clock, Captain, Live as Radio, Squad, Medical } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, Calendar, Clock, Captain, Live as Radio, Squad, Medical, EditIcon as Pencil, Star } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
@@ -8,7 +8,7 @@ import { requestTeamJoin, joinErrorText } from "@/lib/teamMembership"
 import { standingsComparator } from "@/lib/utils"
 import { ageOf, DEFAULT_AGE, AGE_LABEL } from "@/lib/ageGroups"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
-import { ArrowRight, Users, RefreshCw, Pencil, HeartPulse, ChevronDown, Star } from "lucide-react"
+import { ArrowRight, RefreshCw, ChevronDown } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -244,7 +244,7 @@ export default function TeamDetail() {
           {canEdit ? (
             <button onClick={() => setEditing(true)}
               className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold transition-colors shrink-0">
-              <Pencil className="w-3.5 h-3.5" /> עריכה
+              <Pencil className="w-4 h-4" /> עריכה
             </button>
           ) : null}
         </div>

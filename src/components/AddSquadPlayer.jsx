@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from "react"
 import { addPlayerToSquad, getTeamMemberIds } from "@/lib/squad"
 import { canBeBorrowed, getPlayerLoanAges, YOUTH_MAX_AGE } from "@/lib/birthDate"
-import { UserPlus, Loader2, X, Users } from "lucide-react"
-import { Goalkeeper, PersonAdd } from "@/components/icons/BrandIcons"
+import { Loader2, X } from "lucide-react"
+import { Squad as Users, Goalkeeper, PersonAdd } from "@/components/icons/BrandIcons"
 
 /**
  * Manual squad addition (sheet rows 7, 8, 13). A coach adds a loaned goalkeeper or a
@@ -159,7 +159,7 @@ export default function AddSquadPlayer({ gameId, teamId, teamName, players = [],
       {!ownOnly && (hiddenCount > 0 || showAll) && (
         <div className="flex items-start justify-between gap-2 text-[11px]">
           <span className="flex items-start gap-1 text-slate-500 dark:text-slate-400">
-            <Users className="w-3 h-3 mt-0.5 shrink-0" />
+            <Users className="w-4 h-4 mt-0.5 shrink-0" />
             <span>
               {showAll
                 ? "מוצגים כל שחקני הליגה — להשאלה מקבוצה אחרת נדרש אישורך"

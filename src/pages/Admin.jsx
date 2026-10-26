@@ -13,8 +13,8 @@ import {
   getLeagueSetting,
   closeSeason, getArchivedSeasons, getCurrentSeason
 } from "@/lib/api"
-import { Shield, UserCheck, Users, Settings, LogOut, Trash2, UserMinus, Plus, Pencil, X, Check, Save, ChevronDown, UserPlus, Archive, AlertTriangle, Image, Flag } from "lucide-react"
-import { Calendar, Crown, Trophy, CalendarClock } from "@/components/icons/BrandIcons"
+import { Shield, Settings, LogOut, Trash2, Plus, X, Check, Save, ChevronDown, Archive, Image } from "lucide-react"
+import { PersonFollowing as UserCheck, Squad as Users, PersonRemove as UserMinus, EditIcon as Pencil, PersonAdd as UserPlus, Warning as AlertTriangle, Report as Flag, Calendar, Crown, Trophy, CalendarClock, BrandTile, TestGame, Admin as AdminIcon } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
 import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf } from "@/lib/ageGroups"
@@ -210,7 +210,7 @@ export default function Admin() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="page-title flex items-center gap-2.5">
-              <Shield className="w-7 h-7 text-brand" /> ניהול
+              <BrandTile name="manage" className="w-10 h-10 -my-1.5" /> ניהול
             </h1>
             <p className="page-subtitle mt-1 truncate">מחובר כ-{user.email}</p>
           </div>
@@ -713,7 +713,7 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
         </button>
         <button onClick={() => setRefFilter('missing')}
           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${refFilter === 'missing' ? 'bg-amber-500 text-white' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'}`}>
-          <AlertTriangle className="w-3 h-3" /> ללא שופט ({games.filter(missingJudge).length})
+          <AlertTriangle className="w-4 h-4" /> ללא שופט ({games.filter(missingJudge).length})
         </button>
       </div>
 
@@ -752,7 +752,7 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
                 <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
                   <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                     {game.is_test && (
-                      <span title="משחק בדיקה — גלוי למנהלים בלבד" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 whitespace-nowrap">🧪 בדיקה</span>
+                      <span title="משחק בדיקה — גלוי למנהלים בלבד" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 whitespace-nowrap"><TestGame className="w-4 h-4 inline-block align-[-3px]" /> בדיקה</span>
                     )}
                     {!missingJudge(game) && refereeName(game) && (
                       <span title="שופט" className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap max-w-[110px] truncate">
@@ -761,7 +761,7 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
                     )}
                     {missingJudge(game) && (
                       <span title="חסר שופט" className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
-                        <AlertTriangle className="w-3.5 h-3.5" /><span className="sm:hidden">חסר שופט</span>
+                        <AlertTriangle className="w-4 h-4" /><span className="sm:hidden">חסר שופט</span>
                       </span>
                     )}
                     <span dir="ltr" className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">{format(ilDate(game.game_date), "d/M/yy")}</span>
@@ -774,7 +774,7 @@ function GamesAdmin({ games, teams, players, teamsMap, gameStats, tournaments = 
                     </button>
                     <button onClick={() => startEdit(game)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button onClick={() => handleDelete(game.id)}
                       className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 transition-colors">
@@ -1372,12 +1372,12 @@ function PlayersAdmin({ players, teams, teamsMap, membersByPlayer = new Map(), r
                 </div>
                 <button onClick={() => startEdit(player)}
                   className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                  <Pencil className="w-3.5 h-3.5" />
+                  <Pencil className="w-4 h-4" />
                 </button>
                 {coachScoped ? (
                   <button onClick={() => handleRelease(player)} title="הסר מהקבוצה" aria-label="הסר מהקבוצה"
                     className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 transition-colors">
-                    <UserMinus className="w-3.5 h-3.5" />
+                    <UserMinus className="w-4 h-4" />
                   </button>
                 ) : canDelete && (
                   <button onClick={() => handleDelete(player.id)} title="מחק שחקן" aria-label="מחק שחקן"
@@ -2037,7 +2037,7 @@ function UsersAdmin({ adminUsers, currentUserEmail, reload }) {
             <div key={u.id} className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3.5">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 shrink-0 rounded-full bg-brand/10 dark:bg-brand/20 flex items-center justify-center">
-                  <Crown className="w-4 h-4 text-brand dark:text-brand-light" />
+                  <AdminIcon className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{u.name || u.email}</p>

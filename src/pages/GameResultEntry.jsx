@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Sparkle as Sparkles, Warning as AlertTriangle, ApprovedStatus as CheckCircle2, EditIcon as PencilLine } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { format } from "date-fns"
-import { ArrowRight, Camera, ImagePlus, X, Loader2, Sparkles, AlertTriangle, CheckCircle2, PencilLine, Minus, Plus, RefreshCw, FileImage, ChevronDown } from "lucide-react"
+import { ArrowRight, Camera, ImagePlus, X, Loader2, Minus, Plus, RefreshCw, FileImage, ChevronDown } from "lucide-react"
 import { getGameById, getTeams } from "@/lib/api"
 import { useAuth } from "@/lib/AuthContext"
 import { useSlugId, entityPath } from "@/lib/slugs"
@@ -118,7 +118,7 @@ function UploadStep({ onSubmit, onManual, busy, error }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-line">
         <button type="button" onClick={onManual} className="btn-ghost btn-sm" disabled={busy}>
-          <PencilLine className="w-3.5 h-3.5" /> מילוי ידני בלי תמונה
+          <PencilLine className="w-4 h-4" /> מילוי ידני בלי תמונה
         </button>
         <button type="button" onClick={() => onSubmit(files)} className="btn-primary" disabled={busy || !files.length}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -160,7 +160,7 @@ function WaitingStep({ submission, onManual, onRetry }) {
       <p className="text-xs text-fg-muted tabular-nums" dir="ltr">{mins}:{String(secs).padStart(2, "0")}</p>
       {slow && <p className="text-sm text-amber-600 dark:text-amber-400">הקריאה מתעכבת. אפשר להמשיך לחכות או למלא ידנית.</p>}
       <div className="flex flex-wrap justify-center gap-2 pt-1">
-        <button type="button" onClick={onManual} className="btn-secondary btn-sm"><PencilLine className="w-3.5 h-3.5" /> מילוי ידני עכשיו</button>
+        <button type="button" onClick={onManual} className="btn-secondary btn-sm"><PencilLine className="w-4 h-4" /> מילוי ידני עכשיו</button>
         <button type="button" onClick={onRetry} className="btn-ghost btn-sm"><Camera className="w-3.5 h-3.5" /> החלפת תמונה</button>
       </div>
     </div>
@@ -218,7 +218,7 @@ function TeamSection({ team, side, roster, state, setRow, own, setOwn, score, un
       {unmatched.filter(u => !u.resolved).map(u => (
         <div key={u.key} className="px-4 py-2.5 border-b border-line bg-amber-50 dark:bg-amber-950/30 space-y-1.5">
           <p className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" />
+            <AlertTriangle className="w-4 h-4" />
             לא זוהה בסגל: “{u.written_name || "—"}”{u.number != null && <span dir="ltr"> #{u.number}</span>}
             <span className="font-normal inline-flex items-center gap-1">· <Ball className="w-5 h-5 -my-1" /> {u.goals || 0} · <BlueCard className="w-5 h-5 -my-1" /> {u.blue_cards || 0} · <RedCard className="w-5 h-5 -my-1" /> {u.red_cards || 0}</span>
           </p>

@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react"
-import { X, Search, Loader2, UserPlus, Check, Cake } from "lucide-react"
+import { X, Search, Loader2, Check } from "lucide-react"
+import { Birthday as Cake, PersonAdd } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { createClaim } from "@/lib/claims"
 import { getMyLinkState, getLinkedPlayerIds, linkRequestErrorMessage, splitName } from "@/lib/linkRequests"
 import PlayerCardSubmission from "@/components/PlayerCardSubmission"
 import { getPlayers, getTeams } from "@/lib/api"
 import { getMyBirthDate, setPlayerBirthDate } from "@/lib/birthDate"
-import { PersonAdd } from "@/components/icons/BrandIcons"
 
 /**
  * First-run onboarding prompt: once a freshly signed-in account is resolved and

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { Clapperboard, ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react"
+import { Film as Clapperboard } from "@/components/icons/BrandIcons"
 import { getGamePosts, getMyLikes, getRoleBadges } from "@/lib/api"
 import { getMyBlocks } from "@/lib/moderation"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"

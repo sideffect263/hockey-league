@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { getNotificationReadiness, reachOf, REACH } from "@/lib/readiness"
-import { BellRing, RefreshCw, Search, Copy, Check } from "lucide-react"
+import { RefreshCw, Search, Copy, Check } from "lucide-react"
+import { Bell as BellRing } from "@/components/icons/BrandIcons"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 

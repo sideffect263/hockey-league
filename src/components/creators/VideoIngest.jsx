@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Link } from "react-router-dom"
-import { Upload, Youtube, Loader2, Search, Check, RefreshCw, Trash2, ExternalLink, AlertTriangle, Cpu } from "lucide-react"
-import { Film } from "@/components/icons/BrandIcons"
+import { Upload, Youtube, Loader2, Search, Check, RefreshCw, Trash2, ExternalLink, Cpu } from "lucide-react"
+import { Warning as AlertTriangle, Film } from "@/components/icons/BrandIcons"
 import { getGames, getTeams } from "@/lib/api"
 import {
   INGEST_PIPELINES, PIPELINE_LABEL, STEP_STATUS, JOB_STATUS,

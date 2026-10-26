@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Loader2, ArrowLeftRight, Lock, TrendingUp, TrendingDown, Search, X, Check, Coins } from 'lucide-react'
+import { Loader2, ArrowLeftRight, Lock, Search, X, Check } from "lucide-react"
+import { TrendUp as TrendingUp, TrendDown as TrendingDown, Coin as Coins } from "@/components/icons/BrandIcons"
 import {
   prices, sharesForCoins, coinsForShares, avgPrice, pct, coins as fmtCoins, buy, sell, invalidateBoard,
 } from '@/lib/market'
@@ -196,12 +197,12 @@ export default function TradeTicket({ market, balance, position, onTraded }) {
           <div className="tab-bar mb-3">
             <button type="button" onClick={() => { setSide('buy'); setAmount(''); setErr(null) }}
               className={side === 'buy' ? 'tab-active' : 'tab-inactive'}>
-              <TrendingUp className="w-3.5 h-3.5" /> קנייה
+              <TrendingUp className="w-4 h-4" /> קנייה
             </button>
             <button type="button" onClick={() => { setSide('sell'); setAmount(''); setErr(null) }}
               disabled={held <= 0}
               className={`${side === 'sell' ? 'tab-active' : 'tab-inactive'} disabled:opacity-40 disabled:cursor-not-allowed`}>
-              <TrendingDown className="w-3.5 h-3.5" /> מכירה
+              <TrendingDown className="w-4 h-4" /> מכירה
             </button>
           </div>
 

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="sb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6F84E8"/><stop offset="1" stop-color="#1E2A78"/></linearGradient><linearGradient id="gd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F5D36B"/><stop offset="1" stop-color="#B8860B"/></linearGradient></defs>
+<path d="M15 32 L10.6 46 L16 43.6 L19 47.6 L22.4 34.4 Z" fill="#3B4FC4"/><path d="M33 32 L37.4 46 L32 43.6 L29 47.6 L25.6 34.4 Z" fill="#28368C"/>
+<path d="M24.00 1.40 L27.02 3.86 L30.70 2.58 L32.70 5.93 L36.60 5.99 L37.33 9.82 L40.97 11.20 L40.35 15.05 L43.30 17.60 L41.40 21.00 L43.30 24.40 L40.35 26.95 L40.97 30.80 L37.33 32.18 L36.60 36.01 L32.70 36.07 L30.70 39.42 L27.02 38.14 L24.00 40.60 L20.98 38.14 L17.30 39.42 L15.30 36.07 L11.40 36.01 L10.67 32.18 L7.03 30.80 L7.65 26.95 L4.70 24.40 L6.60 21.00 L4.70 17.60 L7.65 15.05 L7.03 11.20 L10.67 9.82 L11.40 5.99 L15.30 5.93 L17.30 2.58 L20.98 3.86 Z" fill="url(#gd)" stroke="#8A6A12" stroke-width=".6" stroke-linejoin="round"/>
+<circle cx="24" cy="21" r="15" fill="url(#sb)"/>
+<circle cx="24" cy="21" r="13.4" fill="none" stroke="#F5D36B" stroke-width=".6" stroke-dasharray="1 1"/>
+<path d="M16.6 21.4 L22 26.6 L32 15.6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="31.2" cy="27.2" r="2" fill="#EA580C"/><circle cx="30.6" cy="26.6" r=".55" fill="#fff" opacity=".85"/>
+<path d="M13.4 14.6 C15.4 10.6 19.4 8.2 23.6 8" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".45"/>
+</svg>

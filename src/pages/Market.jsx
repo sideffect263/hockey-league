@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Coins, LayoutGrid, Wallet, Settings, Star, Gift, ChevronDown, TrendingUp, TrendingDown, Lock, Target } from 'lucide-react'
-import { Trophy, CalendarDays, History } from "@/components/icons/BrandIcons"
+import { LayoutGrid, Settings, ChevronDown, Lock, Target } from "lucide-react"
+import { Coin as Coins, Wallet, Star, Celebrate as Gift, TrendUp as TrendingUp, TrendDown as TrendingDown, Trophy, CalendarDays, History } from "@/components/icons/BrandIcons"
 import { useAuth } from '@/lib/AuthContext'
 import {
   loadBoard, cachedBoard, invalidateBoard, pickFeaturedList, groupByMatchday, holdsAny,
@@ -447,7 +447,7 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
             {up ? '+' : ''}{fmtCoins(Math.round(pnl))}
           </span>
           <span className={`stat-pill ${up ? 'bg-pos/10 text-pos' : 'bg-neg/10 text-neg'}`} dir="ltr">
-            {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             {invested > 0 ? `${up ? '+' : ''}${Math.round((pnl / invested) * 100)}%` : '0%'}
           </span>
         </div>

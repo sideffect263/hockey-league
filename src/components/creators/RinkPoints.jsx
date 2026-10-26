@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowRight, Check, Loader2, Ruler, Trash2, Crosshair, RefreshCw, AlertTriangle } from "lucide-react"
+import { ArrowRight, Check, Loader2, Ruler, Trash2, Crosshair, RefreshCw } from "lucide-react"
+import { Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import {
   labUrl, getRinkSets, getRinkSet, getRinkSetStatus, getRinkPoints, saveRinkPoint, deleteRinkPoint, requestRinkFit,
 } from "@/lib/videoLab"

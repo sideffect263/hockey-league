@@ -1,5 +1,6 @@
 import { useState, useRef } from "react"
-import { X, Loader2, Pencil, Image as ImageIcon } from "lucide-react"
+import { X, Loader2, Image as ImageIcon } from "lucide-react"
+import { EditIcon as Pencil } from "@/components/icons/BrandIcons"
 import { updateTeamDetails, uploadTeamLogo } from "@/lib/api"
 import { isSafeImage, IMAGE_TYPE_MESSAGE, IMAGE_TYPE_ERROR } from "@/lib/imageType"
 import TeamLogo from "@/components/TeamLogo"

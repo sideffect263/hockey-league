@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { ShieldPlus, Loader2 } from "lucide-react"
-import { Hourglass } from "@/components/icons/BrandIcons"
+import { Loader2 } from "lucide-react"
+import { Coach as ShieldPlus, Hourglass } from "@/components/icons/BrandIcons"
 import { getMyCoachRequest, requestCoachRole, cancelCoachRequest } from "@/lib/coachRequests"
 
 /**
@@ -58,7 +58,7 @@ export default function TeamCoachRequest({ teamId }) {
     <div className="ms-auto self-start shrink-0 text-end">
       <button onClick={doRequest} disabled={busy} title="בקשה להיות מאמן/ת הקבוצה"
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold/[0.15] text-gold ring-1 ring-gold/30 text-xs font-semibold hover:bg-gold/25 transition-colors disabled:opacity-50">
-        {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldPlus className="w-3.5 h-3.5" />} בקשה לניהול הקבוצה
+        {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldPlus className="w-4 h-4" />} בקשה לניהול הקבוצה
       </button>
       {error && <p className="text-[11px] text-red-600 dark:text-red-400 mt-1">{error}</p>}
     </div>

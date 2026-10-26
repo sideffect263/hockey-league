@@ -12,13 +12,9 @@ import { useAuth } from "@/lib/AuthContext"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
 import LineupEditor, { loadLineup, saveLineup, emptyLineup } from "@/components/judge/LineupEditor"
 import { EligibilityChips, OverrideButton, EligibilityWarning } from "@/components/judge/Eligibility"
-import {
-  RotateCcw, Pencil, CheckCircle2, Megaphone, Settings as SettingsIcon, Paintbrush,
-  Hand, RectangleVertical, SkipForward, Save, Undo2, Plus, Minus, X, Maximize, Minimize,
-  Loader2, Check, Users, Flag,
-} from "lucide-react"
+import { RotateCcw, Settings as SettingsIcon, Paintbrush, Hand, RectangleVertical, SkipForward, Save, Undo2, Plus, Minus, X, Maximize, Minimize, Loader2, Check, Flag } from "lucide-react"
+import { EditIcon as Pencil, ApprovedStatus as CheckCircle2, Announce as Megaphone, Squad as Users, Timeout, BlueCard, RedCard } from "@/components/icons/BrandIcons"
 import { StickBall } from "@/components/icons/HockeyIcons"
-import { Timeout } from "@/components/icons/BrandIcons"
 
 /* ============================================================================
  * Web judge scoreboard — a faithful mirror of the iOS `ScoreboardView`.
@@ -181,10 +177,10 @@ function TeamColumn({ side, engine, T, teamName, setPicker, onRemoveCard }) {
       {/* cards — blue/red add (picker) + active countdowns (hold to remove) */}
       <div className="flex items-center justify-center gap-2 flex-wrap min-h-[2.25rem]">
         <button onClick={() => setPicker({ side, kind: "blue" })} className="flex items-center justify-center" style={{ width: SB.cardBtn, height: SB.cardBtn, fontSize: SB.cardBtn }} aria-label="כרטיס כחול">
-          <RectangleVertical className="w-[0.6em] h-[0.8em]" style={{ color: T.cardBlue }} fill="currentColor" />
+          <BlueCard className="w-[0.9em] h-[0.9em]" />
         </button>
         <button onClick={() => setPicker({ side, kind: "red" })} className="flex items-center justify-center" style={{ width: SB.cardBtn, height: SB.cardBtn, fontSize: SB.cardBtn }} aria-label="כרטיס אדום">
-          <RectangleVertical className="w-[0.6em] h-[0.8em]" style={{ color: T.cardRed }} fill="currentColor" />
+          <RedCard className="w-[0.9em] h-[0.9em]" />
         </button>
         {cards.map(c => <CardPill key={c.id} card={c} T={T} onRemove={() => onRemoveCard(c.id)} />)}
       </div>
@@ -678,7 +674,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
                 </>
               )}
               <button onClick={() => setLineupSide(picker.side)} className="w-full mt-1 py-2 px-3 rounded-lg text-xs font-semibold hover:bg-white/10 transition-colors border-t border-white/10 flex items-center justify-center gap-1.5" style={{ color: T.accent }}>
-                <Users className="w-3.5 h-3.5" /> ערוך סגל למשחק
+                <Users className="w-4 h-4" /> ערוך סגל למשחק
               </button>
               {useAttending && !sideHasAttendees(picker.side) && (
                 <p className="w-full mt-1 py-1.5 px-3 text-[11px] text-center text-white/40">אף שחקן בקבוצה לא אישר הגעה — מוצג כל הסגל</p>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { TestTube2, RefreshCw, Copy, Check, Info, Smartphone, Search, AlertTriangle, CheckCircle2, MessageCircle, Store, Plus, Globe } from "lucide-react"
-import { Clock } from "@/components/icons/BrandIcons"
+import { TestTube2, RefreshCw, Copy, Check, Smartphone, Search, Store, Plus, Globe } from "lucide-react"
+import { InfoIcon as Info, Warning as AlertTriangle, ApprovedStatus as CheckCircle2, Comment as MessageCircle, Clock } from "@/components/icons/BrandIcons"
 import {
   getAndroidTesters, getAndroidTesterHealth, getAndroidTesterStatus, setAndroidTesterStatus, getAndroidLatestVersion,
   getAndroidTesterActivity,
@@ -457,7 +457,7 @@ export default function AndroidTestersAdmin() {
                     )}
                     {wa && (
                       <a href={wa} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400 hover:underline">
-                        <MessageCircle className="w-3.5 h-3.5" /> וואטסאפ
+                        <MessageCircle className="w-4 h-4" /> וואטסאפ
                       </a>
                     )}
                   </div>

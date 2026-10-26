@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
-import { Heart, Eye, Check, Loader2 } from "lucide-react"
+import { Eye, Check, Loader2 } from "lucide-react"
+import { LikeOn as Heart } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { getGameFanSummary, setGameWatch, fansLabel } from "@/lib/follows"
 import TeamLogo from "@/components/TeamLogo"

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { Bell, BellRing, RefreshCw, Search, Smartphone, Send, Users, AlertTriangle, Eye, X, MonitorSmartphone, ListChecks } from "lucide-react"
+import { RefreshCw, Search, Smartphone, Send, Eye, X, MonitorSmartphone } from "lucide-react"
+import { Bell, Bell as BellRing, Squad as Users, Warning as AlertTriangle, Checklist as ListChecks, BrandIcon } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
-import { notificationText, notificationIcon } from "@/lib/notifications"
+import { notificationText, notificationIcon, notificationBrandIcon } from "@/lib/notifications"
 import { getNotificationLog, getPushDevices, outcomeOf, deviceLabel } from "@/lib/notificationTracker"
 import ReadinessAdmin from "@/components/admin/ReadinessAdmin"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
@@ -223,7 +224,7 @@ function NotificationLog() {
   const byType = useMemo(() => {
     const m = new Map()
     for (const n of decorated) {
-      const t = m.get(n.type) || { type: n.type, icon: notificationIcon(n), count: 0, users: new Set(), delivered: 0, tracked: 0, read: 0 }
+      const t = m.get(n.type) || { type: n.type, icon: notificationBrandIcon(n), count: 0, users: new Set(), delivered: 0, tracked: 0, read: 0 }
       t.count++; t.users.add(n.user_id)
       if (n.outcome !== "untracked") t.tracked++
       if (n.outcome === "delivered") t.delivered++
@@ -337,7 +338,7 @@ function NotificationLog() {
                       <tr key={t.type} onClick={() => setType(type === t.type ? "" : t.type)}
                         className={`cursor-pointer transition-colors ${type === t.type ? "bg-brand/5" : "hover:bg-slate-50/70 dark:hover:bg-slate-800/40"}`}>
                         <td className="px-4 py-2 text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                          <span className="ml-1.5">{t.icon}</span>{typeLabel(t.type)}
+                          <BrandIcon name={t.icon} className="w-4 h-4 ml-1.5 inline-block align-[-3px]" />{typeLabel(t.type)}
                         </td>
                         <td className="px-2 py-2 tabular-nums font-semibold">{t.count}</td>
                         <td className="px-2 py-2 tabular-nums text-slate-500">{t.users.size}</td>
@@ -438,7 +439,7 @@ function LogRow({ n, onRecipient }) {
   const noDevice = (n.deliveries || []).find(d => d.platform === "none")
   return (
     <div className="px-4 py-3 flex gap-3 items-start">
-      <div className="text-lg leading-none pt-0.5 shrink-0" aria-hidden>{notificationIcon(n)}</div>
+      <BrandIcon name={notificationBrandIcon(n)} className="w-5 h-5 mt-0.5" />
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-x-2 gap-y-1 flex-wrap text-xs">
           <button onClick={() => onRecipient({ id: n.user_id, name: recipientOf(n) })}

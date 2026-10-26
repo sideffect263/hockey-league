@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { KeyRound, Lock, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
+import { KeyRound, Lock, Loader2 } from "lucide-react"
+import { ApprovedStatus as CheckCircle2, Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/AuthContext"
 import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"

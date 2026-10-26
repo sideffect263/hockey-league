@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { APPLE_WEB_ENABLED, signInWithAppleWeb, AppleIcon } from "@/lib/appleWeb"
-import { X, Mail, Lock, User, Loader2, KeyRound } from "lucide-react"
-import { Timeout } from "@/components/icons/BrandIcons"
+import { X, Mail, Lock, Loader2, KeyRound } from "lucide-react"
+import { Person as User, Timeout } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
 

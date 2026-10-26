@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Timeout, Break } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Timeout, Break, RefereeCard, YellowCard, Foul } from "@/components/icons/BrandIcons"
 import { getLiveGame, subscribeLiveGame, liveTimeouts, liveBreak } from "@/lib/live"
 import { clockString } from "@/lib/game/format"
 import TeamLogo from "@/components/TeamLogo"
@@ -66,9 +66,11 @@ function TeamPanel({ team, score, fallbackName, timeouts }) {
 const EVENT_META = {
   goal:    { icon: <Ball className="w-4 h-4 inline-block align-[-2px]" />, label: "שער", accent: "text-emerald-600 dark:text-emerald-400" },
   ownGoal: { icon: <Ball className="w-4 h-4 inline-block align-[-2px]" />, label: "שער עצמי", accent: "text-emerald-600 dark:text-emerald-400" },
-  blue:    { icon: <BlueCard className="w-4 h-4 inline-block align-[-3px]" />, label: "כרטיס כחול", accent: "text-blue-600 dark:text-blue-400" },
-  red:     { icon: <RedCard className="w-4 h-4 inline-block align-[-3px]" />, label: "כרטיס אדום", accent: "text-red-600 dark:text-red-400" },
-  foul:    { icon: "🚩", label: "עבירה", accent: "text-slate-500 dark:text-slate-400" },
+  // `big`: the card moment gets the referee holding the card up (large art) in its row.
+  blue:    { icon: <BlueCard className="w-4 h-4 inline-block align-[-3px]" />, big: <RefereeCard color="blue" className="w-9 h-9 -my-1" />, label: "כרטיס כחול", accent: "text-blue-600 dark:text-blue-400" },
+  yellow:  { icon: <YellowCard className="w-4 h-4 inline-block align-[-3px]" />, big: <RefereeCard color="yellow" className="w-9 h-9 -my-1" />, label: "כרטיס צהוב", accent: "text-amber-600 dark:text-amber-400" },
+  red:     { icon: <RedCard className="w-4 h-4 inline-block align-[-3px]" />, big: <RefereeCard color="red" className="w-9 h-9 -my-1" />, label: "כרטיס אדום", accent: "text-red-600 dark:text-red-400" },
+  foul:    { icon: <Foul className="w-4 h-4 inline-block align-[-3px]" />, label: "עבירה", accent: "text-slate-500 dark:text-slate-400" },
   timeout: { icon: <Timeout className="w-4 h-4 inline-block align-[-3px]" />, label: "פסק זמן", accent: "text-amber-600 dark:text-amber-400" },
   break:   { icon: <Break className="w-4 h-4 inline-block align-[-3px]" />, label: "מנוחה", accent: "text-slate-500 dark:text-slate-400" },
 }
@@ -101,7 +103,7 @@ function LiveEventRow({ ev, homeName, awayName }) {
   return (
     <div className="flex">
       <div className={`inline-flex items-start gap-2 max-w-[88%] rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-800/70 ${isHome ? "ml-auto" : "mr-auto"}`}>
-        <span className="text-lg leading-none shrink-0 mt-0.5" aria-hidden>{meta.icon}</span>
+        <span className="text-lg leading-none shrink-0 mt-0.5" aria-hidden>{meta.big || meta.icon}</span>
         <div className="min-w-0 text-right">
           <div className="text-sm">
             <span className={`font-bold ${meta.accent}`}>{meta.label}</span>

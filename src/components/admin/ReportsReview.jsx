@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getReports, resolveReport, removeReportedContent, TARGET_LABEL } from "@/lib/moderation"
-import { Flag, Trash2, X, RefreshCw, Loader2 } from "lucide-react"
+import { Trash2, X, RefreshCw, Loader2 } from "lucide-react"
+import { Report as Flag } from "@/components/icons/BrandIcons"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
 /**
