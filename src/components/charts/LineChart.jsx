@@ -25,8 +25,12 @@ const M = { top: 12, right: 62, bottom: 22, left: 26 }
 // vbH sets the viewBox height → the chart's aspect ratio. The default (250) is a
 // compact card; the goal race passes a shorter value so, at full page width, it
 // reads as a wide "hero" banner instead of a near-square block.
-export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 250 }) {
+// `endLabels={false}` drops the end-of-line labels (and their gutter) — for series that
+// end at different x, where the leader lines would cut across the plot; the caller's
+// legend then carries the identity.
+export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 250, endLabels = true }) {
   const VB_H = vbH
+  const RIGHT = endLabels ? M.right : 10
   const { dark } = useTheme()
   const svgRef = useRef(null)
   const [hover, setHover] = useState(null)
@@ -51,14 +55,14 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
   const maxY = Math.max(...drawable.flatMap((s) => s.points.map((p) => p.y)), 1)
   const { yMax, ticks } = axisTicks(maxY)
 
-  const sx = scale(minX, maxX, M.left, VB_W - M.right)
+  const sx = scale(minX, maxX, M.left, VB_W - RIGHT)
   const sy = scale(0, yMax, VB_H - M.bottom, M.top)
 
   // Unique, sorted match-day x-values for crosshair snapping.
   const snapXs = Array.from(new Set(allX)).sort((a, b) => a - b)
 
   // End-of-line labels, de-collided vertically in the right gutter.
-  const labelX = VB_W - M.right + 6
+  const labelX = VB_W - RIGHT + 6
   const ends = drawable
     .map((s) => {
       const lp = s.points[s.points.length - 1]
@@ -79,7 +83,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
     if (!rect) return
     const clientX = e.touches ? e.touches[0].clientX : e.clientX
     const fx = (clientX - rect.left) / rect.width
-    const vbX = Math.max(M.left, Math.min(VB_W - M.right, fx * VB_W))
+    const vbX = Math.max(M.left, Math.min(VB_W - RIGHT, fx * VB_W))
     // nearest match-day
     let best = snapXs[0]
     let bestD = Infinity
@@ -107,7 +111,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
           const y = sy(t)
           return (
             <g key={`y${i}`}>
-              <line x1={M.left} y1={y} x2={VB_W - M.right} y2={y} stroke={c.grid} strokeWidth="1" />
+              <line x1={M.left} y1={y} x2={VB_W - RIGHT} y2={y} stroke={c.grid} strokeWidth="1" />
               <text x={M.left - 4} y={y + 3} textAnchor="end" fontSize="9" fill={c.muted}>{t}</text>
             </g>
           )
@@ -116,7 +120,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
         {/* vertical month gridlines + x labels */}
         {xTicks.map((t, i) => {
           const x = sx(t.x)
-          if (x < M.left - 0.5 || x > VB_W - M.right + 0.5) return null
+          if (x < M.left - 0.5 || x > VB_W - RIGHT + 0.5) return null
           return (
             <g key={`x${i}`}>
               <line x1={x} y1={M.top} x2={x} y2={bottom} stroke={c.grid} strokeWidth="1" opacity="0.6" />
@@ -126,7 +130,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
         })}
 
         {/* baseline axis */}
-        <line x1={M.left} y1={bottom} x2={VB_W - M.right} y2={bottom} stroke={c.axis} strokeWidth="1" />
+        <line x1={M.left} y1={bottom} x2={VB_W - RIGHT} y2={bottom} stroke={c.axis} strokeWidth="1" />
 
         {/* series lines */}
         {drawable.map((s) => (
@@ -153,7 +157,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
         )}
 
         {/* end-of-line direct labels: leader → crest → total */}
-        {ends.map(({ s, ex, ey }) => {
+        {endLabels && ends.map(({ s, ex, ey }) => {
           const cy = ey
           const cx = labelX + 7
           return (
@@ -182,7 +186,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
         <rect
           x={M.left}
           y={M.top}
-          width={VB_W - M.right - M.left}
+          width={VB_W - RIGHT - M.left}
           height={bottom - M.top}
           fill="transparent"
           onMouseMove={handleMove}

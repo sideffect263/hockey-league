@@ -133,7 +133,7 @@ function Body({ d, dark }) {
         legend={<Legend items={series} />}
         table={{ head: ["משחק", "שעה", "צופים"], rows: games.flatMap(g => g.series.filter(p => p.v > 0).map(p => [g.name, hhmm(new Date(p.t).toISOString()), p.v])) }}
       >
-        <LineChart series={series} xTicks={xTicks} vbH={200} />
+        <LineChart series={series} xTicks={xTicks} vbH={200} endLabels={false} />
       </ChartCard>
 
       <div className="card p-4 overflow-x-auto">
@@ -151,13 +151,13 @@ function Body({ d, dark }) {
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
             <Row label="שעת השידור" games={games} cell={g => <span dir="ltr">{hhmm(g.parts[0].start)}</span>} />
-            <Row label="אורך השידור" games={games} cell={g => `${g.liveSpanMin} דק׳${g.parts.length > 1 ? ` (${g.parts.length} חלקים)` : ""}`} />
+            <Row label="אורך השידור" games={games} cell={g => { const real = g.parts.filter(p => p.minutes >= 5).length; return `${g.liveSpanMin} דק׳${real > 1 ? ` (${real} חלקים)` : ""}` }} />
             <Row label="דקות צפייה בשידור חי" games={games} cell={g => g.liveMinutes} best={g => g.liveMinutes} />
             <Row label="צופים בממוצע בו־זמנית" games={games} cell={g => g.avgConcurrent} best={g => g.avgConcurrent} />
             <Row label="שיא בו־זמנית (ממוצע 5 דק׳)" games={games} cell={g => <>{g.peak5} <span className="text-[11px] text-slate-400" dir="ltr">({hhmm(g.peak5At)})</span></>} best={g => g.peak5} />
             <Row label="הדקה הכי צפויה" games={games} cell={g => g.peak1} best={g => g.peak1} />
             <Row label="פתחו דף משחק בזמן השידור" games={games} cell={g => <>{g.people} <span className="text-[11px] text-slate-400">({g.signedIn} מחוברים)</span></>} best={g => g.people} />
-            <Row label="אתר · iPhone · Android" games={games} cell={g => <span dir="ltr">{g.byPlatform.web} · {g.byPlatform.ios} · {g.byPlatform.android}</span>} />
+            <Row label="אתר · iPhone · Android" games={games} cell={g => <span>{g.byPlatform.web} · {g.byPlatform.ios} · {g.byPlatform.android}</span>} />
             <Row label="זמן צפייה משוער לאדם" games={games} cell={g => g.people ? `~${Math.round(g.liveMinutes / g.people)} דק׳` : "—"} best={g => g.people ? g.liveMinutes / g.people : 0} />
             <Row label="דקות צפייה בהקלטה" games={games} cell={g => g.replayMinutes} best={g => g.replayMinutes} />
           </tbody>
@@ -211,7 +211,8 @@ function buildInsights(games, t) {
     if (stay) out.push(`הצופים נשארו הכי הרבה ב${stay.g.name} — כ־${Math.round(stay.m)} דקות לאדם.`)
     const crowd = [...games].sort((a, b) => b.people - a.people)[0]
     if (crowd && crowd !== stay?.g) out.push(`הכי הרבה אנשים פתחו את ${crowd.name} (${crowd.people}), אבל נשארו פחות זמן.`)
-    const split = games.filter(g => g.parts.length > 1)
+    // A false start of a minute or two is not a broken broadcast.
+    const split = games.filter(g => g.parts.filter(p => p.minutes >= 5).length > 1)
     if (split.length) out.push(`${split.map(g => g.name).join(", ")} שודר בכמה חלקים — שידור שנקטע מאבד צופים.`)
   }
   const replayPct = pct(t.replayMinutes, t.liveMinutes + t.replayMinutes)
