@@ -5,7 +5,7 @@ import { getAvailabilityForOfficialBatch } from "@/lib/availability"
 import { getMyApprovedGameIds } from "@/lib/officials"
 import { useAuth } from "@/lib/AuthContext"
 import { RefreshCw, ChevronLeft, Users, AlertTriangle } from "lucide-react"
-import { Gavel, Calendar, MapPin, Clock, Squad } from "@/components/icons/BrandIcons"
+import { Calendar, MapPin, Clock, Squad, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -93,7 +93,7 @@ function JudgePicker() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <Gavel className="w-7 h-7 text-brand" /> שיפוט משחקים
+          <BrandTile name="referee" className="w-10 h-10 -my-1.5" /> שיפוט משחקים
         </h1>
         <p className="page-subtitle mt-1">בחר/י משחק כדי לנהל תוצאה וסטטיסטיקות בזמן אמת</p>
       </motion.div>

@@ -5,7 +5,7 @@ import {
   getArchivedPlayerStats, getArchivedGames
 } from "@/lib/api"
 import { Archive, Users, UserCheck, ArrowRight, RefreshCw } from "lucide-react"
-import { Trophy, Calendar } from "@/components/icons/BrandIcons"
+import { Trophy, Calendar, BrandTile } from "@/components/icons/BrandIcons"
 import { Crate } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
@@ -177,7 +177,7 @@ function SeasonDetail({ routeKey }) {
           ← כל העונות
         </Link>
         <h1 className="page-title flex items-center gap-2.5">
-          <Trophy className="w-7 h-7 text-brand" /> עונת {season?.name}
+          <BrandTile name="trophy" className="w-10 h-10 -my-1.5" /> עונת {season?.name}
         </h1>
         <p className="page-subtitle mt-1">טבלה סופית, מלכי השערים וכל המשחקים של העונה</p>
       </motion.div>

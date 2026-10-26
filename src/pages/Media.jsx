@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { Camera, HelpCircle, Check, ExternalLink, RefreshCw, Send, Images, UserSearch, Play, ChevronRight, ChevronLeft, X } from "lucide-react"
-import { CalendarDays, Film, Live as Radio, PlayBadge } from "@/components/icons/BrandIcons"
+import { CalendarDays, Film, Live as Radio, PlayBadge, BrandTile } from "@/components/icons/BrandIcons"
 import { Camera as CameraIcon } from "@/components/icons/HockeyIcons"
 import { getMediaClusters, getSuggestionSummary, submitSuggestion, getResolvedCount, getPhotoIndex } from "@/lib/media"
 import { getAllGameVideos, videoThumb } from "@/lib/video"
@@ -202,7 +202,7 @@ function MediaLibrary() {
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <CameraIcon className="w-7 h-7 text-brand" /> מדיה
+          <BrandTile name="highlights" className="w-10 h-10 -my-1.5" /> מדיה
         </h1>
         <p className="page-subtitle mt-1">וידאו ותמונות מהמשחקים של הליגה</p>
       </motion.div>

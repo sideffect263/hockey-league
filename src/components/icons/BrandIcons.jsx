@@ -37,6 +37,17 @@ function resolve(name, large) {
   return order.find(k => inline[k] || urls[k])
 }
 
+// `tile`: the full-colour large art on its own light card, so the dark-blue parts of a
+// drawing (player poses, crests) don't sink into the dark theme's background. Used for
+// page-header icons; className then sizes the tile, the art fills ~80% of it.
+export function BrandTile({ name, className = "w-10 h-10", title }) {
+  return (
+    <span className={`inline-grid place-items-center shrink-0 rounded-xl bg-white text-slate-800 ring-1 ring-black/5 shadow-sm dark:bg-slate-100 dark:ring-white/10 ${className}`}>
+      <BrandIcon name={name} variant="large" className="w-4/5 h-4/5" title={title} />
+    </span>
+  )
+}
+
 export function BrandIcon({ name, variant, className = "w-4 h-4", size, title, style,
   // lucide / HockeyIcons props that mean nothing here
   strokeWidth, absoluteStrokeWidth, fill, color, mono, ...props }) {

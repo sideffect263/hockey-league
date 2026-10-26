@@ -4,7 +4,7 @@ import { getPlayers, getTeams } from "@/lib/api"
 import { getPlayerTeams, buildMemberMaps } from "@/lib/playerTeams"
 import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
 import { UserCheck, Search, RefreshCw } from "lucide-react"
-import { PlayerIcon, Profile } from "@/components/icons/BrandIcons"
+import { Profile, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import PlayerAvatar from "@/components/PlayerAvatar"
 import { OgBadge, RoleBadge, deriveRoleItems } from "@/components/RoleBadges"
@@ -77,7 +77,7 @@ export default function Players() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <PlayerIcon className="w-7 h-7 text-brand" /> שחקנים
+          <BrandTile name="player-pose-1" className="w-10 h-10 -my-1.5" /> שחקנים
         </h1>
         <p className="page-subtitle mt-1">{seniorPlayers.length} שחקנים בליגה</p>
       </motion.div>

@@ -6,7 +6,7 @@ import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf, ageGroupsOf } from "@/lib/ag
 import { useAuth } from "@/lib/AuthContext"
 import CreateTeamModal from "@/components/CreateTeamModal"
 import { RefreshCw, ArrowLeft, Plus, Heart } from "lucide-react"
-import { Hourglass, TeamsIcon } from "@/components/icons/BrandIcons"
+import { Hourglass, TeamsIcon, BrandTile } from "@/components/icons/BrandIcons"
 import { getFollowerCounts, fansLabel } from "@/lib/follows"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
@@ -80,7 +80,7 @@ export default function Teams() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="page-title flex items-center gap-2.5">
-              <TeamsIcon className="w-7 h-7 text-brand" /> קבוצות
+              <BrandTile name="team" className="w-10 h-10 -my-1.5" /> קבוצות
             </h1>
             <p className="page-subtitle mt-1">
               {isSenior
