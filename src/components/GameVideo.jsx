@@ -22,7 +22,7 @@ const MIN_VIEWERS_SHOWN = 15
 
 // Marker kinds → Hebrew label + brand icon (emoji where none, and in <option>s) + pill colour (reuses the StatPills palette).
 const KINDS = {
-  goal:      { he: "גול",   emoji: "⚽", icon: "goal", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", dot: "bg-emerald-500" },
+  goal:      { he: "גול",   emoji: "", icon: "goal", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", dot: "bg-emerald-500" },
   penalty:   { he: "עונשין", emoji: "🟥", icon: "card-red", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300", dot: "bg-red-500" },
   period:    { he: "תקופה",  emoji: "⏱", icon: "clock", cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300", dot: "bg-indigo-500" },
   save:      { he: "הצלה",   emoji: "🧤", icon: "save", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
@@ -598,7 +598,7 @@ function MarkerForm({ player, videoRef, home, away, players, onAdded }) {
       </div>
       <div className="flex gap-2">
         <select value={kind} onChange={(e) => setKind(e.target.value)} className="filter-input text-sm flex-1">
-          {Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v.emoji} {v.he}</option>)}
+          {Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v.emoji ? `${v.emoji} ${v.he}` : v.he}</option>)}
         </select>
         <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className="filter-input text-sm flex-1">
           <option value="">— ללא שחקן —</option>

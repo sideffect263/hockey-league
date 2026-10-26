@@ -24,7 +24,7 @@ function Svg({ children, className = "w-6 h-6", strokeWidth = 2, ...props }) {
 }
 
 /**
- * The rink-hockey ball, in place of the football emoji ⚽ that used to mark a goal
+ * The rink-hockey ball, in place of the football emoji that used to mark a goal
  * (Ariel, 2026-10-20: a football is the wrong sport). Not a line icon like the rest of
  * this family — it is the ball itself: orange, lit from the upper left so it reads as a
  * ball rather than a dot, with a faint rim so it holds up on a pale stat pill. The same

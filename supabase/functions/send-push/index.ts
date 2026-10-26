@@ -181,7 +181,7 @@ function notificationText(n: NotificationRow, actorName: string): string {
     case "lm_broadcast":           return `הודעת מנהל הליגה (${vs(d)}): ${d.message ?? ""}`;
     case "game_moved":             return `${vs(d)} — ${movedSummary(d)}`;
     case "follow_game_alert":      return `מחר: ${vs(d)}`;
-    case "goal_scored":            return `⚽ ${d.scoring_team ?? ""} הבקיעה! ${vs(d)} ${d.away_score ?? ""}:${d.home_score ?? ""}`;
+    case "goal_scored":            return `${d.scoring_team ?? ""} הבקיעה! ${vs(d)} ${d.away_score ?? ""}:${d.home_score ?? ""}`;
     // הוקי מרקט. A settlement push IS the payoff — landing it as "התראה חדשה"
     // would waste the one notification that brings a trader back to the board.
     case "market_resolved":
