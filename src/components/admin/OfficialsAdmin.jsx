@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
-import {
-  Gavel, HeartPulse, AlertTriangle, X, Check, RefreshCw, Coins, Download, Copy, ClipboardCheck,
-} from "lucide-react"
+import { HeartPulse, AlertTriangle, X, Check, RefreshCw, Coins, Download, Copy, ClipboardCheck } from "lucide-react"
+import { Gavel } from "@/components/icons/BrandIcons"
 import {
   OFFICIAL_ROLE_LABEL, listAssignableOfficials, getOfficialsOverview, getOfficialRates,
   getOfficialsPaylog, assignOfficial, removeOfficial, setOfficialRate, reviewOfficialApplication,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { Check, ChevronDown, History } from "lucide-react"
+import { Check, ChevronDown } from "lucide-react"
+import { History } from "@/components/icons/BrandIcons"
 import { useSeasons, useSeasonPin } from "@/App"
 
 // Swatch per seasons.palette — the hue the site turns when that season is viewed.

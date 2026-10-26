@@ -3,12 +3,13 @@ import { Link } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import {
   getNotifications, markAllRead, markRead,
-  notificationText, notificationIcon, notificationHref, notificationPreview,
+  notificationText, notificationIcon, notificationBrandIcon, notificationHref, notificationPreview,
 } from "@/lib/notifications"
 import { useSeo } from "@/lib/seo"
 import { Bell, CheckCheck, ArrowRight, RefreshCw } from "lucide-react"
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
 import { sizedImage } from "@/lib/imageSize"
+import { BrandIcon } from "@/components/icons/BrandIcons"
 
 /**
  * Full notifications list.
@@ -93,7 +94,7 @@ export default function Notifications() {
                   <img src={sizedImage(n.actor.avatar_url, 36)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                 ) : (
                   <span className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
-                    {notificationIcon(n)}
+                    {notificationBrandIcon(n) ? <BrandIcon name={notificationBrandIcon(n)} className="w-6 h-6" /> : notificationIcon(n)}
                   </span>
                 )}
                 <div className="min-w-0 flex-1">

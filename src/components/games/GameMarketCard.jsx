@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Coins, Crown, TrendingUp, TrendingDown, Users, Lock, ChevronLeft, Sparkles, Flame } from "lucide-react"
+import { Coins, TrendingUp, TrendingDown, Users, Lock, ChevronLeft, Sparkles } from "lucide-react"
+import { Crown, Flame, Trophy } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { pct, coins } from "@/lib/market"
@@ -139,7 +140,7 @@ function MarketCardBody({ odds, teamsMap }) {
                 return (
                   <p key={p.okey} className="text-[13px] text-slate-800 dark:text-slate-100">
                     {won
-                      ? <>🏆 זכית! <span className="mkt-coin">{coins(shares)}</span> מטבעות על {o?.name}</>
+                      ? <><Trophy className="w-4 h-4 inline-block align-[-3px]" /> זכית! <span className="mkt-coin">{coins(shares)}</span> מטבעות על {o?.name}</>
                       : <>הפעם לא הלך — {o?.name}</>}
                   </p>
                 )

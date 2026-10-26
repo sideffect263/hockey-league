@@ -1,4 +1,4 @@
-import { Trophy } from 'lucide-react'
+import { Trophy } from "@/components/icons/BrandIcons"
 import { cn } from '@/lib/utils'
 import { COUNTRY_FLAG } from '../clubs'
 

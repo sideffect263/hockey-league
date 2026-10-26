@@ -9,7 +9,8 @@ import {
 } from "@/lib/unavailability"
 import AddSquadPlayer from "@/components/AddSquadPlayer"
 import LoanFinder from "@/components/LoanFinder"
-import { Check, X, Loader2, CalendarCheck, CalendarX, AlertTriangle, Ban, UserMinus, Share2, Link2, BellRing } from "lucide-react"
+import { Check, X, Loader2, AlertTriangle, Ban, UserMinus, Share2, Link2, BellRing } from "lucide-react"
+import { CalendarCheck, CalendarX, Goalkeeper } from "@/components/icons/BrandIcons"
 
 /**
  * Sheet row 11 — the coach posts the squad to WhatsApp. Plain text, because that is
@@ -317,7 +318,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
           const pending = absences.find(u => u.player_id === p.id && u.status === "pending")
           return (
             <p key={p.id} className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-300">
-              <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? " 🧤" : ""}</span>
+              <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}</span>
               {manual && (
                 <span title={row.note || "נוסף ידנית"}
                   className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
@@ -527,7 +528,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
                   const b = blockOf(p.id)
                   return (
                     <p key={p.id} className="flex items-center gap-1.5 flex-wrap text-xs text-slate-700 dark:text-slate-300">
-                      <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? " 🧤" : ""}</span>
+                      <span className="truncate">{nameOf(p)}{p.position === "Goalkeeper" ? <> <Goalkeeper className="w-3.5 h-3.5 inline-block align-[-2px]" title="שוער" /></> : null}</span>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{b.label}</span>
                       <span className="text-[10px]"><Span block={b} /></span>
                       {b.detail && <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{b.detail}</span>}

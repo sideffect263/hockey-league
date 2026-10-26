@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { History } from "lucide-react"
+import { History } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 
 /**

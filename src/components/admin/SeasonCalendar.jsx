@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { CalendarDays, Plus, Trash2, ChevronRight, ChevronLeft, AlertTriangle, Loader2, Sparkles, Wand2 } from "lucide-react"
+import { Plus, Trash2, ChevronRight, ChevronLeft, AlertTriangle, Loader2, Sparkles, Wand2 } from "lucide-react"
+import { CalendarDays } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import {
   getSeasons, createPlannedSeason, getSeasonGames, clearPlannedSeasonFixtures,

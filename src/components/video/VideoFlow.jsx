@@ -1,4 +1,5 @@
-import { ChevronDown, Film, Cpu, UserCheck, Clapperboard, ArrowLeft } from "lucide-react"
+import { ChevronDown, Cpu, UserCheck, Clapperboard, ArrowLeft } from "lucide-react"
+import { Film } from "@/components/icons/BrandIcons"
 
 // "How a full game video goes through our models", drawn simply. Two depths:
 //   variant="devs"     /devs map — 3 phases, every step opens its stage page, "what the computer sees" panels.

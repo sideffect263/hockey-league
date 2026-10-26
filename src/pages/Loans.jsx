@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Handshake, TrendingUp, Users, Eye, CalendarDays, MapPin, Check, Clock, Loader2, ShieldCheck, Info, LogIn } from "lucide-react"
+import { Handshake, TrendingUp, Users, Eye, Check, Loader2, ShieldCheck, Info, LogIn } from "lucide-react"
+import { CalendarDays, MapPin, Hourglass, Goalkeeper } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { useSeo } from "@/lib/seo"
 import TeamLogo from "@/components/TeamLogo"
@@ -131,7 +132,7 @@ export default function Loans() {
     if (c.my_request_status === "accepted") return <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600"><Check className="w-4 h-4" /> את/ה בסגל</span>
     if (c.my_request_status === "pending" && c.my_request_by === "player") return (
       <span className="flex items-center gap-2">
-        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600"><Clock className="w-4 h-4" /> ממתין לאישור המאמן/ת</span>
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600"><Hourglass className="w-4 h-4" /> ממתין לאישור המאמן/ת</span>
         <button onClick={() => cancel(c)} disabled={busy === key} className="text-[11px] text-slate-500 underline">ביטול</button>
       </span>
     )
@@ -219,7 +220,7 @@ export default function Loans() {
                     שחקני שדה · {c.field_slots === 1 ? "מקום אחד" : `${c.field_slots} מקומות`}
                   </span>
                 )}
-                {c.need_gk && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand">שוער 🧤</span>}
+                {c.need_gk && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand inline-flex items-center gap-1">שוער <Goalkeeper className="w-3.5 h-3.5" /></span>}
               </div>
               {c.note && <p className="text-xs text-slate-600 dark:text-slate-300">„{c.note}”</p>}
               <div className="flex items-center justify-end">{actionFor(c)}</div>

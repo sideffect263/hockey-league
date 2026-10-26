@@ -2,10 +2,8 @@ import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { format } from "date-fns"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  CalendarDays, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List,
-  FileSpreadsheet, FileText, CalendarPlus, Copy, Check, X,
-} from "lucide-react"
+import { ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List, FileSpreadsheet, FileText, Copy, Check, X } from "lucide-react"
+import { CalendarDays, CalendarPlus } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { entityPath } from "@/lib/slugs"
 import { toCsv, toXlsx, downloadBlob } from "@/lib/scheduleExport"

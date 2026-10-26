@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react"
-import { Ball } from '../icons/HockeyIcons'
+import { GoalIcon as Ball, BlueCard, RedCard, Flame, HatTrick, Crown, Trophy, MapPin } from "@/components/icons/BrandIcons"
 import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
-import { Crown, Flame, Trophy, MapPin, FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2, Link2, Unlink } from "lucide-react"
+import { FileText, ChevronDown, Heart, MessageCircle, Send, Loader2, Camera, ExternalLink, BadgeCheck, Check, RefreshCw, ArrowLeft, Globe, Cake, Share2, Link2, Unlink } from "lucide-react"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
 import { likePost, unlikePost, getComments, createComment, editPost, deletePost, editComment, deleteComment, setPostGame } from "@/lib/api"
@@ -408,9 +408,9 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
                                 <div key={stat.id} className="flex items-center justify-between py-1 text-xs">
                                   <PlayerLink playerId={stat.player_id} className="text-slate-700 dark:text-slate-300 hover:text-brand transition-colors">{p?.first_name} {p?.last_name}</PlayerLink>
                                   <div className="flex gap-1.5">
-                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3 h-3" />{stat.goals}</span>}
-                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
+                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
                                   </div>
                                 </div>
                               )
@@ -430,9 +430,9 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
                                 {stat.guest_player_original_team && <span className="text-slate-500 dark:text-slate-400"> ({stat.guest_player_original_team})</span>}
                               </span>
                               <div className="flex gap-1.5">
-                                {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3 h-3" />{stat.goals}</span>}
-                                {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-                                {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
+                                {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+                                {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+                                {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
                               </div>
                             </div>
                           ))}
@@ -456,7 +456,7 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
 function MilestonePost({ post, onPhotoRefreshed, ...rx }) {
   const { kind, name, playerId, teamName, goals, home, away, game } = post.data
   const bigGame = kind === 'big_game'
-  const emoji = bigGame ? '🔥' : '🎩'
+  const emoji = bigGame ? <Flame className="w-5 h-5" /> : <HatTrick className="w-5 h-5" />
   const label = bigGame ? 'משחק ענק' : 'שלושער'
 
   return (

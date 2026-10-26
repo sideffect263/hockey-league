@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
-import { CalendarClock, Check, X, Loader2 } from "lucide-react"
+import { Check, X, Loader2 } from "lucide-react"
+import { CalendarClock } from "@/components/icons/BrandIcons"
 import { getOpenGameChangeRequest, respondGameChangeOpponent } from "@/lib/gameRequests"
 
 /**

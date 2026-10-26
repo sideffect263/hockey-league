@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import {
-  Loader2, Plus, Minus, RefreshCw, Gavel, Ban, Lock, Unlock, Users, ListChecks, AlertTriangle,
-  CalendarClock, Check, Trash2, Droplets, Search, X,
-} from 'lucide-react'
+import { Loader2, Plus, Minus, RefreshCw, Gavel, Ban, Lock, Unlock, Users, ListChecks, AlertTriangle, Check, Trash2, Droplets, Search, X } from 'lucide-react'
+import { CalendarClock } from "@/components/icons/BrandIcons"
 import {
   getTraders, adjustCoins, resolveMarket, voidMarket, setMarketStatus, setMarketCloses,
   syncGameMarkets, createFutures, addOutcome, removeOutcome, setLiquidity,

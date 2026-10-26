@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames, getReferees, getGameStats, getSeasonStatisticsData } from "@/lib/api"
-import { BarChart3, Shield, Crown, ChevronDown, ChevronUp, RefreshCw, Trophy, TrendingUp, Flame, Zap, Target, Star } from "lucide-react"
-import { Player, Glove, Cards, Whistle, StickBall, BlueCard, RedCard, Goal, Crossed, Stats } from "@/components/icons/HockeyIcons"
+import { BarChart3, Shield, ChevronDown, ChevronUp, RefreshCw, TrendingUp, Zap, Target, Star } from "lucide-react"
+import { Crown, Trophy, Flame, PlayerIcon as Player, Goalkeeper as Glove, Cards, Referee as Whistle, BlueCard, RedCard, GoalIcon as Goal, MatchFallback as Crossed, HatTrick } from "@/components/icons/BrandIcons"
+import { StickBall, Stats } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
 import { PlayerLink } from "@/components/EntityLinks"
@@ -553,8 +554,8 @@ export default function Statistics({ season = null }) {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <AwardCard title="MVP של המשחק" icon={<Star className="w-4 h-4 text-amber-500" />} data={awardMvp} valueOf={p => p.mvps} badge="bg-amber-500" empty="טרם נבחרו MVP העונה" />
-          <AwardCard title="מלכי השלישיות" icon={<StickBall className="w-4 h-4 text-brand" />} data={awardHat} valueOf={p => p.hatTricks} badge="bg-brand" empty="אין שלישיות" note={STATS_NOTE} />
-          <AwardCard title="משחקי-על (5+ שערים)" icon={<Zap className="w-4 h-4 text-amber-500" />} data={awardBig} valueOf={p => p.bigGames} badge="bg-amber-500" empty="אין" note={STATS_NOTE} />
+          <AwardCard title="מלכי השלישיות" icon={<HatTrick className="w-4 h-4" />} data={awardHat} valueOf={p => p.hatTricks} badge="bg-brand" empty="אין שלישיות" note={STATS_NOTE} />
+          <AwardCard title="משחקי-על (5+ שערים)" icon={<Flame className="w-4 h-4" />} data={awardBig} valueOf={p => p.bigGames} badge="bg-amber-500" empty="אין" note={STATS_NOTE} />
           <AwardCard title="דאבלים (2 שערים)" icon={<Target className="w-4 h-4 text-slate-500" />} data={awardBrace} valueOf={p => p.braces} badge="bg-slate-700 dark:bg-slate-500" empty="אין" note={STATS_NOTE} />
           <AwardCard title="שוערי הברזל" icon={<Glove className="w-4 h-4 text-blue-500" />} data={awardClean} valueOf={p => p.clean_sheets} unit="נקיות" badge="bg-blue-500" empty="אין" />
           <AwardCard title="כרטיסים כחולים" icon={<BlueCard className="w-4 h-4" />} data={awardBlue} valueOf={p => p.blue_cards} badge="bg-blue-500" empty="אין" />
@@ -573,7 +574,7 @@ export default function Statistics({ season = null }) {
 
         {activeTab === "scorers" && (
           <div className="space-y-4">
-            <List title="מלכי השערים" icon={<StickBall className="w-4 h-4 text-brand" />} data={topScorers} tKey="top" empty="טרם נרשמו שערים העונה"
+            <List title="מלכי השערים" icon={<Crown className="w-4 h-4" />} data={topScorers} tKey="top" empty="טרם נרשמו שערים העונה"
               render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={`${p.goals || 0} שערים`} />} />
             <List title="מצטיין מכל קבוצה" icon={<Crown className="w-4 h-4 text-amber-500" />} data={topPerTeam} tKey="perTeam" empty="טרם נרשמו שערים העונה"
               render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={`${p.goals || 0}`} color="bg-amber-500" />} />

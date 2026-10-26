@@ -309,6 +309,24 @@ export function notificationIcon(n) {
   }
 }
 
+// The league's own icon (components/icons/BrandIcons, by file name) for the types that
+// have one; null → fall back to notificationIcon's emoji. Kept apart from notificationIcon
+// because that one is also plain text (admin tallies, tests).
+const BRAND_ICON = {
+  game_result: 'goal', goal_scored: 'goal',
+  game_change_request: 'calendar-move', game_change_opponent: 'calendar-move', game_moved: 'calendar-move',
+  medical_submitted: 'medic', medical_pending_manager: 'medic', medical_approved: 'medic',
+  medical_date_changed: 'medic', unavailability_reported: 'medic',
+  medical_coach_approved: 'waiting',
+  medical_expiring: 'reminder', medical_expiring_player: 'reminder', game_register_nudge: 'reminder',
+  tournament_invite: 'trophy',
+  stream_approved: 'broadcast',
+  lm_officials_digest: 'officials', official_assigned: 'officials',
+}
+export function notificationBrandIcon(n) {
+  return BRAND_ICON[n?.type] || null
+}
+
 // A server-written in-app path, or the feed. Never an absolute / protocol-relative URL.
 const safeHref = (h) => (typeof h === 'string' && h.startsWith('/') && !h.startsWith('//') ? h : '/')
 

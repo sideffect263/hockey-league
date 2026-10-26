@@ -5,7 +5,8 @@ import { standingsComparator } from "@/lib/utils"
 import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf, ageGroupsOf } from "@/lib/ageGroups"
 import { useAuth } from "@/lib/AuthContext"
 import CreateTeamModal from "@/components/CreateTeamModal"
-import { RefreshCw, ArrowLeft, Plus, Clock, Heart } from "lucide-react"
+import { RefreshCw, ArrowLeft, Plus, Heart } from "lucide-react"
+import { Hourglass } from "@/components/icons/BrandIcons"
 import { getFollowerCounts, fansLabel } from "@/lib/follows"
 import { Teams as TeamsIcon } from "@/components/icons/HockeyIcons"
 import { motion } from "framer-motion"
@@ -97,7 +98,7 @@ export default function Teams() {
         </div>
         {myPending.length > 0 && (
           <div className="mt-3 card p-3 flex items-center gap-2.5 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
-            <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+            <Hourglass className="w-4 h-4 text-amber-500 shrink-0" />
             <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
               הקבוצה "{myPending[0].name}" ממתינה לאישור מנהל הליגה
             </p>

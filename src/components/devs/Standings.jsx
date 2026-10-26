@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { Trophy, RefreshCw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
+import { Trophy } from "@/components/icons/BrandIcons"
 import { getFinishedExperiments } from "@/lib/devs"
 import { liveStandings } from "@/lib/standingsLive"
 

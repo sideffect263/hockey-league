@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
-import { Trophy, Calendar, Flame, MapPin, ChevronLeft } from "lucide-react"
+import { ChevronLeft } from "lucide-react"
+import { Trophy, Calendar, Flame, MapPin } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { standingsComparator } from "@/lib/utils"
 import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
@@ -119,7 +120,7 @@ export function NextGameWidget({ games = [], teams = [] }) {
             </div>
           </>
         ) : (
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-4">העונה הסתיימה 🏆</p>
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-4">העונה הסתיימה <Trophy className="w-4 h-4 inline-block align-[-3px]" /></p>
         )}
       </div>
       <WidgetFooter to="/games" label="לכל המשחקים" />

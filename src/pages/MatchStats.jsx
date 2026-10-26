@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, BarChart3, Crosshair, Flame, PlayCircle, Users, Activity, Info, FlaskConical, Check, X, HelpCircle, RotateCcw, SkipForward, Plus, Loader2, HandHeart } from "lucide-react"
+import { ArrowRight, BarChart3, Crosshair, PlayCircle, Users, Activity, Info, FlaskConical, Check, X, HelpCircle, RotateCcw, SkipForward, Plus, Loader2, HandHeart } from "lucide-react"
+import { Flame } from "@/components/icons/BrandIcons"
 import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
 import { getTeams } from "@/lib/api"

@@ -18,6 +18,7 @@ import {
   Loader2, Check, Users, Flag,
 } from "lucide-react"
 import { StickBall } from "@/components/icons/HockeyIcons"
+import { Timeout } from "@/components/icons/BrandIcons"
 
 /* ============================================================================
  * Web judge scoreboard — a faithful mirror of the iOS `ScoreboardView`.
@@ -193,7 +194,7 @@ function TeamColumn({ side, engine, T, teamName, setPicker, onRemoveCard }) {
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold transition-opacity"
         style={{ ...TOUCH, background: T.panel, color: accent, opacity: canTimeout ? 1 : 0.25, fontSize: SB.timeout }}
         aria-label={HE.timeoutsUsed(engine._side(side).timeoutsThisPeriod, GameRules.maxTimeoutsPerPeriod)}>
-        <Hand className="w-[1.1em] h-[1.1em]" /> {HE.timeout}
+        <Timeout className="w-[1.1em] h-[1.1em]" /> {HE.timeout}
         <TimeoutDots used={engine._side(side).timeoutsThisPeriod} color={accent} />
       </button>
     </div>

@@ -1,4 +1,5 @@
-import { Download, Clock, ShieldCheck, Trophy, BarChart3, Newspaper, Bell } from "lucide-react"
+import { Download, ShieldCheck, BarChart3, Newspaper, Bell } from "lucide-react"
+import { Trophy, Hourglass } from "@/components/icons/BrandIcons"
 import { Whistle } from "@/components/icons/HockeyIcons"
 import { Link } from "react-router-dom"
 
@@ -126,7 +127,7 @@ export default function MobileApp() {
             </a>
           ) : (
             <div className="mt-4 inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-surface-sunken text-fg-muted text-sm font-bold cursor-not-allowed" aria-disabled="true">
-              <Clock className="w-5 h-5" /> בקרוב — ממתינה לאישור אפל
+              <Hourglass className="w-5 h-5" /> בקרוב — ממתינה לאישור אפל
             </div>
           )}
 

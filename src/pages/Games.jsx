@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react"
-import { Ball } from '../components/icons/HockeyIcons'
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee } from "@/components/icons/BrandIcons"
 import { Link } from "react-router-dom"
 import { getGames, getTeams, getPlayers, getReferees, getGameStats } from "@/lib/api"
-import { Calendar, Clock, MapPin, Trophy, Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
-import { Crossed } from "@/components/icons/HockeyIcons"
+import { Shield, X, ArrowLeft, RefreshCw, AlertTriangle, Users, Utensils, CheckCircle2, XCircle } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -276,7 +275,7 @@ export default function Games() {
                 <Utensils className="w-3.5 h-3.5" />{game.kiosk_open ? 'דוכן פתוח' : 'אין דוכן'}
               </span>
             )}
-            {ref && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{ref}</span>}
+            {ref && <span className="flex items-center gap-1"><Referee className="w-3.5 h-3.5" />{ref}</span>}
             <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" /></span>
           </div>
 
@@ -296,9 +295,9 @@ export default function Games() {
     <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
       <span className="truncate text-slate-700 dark:text-slate-300">{name}</span>
       <span className="flex gap-1 shrink-0">
-        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3 h-3" />{s.goals}</span>}
-        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {s.blue_cards}</span>}
-        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {s.red_cards}</span>}
+        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{s.goals}</span>}
+        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{s.blue_cards}</span>}
+        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{s.red_cards}</span>}
       </span>
     </div>
   )

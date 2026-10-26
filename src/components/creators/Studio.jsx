@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
-import {
-  ArrowRight, ArrowLeft, Check, Loader2, Copy, Download, Send, Trash2, X, Search, Play, Film, Image as ImageIcon,
-  Sparkles, Smartphone, Monitor, AlertTriangle, Clapperboard, ChevronDown, Upload,
-} from "lucide-react"
+import { ArrowRight, ArrowLeft, Check, Loader2, Copy, Download, Send, Trash2, X, Search, Play, Image as ImageIcon, Sparkles, Smartphone, Monitor, AlertTriangle, Clapperboard, ChevronDown, Upload } from "lucide-react"
+import { Film, Flame } from "@/components/icons/BrandIcons"
 import FeedVideo from "@/components/feed/FeedVideo"
 import { getGames, getTeams } from "@/lib/api"
 import { deleteFeedDraft, publishFeedDraft, requestGoalReel, getLatestGoalReel, goalReelDownloadUrl } from "@/lib/feedDrafts"
@@ -573,7 +571,7 @@ function GoalsSummary({ onCancel, onDone }) {
   return (
     <div className="card p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2"><span className="text-2xl">🔥</span> תקציר גולים</h2>
+        <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2"><Flame className="w-7 h-7" /> תקציר גולים</h2>
         <button onClick={onCancel} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500"><X className="w-4 h-4" /> סגירה</button>
       </div>
       <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">

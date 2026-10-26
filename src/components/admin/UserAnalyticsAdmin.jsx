@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import {
-  Users, UserCheck, Smartphone, Monitor, Eye, Heart, RefreshCw, Search, X, ArrowUpDown,
-  Clock, Layers, Filter as FunnelIcon, Repeat, AlertTriangle, Bell,
-} from "lucide-react"
+import { Users, UserCheck, Smartphone, Monitor, Eye, Heart, RefreshCw, Search, X, ArrowUpDown, Layers, Filter as FunnelIcon, Repeat, AlertTriangle, Bell } from "lucide-react"
+import { Clock } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { useTheme } from "@/lib/ThemeContext"
 import { seriesColors, singleColor } from "@/lib/chartPalette"

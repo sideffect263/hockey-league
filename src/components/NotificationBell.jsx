@@ -6,11 +6,12 @@ import { he } from 'date-fns/locale'
 import { useAuth } from '../lib/AuthContext'
 import {
   getNotifications, getUnreadCount, markAllRead,
-  subscribeToNotifications, notificationText, notificationIcon, notificationHref, notificationPreview,
+  subscribeToNotifications, notificationText, notificationIcon, notificationBrandIcon, notificationHref, notificationPreview,
 } from '../lib/notifications'
 import { pushSupported, pushStatus, enablePush } from '../lib/push'
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
 import { sizedImage } from "@/lib/imageSize"
+import { BrandIcon } from "@/components/icons/BrandIcons"
 
 function timeAgo(iso) {
   try { return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: he }) }
@@ -145,7 +146,7 @@ export default function NotificationBell() {
                       <img src={sizedImage(n.actor.avatar_url, 32)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                     ) : (
                       <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
-                        {notificationIcon(n)}
+                        {notificationBrandIcon(n) ? <BrandIcon name={notificationBrandIcon(n)} className="w-5 h-5" /> : notificationIcon(n)}
                       </span>
                     )}
                     <div className="min-w-0 flex-1">

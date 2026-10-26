@@ -1,4 +1,5 @@
-import { LayoutGrid, Trophy, Flame, MessageSquare, Globe, PlayCircle } from "lucide-react"
+import { LayoutGrid, MessageSquare, Globe, PlayCircle } from "lucide-react"
+import { Trophy, Flame } from "@/components/icons/BrandIcons"
 import { parseYouTubeId, youTubeInText } from "@/lib/video"
 
 export const FEED_FILTERS = [

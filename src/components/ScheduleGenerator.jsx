@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Loader2, CalendarPlus } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { CalendarPlus } from "@/components/icons/BrandIcons"
 import { createGames } from "@/lib/api"
 import { roundRobin, knockoutFirstRound, groupStage, buildGames } from "@/lib/scheduleGenerator"
 

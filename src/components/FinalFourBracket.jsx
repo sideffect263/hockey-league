@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
-import { Trophy, Crown, ListOrdered } from "lucide-react"
-import { Trophy as TrophyIcon } from "@/components/icons/HockeyIcons"
+import { ListOrdered } from "lucide-react"
+import { Trophy, Crown, Trophy as TrophyIcon } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
@@ -63,7 +63,7 @@ export default function FinalFourBracket({ teams = [], games = [], championId = 
         {champion && (
           <span className="flex items-center gap-1.5 text-sm font-bold text-fg-strong bg-gold/[0.12] ring-1 ring-gold/30 rounded-full px-3 py-1.5">
             <Crown className="size-4 text-gold" /> אלופה:
-            <TeamLink team={champion} className="text-gold hover:underline">{champion.name}</TeamLink> 🏆
+            <TeamLink team={champion} className="text-gold hover:underline">{champion.name}</TeamLink> <Trophy className="w-4 h-4 inline-block align-[-2px]" />
           </span>
         )}
       </div>
@@ -332,7 +332,7 @@ function FinalCard({ teams: [t1, t2], ko, champion, delay }) {
             <div className="flex items-center justify-center gap-2">
               <TeamLogo team={champion} size={8} />
               <TeamLink team={champion} className="font-extrabold text-sm text-fg-strong hover:text-brand transition-colors">{champion.name}</TeamLink>
-              <span className="text-lg">🏆</span>
+              <Trophy className="w-5 h-5" />
             </div>
           </div>
         )}
@@ -407,7 +407,7 @@ function RankingCard({ ranking, team }) {
                 <>
                   <TeamLogo team={t} size={6} />
                   <TeamLink team={t} className="text-sm font-semibold text-fg-strong hover:text-brand">{t.name}</TeamLink>
-                  {i === 0 && <span className="mr-auto">🏆</span>}
+                  {i === 0 && <Trophy className="w-4 h-4 mr-auto" />}
                 </>
               ) : (
                 <span className="text-xs text-fg-subtle">ייקבע</span>

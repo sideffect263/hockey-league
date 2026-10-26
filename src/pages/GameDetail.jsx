@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react"
-import { Ball } from '../components/icons/HockeyIcons'
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Clock, MapPin, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck } from "@/components/icons/BrandIcons"
 import { useParams, Link, useLocation } from "react-router-dom"
 import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason, getArchivedGames } from "@/lib/api"
 import { getLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
-import { ArrowRight, ArrowLeft, Calendar, CalendarClock, Clock, MapPin, Shield, Trophy, Users, Flame, Swords, TrendingUp, RefreshCw, Radio, ClipboardCheck, MonitorPlay, Utensils, CalendarCheck, LogIn, UserPlus, HeartPulse } from "lucide-react"
+import { ArrowRight, ArrowLeft, Shield, Users, TrendingUp, RefreshCw, ClipboardCheck, Utensils, LogIn, UserPlus, HeartPulse } from "lucide-react"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { he } from "date-fns/locale"
@@ -58,9 +58,9 @@ const resultLabel = (r) => (r === 'win' ? 'ניצחון' : r === 'loss' ? 'הפ�
 function StatPills({ stat }) {
   return (
     <div className="flex gap-1.5 shrink-0">
-      {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3 h-3" />{stat.goals}</span>}
-      {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5">🟦 {stat.blue_cards}</span>}
-      {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5">🟥 {stat.red_cards}</span>}
+      {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{stat.goals}</span>}
+      {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-3.5 h-3.5" />{stat.blue_cards}</span>}
+      {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-3.5 h-3.5" />{stat.red_cards}</span>}
     </div>
   )
 }
@@ -291,7 +291,7 @@ export default function GameDetail() {
         {/* Officials: jump straight to this game's scoreboard to run the clock / go live */}
         {canOfficiate && !done && (
           <Link to={`/judge/${id}`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-            <Radio className="w-3.5 h-3.5" /> לוח שיפוט
+            <Referee className="w-3.5 h-3.5" /> לוח שיפוט
           </Link>
         )}
         {/* Admin: the multi-camera control room — reachable before any camera exists */}
@@ -366,7 +366,7 @@ export default function GameDetail() {
           <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{format(ilDate(game.game_date), "HH:mm")}</span>
           <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{game.venue || '—'}</span>
           {/* Labelled: a bare name after the venue read as nothing (nobody saw it was the judge). */}
-          {refName && <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
+          {refName && <span className="flex items-center gap-1"><Referee className="w-3.5 h-3.5" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
           {medics.length > 0 && <span className="flex items-center gap-1"><HeartPulse className="w-3.5 h-3.5" />חובש: {medics.map(m => m.name).filter(Boolean).join(', ')}</span>}
         </div>
 
@@ -580,7 +580,7 @@ export default function GameDetail() {
                             <div className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg">
                               <span className="text-sm text-slate-500 dark:text-slate-400 truncate min-w-0">{ownGoalLabel(ownGoalsFor(tid))}</span>
                               <div className="flex gap-1.5 shrink-0">
-                                <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3 h-3" />{ownGoalsFor(tid)}</span>
+                                <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-3.5 h-3.5" />{ownGoalsFor(tid)}</span>
                               </div>
                             </div>
                           )}

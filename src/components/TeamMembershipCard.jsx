@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { Users, Loader2, Clock, LogOut, Plus, Check } from "lucide-react"
+import { Users, Loader2, LogOut, Plus, Check } from "lucide-react"
+import { Clock } from "@/components/icons/BrandIcons"
 import { getTeams } from "@/lib/api"
 import { getMyJoinRequest, requestTeamJoin, cancelTeamJoin, leaveTeamById, getMyMemberships, joinErrorText } from "@/lib/teamMembership"
 import { AGE_LABEL, DEFAULT_AGE, ageOf } from "@/lib/ageGroups"

@@ -5,10 +5,8 @@ import { useAuth } from "@/lib/AuthContext"
 import { getAvailabilityForGames } from "@/lib/availability"
 import { getMyMedical } from "@/lib/medical"
 import { pushStatus, enablePush } from "@/lib/push"
-import {
-  LogIn, Trophy, Smartphone, UserPlus, Users, Bell,
-  CalendarClock, CalendarCheck, CalendarX, HeartPulse, ChevronLeft, Loader2,
-} from "lucide-react"
+import { LogIn, Smartphone, UserPlus, Users, Bell, HeartPulse, ChevronLeft, Loader2 } from "lucide-react"
+import { Trophy, CalendarClock, CalendarCheck, CalendarX } from "@/components/icons/BrandIcons"
 import { entityPath } from '@/lib/slugs'
 import { useHasNativeApp } from "@/lib/appUsers"
 import { ilDate } from "@/lib/ilTime"

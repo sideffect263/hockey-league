@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { Radio, Maximize, Minimize, Play, Pause, Volume2, VolumeX } from "lucide-react"
+import { Maximize, Minimize, Play, Pause, Volume2, VolumeX } from "lucide-react"
+import { Live as Radio } from "@/components/icons/BrandIcons"
 
 // Live player for an app (RTMP) broadcast. Replaces Cloudflare's iframe for the LIVE
 // part only: when that player stalled (streamer's uplink hiccup, viewer's weak network)

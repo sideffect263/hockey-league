@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { Film, Play } from "lucide-react"
+import { Play } from "lucide-react"
+import { Film, MonitorPlay, PlayBadge } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
 import { entityPath } from "@/lib/slugs"
 import { ilDate } from "@/lib/ilTime"
@@ -40,9 +41,7 @@ function Poster({ item, className = "" }) {
 
 function PlayDot({ small }) {
   return (
-    <span className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 grid place-items-center shadow ${small ? "w-7 h-7" : "w-11 h-11"}`}>
-      <Play className={`${small ? "w-3.5 h-3.5" : "w-5 h-5"} text-slate-900 fill-slate-900 ms-0.5`} />
-    </span>
+    <PlayBadge variant="large" className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow ${small ? "w-8 h-8" : "w-12 h-12"}`} />
   )
 }
 
@@ -118,7 +117,7 @@ export default function TeamMedia({ items, team, teamsMap, title }) {
               <PlayDot small />
             </span>
             <span className="min-w-0">
-              <span className="block font-bold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors">📺 {item.title}</span>
+              <span className="block font-bold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors"><MonitorPlay className="w-4 h-4 inline-block align-[-3px] me-1" />{item.title}</span>
               <span className="block text-xs text-slate-500 dark:text-slate-400 truncate">
                 {[gameLabel(item, team.id, teamsMap), item.cameras > 1 ? `${item.cameras} הקלטות` : null].filter(Boolean).join(" · ")}
               </span>
