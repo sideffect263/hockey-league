@@ -6,7 +6,7 @@ import { getMyBlocks } from "@/lib/moderation"
 import { useAuth } from "@/lib/AuthContext"
 import { useHasNativeApp } from "@/lib/appUsers"
 import { RefreshCw, Smartphone } from "lucide-react"
-import { RinkIcon as Rink } from "@/components/icons/BrandIcons"
+import { RinkIcon as Rink, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { useSeasonMode, useSeasonName } from "@/App"
 import { buildFeed, parseRanking } from "@/lib/feed"
@@ -263,7 +263,7 @@ export default function Feed() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
             <div>
               <h1 className="page-title flex items-center gap-2.5">
-                <Rink className="w-7 h-7 text-brand" /> המגרש
+                <BrandTile name="rink" className="w-10 h-10 -my-1.5" /> המגרש
               </h1>
               <p className="page-subtitle mt-1">כל מה שקורה בליגה</p>
             </div>

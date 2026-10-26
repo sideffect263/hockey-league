@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { getTournaments } from "@/lib/tournaments"
 import { AGE_LABEL } from "@/lib/ageGroups"
 import { ChevronLeft, RefreshCw } from "lucide-react"
-import { Trophy, Calendar } from "@/components/icons/BrandIcons"
+import { Trophy, Calendar, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { entityPath } from "@/lib/slugs"
@@ -59,7 +59,7 @@ export default function Tournaments() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="page-title flex items-center gap-2.5">
-          <Trophy className="w-7 h-7 text-brand" /> טורנירים
+          <BrandTile name="trophy" className="w-10 h-10 -my-1.5" /> טורנירים
         </h1>
         <p className="page-subtitle mt-1">טורנירים לקבוצות הנוער</p>
       </motion.div>
