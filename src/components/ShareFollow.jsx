@@ -19,8 +19,8 @@ export function ShareFollowButton({ targetType, name, onDark = false }) {
     url.hash = ""
     url.searchParams.set("follow", "1")
     const text = targetType === "team"
-      ? `עקבו אחרי ${name} בליגת הוקי הגלגיליות וקבלו התראה על כל גול ⚽`
-      : `עקבו אחרי ${name} בליגת הוקי הגלגיליות וקבלו התראה על כל גול במשחקים שלו ⚽`
+      ? `עקבו אחרי ${name} בליגת הוקי הגלגיליות וקבלו התראה על כל גול`
+      : `עקבו אחרי ${name} בליגת הוקי הגלגיליות וקבלו התראה על כל גול במשחקים שלו`
     try {
       if (navigator.share) { await navigator.share({ title: name, text, url: url.toString() }); return }
     } catch (e) { if (e?.name === "AbortError") return }

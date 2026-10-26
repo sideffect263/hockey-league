@@ -217,7 +217,7 @@ export function notificationText(n) {
     case 'follow_game_alert':      return `מחר: ${vs(d)}`
     // P5 — a goal in a game you follow. Score reads away:home, per the RTL gotcha.
     case 'app_update':             return `גרסה חדשה של האפליקציה זמינה${d.version_name ? ` (${d.version_name})` : ''} — הורידו מהאתר`
-    case 'goal_scored':            return `⚽ ${d.scoring_team || ''} הבקיעה! ${vs(d)} ${d.away_score ?? ''}:${d.home_score ?? ''}`
+    case 'goal_scored':            return `${d.scoring_team || ''} הבקיעה! ${vs(d)} ${d.away_score ?? ''}:${d.home_score ?? ''}`
     case 'official_assigned':              return `שובצת כ${ROLE_LABEL[d.role] || 'בעל תפקיד'} למשחק`
     case 'official_application':           return `${actorName(n)} הגיש/ה מועמדות כ${ROLE_LABEL[d.role] || 'בעל תפקיד'}`
     case 'official_application_approved':  return `מועמדותך לשיבוץ כ${ROLE_LABEL[d.role] || 'בעל תפקיד'} אושרה 🎉`
@@ -248,7 +248,7 @@ export function notificationIcon(n) {
     case 'role_granted':   return '🎖️'
     case 'claim_request':  return '🙋'
     case 'content_report': return '🚩'
-    case 'game_result':    return '⚽'
+    case 'game_result':    return ''
     case 'game_change_request':  return '🗓️'
     case 'game_change_opponent': return '🗓️'
     case 'game_change_approved': return '✅'
@@ -298,7 +298,7 @@ export function notificationIcon(n) {
     case 'game_moved':             return '🌧️'
     case 'follow_game_alert':      return '⭐'
     case 'app_update':             return '⬇️'
-    case 'goal_scored':            return '⚽'
+    case 'goal_scored':            return ''
     case 'official_assigned':              return '⚖️'
     case 'official_application':           return '📝'
     case 'official_application_approved':  return '✅'
