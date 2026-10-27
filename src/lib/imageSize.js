@@ -26,3 +26,25 @@ export function sizedImage(url, cssPx, fit = 'cover') {
   params.set('quality', '80')
   return base.replace(OBJECT, RENDER) + '?' + params.toString()
 }
+
+// Wide photos (feed game stills, 1920px originals drawn ~700px wide): resized by width only so
+// the aspect ratio is kept. `srcSet` lets the browser pick per screen width × DPR.
+const WIDE = [480, 800, 1200, 1600]
+
+function renderUrl(url, params) {
+  const [base, query] = url.split('?')
+  const p = new URLSearchParams(query || '')
+  for (const [k, v] of Object.entries(params)) p.set(k, v)
+  return base.replace(OBJECT, RENDER) + '?' + p.toString()
+}
+
+const isOurs = (url) => typeof url === 'string' && OUR_HOSTS.some((h) => url.includes(h + OBJECT))
+
+// → { src, srcSet } for an <img>; non-Storage URLs come back as plain { src }.
+export function wideImage(url, fallbackWidth = 800) {
+  if (!isOurs(url)) return { src: url }
+  return {
+    src: renderUrl(url, { width: fallbackWidth, quality: 75 }),
+    srcSet: WIDE.map((w) => `${renderUrl(url, { width: w, quality: 75 })} ${w}w`).join(', '),
+  }
+}

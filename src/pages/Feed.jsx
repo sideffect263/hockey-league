@@ -310,11 +310,11 @@ export default function Feed() {
             </div>
           ) : (
             <div className="space-y-2 sm:space-y-5">
-              {visible.map(post => (
+              {visible.map((post, i) => (
                 // Anchor for deep links into the feed (/#game-…, /#ms-…). Old /#post-<id>
                 // links are redirected to the permalink /posts/<id> (App.jsx).
                 <TrackedItem key={post.id} post={post}>
-                <FeedPost key={post.id} post={post} playersMap={playersMap} teamsMap={teamsMap} roleBadges={roleBadges} likedPostIds={likedPostIds} likedItems={likedItems} itemLikeCounts={itemLikeCounts} itemCommentCounts={itemCommentCounts} blockedIds={blockedIds} onPhotoRefreshed={handlePhotoRefreshed} mentions={postMentions[post.data?.post?.id]} />
+                <FeedPost key={post.id} priority={i < 2} post={post} playersMap={playersMap} teamsMap={teamsMap} roleBadges={roleBadges} likedPostIds={likedPostIds} likedItems={likedItems} itemLikeCounts={itemLikeCounts} itemCommentCounts={itemCommentCounts} blockedIds={blockedIds} onPhotoRefreshed={handlePhotoRefreshed} mentions={postMentions[post.data?.post?.id]} />
                 </TrackedItem>
               ))}
             </div>

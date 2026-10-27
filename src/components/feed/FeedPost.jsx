@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, createContext, useContext } from "react"
 import { GoalIcon as Ball, BlueCard, RedCard, Flame, HatTrick, Crown, Trophy, MapPin, DocumentIcon as FileText, Comment as MessageCircle, Verified as BadgeCheck, Birthday as Cake, Share as Share2, LikeOn, LikeOff, BrandIcon, Birthday } from "@/components/icons/BrandIcons"
 import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
@@ -28,7 +28,7 @@ import MentionInput from "@/components/feed/MentionInput"
 import MentionText, { useMentionViewer, untagItems } from "@/components/feed/MentionText"
 import { getMentions, setMentions, removeMention, MENTION_KIND } from "@/lib/mentionsApi"
 import { FeedCard, FeedCardHeader, FeedIcon, INSET, fade } from "@/components/feed/FeedCardShell"
-import { sizedImage } from "@/lib/imageSize"
+import { sizedImage, wideImage } from "@/lib/imageSize"
 
 function Avatar({ url, name, className = "w-9 h-9" }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase() || "?"
@@ -66,8 +66,18 @@ function ItemReactions({ post, likedItems, itemLikeCounts, itemCommentCounts, bl
 // so a 1000px-wide source stays crisp on retina while shedding ~40% of the bytes a
 // full 1280px source cost (Google Photos oversizing was the page's biggest payload).
 const sizedUrl = (url, w = 1000) => (url ? url.replace(/=w\d+(-h\d+)?.*$/, `=w${w}`) : url)
+// Our own Storage stills (1920px) get resized copies + srcSet; Google Photos keeps its =w trick.
+const feedPhoto = (url) => { const w = wideImage(url); return w.srcSet ? w : { src: sizedUrl(url) } }
+// Feed column: full width on phones, ~700px from sm up.
+const FEED_SIZES = "(min-width: 640px) 700px, 100vw"
+
+// The first cards on the feed hold the page's largest image (LCP): load those eagerly and first
+// instead of lazily after layout. Feed.jsx sets it for the top posts only.
+const ImagePriority = createContext(false)
+const imgLoading = (priority) => priority ? { loading: "eager", fetchpriority: "high" } : { loading: "lazy" }
 
 function EventPhoto({ photo, itemKey, candidates = [], onRefreshed, game }) {
+  const priority = useContext(ImagePriority)
   const { isAdmin, isContentEditor } = useAuth()
   const [current, setCurrent] = useState(photo)
   const [busy, setBusy] = useState(false)
@@ -178,7 +188,7 @@ function EventPhoto({ photo, itemKey, candidates = [], onRefreshed, game }) {
       {/* A game's photo opens that game (Ariel 2026-10-25: same on web and both apps; the
           Google Photos page it used to open is gone). Season cards' photos open nothing. */}
       <PhotoFrame to={game ? entityPath('games', game) : null}>
-        <img ref={imgRef} src={sizedUrl(current.image_url)} alt="" loading="lazy"
+        <img ref={imgRef} {...feedPhoto(current.image_url)} sizes={FEED_SIZES} alt="" {...imgLoading(priority)}
              onError={() => setImgError(true)}
              width={hasDims ? current.width : undefined}
              height={hasDims ? current.height : undefined}
@@ -1009,7 +1019,11 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 }
 
 /* ============ Dispatcher ============ */
-export default function FeedPost({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt }) {
+export default function FeedPost({ priority = false, ...props }) {
+  return <ImagePriority.Provider value={priority}><FeedPostCard {...props} /></ImagePriority.Provider>
+}
+
+function FeedPostCard({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt }) {
   // Every card but הוקי מרקט (18+) gets a share target — see lib/shareLinks.js.
   const share = buildShare(post, { playersMap })
   const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
