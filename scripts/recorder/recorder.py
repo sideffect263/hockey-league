@@ -36,7 +36,7 @@ def log(*a):
 
 
 def token():
-    return json.loads(TOKEN_FILE.read_text())["token"]
+    return json.loads(TOKEN_FILE.read_text(encoding="utf-8"))["token"]
 
 
 def fetch_streams():
@@ -103,7 +103,8 @@ class Session:
             shutil.rmtree(self.parts, ignore_errors=True)
             return
         lst = self.parts / "list.txt"
-        lst.write_text("".join(f"file '{p}'\n" for p in pieces))
+        # UTF-8 explicitly: the game slug is Hebrew, and Windows' default (cp1252) can't write it.
+        lst.write_text("".join(f"file '{p}'\n" for p in pieces), encoding="utf-8")
         tmp = self.final.with_suffix(".joining.mp4")
         r = subprocess.run([FFMPEG, "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                             "-f", "concat", "-safe", "0", "-i", str(lst),
