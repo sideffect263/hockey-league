@@ -32,7 +32,7 @@ export function StatusChip({ market }) {
     return <span className="stat-pill bg-surface-sunken text-fg-muted"><Ban className="w-4 h-4" /> בוטל</span>
   }
   if (market.status === 'closed') {
-    return <span className="stat-pill bg-surface-sunken text-fg-muted whitespace-nowrap shrink-0"><Lock className="w-3 h-3" /> סגור למסחר</span>
+    return <span className="stat-pill bg-surface-sunken text-fg-muted whitespace-nowrap shrink-0"><Lock className="w-3 h-3" /> סגור לתחזיות</span>
   }
   const t = closesIn(market.closes_at)
   return (
@@ -132,7 +132,7 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-brand font-semibold">
-              <TrendingUp className="w-4 h-4" /> יש לך פוזיציה פתוחה
+              <TrendingUp className="w-4 h-4" /> יש לך תחזית פתוחה
             </span>
           )}
         </div>

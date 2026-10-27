@@ -166,7 +166,7 @@
     --gold: 235 190 80;   /* #EBBE50 */
   }
 
-  /* ─── הוקי מרקט skin ─────────────────────────────────────────────────────
+  /* ─── סטופר מרקט skin ─────────────────────────────────────────────────────
      The market is a room of its own inside the league, so it re-points the very
      same tokens at a different palette: warm stone neutrals instead of navy, an
      emerald primary instead of royal blue, and coin-gold for money. Every
@@ -500,7 +500,7 @@
     @apply w-full bg-surface-inset border border-line rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand;
   }
 
-  /* ─── הוקי מרקט components ───────────────────────────────────────────────
+  /* ─── סטופר מרקט components ───────────────────────────────────────────────
      Money and probabilities read as a ledger, not as prose: monospaced and
      tabular so a column of prices lines up digit-for-digit and a moving number
      doesn't shift the layout under the reader's eye. */
@@ -580,7 +580,7 @@
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* הוקי מרקט — a filled bet. The check pops, the coins burst outward, the
+/* סטופר מרקט — a filled prediction. The check pops, the coins burst outward, the
    payout counts in. Transform + opacity only; all of it off under reduced motion. */
 .mkt-pop { animation: mkt-pop 0.45s cubic-bezier(.2,1.6,.4,1) both; }
 @keyframes mkt-pop {

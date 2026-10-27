@@ -33,7 +33,7 @@ const ROUTES = {
   // fell back to the bare site name on every one of them.
   '/judge': { title: 'שולחן השופט' },
   '/me': { title: 'האזור האישי' },
-  '/market': { title: 'הוקי מרקט' },
+  '/market': { title: 'סטופר מרקט' },
   '/admin': { title: 'ניהול' },
   '/reset-password': { title: 'איפוס סיסמה' },
 }

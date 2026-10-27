@@ -526,7 +526,7 @@ export default function GameResultEntry() {
       <div className="card p-6 text-center space-y-3">
         <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500" />
         <h2 className="text-lg font-extrabold text-fg-strong">התוצאה נשמרה</h2>
-        <p className="text-sm text-fg-muted">טבלת הליגה, הסטטיסטיקות, הוקי מרקט וההשעיות עודכנו.</p>
+        <p className="text-sm text-fg-muted">טבלת הליגה, הסטטיסטיקות, סטופר מרקט וההשעיות עודכנו.</p>
         <Link to={entityPath("games", game) || `/games/${id}`} className="btn-primary">לעמוד המשחק</Link>
       </div>
     </>)

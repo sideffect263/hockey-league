@@ -189,16 +189,16 @@ function notificationText(n: NotificationRow, actorName: string): string {
     case "game_postponed":         return `${vs(d)} — המשחק נדחה, מועד חדש יפורסם`;
     case "follow_game_alert":      return `מחר: ${vs(d)}`;
     case "goal_scored":            return `${d.scoring_team ?? ""} הבקיעה! ${vs(d)} ${d.away_score ?? ""}:${d.home_score ?? ""}`;
-    // הוקי מרקט. A settlement push IS the payoff — landing it as "התראה חדשה"
+    // סטופר מרקט. A settlement push IS the payoff — landing it as "התראה חדשה"
     // would waste the one notification that brings a trader back to the board.
     case "market_resolved":
       return Number(d.won) > 0
-        ? `${d.title ?? "שוק"} הוכרע: ${d.outcome ?? ""} — זכית ב-${Math.round(Number(d.won))} מטבעות 🎉`
-        : `${d.title ?? "שוק"} הוכרע: ${d.outcome ?? ""} — הפעם לא הצלחת`;
+        ? `${d.title ?? "שוק"} הוכרע: ${d.outcome ?? ""} — צדקת! קיבלת ${Math.round(Number(d.won))} סטופרים 🎉`
+        : `${d.title ?? "שוק"} הוכרע: ${d.outcome ?? ""} — הפעם התחזית לא התממשה`;
     case "market_coins":
       return Number(d.delta) >= 0
-        ? `קיבלת ${Math.round(Number(d.delta))} מטבעות להוקי מרקט${d.reason ? ` — ${d.reason}` : ""}`
-        : `הופחתו ${Math.abs(Math.round(Number(d.delta)))} מטבעות מהחשבון בהוקי מרקט${d.reason ? ` — ${d.reason}` : ""}`;
+        ? `קיבלת ${Math.round(Number(d.delta))} סטופרים בסטופר מרקט${d.reason ? ` — ${d.reason}` : ""}`
+        : `הופחתו ${Math.abs(Math.round(Number(d.delta)))} סטופרים מהיתרה שלך בסטופר מרקט${d.reason ? ` — ${d.reason}` : ""}`;
     default:               return "התראה חדשה";
   }
 }
@@ -697,7 +697,7 @@ Deno.serve(async (req) => {
   }
   if (!n?.user_id || !n?.type) return new Response("missing fields", { status: 400 });
 
-  // הוקי מרקט is a game played for play money. A coin grant or a settled market is
+  // סטופר מרקט is a game played for play money. A coin grant or a settled market is
   // worth a line in the bell, but it is not worth buzzing someone's phone — and three
   // of them landed on two people in one evening. Market events keep their bell row and
   // never become a push.

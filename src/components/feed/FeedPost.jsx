@@ -1024,7 +1024,7 @@ export default function FeedPost({ priority = false, ...props }) {
 }
 
 function FeedPostCard({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt }) {
-  // Every card but הוקי מרקט (18+) gets a share target — see lib/shareLinks.js.
+  // Every card but סטופר מרקט gets a share target — see lib/shareLinks.js.
   const share = buildShare(post, { playersMap })
   const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
   switch (post.type) {

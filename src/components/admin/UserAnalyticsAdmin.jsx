@@ -34,7 +34,7 @@ const PLATFORM = {
 }
 
 const KIND = {
-  screen: "צפייה במסך", like: "לייק", comment: "תגובה", post: "פוסט", bet: "הימור",
+  screen: "צפייה במסך", like: "לייק", comment: "תגובה", post: "פוסט", bet: "תחזית",
   follow: "מעקב", message: "הודעה פרטית", availability: "אישור הגעה", medical: "בדיקה רפואית",
   claim: "בקשת שיוך", feed_view: "גלילה בפיד", action: "פעולה", error: "שגיאה",
 }
@@ -493,7 +493,7 @@ function UserDrawer({ user: u, days, onClose }) {
             <Mini label="לייקים" value={u.likes} />
             <Mini label="תגובות ופוסטים" value={Number(u.comments) + Number(u.posts)} />
             <Mini label="אישורי הגעה" value={u.availability} />
-            <Mini label="הימורים" value={u.bets} />
+            <Mini label="תחזיות" value={u.bets} />
           </div>
 
           <div className="card p-3 text-xs space-y-1.5">
@@ -724,7 +724,7 @@ function Growth({ reload }) {
       <div className="card p-4 text-xs text-slate-500 dark:text-slate-400 flex gap-2">
         <Bell className="w-4 h-4 shrink-0 text-slate-400" />
         <span>
-          צפיות במסכים באפליקציות נאספות רק מגרסאות iPhone ו־Android הבאות. עד אז משתמשי אפליקציה נספרים לפי כניסות ופעולות (לייקים, אישורי הגעה, הימורים…).
+          צפיות במסכים באפליקציות נאספות רק מגרסאות iPhone ו־Android הבאות. עד אז משתמשי אפליקציה נספרים לפי כניסות ופעולות (לייקים, אישורי הגעה, תחזיות…).
           היסטוריית מסכים נשמרת 90 יום.
         </span>
       </div>

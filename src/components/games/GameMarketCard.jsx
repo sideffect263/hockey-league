@@ -8,17 +8,17 @@ import { useAuth } from "@/lib/AuthContext"
 import { pct, coins } from "@/lib/market"
 import { useSideColors } from "@/components/market/MatchCard"
 import {
-  getGameMarketOdds, sidesOf, isHidden, leaderChip, trendPoints, multiplier,
+  getGameMarketOdds, sidesOf, isHidden, leaderChip, trendPoints,
   resolvedHeadline, closesLabel, sparkSeries,
 } from "@/lib/gameMarket"
 
 /**
- * הוקי מרקט on the game page: what the league's bettors think of this fixture.
+ * סטופר מרקט on the game page: what the league's players predict for this fixture.
  *
- * Renders NOTHING unless `market_game_odds` returns a market — the RPC is the 18+ gate
- * (market_eligible), so this component never decides who sees odds. No skeleton, no
- * error box: a signed-out viewer, a minor, a failed read and a voided market all look
- * the same — the card simply isn't there. Mirrored by the iOS and Android cards.
+ * Shown to everyone, signed out included (`market_game_odds` is public since
+ * 2026-10-27). The RPC's `block` says whether this viewer may predict; the card only
+ * changes its button. Renders nothing for no market, a failed read or a voided market.
+ * Mirrored by the iOS and Android cards.
  */
 
 const marketHref = (odds) => `/market/${encodeURIComponent(odds.slug || odds.market_id)}`
@@ -30,7 +30,7 @@ export default function GameMarketCard({ game, teamsMap }) {
   useEffect(() => {
     let alive = true
     setOdds(null)
-    if (!user || !game?.id) return
+    if (!game?.id) return
     getGameMarketOdds(game.id).then((o) => { if (alive) setOdds(o) }).catch(() => {})
     return () => { alive = false }
   }, [user?.id, game?.id])
@@ -65,7 +65,7 @@ function MarketCardBody({ odds, teamsMap }) {
   const byKey = { home, draw, away }
   const my = (odds.my || []).filter((p) => Number(p.shares) > 0)
 
-  const subtitle = open ? "הסיכויים לפי המהמרים" : resolved ? "מה המהמרים חשבו" : "היחסים בשריקת הפתיחה"
+  const subtitle = open ? "הסיכויים לפי תחזיות השחקנים" : resolved ? "מה השחקנים חזו" : "הסיכויים בשריקת הפתיחה"
 
   return (
     <motion.section
@@ -80,8 +80,7 @@ function MarketCardBody({ odds, teamsMap }) {
         <span className="w-7 h-7 rounded-lg bg-gold/15 text-gold flex items-center justify-center shrink-0"><Coins className="w-4 h-4" /></span>
         <div className="min-w-0 flex-1">
           <h2 className="flex items-center gap-1.5 font-bold text-sm text-slate-900 dark:text-white">
-            הוקי מרקט
-            <span className="stat-pill bg-surface-sunken text-fg-muted text-[10px] px-1.5 py-0 font-semibold">18+</span>
+            סטופר מרקט
           </h2>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>
         </div>
@@ -108,7 +107,7 @@ function MarketCardBody({ odds, teamsMap }) {
         {open && !traded ? (
           <p className="flex items-center gap-2 text-[13px] text-slate-600 dark:text-slate-300 rounded-xl bg-surface-sunken px-3 py-2.5">
             <Sparkles className="w-4 h-4 text-gold shrink-0" />
-            אף אחד עוד לא הימר על המשחק — ההימור הראשון קובע את היחסים
+            אף אחד עוד לא חזה את המשחק. התחזית הראשונה קובעת את הסיכויים
           </p>
         ) : series.length > 0 && (
           <Spark series={series} colors={colors} />
@@ -122,7 +121,7 @@ function MarketCardBody({ odds, teamsMap }) {
               <p className="text-sm font-bold">{h.text}</p>
               {Number(odds.traders) > 0 && (
                 <p className="text-[12px] opacity-80 mt-0.5">
-                  <span className="mkt-num font-bold">{odds.called ?? 0}</span> מתוך <span className="mkt-num font-bold">{odds.traders}</span> מהמרים צדקו
+                  <span className="mkt-num font-bold">{odds.called ?? 0}</span> מתוך <span className="mkt-num font-bold">{odds.traders}</span> משתתפים צדקו
                 </p>
               )}
             </div>
@@ -140,14 +139,14 @@ function MarketCardBody({ odds, teamsMap }) {
                 return (
                   <p key={p.okey} className="text-[13px] text-slate-800 dark:text-slate-100">
                     {won
-                      ? <><Trophy className="w-4 h-4 inline-block align-[-3px]" /> זכית! <span className="mkt-coin">{coins(shares)}</span> מטבעות על {o?.name}</>
+                      ? <><Trophy className="w-4 h-4 inline-block align-[-3px]" /> צדקת! <span className="mkt-coin">{coins(shares)}</span> סטופרים על {o?.name}</>
                       : <>הפעם לא הלך — {o?.name}</>}
                   </p>
                 )
               }
               return (
                 <p key={p.okey} className="text-[13px] text-slate-800 dark:text-slate-100">
-                  ההימור שלך: <span className="mkt-num font-bold">{coins(shares)}</span> מניות על <b>{o?.name}</b>
+                  התחזית שלך: <span className="mkt-num font-bold">{coins(shares)}</span> יחידות על <b>{o?.name}</b>
                   {" · "}שווי עכשיו ~<span className="mkt-coin">{coins(Math.round(shares * (o?.price || 0)))}</span>
                 </p>
               )
@@ -159,10 +158,10 @@ function MarketCardBody({ odds, teamsMap }) {
         <div className="flex items-center gap-3 flex-wrap">
           <p className="flex-1 min-w-[10rem] flex items-center flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <Users className="w-4 h-4 shrink-0" />
-            <span className="whitespace-nowrap"><span className="mkt-num font-bold text-slate-700 dark:text-slate-200">{odds.traders || 0}</span> מהמרים</span>
-            {Number(odds.volume) > 0 && <span className="whitespace-nowrap">· <span className="mkt-coin">{coins(odds.volume)}</span> מטבעות בשוק</span>}
+            <span className="whitespace-nowrap"><span className="mkt-num font-bold text-slate-700 dark:text-slate-200">{odds.traders || 0}</span> משתתפים</span>
+            {Number(odds.volume) > 0 && <span className="whitespace-nowrap">· <span className="mkt-coin">{coins(odds.volume)}</span> סטופרים בשוק</span>}
             {open && odds.closes_at && <span className="whitespace-nowrap">· נסגר {closesLabel(odds.closes_at)}</span>}
-            {status === "closed" && <span className="whitespace-nowrap">· המסחר נסגר</span>}
+            {status === "closed" && <span className="whitespace-nowrap">· התחזיות נסגרו</span>}
           </p>
           <Cta odds={odds} traded={traded} />
         </div>
@@ -175,7 +174,6 @@ function Side({ o, color, odds, chip, winner, showTrend }) {
   if (!o) return <div />
   const t = showTrend ? trendPoints(o) : null
   const dim = winner && winner !== o
-  const mult = odds.status === "open" ? multiplier(o.price) : null
   return (
     <div className={`flex flex-col items-center text-center min-w-0 transition-opacity ${dim ? "opacity-40" : ""}`}>
       <div className="relative">
@@ -187,7 +185,6 @@ function Side({ o, color, odds, chip, winner, showTrend }) {
       <p className="mt-1.5 text-[13px] font-semibold text-slate-900 dark:text-white truncate max-w-full">{o.name}</p>
       <p className="mkt-num text-3xl font-black leading-tight" style={{ color }} dir="ltr">{pct(o.price)}</p>
       <div className="h-5 flex items-center gap-1.5">
-        {mult && <span className="mkt-num text-[11px] text-slate-500 dark:text-slate-400" dir="ltr">×{mult}</span>}
         {t != null && (
           <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${t > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`} title="ב-48 שעות">
             {t > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -241,14 +238,14 @@ function Spark({ series, colors }) {
   return (
     <div className="rounded-xl bg-surface-sunken/60 px-2 py-1.5">
       {/* RTL page, but time runs left → right on a chart */}
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-14" dir="ltr" preserveAspectRatio="none" aria-label="תנועת היחסים">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-14" dir="ltr" preserveAspectRatio="none" aria-label="תנועת הסיכויים">
         {pts.mid != null && <line x1={P} x2={W - P} y1={pts.mid} y2={pts.mid} stroke="rgb(var(--fg-faint))" strokeDasharray="3 4" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
         <path d={pts.away} fill="none" stroke={colors.away} strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
         <path d={pts.home} fill="none" stroke={colors.home} strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
         <circle cx={pts.hx} cy={pts.ay} r="3" fill={colors.away} />
         <circle cx={pts.hx} cy={pts.hy} r="3.5" fill={colors.home} />
       </svg>
-      <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">תנועת היחסים מאז פתיחת השוק</p>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">תנועת הסיכויים מאז פתיחת השוק</p>
     </div>
   )
 }
@@ -264,7 +261,7 @@ function Cta({ odds, traded }) {
   if (odds.block === "conflict") {
     return (
       <div className="w-full flex items-center justify-between gap-2 text-[12px] text-slate-500 dark:text-slate-400">
-        <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 shrink-0" /> משחק שלך או שאת/ה שופט/ת בו — אי אפשר להמר עליו</span>
+        <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 shrink-0" /> משחק שלך או שאת/ה שופט/ת בו, אי אפשר לחזות עליו</span>
         {link("לצפייה בשוק")}
       </div>
     )
@@ -272,7 +269,7 @@ function Cta({ odds, traded }) {
   if (odds.block) return link("לצפייה בשוק")
   return (
     <Link to={href} className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-gold text-slate-900 hover:brightness-110 transition shadow-sm shrink-0">
-      <Coins className="w-4 h-4" /> {traded ? "להמר על המשחק" : "להיות הראשון להמר"}
+      <Coins className="w-4 h-4" /> {traded ? "לחזות את המשחק" : "להיות הראשון לחזות"}
     </Link>
   )
 }

@@ -261,14 +261,14 @@ export default function Layout({ children }) {
     // so content editors no longer have a copy of it in their workspace.
     { title: "מדיה", url: "/media", icon: NavCamera },
     { title: "מדריך", url: "/guide", icon: NavGuide },
-    // Unlike הוקי מרקט below, the career game is public: it needs no account,
+    // Unlike סטופר מרקט below, the career game is public: it needs no account,
     // touches no league data, and is the one page here a visitor who has never
     // heard of the sport might actually stay on.
     { title: "ליגיונר", url: "/career", icon: NavCareer },
-    // הוקי מרקט is signed-in only: the page is gated to 18+ league players
+    // סטופר מרקט is signed-in only: the page is gated to 18+ league players
     // anyway, and the public site should not advertise a betting board to the
     // youth-team visitors who make up much of its traffic.
-    ...(user ? [{ title: "הוקי מרקט", url: "/market", icon: NavMarket }] : []),
+    ...(user ? [{ title: "סטופר מרקט", url: "/market", icon: NavMarket }] : []),
   ]
 
   // Role tools — shown inside the avatar menu (desktop) and inline (mobile).

@@ -94,7 +94,7 @@ export default function Leaderboard() {
         <div className="flex items-center gap-2 px-4 py-3 border-b border-line-subtle">
           <Trophy className="w-4 h-4 text-gold" />
           <h2 className="font-extrabold text-fg-strong text-sm">טבלת המובילים</h2>
-          <span className="ms-auto text-[11px] text-fg-subtle hidden sm:inline">שווי תיק = מטבעות + פוזיציות פתוחות</span>
+          <span className="ms-auto text-[11px] text-fg-subtle hidden sm:inline">שווי התחזיות = סטופרים + תחזיות פתוחות</span>
         </div>
         <ul className="divide-y divide-line-subtle">
           {(podium.length >= 3 ? rest : rows).map(r => {
@@ -111,7 +111,7 @@ export default function Leaderboard() {
                     {mine && <span className="stat-pill bg-brand/15 text-brand text-[10px] px-1.5 py-0">אני</span>}
                   </div>
                   <p className="text-[11px] text-fg-subtle mkt-num">
-                    {fmtCoins(r.balance)} מטבעות · {fmtCoins(r.open_value)} בפוזיציות
+                    {fmtCoins(r.balance)} סטופרים · {fmtCoins(r.open_value)} בתחזיות
                   </p>
                 </div>
                 <span className={`mkt-num text-sm font-black ${up ? 'text-pos' : 'text-neg'}`}>{fmtCoins(r.total)}</span>

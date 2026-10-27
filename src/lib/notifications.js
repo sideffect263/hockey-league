@@ -226,16 +226,16 @@ export function notificationText(n) {
     case 'official_application':           return `${actorName(n)} הגיש/ה מועמדות כ${ROLE_LABEL[d.role] || 'בעל תפקיד'}`
     case 'official_application_approved':  return `מועמדותך לשיבוץ כ${ROLE_LABEL[d.role] || 'בעל תפקיד'} אושרה 🎉`
     case 'official_application_rejected':  return `מועמדותך לשיבוץ כ${ROLE_LABEL[d.role] || 'בעל תפקיד'} נדחתה`
-    // הוקי מרקט. `won` is 0 for a holder who backed a losing outcome — say so
+    // סטופר מרקט. `won` is 0 for a holder who backed a losing outcome — say so
     // rather than announcing a payout of nothing.
     case 'market_resolved':
       return Number(d.won) > 0
-        ? `${d.title || 'שוק'} הוכרע: ${d.outcome || ''} — זכית ב-${Math.round(Number(d.won))} מטבעות 🎉`
-        : `${d.title || 'שוק'} הוכרע: ${d.outcome || ''} — הפעם לא הצלחת`
+        ? `${d.title || 'שוק'} הוכרע: ${d.outcome || ''} — צדקת! קיבלת ${Math.round(Number(d.won))} סטופרים 🎉`
+        : `${d.title || 'שוק'} הוכרע: ${d.outcome || ''} — הפעם התחזית לא התממשה`
     case 'market_coins':
       return Number(d.delta) >= 0
-        ? `קיבלת ${Math.round(Number(d.delta))} מטבעות להוקי מרקט${d.reason ? ` — ${d.reason}` : ''}`
-        : `הופחתו ${Math.abs(Math.round(Number(d.delta)))} מטבעות מהחשבון בהוקי מרקט${d.reason ? ` — ${d.reason}` : ''}`
+        ? `קיבלת ${Math.round(Number(d.delta))} סטופרים בסטופר מרקט${d.reason ? ` — ${d.reason}` : ''}`
+        : `הופחתו ${Math.abs(Math.round(Number(d.delta)))} סטופרים מהיתרה שלך בסטופר מרקט${d.reason ? ` — ${d.reason}` : ''}`
     default:               return 'התראה חדשה'
   }
 }

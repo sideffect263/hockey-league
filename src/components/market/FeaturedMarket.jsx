@@ -103,11 +103,11 @@ export default function FeaturedMarket({ market, trades, activity }) {
 
       <div className="px-4 sm:px-5 py-2.5 border-t border-line-subtle flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-4 flex-wrap">
-          <Stat icon={BarChart3} label="נפח" value={fmtCoins(activity?.volume || 0)} />
-          <Stat icon={Users} label="סוחרים" value={activity?.traders || 0} />
+          <Stat icon={BarChart3} label="סטופרים בשוק" value={fmtCoins(activity?.volume || 0)} />
+          <Stat icon={Users} label="משתתפים" value={activity?.traders || 0} />
         </div>
         <Link to={href} className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline">
-          למסחר <ArrowLeft className="w-3.5 h-3.5" />
+          לחזות <ArrowLeft className="w-3.5 h-3.5" />
         </Link>
       </div>
     </section>
