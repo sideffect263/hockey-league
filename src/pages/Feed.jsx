@@ -9,7 +9,7 @@ import { RefreshCw, Smartphone } from "lucide-react"
 import { RinkIcon as Rink, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { useSeasonMode, useSeasonName } from "@/App"
-import { buildFeed, parseRanking } from "@/lib/feed"
+import { buildFeed, arrangeFeed, parseRanking } from "@/lib/feed"
 import { getMyFollowSets } from "@/lib/follows"
 import { getMarketFeed } from "@/lib/market"
 import { setFeedTracking, observeFeedItem, getFeedPersonalization } from "@/lib/feedImpressions"
@@ -29,6 +29,9 @@ import { StandingsWidget, NextGameWidget, LeadersWidget } from "@/components/fee
 import { FeedSkeleton, SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
 
 const PAGE_SIZE = 25
+// בשבילך / הכי חדש — remembered per device.
+const ORDER_KEY = "feed-order-v1"
+const readOrder = () => { try { return localStorage.getItem(ORDER_KEY) === "latest" ? "latest" : "for_you" } catch { return "for_you" } }
 // Stable identity so the feed useMemo doesn't rebuild on every render for guests.
 const EMPTY_FOLLOWS = { teams: new Set(), players: new Set(), notify: new Set() }
 
@@ -38,7 +41,8 @@ function TrackedItem({ post, children }) {
   // Tags change only with the item's identity; joining keeps the effect from
   // re-subscribing on every feed rebuild.
   const tagKey = (post.tags || []).join('|')
-  useEffect(() => observeFeedItem(ref.current, post.id, post.tags), [post.id, tagKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The "caught up" line is not content — nothing to log.
+  useEffect(() => post.type === "caught_up" ? undefined : observeFeedItem(ref.current, post.id, post.tags), [post.id, tagKey]) // eslint-disable-line react-hooks/exhaustive-deps
   return <div ref={ref} id={post.id} className="scroll-mt-24">{children}</div>
 }
 
@@ -70,6 +74,8 @@ export default function Feed() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState("all")
+  const [order, setOrder] = useState(readOrder)
+  const pickOrder = (o) => { setOrder(o); setVisibleCount(PAGE_SIZE); try { localStorage.setItem(ORDER_KEY, o) } catch { /* private mode */ } }
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef(null)
 
@@ -181,14 +187,20 @@ export default function Feed() {
     photoOverrides
   ), [games, teams, players, gameStats, posts, championId, seasonName, seasonMode, photoIndex, blockedIds, photoOverrides, follows, personalization, marketItems, ranking])
 
+  // "הכל" is what people scroll: one post per game, new-to-you first, outside news as
+  // one post (arrangeFeed). The other filters keep the flat list, one item per thing.
+  const arranged = useMemo(() => arrangeFeed(feed, {
+    games, personalization, followedTeams: follows.teams, mode: order, ranking,
+  }), [feed, games, personalization, follows, order, ranking])
+
   const counts = useMemo(() => ({
-    all: feed.length,
+    all: arranged.filter(p => p.type !== "caught_up").length,
     posts: feed.filter(p => matchesFilter(p, "posts")).length,
     results: feed.filter(p => matchesFilter(p, "results")).length,
     highlights: feed.filter(p => matchesFilter(p, "highlights")).length,
     world: feed.filter(p => matchesFilter(p, "world")).length,
     video: feed.filter(p => matchesFilter(p, "video")).length,
-  }), [feed])
+  }), [feed, arranged])
 
   const handlePosted = (newPost, tags = []) => {
     if (!newPost) return
@@ -202,7 +214,7 @@ export default function Feed() {
     setPhotoOverrides(prev => ({ ...prev, [itemKey]: photo?.photo_id ?? null }))
   }
 
-  const filtered = feed.filter(p => matchesFilter(p, filter))
+  const filtered = filter === "all" ? arranged : feed.filter(p => matchesFilter(p, filter))
   const visible = filtered.slice(0, visibleCount)
   const hasMore = visibleCount < filtered.length
 
@@ -285,7 +297,19 @@ export default function Feed() {
           </div>
 
           {/* Newest videos first — they hold attention ~2x articles (ניתוח פיד). */}
-          {filter === "all" && <VideoRail feed={feed} onShowAll={() => { setFilter("video"); window.scrollTo({ top: 0, behavior: "smooth" }) }} />}
+          {/* Our own clips only — outside news has its one post further down. */}
+          {filter === "all" && <VideoRail feed={feed.filter(p => p.type !== "external")} onShowAll={() => { setFilter("video"); window.scrollTo({ top: 0, behavior: "smooth" }) }} />}
+
+          {filter === "all" && (
+            <div role="tablist" aria-label="סדר הפיד" className="flex gap-1 p-1 rounded-full bg-slate-100 dark:bg-slate-800 max-w-xs mx-4 sm:mx-0">
+              {[["for_you", "בשבילך"], ["latest", "הכי חדש"]].map(([k, label]) => (
+                <button key={k} type="button" role="tab" aria-selected={order === k} onClick={() => pickOrder(k)}
+                  className={`flex-1 min-h-[36px] rounded-full text-sm transition-colors ${order === k ? "bg-white dark:bg-slate-700 font-bold text-slate-900 dark:text-white shadow-sm" : "font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Feed list */}
           {filtered.length === 0 ? (
