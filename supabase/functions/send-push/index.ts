@@ -350,15 +350,27 @@ async function apnsAuthToken(): Promise<string> {
   return jwt;
 }
 
+// The sign-up pushes that get מגיע / לא מגיע buttons, and the first Android build that
+// draws them (versionCode). Must match the release that ships AvailabilityPush.kt.
+const AVAILABILITY_TYPES = new Set(["game_register_reminder", "game_register_nudge"]);
+const AVAILABILITY_ACTIONS_MIN_ANDROID = 64;
+
 async function sendApns(
   deviceToken: string, environment: string | null,
   title: string, body: string, url: string, badge: number, section: string | null,
+  availabilityGameId: string | null = null,
 ): Promise<{ ok: boolean; prune: boolean; detail?: string }> {
   const jwt = await apnsAuthToken();
+  // A sign-up push names the category the app registered its מגיע / לא מגיע buttons
+  // under (AvailabilityPushActions.swift). Builds without it ignore the category.
   const aps = {
-    aps: { alert: { title, body }, sound: "default", badge, "thread-id": "rinkhockeyil" },
+    aps: {
+      alert: { title, body }, sound: "default", badge, "thread-id": "rinkhockeyil",
+      ...(availabilityGameId ? { category: "GAME_AVAILABILITY" } : {}),
+    },
     url,
     ...(section ? { section } : {}),
+    ...(availabilityGameId ? { game_id: availabilityGameId } : {}),
   };
   const hosts = environment === "sandbox"
     ? ["api.sandbox.push.apple.com"]
@@ -442,22 +454,39 @@ async function fcmAccessToken(): Promise<string> {
 
 async function sendFcm(
   deviceToken: string, title: string, body: string, url: string, section: string | null,
+  availabilityGameId: string | null = null,
 ): Promise<{ ok: boolean; prune: boolean; detail?: string }> {
   const access = await fcmAccessToken();
   // notification + data: the `notification` block makes Android render it in the
   // tray even when the app is killed (reliable app-closed delivery); `data.url`
   // carries the deep link (tap → launcher intent extras / onMessageReceived).
-  const message = {
-    message: {
-      token: deviceToken,
-      notification: { title, body },
-      data: { url, type: "bell", ...(section ? { section } : {}) },
-      android: {
-        priority: "high",
-        notification: { channel_id: "rinkhockeyil_default", default_sound: true },
+  //
+  // A sign-up push to a build that can draw buttons goes DATA-ONLY instead: Android
+  // draws a `notification` message itself, with no buttons, whenever the app is not in
+  // the foreground. Data-only always reaches HockeyMessagingService, which draws it
+  // with מגיע / לא מגיע (push/AvailabilityPush.kt).
+  const message = availabilityGameId
+    ? {
+      message: {
+        token: deviceToken,
+        data: {
+          type: "availability", title, body, url, game_id: availabilityGameId,
+          ...(section ? { section } : {}),
+        },
+        android: { priority: "high" },
       },
-    },
-  };
+    }
+    : {
+      message: {
+        token: deviceToken,
+        notification: { title, body },
+        data: { url, type: "bell", ...(section ? { section } : {}) },
+        android: {
+          priority: "high",
+          notification: { channel_id: "rinkhockeyil_default", default_sound: true },
+        },
+      },
+    };
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`,
     {
@@ -485,7 +514,7 @@ interface NotificationRow {
 interface PushSub {
   id: string; platform: "web" | "ios" | "android"; endpoint: string;
   keys: { p256dh: string; auth: string } | null; environment: string | null;
-  app_version_name: string | null; user_agent: string | null;
+  app_version: number | null; app_version_name: string | null; user_agent: string | null;
 }
 
 // ---- delivery log ----------------------------------------------------------
@@ -746,6 +775,13 @@ Deno.serve(async (req) => {
   const log: Delivery[] = [];
   let sent = 0;
 
+  // Sign-up pushes carry מגיע / לא מגיע buttons. iOS: any build (old ones ignore the
+  // category). Android: only builds that draw data-only sign-up pushes themselves —
+  // an older one would receive a data-only message and show nothing.
+  const availabilityGameId = AVAILABILITY_TYPES.has(n.type) && n.entity_id ? n.entity_id : null;
+  const androidDrawsButtons = (s: PushSub) =>
+    s.app_version != null && s.app_version >= AVAILABILITY_ACTIONS_MIN_ANDROID;
+
   await Promise.all((subs as PushSub[]).map(async (s) => {
     const dev = { subscription_id: s.id, platform: s.platform, app_version_name: s.app_version_name, user_agent: s.user_agent };
     const record = (ok: boolean, prune: boolean, detail?: string | null) =>
@@ -762,13 +798,15 @@ Deno.serve(async (req) => {
         sent++;
         record(true, false);
       } else if (s.platform === "ios") {
-        const r = await sendApns(s.endpoint, s.environment, title, body, path, badge ?? 0, section);
+        const r = await sendApns(s.endpoint, s.environment, title, body, path, badge ?? 0, section,
+          availabilityGameId);
         if (r.ok) sent++;
         if (r.prune) toPrune.push(s.id);
         record(r.ok, r.prune, r.detail);
       } else if (s.platform === "android") {
         if (!FCM_CONFIGURED) { log.push({ ...dev, status: "skipped", detail: "FCM not configured" }); return; }
-        const r = await sendFcm(s.endpoint, title, body, path, section);
+        const r = await sendFcm(s.endpoint, title, body, path, section,
+          androidDrawsButtons(s) ? availabilityGameId : null);
         if (r.ok) sent++;
         if (r.prune) toPrune.push(s.id);
         record(r.ok, r.prune, r.detail);
