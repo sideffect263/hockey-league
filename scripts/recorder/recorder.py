@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""4K game recorder — runs on a Mac at home, saves the ORIGINAL quality of every app broadcast.
+"""4K game recorder — runs on an always-on machine at home (kookisnooki; the Mac as backup), saves the ORIGINAL quality of every app broadcast.
 
 Cloudflare plays and records broadcasts at ≤1080p, but relays the phone's original stream
 untouched over RTMPS playback. This pulls it with `ffmpeg -c copy` (no re-encode, ~3% CPU)
@@ -68,13 +68,14 @@ class Session:
         self.parts = game_dir / ".parts" / self.name
         self.parts.mkdir(parents=True, exist_ok=True)
         url = s["playUrl"] + s["playKey"]
-        cmd = [FFMPEG, "-nostdin", "-hide_banner", "-loglevel", "error",
+        # stdin stays open: "q" on it is ffmpeg's clean stop on every OS (SIGINT isn't on Windows).
+        cmd = [FFMPEG, "-hide_banner", "-loglevel", "error",
                "-rw_timeout", "15000000", "-i", url,
                "-map", "0", "-c", "copy",
                "-f", "segment", "-segment_time", str(SEGMENT), "-segment_format", "mpegts",
                "-reset_timestamps", "0", str(self.parts / "%04d.ts")]
         self.errlog = open(self.parts / "ffmpeg.log", "ab")
-        self.proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=self.errlog)
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=self.errlog)
         log(f"▶ recording {s.get('slug')} cam{s.get('cameraNo')} input {self.input[:8]} → {self.final.parent}")
 
     def alive(self):
@@ -82,7 +83,11 @@ class Session:
 
     def stop(self):
         if self.alive():
-            self.proc.send_signal(signal.SIGINT)
+            try:
+                self.proc.stdin.write(b"q")
+                self.proc.stdin.flush()
+            except OSError:
+                pass
             try:
                 self.proc.wait(timeout=20)
             except subprocess.TimeoutExpired:

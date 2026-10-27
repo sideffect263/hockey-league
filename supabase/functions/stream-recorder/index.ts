@@ -1,5 +1,5 @@
 // ============================================================================
-// stream-recorder -- tell the 4K recorder (a Mac at home) which broadcasts to save.
+// stream-recorder -- tell the 4K recorder (kookisnooki, or the Mac as backup) which broadcasts to save.
 //
 // Cloudflare turns every broadcast into ≤1080p for watching and recording, but it relays
 // the ORIGINAL ingest untouched over its RTMPS playback endpoint. The recorder pulls that
@@ -13,8 +13,9 @@
 // stream that ended from one it never saw.
 //
 // The playback key lets anyone watch the raw stream, so this is NOT anon: the caller must
-// present the recorder token (~/.config/rinkhockey/recorder.json on the Mac). Only its
-// SHA-256 lives here. Deployed with verify_jwt=false — the token is the auth.
+// present a recorder token (~/.config/rinkhockey/recorder.json on each recorder machine). Only
+// their SHA-256s live here — one per machine, so one can be revoked alone. Deployed with
+// verify_jwt=false — the token is the auth.
 //
 // Secrets: CF_ACCOUNT_ID / CF_STREAM_TOKEN. SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY
 // are auto-injected.
@@ -27,7 +28,9 @@ const SB_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CF_ACCOUNT_ID = Deno.env.get("CF_ACCOUNT_ID")!;
 const CF_TOKEN = Deno.env.get("CF_STREAM_TOKEN")!;
 const CF_API = "https://api.cloudflare.com/client/v4";
-const TOKEN_SHA256 = "3172a8f2c40d9ab4ea24e320e805e90b4650fcf805cb7fd9b8db4081e44863af";
+const TOKEN_SHA256 = new Set([
+  "3172a8f2c40d9ab4ea24e320e805e90b4650fcf805cb7fd9b8db4081e44863af", // mac
+]);
 
 const admin = createClient(SB_URL, SB_SERVICE_ROLE, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -44,7 +47,7 @@ async function sha256(s: string) {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
   const token = req.headers.get("x-recorder-token") ?? "";
-  if (!token || (await sha256(token)) !== TOKEN_SHA256) return json({ error: "forbidden" }, 403);
+  if (!token || !TOKEN_SHA256.has(await sha256(token))) return json({ error: "forbidden" }, 403);
 
   const since = new Date(Date.now() - 8 * 3600_000).toISOString();
   const { data: rows, error } = await admin
