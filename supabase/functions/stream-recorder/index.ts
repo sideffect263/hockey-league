@@ -29,7 +29,8 @@ const CF_ACCOUNT_ID = Deno.env.get("CF_ACCOUNT_ID")!;
 const CF_TOKEN = Deno.env.get("CF_STREAM_TOKEN")!;
 const CF_API = "https://api.cloudflare.com/client/v4";
 const TOKEN_SHA256 = new Set([
-  "3172a8f2c40d9ab4ea24e320e805e90b4650fcf805cb7fd9b8db4081e44863af", // mac
+  "3172a8f2c40d9ab4ea24e320e805e90b4650fcf805cb7fd9b8db4081e44863af", // mac (backup)
+  "6a7535c080458adf994def70b8ceb87a86f9c36a156846a62a093130b2b38254", // kookisnooki
 ]);
 
 const admin = createClient(SB_URL, SB_SERVICE_ROLE, {
