@@ -166,7 +166,7 @@ function WalletHero({ balance, netWorth, ready }) {
   return (
     <div className="mkt-card p-5 mb-5 bg-gradient-to-bl from-brand/15 via-brand/[0.04] to-transparent relative overflow-hidden">
       {/* A faint coin mark behind the numbers — the room's signage, not data. */}
-      <Coins className="absolute -bottom-6 -start-6 w-32 h-32 text-gold/[0.07] pointer-events-none" aria-hidden />
+      <Coins className="absolute -bottom-6 -start-6 w-32 h-32 opacity-[0.08] pointer-events-none" aria-hidden />
       <div className="relative flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-fg-strong tracking-tight">הוקי מרקט</h1>

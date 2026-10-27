@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { X, Check, RefreshCw, Download, Copy } from "lucide-react"
-import { Medical as HeartPulse, Warning as AlertTriangle, Coin as Coins, GameForm as ClipboardCheck, Gavel } from "@/components/icons/BrandIcons"
+import { Medical as HeartPulse, Warning as AlertTriangle, Wallet as Coins, GameForm as ClipboardCheck, Gavel } from "@/components/icons/BrandIcons"
 import {
   OFFICIAL_ROLE_LABEL, listAssignableOfficials, getOfficialsOverview, getOfficialRates,
   getOfficialsPaylog, assignOfficial, removeOfficial, setOfficialRate, reviewOfficialApplication,
