@@ -29,6 +29,7 @@ import SeasonModeControl from "@/components/admin/SeasonModeControl"
 import PlayerSubmissionsReview from "@/components/admin/PlayerSubmissionsReview"
 import TeamJoinRequestsReview from "@/components/admin/TeamJoinRequestsReview"
 import CoachRequestsReview from "@/components/admin/CoachRequestsReview"
+import { OfficialRoleRequestsReview, CardUnlinkRequestsReview } from "@/components/admin/RoleRequestsReview"
 import MedicalReview from "@/components/admin/MedicalReview"
 import MedicalRosterAdmin from "@/components/admin/MedicalRosterAdmin"
 import MedicalPodiumReview from "@/components/admin/MedicalPodiumReview"
@@ -269,7 +270,7 @@ export default function Admin() {
               {currentTab === "teams" && <TeamsAdmin teams={teams} reload={loadData} reviewOnly={!isAdmin && !isLeagueManager} />}
               {currentTab === "calendar" && <SeasonCalendar />}
               {currentTab === "season" && <SeasonAdmin games={games} teams={teams} players={players} reload={loadData} />}
-              {currentTab === "claims" && <><div id="review-claims" className="scroll-mt-20"><ClaimsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /></div><div id="review-submissions" className="scroll-mt-20"><PlayerSubmissionsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /></div><div id="review-joins" className="scroll-mt-20"><TeamJoinRequestsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /></div>{(isAdmin || isLeagueManager) && <div id="review-coaches" className="scroll-mt-20"><CoachRequestsReview teamsMap={teamsMap} /></div>}<div id="review-medical" className="scroll-mt-20"><MedicalReview coachTeamIds={coachScoped ? coachTeamIds : null} /></div>{isAdmin && <SuggestionsReview players={players} />}</>}
+              {currentTab === "claims" && <><div id="review-claims" className="scroll-mt-20"><ClaimsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /></div><div id="review-submissions" className="scroll-mt-20"><PlayerSubmissionsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /></div><div id="review-joins" className="scroll-mt-20"><TeamJoinRequestsReview teamsMap={teamsMap} coachTeamIds={coachScoped ? coachTeamIds : null} /></div>{(isAdmin || isLeagueManager) && <div id="review-coaches" className="scroll-mt-20"><CoachRequestsReview teamsMap={teamsMap} /></div>}{(isAdmin || isLeagueManager) && <div id="review-officials" className="scroll-mt-20"><OfficialRoleRequestsReview /></div>}{(isAdmin || isLeagueManager) && <div id="review-unlinks" className="scroll-mt-20"><CardUnlinkRequestsReview teamsMap={teamsMap} /></div>}<div id="review-medical" className="scroll-mt-20"><MedicalReview coachTeamIds={coachScoped ? coachTeamIds : null} /></div>{isAdmin && <SuggestionsReview players={players} />}</>}
               {currentTab === "game_requests" && <GameChangeRequestsReview teamsMap={teamsMap} />}
               {currentTab === "medical" && <>{(isAdmin || isLeagueManager) && <div className="mb-8"><MedicalPodiumReview /></div>}<MedicalRosterAdmin canManage={isAdmin || isLeagueManager} /></>}
               {currentTab === "payments" && <PaymentsAdmin />}

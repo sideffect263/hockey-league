@@ -103,6 +103,11 @@ function officialsSummary(d: Record<string, any>): string {
   return missing.length ? `חסר ${missing.join(" ו")}` : "שופט וחובש משובצים ✅";
 }
 
+// official_role_* rows carry the two boxes the user ticked (official-role-requests.sql).
+function officialWord(d: Record<string, any>): string {
+  return d.wants_referee && d.wants_secretary ? "שופט ומזכירות" : d.wants_secretary ? "מזכירות" : "שופט";
+}
+
 function notificationText(n: NotificationRow, actorName: string): string {
   const d = n.data ?? {};
   switch (n.type) {
@@ -150,6 +155,13 @@ function notificationText(n: NotificationRow, actorName: string): string {
     case "game_change_opponent": return `${actorName} מבקש/ת שינוי מועד — יש לבחור מועד שמתאים לך${d.reason ? ` (${d.reason})` : ""}`;
     case "coach_request":          return `${d.requester ?? actorName} מבקש/ת להיות מאמן/ת של ${d.team_name ?? "קבוצה"}`;
     case "coach_request_rejected": return `בקשתך להיות מאמן/ת של ${d.team_name ?? "קבוצה"} נדחתה`;
+    // supabase/official-role-requests.sql + card-unlink-requests.sql — keep in step with src/lib/notifications.js
+    case "official_role_request":  return `${d.requester ?? actorName} מבקש/ת תפקיד ${officialWord(d)}`;
+    case "official_role_approved": return `בקשתך לתפקיד ${officialWord(d)} אושרה 🎉`;
+    case "official_role_rejected": return `בקשתך לתפקיד ${officialWord(d)} נדחתה`;
+    case "card_unlink_request":    return `${d.requester ?? actorName} מבקש/ת להתנתק מהכרטיס ${d.player_name ?? ""}${d.reason ? ` — ${d.reason}` : ""}`;
+    case "card_unlink_approved":   return `החשבון נותק מהכרטיס ${d.player_name ?? ""}`;
+    case "card_unlink_rejected":   return `בקשת הניתוק מהכרטיס ${d.player_name ?? ""} נדחתה`;
     case "official_assigned":              return `שובצת כ${ROLE_LABEL[d.role] ?? "בעל תפקיד"} למשחק`;
     case "official_application":           return `${actorName} הגיש/ה מועמדות כ${ROLE_LABEL[d.role] ?? "בעל תפקיד"}`;
     case "official_application_approved":  return `מועמדותך לשיבוץ כ${ROLE_LABEL[d.role] ?? "בעל תפקיד"} אושרה 🎉`;
@@ -241,6 +253,12 @@ function notificationHref(n: NotificationRow): string {
     case "content_report":         return "/admin?tab=reports";
     case "game_change_request":    return "/admin?tab=game_requests";
     case "coach_request":          return "/admin?tab=claims&section=coaches";
+    case "official_role_request":  return "/admin?tab=claims&section=officials";
+    case "card_unlink_request":    return "/admin?tab=claims&section=unlinks";
+    case "official_role_approved":
+    case "official_role_rejected":
+    case "card_unlink_approved":
+    case "card_unlink_rejected":   return "/me";
     case "official_application":   return "/admin?tab=officials";
     case "team_join_request":          return "/admin?tab=claims&section=joins";
     case "player_submission_request":  return "/admin?tab=claims&section=submissions";

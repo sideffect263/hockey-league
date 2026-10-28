@@ -96,6 +96,8 @@ export function subscribeToNotifications(userId, cb, onRejoin) {
 // ---- presentation --------------------------------------------------------
 
 const actorName = (n) => n.actor?.display_name?.trim() || 'מישהו'
+// official_role_* rows carry the two boxes the user ticked (official-role-requests.sql).
+const officialWord = (d) => d.wants_referee && d.wants_secretary ? 'שופט ומזכירות' : d.wants_secretary ? 'מזכירות' : 'שופט'
 
 // "בית נגד חוץ" for the scheduled game reminders.
 const vs = (d) => `${d.home_team || ''} נגד ${d.away_team || ''}`.trim()
@@ -158,6 +160,13 @@ export function notificationText(n) {
     case 'team_join_rejected':   return `בקשתך להצטרף לקבוצת ${d.team_name || ''} נדחתה`
     case 'coach_request':          return `${d.requester || actorName(n)} מבקש/ת להיות מאמן/ת של ${d.team_name || 'קבוצה'}`
     case 'coach_request_rejected': return `בקשתך להיות מאמן/ת של ${d.team_name || 'קבוצה'} נדחתה`
+    // supabase/official-role-requests.sql + card-unlink-requests.sql — keep in step with send-push
+    case 'official_role_request':  return `${d.requester || actorName(n)} מבקש/ת תפקיד ${officialWord(d)}`
+    case 'official_role_approved': return `בקשתך לתפקיד ${officialWord(d)} אושרה 🎉`
+    case 'official_role_rejected': return `בקשתך לתפקיד ${officialWord(d)} נדחתה`
+    case 'card_unlink_request':    return `${d.requester || actorName(n)} מבקש/ת להתנתק מהכרטיס ${d.player_name || ''}${d.reason ? ` — ${d.reason}` : ''}`
+    case 'card_unlink_approved':   return `החשבון נותק מהכרטיס ${d.player_name || ''}`
+    case 'card_unlink_rejected':   return `בקשת הניתוק מהכרטיס ${d.player_name || ''} נדחתה`
     case 'player_submission_request':  return `${actorName(n)} הגיש/ה כרטיס שחקן חדש${d.candidate_name ? `: ${d.candidate_name}` : ''}${d.team_name ? ` — ${d.team_name}` : ''}`
     case 'player_submission_approved': return `כרטיס השחקן ${d.candidate_name || ''} שהגשת אושר 🎉`
     // P6 row 30 — a rejection without its reason is a dead end for the submitter
@@ -262,6 +271,12 @@ export function notificationIcon(n) {
     case 'team_join_rejected':   return '⛔'
     case 'coach_request':          return '🧑‍🏫'
     case 'coach_request_rejected': return '⛔'
+    case 'official_role_request':  return '🧑‍⚖️'
+    case 'official_role_approved': return '✅'
+    case 'official_role_rejected': return '⛔'
+    case 'card_unlink_request':    return '🔗'
+    case 'card_unlink_approved':   return '✅'
+    case 'card_unlink_rejected':   return '⛔'
     case 'player_submission_request':  return '🆕'
     case 'player_submission_approved': return '✅'
     case 'player_submission_rejected': return '⛔'
@@ -324,7 +339,9 @@ const BRAND_ICON = {
   game_result: 'goal', game_change_request: 'calendar-move', game_change_opponent: 'calendar-move',
   game_change_approved: 'approved-status', game_change_rejected: 'rejected', team_join_request: 'join-team',
   team_join_approved: 'approved-status', team_join_rejected: 'rejected', coach_request: 'coach',
-  coach_request_rejected: 'rejected', player_submission_request: 'new', player_submission_approved: 'approved-status',
+  coach_request_rejected: 'rejected', official_role_request: 'referee', official_role_approved: 'approved-status',
+  official_role_rejected: 'rejected', card_unlink_request: 'person-claim', card_unlink_approved: 'approved-status',
+  card_unlink_rejected: 'rejected', player_submission_request: 'new', player_submission_approved: 'approved-status',
   player_submission_rejected: 'rejected', medical_submitted: 'medical', medical_pending_manager: 'medical',
   medical_coach_approved: 'waiting', medical_reinspection: 'medical', medical_approved: 'medical',
   medical_rejected: 'rejected', medical_expiring: 'reminder', coach_open_items: 'clipboard',
@@ -420,6 +437,12 @@ export function notificationHref(n) {
     case 'team_join_rejected':     return n.entity_id ? `/teams/${n.entity_id}` : '/me'
     case 'coach_request':          return '/admin?tab=claims&section=coaches'
     case 'coach_request_rejected': return n.entity_id ? `/teams/${n.entity_id}` : '/me'
+    case 'official_role_request':  return '/admin?tab=claims&section=officials'
+    case 'card_unlink_request':    return '/admin?tab=claims&section=unlinks'
+    case 'official_role_approved':
+    case 'official_role_rejected':
+    case 'card_unlink_approved':
+    case 'card_unlink_rejected':   return '/me'
     case 'player_submission_approved': return n.data?.player_id ? `/players/${n.data.player_id}` : '/me'
     case 'player_submission_rejected':
     case 'medical_approved':
