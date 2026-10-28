@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Smartphone, RefreshCw, Search, Monitor, Merge, Loader2 } from "lucide-react"
 import { Squad as Users, PersonFollowing as UserCheck, Warning as AlertTriangle, InfoIcon as Info, ApprovedStatus as CheckCircle2 } from "@/components/icons/BrandIcons"
-import { getAppUsers, mergeAccounts } from "@/lib/appUsers"
+import { getAppUsers, mergeAccounts, getAndroidLatestVersion } from "@/lib/appUsers"
 import { entityPath } from "@/lib/slugs"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 
@@ -22,10 +22,31 @@ const PROVIDER_LABEL = { google: "Google", apple: "Apple", email: "אימייל"
 const FILTERS = [
   { id: "all", label: "הכל" },
   { id: "app", label: "עם אפליקציה" },
+  { id: "ios", label: "iPhone" },
+  { id: "android", label: "Android" },
+  { id: "old", label: "גרסה ישנה" },
   { id: "noapp", label: "בלי אפליקציה" },
   { id: "nocard", label: "ללא כרטיס שחקן" },
   { id: "dups", label: "חשבון כפול?" },
 ]
+
+const PLATFORMS = [
+  { id: "ios", label: "iPhone" },
+  { id: "android", label: "Android" },
+]
+
+/** "1.5.5 (69)" → "1.5.5"; "build 39" (old iOS session, no name) → null. */
+const versionName = (label) => label?.match(/^\d+\.\d+\.\d+/)?.[0] || null
+
+/** Semver compare of "1.5.3" vs "1.5.5" → negative / 0 / positive. */
+function cmpVersion(a, b) {
+  const pa = a.split(".").map(Number), pb = b.split(".").map(Number)
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0)
+  return 0
+}
+
+const WEEK = 7 * 86400000
+const activeThisWeek = (iso) => !!iso && Date.now() - new Date(iso).getTime() < WEEK
 
 /** Hebrew relative day count — "היום", "אתמול", "לפני 12 ימים". */
 function daysAgo(iso) {
@@ -75,9 +96,13 @@ export default function AppUsersAdmin() {
   const [merging, setMerging] = useState(false)
   const [mergeErr, setMergeErr] = useState(null)
   const [mergeDone, setMergeDone] = useState(null) // result text after a merge
+  // Newest released version. Both apps ship the same version number, and the
+  // Android one the site serves is kept in league_settings — use it for both.
+  const [latest, setLatest] = useState(null)
 
   const load = async () => {
     setLoading(true); setErr(null)
+    getAndroidLatestVersion().then(v => setLatest(v.name)).catch(() => {})
     try { setRows(await getAppUsers()) }
     catch (e) { setErr(e.message || "שגיאה") }
     finally { setLoading(false) }
@@ -86,6 +111,12 @@ export default function AppUsersAdmin() {
 
   const byId = useMemo(() => Object.fromEntries(rows.map(r => [r.user_id, r])), [rows])
   const hasApp = (r) => r.has_ios || r.has_android
+  // Behind the newest release on a platform. Unknown versions are not "old".
+  const isOld = (r, p) => {
+    const v = versionName(r[`${p}_version`])
+    return !!(latest && r[`has_${p}`] && v && cmpVersion(v, latest) < 0)
+  }
+  const anyOld = (r) => isOld(r, "ios") || isOld(r, "android")
 
   const totals = useMemo(() => {
     const app = rows.filter(hasApp)
@@ -94,23 +125,44 @@ export default function AppUsersAdmin() {
       app: app.length,
       ios: app.filter(r => r.has_ios).length,
       android: app.filter(r => r.has_android).length,
+      iosWeek: app.filter(r => activeThisWeek(r.ios_last_seen)).length,
+      androidWeek: app.filter(r => activeThisWeek(r.android_last_seen)).length,
       linked: rows.filter(r => r.player_id).length,
       appLinked: app.filter(r => r.player_id).length,
       dups: rows.filter(r => r.duplicate_of?.length).length,
     }
   }, [rows])
 
+  // Per platform: how many accounts are on each version, newest first.
+  const versions = useMemo(() => Object.fromEntries(PLATFORMS.map(({ id }) => {
+    const counts = {}
+    for (const r of rows) {
+      if (!r[`has_${id}`]) continue
+      const v = versionName(r[`${id}_version`]) || "לא ידוע"
+      counts[v] = (counts[v] || 0) + 1
+    }
+    const list = Object.entries(counts).sort(([a], [b]) => {
+      if (a === "לא ידוע") return 1
+      if (b === "לא ידוע") return -1
+      return cmpVersion(b, a)
+    })
+    return [id, list]
+  })), [rows])
+
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase()
     return rows.filter(r => {
       if (filter === "app" && !hasApp(r)) return false
       if (filter === "noapp" && hasApp(r)) return false
+      if (filter === "ios" && !r.has_ios) return false
+      if (filter === "android" && !r.has_android) return false
+      if (filter === "old" && !anyOld(r)) return false
       if (filter === "nocard" && r.player_id) return false
       if (filter === "dups" && !r.duplicate_of?.length) return false
       if (!s) return true
       return `${r.display_name || ""} ${r.email || ""} ${r.player_name || ""}`.toLowerCase().includes(s)
     })
-  }, [rows, filter, q])
+  }, [rows, filter, q, latest])
 
   // Which account should survive by default: the one the APP uses (its session and
   // push registration survive → the player is never signed out), then the one with
@@ -154,17 +206,51 @@ export default function AppUsersAdmin() {
 
       {loading && !rows.length && !err ? <SkeletonPanelRows /> : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Stat icon={Users} label="חשבונות" value={totals.accounts} />
-            <Stat icon={Smartphone} label="התחברו באפליקציה" value={totals.app} sub={`iPhone ${totals.ios} · Android ${totals.android}`} />
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <Stat icon={Users} label="חשבונות" value={totals.accounts} sub={`באפליקציה: ${totals.app}`} />
+            <Stat icon={Smartphone} label="iPhone" value={totals.ios} sub={`פעילים השבוע: ${totals.iosWeek}`} />
+            <Stat icon={Smartphone} label="Android" value={totals.android} sub={`פעילים השבוע: ${totals.androidWeek}`} />
             <Stat icon={UserCheck} label="מקושרים לכרטיס שחקן" value={totals.linked} sub={`מתוכם באפליקציה: ${totals.appLinked}`} />
             <Stat icon={AlertTriangle} label="חשבון כפול אפשרי" value={totals.dups} tone={totals.dups ? "amber" : "brand"} />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            {PLATFORMS.map(({ id, label }) => {
+              const list = versions[id]
+              const total = list.reduce((n, [, c]) => n + c, 0)
+              const old = latest ? list.filter(([v]) => v !== "לא ידוע" && cmpVersion(v, latest) < 0).reduce((n, [, c]) => n + c, 0) : 0
+              return (
+                <div key={id} className="card p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-bold text-sm text-slate-900 dark:text-white">גרסאות {label}</div>
+                    {latest && <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      אחרונה: {latest}{old > 0 && <> · <span className="text-amber-600 dark:text-amber-400 font-semibold">{old} על גרסה ישנה</span></>}
+                    </div>}
+                  </div>
+                  {!list.length && <div className="text-xs text-slate-400">אין עדיין</div>}
+                  {list.map(([v, c]) => {
+                    const tone = v === "לא ידוע" || !latest ? "bg-slate-400"
+                      : cmpVersion(v, latest) >= 0 ? "bg-emerald-500" : "bg-amber-500"
+                    return (
+                      <div key={v} className="flex items-center gap-2 text-xs">
+                        <span className="w-14 shrink-0 tabular-nums text-slate-700 dark:text-slate-200 font-semibold" dir="ltr">{v}</span>
+                        <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                          <div className={`h-full rounded-full ${tone}`} style={{ width: `${(c / total) * 100}%` }} />
+                        </div>
+                        <span className="w-6 shrink-0 text-left tabular-nums text-slate-500 dark:text-slate-400">{c}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
 
           <p className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
             <Info className="w-4 h-4 shrink-0 mt-px" />
             <span>
-              מי שהוריד את האפליקציה ולא התחבר לא מופיע כאן — אין לנו שום סימן להורדה עצמה (את זה רואים רק ב־App Store Connect).
+              מי שהוריד את האפליקציה ולא התחבר לא מופיע כאן — אין לנו שום סימן להורדה עצמה (את זה רואים רק ב־App Store Connect וב־Google Play Console).
+              ״גרסה ישנה״ = מתחת לגרסה האחרונה שפורסמה ({latest || "—"}).
               ״נראה לאחרונה״ מבוסס על התחברויות, התראות ופעילות — תאריכים ישנים יכולים להיות מוקדמים מהאמת.
             </span>
           </p>
@@ -204,8 +290,12 @@ export default function AppUsersAdmin() {
                     <div className="text-xs text-slate-500 dark:text-slate-400 truncate" dir="ltr">{r.email}</div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {r.has_ios && <Chip tone="brand"><Smartphone className="w-3 h-3" /> iPhone{r.ios_build ? ` · build ${r.ios_build}` : ""}</Chip>}
-                    {r.has_android && <Chip tone="brand"><Smartphone className="w-3 h-3" /> Android{r.android_version ? ` · ${r.android_version}` : ""}</Chip>}
+                    {PLATFORMS.filter(p => r[`has_${p.id}`]).map(p => (
+                      <Chip key={p.id} tone={isOld(r, p.id) ? "amber" : "brand"}>
+                        <Smartphone className="w-3 h-3" /> {p.label}
+                        {r[`${p.id}_version`] && <>· <span dir="ltr">{r[`${p.id}_version`]}</span></>}
+                      </Chip>
+                    ))}
                     {!hasApp(r) && <Chip><Monitor className="w-3 h-3" /> אתר בלבד</Chip>}
                   </div>
                 </div>
@@ -218,7 +308,8 @@ export default function AppUsersAdmin() {
                       : <span className="font-semibold text-slate-400">אין</span>}
                   </span>
                   <span>כניסה עם: {(r.providers || []).map(p => PROVIDER_LABEL[p] || p).join(" + ") || "—"}</span>
-                  {hasApp(r) && <span>באפליקציה: {daysAgo(r.app_last_seen) || "—"}</span>}
+                  {r.has_ios && <span>ב־iPhone: {daysAgo(r.ios_last_seen) || "—"}</span>}
+                  {r.has_android && <span>ב־Android: {daysAgo(r.android_last_seen) || "—"}</span>}
                   {r.web_last_seen && <span>באתר: {daysAgo(r.web_last_seen)}</span>}
                   <span className="text-slate-400">נרשם {new Date(r.created_at).toLocaleDateString("he-IL")}</span>
                 </div>

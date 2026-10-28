@@ -17,25 +17,36 @@
 -- Both are SECURITY DEFINER because auth.sessions / auth.identities are not
 -- readable from the client at all.
 
-create or replace function public.admin_app_users()
+-- 2026-10-28: both apps now report versions the same way. Per platform the row
+-- carries a label like "1.5.5 (69)" or "1.5.5" (newest day's trace wins; a full
+-- "x (n)" from telemetry beats a bare push version name; an old iOS session with
+-- only a build number reads "build 39"),
+-- the numeric build for "is this the latest?", and that platform's last-seen.
+-- The return type changed, hence the drop.
+drop function if exists public.admin_app_users();
+create function public.admin_app_users()
 returns table (
-  user_id          uuid,
-  display_name     text,
-  email            text,
-  providers        text[],
-  created_at       timestamptz,
-  last_sign_in_at  timestamptz,
-  player_id        uuid,
-  player_name      text,
-  has_ios          boolean,
-  has_android      boolean,
-  ios_build        text,
-  android_version  text,
-  app_first_seen   timestamptz,
-  app_last_seen    timestamptz,
-  web_last_seen    timestamptz,
-  push_devices     int,
-  duplicate_of     uuid[]
+  user_id           uuid,
+  display_name      text,
+  email             text,
+  providers         text[],
+  created_at        timestamptz,
+  last_sign_in_at   timestamptz,
+  player_id         uuid,
+  player_name       text,
+  has_ios           boolean,
+  has_android       boolean,
+  ios_version       text,
+  android_version   text,
+  ios_build         int,
+  android_build     int,
+  ios_last_seen     timestamptz,
+  android_last_seen timestamptz,
+  app_first_seen    timestamptz,
+  app_last_seen     timestamptz,
+  web_last_seen     timestamptz,
+  push_devices      int,
+  duplicate_of      uuid[]
 )
 language plpgsql stable security definer
 set search_path = public, auth
@@ -46,31 +57,43 @@ begin
   end if;
 
   return query
-  with app as (
+  with raw as (
     select s.user_id,
            case when s.user_agent ilike 'RinkHockeyIL/%' then 'ios' else 'android' end as platform,
            s.created_at as first_at,
            coalesce(s.refreshed_at::timestamptz, s.updated_at, s.created_at) as last_at,
+           null::text as ver,
            case when s.user_agent ilike 'RinkHockeyIL/%'
-                then substring(s.user_agent from 'RinkHockeyIL/([0-9]+)') end as ver
+                then substring(s.user_agent from 'RinkHockeyIL/([0-9]+)')::int end as build
       from auth.sessions s
      where s.user_agent ilike 'RinkHockeyIL/%' or s.user_agent ilike 'okhttp/%'
     union all
     select p.user_id, p.platform, p.created_at, coalesce(p.last_seen_at, p.created_at),
-           case when p.platform = 'android' then p.app_version_name end
+           p.app_version_name, null::int
       from public.push_subscriptions p
      where p.platform in ('ios', 'android')
     union all
-    select e.user_id, e.platform, e.created_at, e.created_at, e.app_version
+    select e.user_id, e.platform, e.created_at, e.created_at,
+           e.app_version, substring(e.app_version from '\(([0-9]+)\)')::int
       from public.app_events e
      where e.platform in ('ios', 'android') and e.user_id is not null
+  ),
+  app as (
+    select r.*,
+           -- newest day first; within a day a full "x (n)" beats a bare name or build
+           (r.last_at::date)::text || case when r.ver like '%(%' then '2' when r.ver is not null then '1' else '0' end as pick
+      from raw r
   ),
   app_per_user as (
     select a.user_id,
            bool_or(a.platform = 'ios')     as has_ios,
            bool_or(a.platform = 'android') as has_android,
-           (array_agg(a.ver order by a.last_at desc) filter (where a.platform = 'ios' and a.ver is not null))[1]     as ios_build,
-           (array_agg(a.ver order by a.last_at desc) filter (where a.platform = 'android' and a.ver is not null))[1] as android_version,
+           (array_agg(a.ver order by a.pick desc, a.last_at desc) filter (where a.platform = 'ios' and a.ver is not null))[1]       as ios_ver,
+           (array_agg(a.ver order by a.pick desc, a.last_at desc) filter (where a.platform = 'android' and a.ver is not null))[1]   as android_ver,
+           (array_agg(a.build order by a.pick desc, a.last_at desc) filter (where a.platform = 'ios' and a.build is not null))[1]     as ios_build,
+           (array_agg(a.build order by a.pick desc, a.last_at desc) filter (where a.platform = 'android' and a.build is not null))[1] as android_build,
+           max(a.last_at) filter (where a.platform = 'ios')     as ios_last,
+           max(a.last_at) filter (where a.platform = 'android') as android_last,
            min(a.first_at) as first_seen,
            max(a.last_at)  as last_seen
       from app a
@@ -117,8 +140,12 @@ begin
          nullif(trim(coalesce(pl.first_name, '') || ' ' || coalesce(pl.last_name, '')), ''),
          coalesce(ap.has_ios, false),
          coalesce(ap.has_android, false),
+         coalesce(ap.ios_ver, 'build ' || ap.ios_build),
+         coalesce(ap.android_ver, 'build ' || ap.android_build),
          ap.ios_build,
-         ap.android_version,
+         ap.android_build,
+         ap.ios_last,
+         ap.android_last,
          ap.first_seen,
          ap.last_seen,
          wb.last_seen,
