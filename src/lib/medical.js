@@ -17,7 +17,9 @@ import { sessionUser } from './sessionUser'
 
 /** Upload a physical to the private bucket + create a pending cert row; returns its id.
  *  The player himself, or — on his behalf — his coach, a league manager or an admin
- *  (supabase/medical-upload-on-behalf.sql). */
+ *  (supabase/medical-upload-on-behalf.sql). A row still waiting for review is REPLACED
+ *  server-side (supabase/medical-withdraw-history.sql marks it 'withdrawn'); an approved
+ *  one stays valid until the new one is approved. Nothing is ever deleted. */
 export async function uploadMedical(playerId, file) {
   const user = await sessionUser()
   if (!user) throw new Error('not-authenticated')
@@ -40,18 +42,56 @@ export async function uploadMedical(playerId, file) {
   return row?.id
 }
 
-/** The player's latest certificate (any status), or null. */
-export async function getMyMedical(playerId) {
-  if (!playerId) return null
+/** Approved and not past its expiry (a legacy null expiry counts), in Israel's calendar. */
+export function isValidMedical(c, today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })) {
+  return c?.status === 'approved' && (!c.expires_at || String(c.expires_at).slice(0, 10) >= today)
+}
+
+/** Waiting on the coach or the league manager — the row a new upload replaces. */
+export const isOpenMedical = (c) => c?.status === 'pending' || c?.status === 'pending_manager'
+
+/**
+ * The certificate that speaks for the player, from his history (newest first): a valid
+ * approved one wins — a newer upload still waiting, or a newer rejected one, doesn't take
+ * away a certificate he can play on — otherwise the newest row that wasn't withdrawn.
+ */
+export function effectiveMedical(history) {
+  const live = (history || []).filter(c => c.status !== 'withdrawn')
+  return live.find(c => isValidMedical(c)) ?? live[0] ?? null
+}
+
+/** Every upload the player made, newest first (RLS: him, his coach, LM, admin). */
+export async function getMyMedicalHistory(playerId) {
+  if (!playerId) return []
   const { data, error } = await supabase
     .from('medical_certificates')
-    .select('id,status,file_path,created_at,exam_date,expires_at')
+    .select('id,status,file_path,created_at,exam_date,expires_at,withdrawn_at')
     .eq('player_id', playerId)
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (error) return null
-  return data
+  if (error) throw error
+  return data || []
+}
+
+/** The player's effective certificate (see effectiveMedical), or null. */
+export async function getMyMedical(playerId) {
+  if (!playerId) return null
+  try { return effectiveMedical(await getMyMedicalHistory(playerId)) } catch { return null }
+}
+
+/**
+ * Withdraw an upload: the row becomes 'withdrawn' and stays in the history with its file.
+ * A player may withdraw only one still waiting; an approved one needs his coach / the
+ * league manager (who must pass confirm=true — the player and coaches are notified).
+ */
+export async function withdrawMedical(certId, confirm = false) {
+  const { error } = await supabase.rpc('medical_withdraw', { p_id: certId, p_confirm: confirm })
+  if (error) {
+    const m = error.message || ''
+    if (/approved needs staff/i.test(m)) throw new Error('אישור שכבר אושר אפשר להחליף בהעלאה חדשה, או לבקש מהמאמן להסיר')
+    if (/not withdrawable/i.test(m)) throw new Error('הקובץ הזה כבר לא ממתין — רעננו את הדף')
+    if (/not authorized/i.test(m)) throw new Error('אין לך הרשאה לבטל את הקובץ הזה')
+    throw new Error('הביטול נכשל, נסו שוב')
+  }
 }
 
 /**
