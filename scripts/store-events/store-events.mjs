@@ -191,6 +191,16 @@ async function create(day) {
   log(`  created ${id}`)
   return id
 }
+async function artReady(id) {
+  for (let i = 0; i < 30; i++) {
+    const shots = (await asc('GET', `/appEvents/${id}/localizations?include=appEventScreenshots&limit=10`)).included || []
+    const states = shots.map((x) => x.attributes.assetDeliveryState?.state)
+    if (states.includes('FAILED')) throw new Error(`event ${id}: art failed processing`)
+    if (shots.length && states.every((s) => s === 'COMPLETE')) return
+    await new Promise((r) => setTimeout(r, 20e3))
+  }
+  throw new Error(`event ${id}: art still processing after 10 min`)
+}
 async function submit(eventIds) {
   if (!APPLY || !eventIds.length) return
   // An unsubmitted iOS review submission may already exist (e.g. an app version being prepared).
@@ -202,6 +212,9 @@ async function submit(eventIds) {
     if (items.every((it) => it.relationships?.appEvent?.data && !it.relationships?.appStoreVersion?.data)) { sub = s; break }
   }
   if (!sub && open.length) { await alert('אירועי App Store לא נשלחו לבדיקה', 'יש הגשה פתוחה ב-App Store Connect עם גרסת אפליקציה, ולכן לא נגעתי בה. אנסה שוב מחר.'); return }
+  // Apple 409s ("This resource cannot be reviewed") while the art is still processing, and a
+  // fresh upload takes a minute or two — so wait for every screenshot to be COMPLETE first.
+  for (const id of eventIds) await artReady(id)
   if (!sub) sub = (await asc('POST', '/reviewSubmissions', { data: { type: 'reviewSubmissions', attributes: { platform: 'IOS' }, relationships: { app: { data: { type: 'apps', id: APP_ID } } } } })).data
   for (const id of eventIds) await asc('POST', '/reviewSubmissionItems', { data: { type: 'reviewSubmissionItems', relationships: { reviewSubmission: { data: { type: 'reviewSubmissions', id: sub.id } }, appEvent: { data: { type: 'appEvents', id } } } } })
   await asc('PATCH', `/reviewSubmissions/${sub.id}`, { data: { type: 'reviewSubmissions', id: sub.id, attributes: { submitted: true } } })
