@@ -13,7 +13,7 @@ import {
   getLeagueSetting,
   closeSeason, getArchivedSeasons, getCurrentSeason
 } from "@/lib/api"
-import { Shield, Settings, LogOut, Trash2, Plus, X, Check, Save, ChevronDown, Archive, Image } from "lucide-react"
+import { Shield, ShieldAlert, Settings, LogOut, Trash2, Plus, X, Check, Save, ChevronDown, Archive, Image } from "lucide-react"
 import { PersonFollowing as UserCheck, Squad as Users, PersonRemove as UserMinus, EditIcon as Pencil, PersonAdd as UserPlus, Warning as AlertTriangle, Report as Flag, Calendar, Crown, Trophy, CalendarClock, BrandTile, TestGame, Admin as AdminIcon } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import TeamLogo from "@/components/TeamLogo"
@@ -61,6 +61,7 @@ import GameChangeRequestsReview from "@/components/admin/GameChangeRequestsRevie
 import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import SurveysAdmin from "@/components/admin/SurveysAdmin"
+import HoneypotAdmin from "@/components/admin/HoneypotAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
 import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart, Radio } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
@@ -100,6 +101,8 @@ const tabs = [
   { id: "android_testers", label: "בודקי אפליקציה", icon: TestTube2 },
   // admin-only: no role's scopedTabIds lists it (docs/HIDDEN-FEATURES-SPEC.md)
   { id: "hidden_features", label: "תכונות מוסתרות", icon: ToggleRight },
+  // admin-only (honeypot_hits RLS = is_admin): who called the decoy RPCs (supabase/honeypot.sql)
+  { id: "honeypot", label: "מלכודות", icon: ShieldAlert },
   { id: "roles", label: "תפקידים", icon: Award },
   { id: "users", label: "מנהלים", icon: Crown },
 ]
@@ -288,6 +291,7 @@ export default function Admin() {
               {currentTab === "app_users" && <AppUsersAdmin />}
               {currentTab === "android_testers" && <AndroidTestersAdmin />}
               {currentTab === "hidden_features" && isAdmin && <HiddenFeaturesAdmin teams={teams} />}
+              {currentTab === "honeypot" && isAdmin && <HoneypotAdmin />}
               {currentTab === "coaches" && <CoachesAdmin teamsMap={teamsMap} players={players} />}
               {currentTab === "roles" && <RolesAdmin teamsMap={teamsMap} players={players} />}
               {currentTab === "users" && <UsersAdmin adminUsers={adminUsers} currentUserEmail={user.email} reload={loadData} />}
