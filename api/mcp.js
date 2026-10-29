@@ -18,9 +18,10 @@ const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE
 const SITE = 'https://rinkhockeyil.com'
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
 
-// The rinks. venues has no coordinates, and there are four of them, so they live here.
-// Keys are games.venue / venues.name exactly. A venue missing from this map still shows
-// up in results, just without a distance.
+// Fallback rink coordinates. The venues table now has lat/lng (set from /admin מגרשים);
+// a pin there wins, and these cover any venue whose pin is not set yet. Keys are
+// games.venue / venues.name exactly. A venue with neither still shows up in results,
+// just without a distance.
 const VENUE_COORDS = {
   'קריית ביאליק': { lat: 32.8275, lng: 35.0858 },
   'קריית מוצקין': { lat: 32.8375, lng: 35.0775 },
@@ -46,6 +47,34 @@ async function getTeams() {
   return teamsCache.rows
 }
 
+// Active venues with their coordinates: the venues table's pin when set, else the
+// hard-coded VENUE_COORDS. Cached a minute like teams. A failed read falls back to the
+// hard-coded map so a venues hiccup never breaks the games tools.
+const venuesCache = { at: 0, rows: null }
+async function getVenues() {
+  if (venuesCache.rows && Date.now() - venuesCache.at < 60_000) return venuesCache.rows
+  let rows
+  try {
+    rows = await sb('venues?select=name,lat,lng,address,is_active&is_active=eq.true')
+  } catch {
+    return Object.entries(VENUE_COORDS).map(([name, c]) => ({ name, ...c, address: null }))
+  }
+  venuesCache.rows = rows.map(v => {
+    const pinned = Number.isFinite(v.lat) && Number.isFinite(v.lng)
+    const c = pinned ? { lat: v.lat, lng: v.lng } : VENUE_COORDS[v.name] || {}
+    return { name: v.name, ...c, address: v.address || null }
+  })
+  venuesCache.at = Date.now()
+  return venuesCache.rows
+}
+
+/** { venueName: {lat,lng} } — DB pins over the hard-coded fallback, for distances. */
+async function getVenueCoords() {
+  const out = { ...VENUE_COORDS }
+  for (const v of await getVenues()) if (Number.isFinite(v.lat)) out[v.name] = { lat: v.lat, lng: v.lng }
+  return out
+}
+
 // Loose Hebrew/English match: "בלג" finds both בלג teams, "רמת ישי" finds רמת ישי.
 const norm = s => String(s || '').toLowerCase().replace(/["'״׳\-\s]+/g, '')
 function matchTeams(teams, q) {
@@ -68,7 +97,7 @@ const fmtDate = iso => new Intl.DateTimeFormat('he-IL', {
 
 const GAME_COLS = 'id,slug,game_date,venue,status,game_type,home_team_id,away_team_id,home_score,away_score,is_test'
 
-function shapeGame(g, byId, origin) {
+function shapeGame(g, byId, origin, coords = VENUE_COORDS) {
   const home = byId[g.home_team_id], away = byId[g.away_team_id]
   const out = {
     when: fmtDate(g.game_date),
@@ -80,7 +109,7 @@ function shapeGame(g, byId, origin) {
     url: `${SITE}/games/${g.slug || g.id}`,
   }
   if (g.status === 'completed') out.score = `${home?.name} ${g.home_score} – ${g.away_score} ${away?.name}`
-  const c = VENUE_COORDS[g.venue]
+  const c = coords[g.venue]
   if (origin && c) out.distance_km = Math.round(km(origin, c))
   return out
 }
@@ -169,13 +198,14 @@ const handlers = {
     const rows = await sb(q)
     const origin = Number.isFinite(args.near_lat) && Number.isFinite(args.near_lng)
       ? { lat: args.near_lat, lng: args.near_lng } : null
-    let games = rows.map(g => shapeGame(g, byId, origin))
+    const coords = origin ? await getVenueCoords() : VENUE_COORDS
+    let games = rows.map(g => shapeGame(g, byId, origin, coords))
     // Stays in date order even with a location: "when is a game near me" wants the
     // soonest one, and every rink is within an hour of every other — sorting by
     // distance buried this Saturday's game under November's.
     if (origin && Number.isFinite(args.max_km)) games = games.filter(g => g.distance_km == null || g.distance_km <= args.max_km)
     const rinksByDistance = origin
-      ? Object.entries(VENUE_COORDS).map(([name, c]) => ({ name, distance_km: Math.round(km(origin, c)) }))
+      ? Object.entries(coords).map(([name, c]) => ({ name, distance_km: Math.round(km(origin, c)) }))
         .filter(r => rows.some(g => g.venue === r.name))
         .sort((a, b) => a.distance_km - b.distance_km)
       : undefined
@@ -234,11 +264,12 @@ const handlers = {
 
   async rinks() {
     const teams = await getTeams()
-    const venues = await sb('venues?select=name,is_active&is_active=eq.true')
+    const venues = await getVenues()
     return {
       rinks: venues.map(v => ({
         name: v.name,
-        ...(VENUE_COORDS[v.name] || {}),
+        ...(Number.isFinite(v.lat) ? { lat: v.lat, lng: v.lng } : {}),
+        ...(v.address ? { address: v.address } : {}),
         home_teams: teams.filter(t => t.home_venue === v.name).map(t => t.name),
       })),
     }
