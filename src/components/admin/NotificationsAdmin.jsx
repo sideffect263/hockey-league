@@ -36,6 +36,7 @@ const TYPE_LABEL = {
   role_granted: "קבלת תפקיד", content_report: "דיווח תוכן",
   game_result: "תוצאת משחק", goal_scored: "גול", game_moved: "שינוי במשחק", game_postponed: "משחק נדחה",
   follow_game_alert: "משחק במעקב מחר",
+  follow_game_today: "משחק במעקב היום",
   game_register_reminder: "תזכורת הגעה", game_register_nudge: "תזכורת הגעה חוזרת",
   game_form_sign: "חתימה על טופס", coach_squad_digest: "סיכום סגל למאמן",
   lm_squad_digest: "סיכום סגלים למנהל", lm_officials_digest: "סיכום שופטים למנהל",

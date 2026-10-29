@@ -228,6 +228,8 @@ export function notificationText(n) {
     case 'game_postponed':         return `${vs(d)} — המשחק נדחה, מועד חדש יפורסם`
     // P5 — you follow one of these teams and asked to be told
     case 'follow_game_alert':      return `מחר: ${vs(d)}`
+    // a team you follow plays today (game-day morning, on by default)
+    case 'follow_game_today':      return `היום: ${vs(d)}`
     // P5 — a goal in a game you follow. Score reads away:home, per the RTL gotcha.
     case 'app_update':             return `גרסה חדשה של האפליקציה זמינה${d.version_name ? ` (${d.version_name})` : ''} — הורידו מהאתר`
     case 'goal_scored':            return `${d.scoring_team || ''} הבקיעה! ${vs(d)} ${d.away_score ?? ''}:${d.home_score ?? ''}`
@@ -316,7 +318,8 @@ export function notificationIcon(n) {
     case 'lm_broadcast':           return '📢'
     case 'game_moved':             return '🌧️'
     case 'game_postponed':         return '⏸️'
-    case 'follow_game_alert':      return '⭐'
+    case 'follow_game_alert':
+    case 'follow_game_today':      return '⭐'
     case 'app_update':             return '⬇️'
     case 'goal_scored':            return ''
     case 'official_assigned':              return '⚖️'
@@ -354,7 +357,7 @@ const BRAND_ICON = {
   loan_removed: 'person-remove', game_register_reminder: 'announce', game_register_nudge: 'reminder',
   game_form_sign: 'sign', coach_squad_digest: 'clipboard', lm_squad_digest: 'clipboard',
   lm_officials_digest: 'officials', lm_broadcast: 'announce', game_moved: 'calendar-move', game_postponed: 'calendar-move',
-  follow_game_alert: 'star', app_update: 'app-update', goal_scored: 'goal',
+  follow_game_alert: 'star', follow_game_today: 'star', app_update: 'app-update', goal_scored: 'goal',
   official_assigned: 'officials', official_application: 'document', official_application_approved: 'approved-status',
   official_application_rejected: 'rejected', market_resolved: 'trend-up', market_coins: 'coin',
 }
@@ -409,6 +412,7 @@ export function notificationHref(n) {
     case 'game_moved':
     case 'game_postponed':
     case 'follow_game_alert':
+    case 'follow_game_today':
     // loans: the invite card (player) and the loan desk (coach) both live on the game page
     case 'loan_join_request':
     case 'loan_join_approved':

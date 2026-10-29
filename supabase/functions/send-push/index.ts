@@ -70,6 +70,9 @@ function bodyPreview(n: NotificationRow): string {
 
 // Kept in sync with src/lib/notifications.js — this file is a deliberate duplicate,
 // because the edge function cannot import from the Vite bundle.
+const kickoff = (d: Record<string, any>) => (d.game_date
+  ? new Date(d.game_date).toLocaleTimeString("he-IL", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit" })
+  : "");
 const vs = (d: Record<string, any>) => `${d.home_team ?? ""} נגד ${d.away_team ?? ""}`.trim();
 
 // F1 — player availability constraints. Mirrors src/lib/notifications.js.
@@ -200,6 +203,7 @@ function notificationText(n: NotificationRow, actorName: string): string {
     case "game_moved":             return `${vs(d)} — ${movedSummary(d)}`;
     case "game_postponed":         return `${vs(d)} — המשחק נדחה, מועד חדש יפורסם`;
     case "follow_game_alert":      return `מחר: ${vs(d)}`;
+    case "follow_game_today":      return `היום ב־${kickoff(d)}: ${vs(d)}`;
     case "goal_scored":            return `${d.scoring_team ?? ""} הבקיעה! ${vs(d)} ${d.away_score ?? ""}:${d.home_score ?? ""}`;
     // הוקי מרקט. A settlement push IS the payoff — landing it as "התראה חדשה"
     // would waste the one notification that brings a trader back to the board.
@@ -286,6 +290,7 @@ function notificationHref(n: NotificationRow): string {
     case "game_moved":
     case "game_postponed":
     case "follow_game_alert":
+    case "follow_game_today":
     case "goal_scored":
     case "loan_join_request":
     case "loan_join_approved":
