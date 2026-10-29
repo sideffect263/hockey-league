@@ -126,8 +126,10 @@ begin
   end if;
   delete from public.feed_drafts where id = p_id returning * into d;
   if d.id is null then raise exception 'draft_not_found'; end if;
-  insert into public.posts (author_id, body, team_id, video_uid, video_cf_code, video_ratio, game_id, image_url, external_guid)
-  values (coalesce(public.league_account_id(), auth.uid()), d.body, d.team_id, d.video_uid, d.video_cf_code, d.video_ratio, d.game_id, d.image_url, d.external_guid)
+  -- keep vertical_video_uid (post_vertical_video, 10-28): dropping it lost a 9:16 cut on 10-29.
+  insert into public.posts (author_id, body, team_id, video_uid, video_cf_code, video_ratio, vertical_video_uid, game_id, image_url, external_guid)
+  values (coalesce(public.league_account_id(), auth.uid()), d.body, d.team_id, d.video_uid, d.video_cf_code, d.video_ratio,
+          d.vertical_video_uid, d.game_id, d.image_url, d.external_guid)
   returning id into new_id;
   return new_id;
 end $$;
