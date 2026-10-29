@@ -4,6 +4,7 @@ import { Check, Loader2, X } from "lucide-react"
 import { Share as Share2, Bell as BellRing } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { follow } from "@/lib/follows"
+import { trackEvent, withUtm } from "@/lib/analytics"
 
 /**
  * "Tell your friends" for a team or player (Yarden, 2026-10-03: friends should get the
@@ -18,13 +19,15 @@ export function ShareFollowButton({ targetType, name, onDark = false }) {
     url.search = ""
     url.hash = ""
     url.searchParams.set("follow", "1")
+    const link = (source) => withUtm(url.toString(), { source, campaign: `follow_${targetType}` })
+    trackEvent("share", { content_type: `follow_${targetType}`, method: navigator.share ? "sheet" : "whatsapp" })
     const text = targetType === "team"
       ? `עקבו אחרי ${name} בליגת הוקי הגלגיליות וקבלו התראה על כל גול`
       : `עקבו אחרי ${name} בליגת הוקי הגלגיליות וקבלו התראה על כל גול במשחקים שלו`
     try {
-      if (navigator.share) { await navigator.share({ title: name, text, url: url.toString() }); return }
+      if (navigator.share) { await navigator.share({ title: name, text, url: link("share") }); return }
     } catch (e) { if (e?.name === "AbortError") return }
-    window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`, "_blank", "noopener,noreferrer")
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${link("whatsapp")}`)}`, "_blank", "noopener,noreferrer")
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

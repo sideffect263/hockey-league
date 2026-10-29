@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { sessionUser } from './sessionUser'
+import { trackEvent } from './analytics'
 
 /**
  * Follow / subscribe (P5 — sheet row 24 + the ranked-feed epic).
@@ -49,6 +50,7 @@ export async function follow(targetType, targetId, notify = false) {
     .upsert({ user_id: user.id, target_type: targetType, target_id: targetId, notify },
             { onConflict: 'user_id,target_type,target_id' })
   if (error) throw error
+  trackEvent('follow', { target_type: targetType, notify: notify ? 'yes' : 'no' })
 }
 
 export async function unfollow(targetType, targetId) {

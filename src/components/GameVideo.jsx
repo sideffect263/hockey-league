@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Trash2, ExternalLink, Camera, Eye, Stethoscope } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
+import { trackEvent } from "@/lib/analytics"
 import { useStreamViewers } from "@/lib/useStreamViewers"
 import {
   getGameVideos, isLiveRow, detachVideo, addMarker, deleteMarker,
@@ -76,6 +77,8 @@ function RtmpPlayer({ video, gameId, home, away, overlay = BROADCAST_DEFAULTS })
   const [latency, setLatency] = useState(null) // { ms, source } from the live player
   const onAir = useCameraOnAir(video)
   const onInput = !!video.cf_live_input && video.video_id === video.cf_live_input
+  // One GA4 event per broadcast opened while on air — "how many watched live".
+  useEffect(() => { if (onInput && onAir) trackEvent("watch_live", { stream_type: "app" }) }, [onInput, onAir, video.id])
   const code = video.cf_customer_code
 
   if (!code) return null
@@ -122,6 +125,7 @@ function RtmpPlayer({ video, gameId, home, away, overlay = BROADCAST_DEFAULTS })
 // fine and universal — we also fall back to it if the live WHEP can't connect
 // (e.g. the broadcast already ended).
 function CloudflarePlayer({ video, isLive }) {
+  useEffect(() => { if (isLive) trackEvent("watch_live", { stream_type: "browser" }) }, [isLive, video.video_id])
   const { isAdmin } = useAuth()
   const code = video.cf_customer_code
   const videoRef = useRef(null)

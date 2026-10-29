@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { withUtm } from "@/lib/analytics"
 import { getMyAvailability, setMyAvailability, getGameAvailability, getPublicAttendance, nudgeNonResponders } from "@/lib/availability"
 import { getApprovedMedicalPlayerIds } from "@/lib/medical"
 import { getActiveSuspension, getActiveSuspensionsFor, removePlayerFromSquad } from "@/lib/squad"
@@ -205,7 +206,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
 
   // By UUID, not slug: the native apps route games/<uuid>, and the website redirects a
   // UUID to the Hebrew URL keeping the #availability fragment.
-  const signupLink = `${window.location.origin}/games/${game.id}#availability`
+  const signupLink = withUtm(`${window.location.origin}/games/${game.id}#availability`, { source: "whatsapp", campaign: "squad" })
   const copySignupLink = async () => {
     try { await navigator.clipboard.writeText(signupLink) }
     catch { window.prompt("העתיקו את הקישור:", signupLink); return }

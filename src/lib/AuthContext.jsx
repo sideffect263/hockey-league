@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { sessionUser } from './sessionUser'
+import { identifyUser, trackEvent } from './analytics'
 
 const AuthContext = createContext()
 
@@ -84,6 +85,7 @@ export function AuthProvider({ children }) {
 
       let player = null
       let teamColor = null
+      let teamName = null
       if (prof.player_id) {
         const { data: pl } = await supabase
           .from('players')
@@ -94,13 +96,14 @@ export function AuthProvider({ children }) {
         if (pl?.team_id) {
           const { data: team } = await supabase
             .from('teams')
-            .select('primary_color')
+            .select('primary_color, name')
             .eq('id', pl.team_id)
             .maybeSingle()
           teamColor = team?.primary_color || null
+          teamName = team?.name || null
         }
       }
-      setProfile({ ...prof, player, teamColor })
+      setProfile({ ...prof, player, teamColor, teamName })
     } catch {
       setProfile(null)
     }
@@ -176,7 +179,31 @@ export function AuthProvider({ children }) {
   // judge(=referee) / league_manager / admin. Regular linked players & guests cannot.
   const canPost = isAdmin || coachTeamIds.length > 0 || isContentEditor || isJudgeRole || isLeagueManager
 
+  // Tell GA4 who is browsing once the account has settled: role, team, signed in or
+  // not. Admins and developers are tagged internal so their visits drop out of the stats.
+  useEffect(() => {
+    if (loading) return
+    const role = !user ? 'guest'
+      : isAdmin ? 'admin'
+      : isDeveloper ? 'developer'
+      : isLeagueManager ? 'league_manager'
+      : coachTeamIds.length ? 'coach'
+      : isJudgeRole ? 'judge'
+      : isContentEditor ? 'content_editor'
+      : isMedic ? 'medic'
+      : profile?.player_id ? 'player'
+      : 'fan'
+    identifyUser({
+      userId: user?.id || null,
+      role,
+      team: profile?.teamName || null,
+      linkedPlayer: !!profile?.player_id,
+      internal: isAdmin || isDeveloper,
+    })
+  }, [loading, user?.id, isAdmin, isDeveloper, isLeagueManager, coachTeamIds.length, isJudgeRole, isContentEditor, isMedic, profile?.player_id, profile?.teamName])
+
   const signInWithGoogle = async () => {
+    trackEvent('login', { method: 'google' })
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -196,12 +223,14 @@ export function AuthProvider({ children }) {
       options: { data: displayName ? { full_name: displayName } : undefined },
     })
     if (error) throw error
+    trackEvent('sign_up', { method: 'email' })
     return data // data.session is null when email confirmation is required
   }
 
   const signInWithEmail = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+    trackEvent('login', { method: 'email' })
     return data
   }
 

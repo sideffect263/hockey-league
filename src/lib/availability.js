@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { trackEvent } from './analytics'
 
 /**
  * Game availability (#3 apply-to-play). A rostered player declares whether they're
@@ -40,6 +41,7 @@ export async function setMyAvailability(gameId, status) {
     if (/not in this game/i.test(msg)) throw new Error('not-in-game')
     throw error
   }
+  trackEvent('game_availability', { status })
 }
 
 /** All availability rows for a game the caller may read (coach → their team; admin → all).

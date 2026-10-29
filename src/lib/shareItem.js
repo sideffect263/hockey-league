@@ -1,4 +1,5 @@
 import { trackAction } from './telemetry'
+import { trackEvent, withUtm } from './analytics'
 
 /**
  * Open the platform share sheet for a buildShare() target; where there is none (most
@@ -8,6 +9,10 @@ import { trackAction } from './telemetry'
 export async function shareTarget(target) {
   if (!target?.url) return
   trackAction('share', { type: target.type })
+  // GA4's recommended share event; the link itself carries utm_* so the visit it
+  // brings back is credited to the share instead of "Direct".
+  trackEvent('share', { content_type: target.type, method: navigator.share ? 'sheet' : 'copy' })
+  target = { ...target, url: withUtm(target.url, { source: 'share', campaign: target.type }) }
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({ title: target.title, text: target.text, url: target.url })

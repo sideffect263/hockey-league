@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { trackEvent } from './analytics'
 
 /**
  * סטופר מרקט — a play-money predictions game (the currency is called סטופרים).
@@ -308,6 +309,7 @@ export async function buy(outcomeId, coinsAmount) {
     p_outcome: outcomeId, p_coins: coinsAmount,
   })
   if (error) throw tradeError(error)
+  trackEvent('prediction', { coins: coinsAmount })
   return data
 }
 

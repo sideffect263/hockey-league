@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { trackEvent } from './analytics'
 
 /**
  * "Sign in with Apple" on the WEBSITE. Off until Apple web OAuth is configured —
@@ -18,6 +19,7 @@ export const APPLE_WEB_ENABLED = import.meta.env.VITE_APPLE_WEB_SIGNIN === '1'
 const back = () => window.location.origin + window.location.pathname
 
 export async function signInWithAppleWeb() {
+  trackEvent('login', { method: 'apple' })
   const { error } = await supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: back() } })
   if (error) throw error
 }
