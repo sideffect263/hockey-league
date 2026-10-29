@@ -111,7 +111,7 @@ export default function TradeTicket({ market, balance, position, onTraded }) {
         // game rather than a form — so it gets a beat of its own.
         setCelebrate({ label: outcome.label, stake: n, payout: Number(r.shares) })
       } else {
-        setDone(`התקבלו ${fmtCoins(r.coins)} מטבעות`)
+        setDone(`מימשת — התקבלו ${fmtCoins(r.coins)} סטופרים`)
       }
       setAmount('')
       await onTraded?.()
@@ -189,7 +189,7 @@ export default function TradeTicket({ market, balance, position, onTraded }) {
         <div className="flex items-center gap-2 justify-center py-4 text-sm text-fg-muted">
           <Lock className="w-4 h-4" />
           {market.status === 'resolved' ? 'השוק הוכרע' :
-           market.status === 'void' ? 'השוק בוטל וההימורים הוחזרו' : 'המסחר נסגר'}
+           market.status === 'void' ? 'השוק בוטל והסטופרים הוחזרו' : 'התחזיות נסגרו'}
         </div>
       ) : (
         <form onSubmit={submit}>
@@ -197,18 +197,18 @@ export default function TradeTicket({ market, balance, position, onTraded }) {
           <div className="tab-bar mb-3">
             <button type="button" onClick={() => { setSide('buy'); setAmount(''); setErr(null) }}
               className={side === 'buy' ? 'tab-active' : 'tab-inactive'}>
-              <TrendingUp className="w-4 h-4" /> קנייה
+              <TrendingUp className="w-4 h-4" /> תחזית
             </button>
             <button type="button" onClick={() => { setSide('sell'); setAmount(''); setErr(null) }}
               disabled={held <= 0}
               className={`${side === 'sell' ? 'tab-active' : 'tab-inactive'} disabled:opacity-40 disabled:cursor-not-allowed`}>
-              <TrendingDown className="w-4 h-4" /> מכירה
+              <TrendingDown className="w-4 h-4" /> מימוש
             </button>
           </div>
 
           <label className="block mb-2">
             <span className="flex items-center justify-between text-xs font-semibold text-fg-muted mb-1.5">
-              <span>{side === 'buy' ? 'סכום במטבעות' : 'כמות מניות'}</span>
+              <span>{side === 'buy' ? 'כמה סטופרים' : 'כמה יחידות לממש'}</span>
               <span className="mkt-num">
                 {side === 'buy'
                   ? `יתרה ${fmtCoins(balance)}`
@@ -254,29 +254,26 @@ export default function TradeTicket({ market, balance, position, onTraded }) {
                       <span className="mkt-coin text-3xl flex items-center gap-1.5">
                         <Coins className="w-6 h-6" />{fmtCoins(preview.payout)}
                       </span>
-                      <span className="stat-pill bg-pos/15 text-pos mkt-num" dir="ltr">
-                        ×{(preview.payout / Number(amount)).toFixed(2)}
-                      </span>
                     </div>
                     <p className="text-[11px] text-pos font-bold mt-0.5" dir="rtl">
                       רווח של <span className="mkt-num">+{fmtCoins(preview.profit)}</span>
                     </p>
                   </div>
-                  <Row label="מניות" value={preview.shares.toFixed(1)} />
-                  <Row label="מחיר ממוצע" value={pct(preview.avg)} />
+                  <Row label="יחידות" value={preview.shares.toFixed(1)} />
+                  <Row label="סיכוי ממוצע" value={pct(preview.avg)} />
                 </>
               ) : (
                 <>
                   <Row label="תקבל" value={fmtCoins(preview.proceeds)} accent />
-                  <Row label="מחיר ממוצע" value={pct(preview.avg)} />
+                  <Row label="סיכוי ממוצע" value={pct(preview.avg)} />
                 </>
               )}
-              <Row label="מחיר אחרי" value={`${pct(outcome.price)} ← ${pct(preview.newPrice)}`} />
+              <Row label="סיכוי אחרי" value={`${pct(outcome.price)} ← ${pct(preview.newPrice)}`} />
             </dl>
           )}
 
-          {overBalance && <p className="text-xs text-neg mb-2">אין לך מספיק מטבעות</p>}
-          {overHolding && <p className="text-xs text-neg mb-2">אין לך מספיק מניות</p>}
+          {overBalance && <p className="text-xs text-neg mb-2">אין לך מספיק סטופרים</p>}
+          {overHolding && <p className="text-xs text-neg mb-2">אין לך מספיק יחידות</p>}
           {err && <p className="text-xs text-neg mb-2">{err}</p>}
           {done && <p className="text-xs text-brand font-semibold mb-2">{done}</p>}
 
@@ -285,8 +282,8 @@ export default function TradeTicket({ market, balance, position, onTraded }) {
             className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed">
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
             {side === 'buy'
-              ? (preview ? `הימור ${fmtCoins(Number(amount))} על ${outcome?.label}` : 'קנייה')
-              : 'מכירה'}
+              ? (preview ? `תחזית ${fmtCoins(Number(amount))} על ${outcome?.label}` : 'לחזות')
+              : 'מימוש'}
           </button>
         </form>
       )}
@@ -322,7 +319,7 @@ function Celebration({ label, stake, payout, onClose }) {
           <Check className="w-8 h-8 text-brand-fg" strokeWidth={3} />
         </span>
       </div>
-      <p className="text-lg font-black text-fg-strong">ההימור נכנס!</p>
+      <p className="text-lg font-black text-fg-strong">התחזית נכנסה!</p>
       <p className="text-sm text-fg-muted mt-1">
         <span className="mkt-coin">{fmtCoins(stake)}</span> על <span className="font-bold text-fg-soft">{label}</span>
       </p>

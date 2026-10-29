@@ -61,7 +61,7 @@ function Side({ outcome, color, align, mine }) {
         <TeamLogo team={outcome.team} size={12} />
         {mine && (
           <span className="absolute -top-1 -end-1 w-4 h-4 rounded-full bg-brand ring-2 ring-surface flex items-center justify-center"
-            title="יש לך פוזיציה כאן">
+            title="יש לך תחזית כאן">
             <TrendingUp className="w-4 h-4 text-brand-fg" />
           </span>
         )}
@@ -125,14 +125,14 @@ export default function MatchCard({ market, positions = {}, conflict = null, act
             <span className="flex items-center gap-1 text-fg-muted">
               <Users className="w-4 h-4" />
               {activity?.traders
-                ? <>{activity.traders === 1 ? 'מהמר אחד' : <><span className="mkt-num font-bold text-fg-soft">{activity.traders}</span> מהמרים</>}</>
-                : 'עוד אין הימורים — היה הראשון'}
+                ? <>{activity.traders === 1 ? 'משתתף אחד' : <><span className="mkt-num font-bold text-fg-soft">{activity.traders}</span> משתתפים</>}</>
+                : 'עוד אין תחזיות — היה הראשון'}
             </span>
             {heldAny && (
               <span className="stat-pill bg-brand/15 text-brand text-[10px] px-1.5 py-0">שלי</span>
             )}
             <span className="ms-auto inline-flex items-center gap-0.5 font-bold text-brand">
-              להימור <ChevronLeft className="w-3.5 h-3.5" />
+              לחזות <ChevronLeft className="w-3.5 h-3.5" />
             </span>
           </>
         )}
@@ -179,7 +179,7 @@ export function GameRow({ market, positions = {}, conflict = null }) {
         <Lock className="w-3.5 h-3.5 text-fg-subtle shrink-0" aria-label={CONFLICT_COPY[conflict]} />
       ) : (
         <div className="flex items-center gap-1 shrink-0">
-          {held && <span className="w-1.5 h-1.5 rounded-full bg-brand" title="יש לך פוזיציה" />}
+          {held && <span className="w-1.5 h-1.5 rounded-full bg-brand" title="יש לך תחזית" />}
           {[{ o: home, c: colors.home }, { o: draw, c: null }, { o: away, c: colors.away }].map(({ o, c }, i) => o && (
             <span key={i} className="mkt-num text-[11px] font-bold w-9 sm:w-10 text-center rounded-md py-1.5 bg-surface-sunken"
               style={c ? { color: c } : undefined}>

@@ -8,9 +8,8 @@ import { pct, gameSides, matchdayLabel } from "@/lib/market"
 import { sizedImage } from "@/lib/imageSize"
 
 /**
- * הוקי מרקט cards in the feed. The data comes from the `market_feed` RPC, which
- * returns nothing unless the viewer is market_eligible (18+) — so this component
- * never decides who may see it; if it renders, the server already said yes.
+ * סטופר מרקט cards in the feed. The data comes from the `market_feed` RPC — public
+ * since 2026-10-27; the server decides what a guest gets (no podium of names).
  *
  * Framed like every other feed card (FeedCardShell); inside it the market keeps its
  * monospaced .mkt-num figures, gold coins and the board's split odds bar.
@@ -26,14 +25,13 @@ const teamName = (teamsMap, id, fallback) => teamsMap?.[id]?.name || fallback ||
 
 // The feed's shared frame (FeedCardShell) — the market keeps its gold icon, monospaced
 // figures and odds bars inside it, but no longer brings its own box.
-function Shell({ kind, icon, title, children, to = "/market", cta = "להוקי מרקט" }) {
+function Shell({ kind, icon, title, children, to = "/market", cta = "לסטופר מרקט" }) {
   return (
     <FeedCard data-market-kind={kind}>
       <FeedCardHeader
         avatar={<FeedIcon tone="bg-gold/15 text-gold"><Coins className="w-5 h-5" /></FeedIcon>}
         title={<>
-          <span>הוקי מרקט</span>
-          <span className="stat-pill bg-surface-sunken text-fg-muted text-[10px] px-1.5 py-0 font-semibold">18+</span>
+          <span>סטופר מרקט</span>
         </>}
         meta={<span className="inline-flex items-center gap-1 min-w-0 truncate">{icon}{title}</span>}
       />
@@ -90,13 +88,13 @@ function MatchdayCard({ item, teamsMap }) {
   const traders = (item.games || []).reduce((s, g) => s + (g.traders || 0), 0)
   return (
     <Shell kind="matchday" icon={<Flame className="w-4 h-4 text-orange-500" />}
-      title={`היחסים לסיבוב · ${first ? matchdayLabel(first.game_date) : ""}`} cta="להמר על הסיבוב">
+      title={`הסיכויים לסיבוב · ${first ? matchdayLabel(first.game_date) : ""}`} cta="לחזות את הסיבוב">
       <div className="divide-y divide-line-subtle">
         {(item.games || []).map((g) => <MatchdayRow key={g.market_id} game={g} teamsMap={teamsMap} />)}
       </div>
       <p className="mt-2 flex items-center gap-1 text-[11px] text-fg-muted">
         <Users className="w-4 h-4" />
-        {traders ? <><span className="mkt-num font-bold text-fg-soft">{traders}</span> הימורים פתוחים על הסיבוב</> : "עוד אין הימורים על הסיבוב — היה הראשון"}
+        {traders ? <><span className="mkt-num font-bold text-fg-soft">{traders}</span> תחזיות פתוחות על הסיבוב</> : "עוד אין תחזיות על הסיבוב — היה הראשון"}
       </p>
     </Shell>
   )
@@ -113,7 +111,7 @@ function SwingCard({ item, teamsMap }) {
     : item.title
   const Arrow = up ? TrendingUp : TrendingDown
   return (
-    <Shell kind="swing" icon={<Zap className="w-3.5 h-3.5 text-amber-500" />} title="תזוזה חדה ביחסים"
+    <Shell kind="swing" icon={<Zap className="w-3.5 h-3.5 text-amber-500" />} title="תזוזה חדה בסיכויים"
       to={marketHref(item)} cta="לשוק הזה">
       <div className="flex items-center gap-3">
         {team ? <TeamLogo team={team} size={12} /> : <div className="w-12 h-12 rounded-full bg-surface-sunken" />}
@@ -139,7 +137,7 @@ function ResultsCard({ item, teamsMap }) {
   const games = item.games || []
   return (
     <Shell kind="results" icon={<Target className="w-3.5 h-3.5 text-brand" />}
-      title={`מי צדק? · ${games[0] ? matchdayLabel(games[0].game_date) : ""}`} cta="לטבלת המהמרים">
+      title={`מי צדק? · ${games[0] ? matchdayLabel(games[0].game_date) : ""}`} cta="לטבלת המובילים">
       <div className="space-y-2.5">
         {games.map((g) => {
           const w = g.winner || {}
@@ -168,7 +166,7 @@ function ResultsCard({ item, teamsMap }) {
               <div className="text-end shrink-0 w-11">
                 {g.traders
                   ? <><p className="mkt-num text-sm font-black text-gold">{g.called}/{g.traders}</p><p className="text-[10px] text-fg-muted">צדקו</p></>
-                  : <p className="text-[10px] text-fg-subtle leading-tight">אין הימורים</p>}
+                  : <p className="text-[10px] text-fg-subtle leading-tight">אין תחזיות</p>}
               </div>
             </Link>
           )
@@ -185,7 +183,7 @@ function PodiumCard({ item }) {
   const order = [top[1], top[0], top[2]]
   const lift = ["mt-4", "mt-0", "mt-7"]
   return (
-    <Shell kind="podium" icon={<Trophy className="w-4 h-4 text-gold" />} title="טבלת המהמרים השבועית" cta="לטבלה המלאה">
+    <Shell kind="podium" icon={<Trophy className="w-4 h-4 text-gold" />} title="המובילים של השבוע" cta="לטבלה המלאה">
       <div className="flex items-start justify-center gap-3">
         {order.map((u, i) => u && (
           <div key={u.user_id} className={`flex-1 max-w-[120px] flex flex-col items-center text-center ${lift[i]}`}>

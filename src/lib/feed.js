@@ -433,7 +433,7 @@ export function buildFeed({
     })
   }
 
-  // ---- הוקי מרקט cards (market_feed RPC — empty for anyone under 18) ----
+  // ---- סטופר מרקט cards (market_feed RPC — empty for anyone under 18) ----
   for (const m of marketItems) {
     if (!m?.kind || !m?.key) continue
     posts.push({ id: `market-${m.key}`, type: 'market', date: m.date, rank: 55, data: m })

@@ -54,14 +54,12 @@ export default function Market() {
 
   // Keyed on the user alone, not on authLoading: the account bootstrap (admin
   // check, roles, profile) takes seconds and the market needs none of it — the
-  // session's user id is known the moment the page mounts.
+  // session's user id is known the moment the page mounts. Signed out, the board
+  // still loads (it is public); it just waits for auth to say there's no session.
   useEffect(() => {
-    if (user) {
-      // Once per user: authLoading flipping later must not fire a second load.
-      if (loadedFor.current !== user.id) { loadedFor.current = user.id; load() }
-      return
-    }
-    if (!authLoading) setBoard({ reason: 'signed-out', markets: [] })
+    const who = user ? user.id : (authLoading ? null : 'anon')
+    // Once per viewer: authLoading flipping later must not fire a second load.
+    if (who && loadedFor.current !== who) { loadedFor.current = who; load() }
   }, [authLoading, user?.id, load]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const markets = board?.markets || null
@@ -88,7 +86,8 @@ export default function Market() {
   )
 
   if (!board) return <MarketSkeleton />
-  if (board.reason) return <MarketGate reason={board.reason} onUnlocked={() => { invalidateBoard(); load() }} />
+  // Everyone sees the board. `reason` only says why this viewer can't predict.
+  const canPredict = !board.reason
 
   // A settled market is history, not something to trade, so it moves to its own
   // capped strip at the bottom instead of sitting between live ones.
@@ -102,16 +101,25 @@ export default function Market() {
     .slice(0, 6)
   const netWorth = Number(wallet?.balance || 0) + openValue
 
+  // The leaderboard has names, so it needs a signed-in viewer; "mine" needs a
+  // wallet, so it needs someone who can predict.
   const TABS = [
     { key: 'board', label: 'שווקים', icon: LayoutGrid },
-    { key: 'mine', label: 'התיק שלי', icon: Wallet },
-    { key: 'top', label: 'מובילים', icon: Trophy },
+    ...(canPredict ? [{ key: 'mine', label: 'התחזיות שלי', icon: Wallet }] : []),
+    ...(user ? [{ key: 'top', label: 'מובילים', icon: Trophy }] : []),
     ...(isAdmin ? [{ key: 'admin', label: 'ניהול', icon: Settings }] : []),
   ]
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-      <WalletHero balance={wallet?.balance} netWorth={netWorth} ready={!!wallet} />
+      {canPredict
+        ? <WalletHero balance={wallet?.balance} netWorth={netWorth} ready={!!wallet} />
+        : (
+          <>
+            <PublicHero />
+            <MarketGate compact reason={board.reason} onUnlocked={() => { invalidateBoard(); loadedFor.current = null; load() }} />
+          </>
+        )}
 
       {/* The allowance is paid on read, so this is the only moment the trader is
           told it happened — a silent top-up reads as a balance that drifts. */}
@@ -119,13 +127,13 @@ export default function Market() {
         <div className="mkt-card px-4 py-2.5 mb-5 flex items-center gap-2 border-brand/40 bg-brand/5">
           <Gift className="w-4 h-4 text-brand shrink-0" />
           <p className="text-xs text-fg-soft">
-            דמי כיס שבועיים: <span className="mkt-coin">{fmtCoins(wallet.allowance_credited)}</span> מטבעות
+            דמי כיס שבועיים: <span className="mkt-coin">{fmtCoins(wallet.allowance_credited)}</span> סטופרים
             {Number(wallet.allowance_weeks) > 1 && ` (${wallet.allowance_weeks} שבועות)`}
           </p>
         </div>
       )}
 
-      <div className="tab-bar mb-5">
+      {TABS.length > 1 && <div className="tab-bar mb-5">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={tab === t.key ? 'tab-active' : 'tab-inactive'}>
@@ -133,10 +141,10 @@ export default function Market() {
             <span className="text-xs sm:text-sm">{t.label}</span>
           </button>
         ))}
-      </div>
+      </div>}
 
       {tab === 'board' && (
-        <Board
+        <Board canPredict={canPredict}
           filter={filter} setFilter={setFilter}
           featured={featured}
           games={games} futures={futures} settled={settled} mineCount={mineCount}
@@ -145,17 +153,32 @@ export default function Market() {
         />
       )}
 
-      {tab === 'mine' && (
+      {tab === 'mine' && canPredict && (
         <MyPositions markets={markets} positions={positions} balance={wallet?.balance ?? 0}
           netWorth={netWorth} onBrowse={() => setTab('board')} />
       )}
-      {tab === 'top' && <Leaderboard />}
+      {tab === 'top' && user && <Leaderboard />}
       {tab === 'admin' && isAdmin && <MarketAdmin markets={markets} onChanged={load} />}
 
       <p className="text-center text-[11px] text-fg-subtle mt-10 leading-relaxed">
-        הוקי מרקט הוא משחק. המטבעות וירטואליים, אין להם שווי כספי, ואי אפשר לקנות,
-        למכור או להמיר אותם בכסף אמיתי.
+        סטופר מרקט הוא משחק תחזיות. הסטופרים וירטואליים, אין להם שווי כספי, ואי אפשר
+        לקנות, למכור או להמיר אותם בכסף אמיתי.
       </p>
+    </div>
+  )
+}
+
+/** The page's title for someone who can look but not predict: no wallet, no numbers. */
+function PublicHero() {
+  return (
+    <div className="mkt-card p-5 mb-4 bg-gradient-to-bl from-brand/15 via-brand/[0.04] to-transparent relative overflow-hidden">
+      <Coins className="absolute -bottom-6 -start-6 w-32 h-32 opacity-[0.08] pointer-events-none" aria-hidden />
+      <div className="relative">
+        <h1 className="text-2xl sm:text-3xl font-black text-fg-strong tracking-tight">סטופר מרקט</h1>
+        <p className="text-xs text-fg-muted mt-1 max-w-md leading-relaxed">
+          מה הליגה חושבת שיקרה בשבת? כל אחוז כאן הוא הסיכוי שהשחקנים נותנים לתוצאה.
+        </p>
+      </div>
     </div>
   )
 }
@@ -166,23 +189,23 @@ function WalletHero({ balance, netWorth, ready }) {
   return (
     <div className="mkt-card p-5 mb-5 bg-gradient-to-bl from-brand/15 via-brand/[0.04] to-transparent relative overflow-hidden">
       {/* A faint coin mark behind the numbers — the room's signage, not data. */}
-      <Coins className="absolute -bottom-6 -start-6 w-32 h-32 text-gold/[0.07] pointer-events-none" aria-hidden />
+      <Coins className="absolute -bottom-6 -start-6 w-32 h-32 opacity-[0.08] pointer-events-none" aria-hidden />
       <div className="relative flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-fg-strong tracking-tight">הוקי מרקט</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-fg-strong tracking-tight">סטופר מרקט</h1>
           <p className="text-xs text-fg-muted mt-1">
-            המחיר הוא ההסתברות. קונים נמוך, מוכרים גבוה — הכול במטבעות משחק.
+            כל אחוז הוא הסיכוי שהליגה נותנת לתוצאה. חוזים נכון, צוברים סטופרים.
           </p>
         </div>
         <div className="flex items-center gap-5">
           <div>
-            <p className="text-[11px] text-fg-muted font-semibold mb-0.5">מטבעות</p>
+            <p className="text-[11px] text-fg-muted font-semibold mb-0.5">סטופרים</p>
             {ready ? (
               <p className="flex items-center gap-1.5 mkt-coin text-2xl"><Coins className="w-5 h-5" />{fmtCoins(balance)}</p>
             ) : <span className="block h-8 w-20 rounded-md bg-surface-sunken animate-pulse" />}
           </div>
           <div className="ps-5 border-s border-line">
-            <p className="text-[11px] text-fg-muted font-semibold mb-0.5">שווי תיק</p>
+            <p className="text-[11px] text-fg-muted font-semibold mb-0.5">שווי התחזיות</p>
             {ready ? (
               <div className="flex items-baseline gap-2">
                 <p className={`mkt-num text-2xl font-black ${up ? 'text-pos' : 'text-neg'}`}>{fmtCoins(Math.round(netWorth))}</p>
@@ -205,7 +228,7 @@ function WalletHero({ balance, netWorth, ready }) {
  * top jump straight to one kind.
  */
 function Board({
-  filter, setFilter, featured, games, futures, settled, mineCount,
+  canPredict, filter, setFilter, featured, games, futures, settled, mineCount,
   live, positions, conflicts, activity, seasonName,
 }) {
   const [showAllRounds, setShowAllRounds] = useState(false)
@@ -216,7 +239,7 @@ function Board({
     { key: 'all', label: 'הכל' },
     { key: 'season', label: 'עונתיים', n: futures.length, icon: Star },
     { key: 'games', label: 'משחקים', n: games.length, icon: CalendarDays },
-    ...(mineCount ? [{ key: 'mine', label: 'שלי', n: mineCount, icon: Wallet }] : []),
+    ...(canPredict && mineCount ? [{ key: 'mine', label: 'שלי', n: mineCount, icon: Wallet }] : []),
   ]
 
   const card = m => <MarketCard key={m.id} market={m} myShares={positions} conflict={conflicts.get(m.id)} />
@@ -270,7 +293,7 @@ function Board({
         {(filter === 'all' || filter === 'games') && (
           games.length === 0 ? (
             <Section title="משחקים" icon={CalendarDays}>
-              <Empty icon={CalendarDays} text="אין כרגע משחקים פתוחים למסחר. שווקים נפתחים אוטומטית לכל משחק חדש בלוח." />
+              <Empty icon={CalendarDays} text="אין כרגע משחקים פתוחים לתחזיות. שוק נפתח אוטומטית לכל משחק חדש בלוח." />
             </Section>
           ) : (
             <>
@@ -419,9 +442,9 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
     return (
       <div className="mkt-card p-10 text-center">
         <Wallet className="w-8 h-8 text-fg-faint mx-auto mb-3" />
-        <p className="text-sm text-fg-muted mb-1">אין לך פוזיציות פתוחות</p>
+        <p className="text-sm text-fg-muted mb-1">אין לך תחזיות פתוחות</p>
         <p className="text-xs text-fg-subtle mb-4">
-          יש לך <span className="mkt-coin">{fmtCoins(balance)}</span> מטבעות מוכנים לעבודה.
+          יש לך <span className="mkt-coin">{fmtCoins(balance)}</span> סטופרים מוכנים לתחזית הבאה.
         </p>
         <button onClick={onBrowse} className="btn-primary inline-flex">
           <Target className="w-4 h-4" /> למשחקים הקרובים
@@ -441,7 +464,7 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
   return (
     <div className="space-y-6">
       <div className="mkt-card p-5 bg-gradient-to-bl from-brand/10 to-transparent">
-        <p className="text-[11px] font-semibold text-fg-muted mb-1">רווח/הפסד על פוזיציות פתוחות</p>
+        <p className="text-[11px] font-semibold text-fg-muted mb-1">רווח/הפסד על התחזיות הפתוחות</p>
         <div className="flex items-baseline gap-3 flex-wrap">
           <span className={`mkt-num text-4xl font-black ${up ? 'text-pos' : 'text-neg'}`} dir="ltr">
             {up ? '+' : ''}{fmtCoins(Math.round(pnl))}
@@ -452,9 +475,9 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
           </span>
         </div>
         <div className="grid grid-cols-3 gap-3 mt-4 text-center">
-          <Stat label="הושקע" value={fmtCoins(Math.round(invested))} />
+          <Stat label="הושקעו" value={fmtCoins(Math.round(invested))} />
           <Stat label="שווה עכשיו" value={fmtCoins(Math.round(worth))} />
-          <Stat label="שווי תיק כולל" value={fmtCoins(Math.round(netWorth))} tone={netWorth >= START_BALANCE ? 'text-pos' : 'text-neg'} />
+          <Stat label="שווי כולל" value={fmtCoins(Math.round(netWorth))} tone={netWorth >= START_BALANCE ? 'text-pos' : 'text-neg'} />
         </div>
       </div>
 
@@ -462,7 +485,7 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
         <PositionGroup title="נסגרים השבוע" icon={Lock} rows={soon} />
       )}
       {later.length > 0 && (
-        <PositionGroup title={soon.length ? 'בהמשך' : 'הפוזיציות שלי'} icon={Star} rows={later} />
+        <PositionGroup title={soon.length ? 'בהמשך' : 'התחזיות שלי'} icon={Star} rows={later} />
       )}
     </div>
   )

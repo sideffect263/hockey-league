@@ -22,7 +22,7 @@ export default function MarketAdmin({ markets, onChanged }) {
   return (
     <div>
       <div className="flex gap-1.5 mb-4">
-        <Pill active={tab === 'traders'} onClick={() => setTab('traders')} icon={Users}>מהמרים</Pill>
+        <Pill active={tab === 'traders'} onClick={() => setTab('traders')} icon={Users}>משתתפים</Pill>
         <Pill active={tab === 'markets'} onClick={() => setTab('markets')} icon={ListChecks}>שווקים</Pill>
       </div>
       {tab === 'traders' ? <Traders /> : <Markets markets={markets} onChanged={onChanged} />}
@@ -55,7 +55,7 @@ function Traders() {
 
   if (err) return <p className="text-sm text-neg py-6 text-center">{err}</p>
   if (!rows) return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-brand" /></div>
-  if (!rows.length) return <p className="text-sm text-fg-muted py-10 text-center">עדיין אין מהמרים</p>
+  if (!rows.length) return <p className="text-sm text-fg-muted py-10 text-center">עדיין אין משתתפים</p>
 
   const supply = rows.reduce((a, r) => a + Number(r.total), 0)
   const granted = rows.reduce((a, r) => a + Number(r.granted), 0)
@@ -63,8 +63,8 @@ function Traders() {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2.5">
-        <Stat label="מהמרים" value={rows.length} />
-        <Stat label="סך המטבעות במחזור" value={fmtCoins(supply)} />
+        <Stat label="משתתפים" value={rows.length} />
+        <Stat label="סך הסטופרים במחזור" value={fmtCoins(supply)} />
         <Stat label="מתוכם הוענקו ידנית" value={fmtCoins(granted)} />
       </div>
 
@@ -74,10 +74,10 @@ function Traders() {
             <thead>
               <tr className="text-[11px] text-fg-subtle border-b border-line-subtle">
                 <th className="text-start font-semibold px-4 py-2">שחקן</th>
-                <th className="text-end font-semibold px-2 py-2">מטבעות</th>
-                <th className="text-end font-semibold px-2 py-2 hidden sm:table-cell">פוזיציות</th>
-                <th className="text-end font-semibold px-2 py-2">שווי תיק</th>
-                <th className="text-end font-semibold px-2 py-2 hidden md:table-cell">עסקאות</th>
+                <th className="text-end font-semibold px-2 py-2">סטופרים</th>
+                <th className="text-end font-semibold px-2 py-2 hidden sm:table-cell">תחזיות פתוחות</th>
+                <th className="text-end font-semibold px-2 py-2">שווי התחזיות</th>
+                <th className="text-end font-semibold px-2 py-2 hidden md:table-cell">תחזיות</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -98,7 +98,7 @@ function Traders() {
                     <td className="px-2 py-2.5 text-end mkt-num text-fg-muted hidden md:table-cell">{r.trades}</td>
                     <td className="px-4 py-2.5 text-end">
                       <button onClick={() => setOpenFor(openFor === r.user_id ? null : r.user_id)}
-                        className="text-[11px] font-bold text-brand hover:underline">מטבעות</button>
+                        className="text-[11px] font-bold text-brand hover:underline">סטופרים</button>
                     </td>
                   </tr>
                   {openFor === r.user_id && (
@@ -272,9 +272,9 @@ function NewFuturesForm({ onDone }) {
         </button>
       </div>
       <p className="text-[11px] text-fg-subtle leading-relaxed">
-        נזילות גבוהה = הימור בודד מזיז פחות את המחיר. 700–1000 מתאים לשוק של עד כ-20
+        נזילות גבוהה = תחזית בודדת מזיזה פחות את הסיכוי. 700–1000 מתאים לשוק של עד כ-20
         אפשרויות; לשוק שכולל את כל שחקני הליגה השתמשו ב-2000. אפשר לשנות אותה כל עוד
-        לא בוצעה עסקה.
+        לא נשלחה תחזית.
       </p>
       {err && <p className="text-[11px] text-neg">{err}</p>}
     </div>
@@ -386,7 +386,7 @@ function MarketRow({ market, traded, onChanged }) {
         <div className="mt-3 pt-3 border-t border-line-subtle">
           <p className="flex items-start gap-1.5 text-[11px] text-fg-muted mb-2 leading-relaxed">
             <AlertTriangle className="w-4 h-4 text-gold shrink-0 mt-px" />
-            הכרעה משלמת מיד לכל המחזיקים באפשרות שנבחרה, מטבע לכל מניה. אי אפשר לבטל.
+            הכרעה משלמת מיד לכל מי שחזה את האפשרות שנבחרה, סטופר לכל יחידה. אי אפשר לבטל.
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <select value={pick} onChange={e => setPick(e.target.value)}
@@ -410,7 +410,7 @@ function MarketRow({ market, traded, onChanged }) {
         <div className="mt-3 pt-3 border-t border-line-subtle">
           <p className="flex items-start gap-1.5 text-[11px] text-fg-muted mb-2 leading-relaxed">
             <AlertTriangle className="w-4 h-4 text-gold shrink-0 mt-px" />
-            ביטול מחזיר לכל מהמר בדיוק את מה שהשקיע בשוק הזה, כולל קיזוז רווחים שכבר נמשכו.
+            ביטול מחזיר לכל חוזה בדיוק את הסטופרים שהשקיע בשוק הזה, כולל קיזוז רווחים שכבר מומשו.
           </p>
           <button disabled={busy} onClick={() => run(() => voidMarket(market.id, 'בוטל ידנית'))}
             className="btn btn-sm bg-neg text-white disabled:opacity-40">
@@ -428,13 +428,13 @@ function MarketRow({ market, traded, onChanged }) {
 /** What actually happened, in the manager's words. */
 function savedNote({ closes_at: closesAt, status }) {
   if (closesAt && new Date(closesAt) <= new Date()) {
-    return 'המועד שנבחר כבר עבר, ולכן השוק נסגר למסחר עכשיו.'
+    return 'המועד שנבחר כבר עבר, ולכן השוק נסגר לתחזיות עכשיו.'
   }
   const what = closesAt
-    ? 'נשמר. המסחר ייסגר מעצמו במועד החדש.'
+    ? 'נשמר. התחזיות ייסגרו מעצמן במועד החדש.'
     : 'נשמר. אין מועד סגירה — השוק יישאר פתוח עד שתסגרו אותו ידנית.'
   return status === 'closed'
-    ? `${what} שימו לב שהשוק סגור למסחר כרגע — לחצו "פתיחה" כדי לפתוח אותו.`
+    ? `${what} שימו לב שהשוק סגור לתחזיות כרגע — לחצו "פתיחה" כדי לפתוח אותו.`
     : what
 }
 
@@ -469,7 +469,7 @@ function DeadlineForm({ market, onChanged }) {
   return (
     <>
       <p className="text-[11px] text-fg-muted mb-2 leading-relaxed">
-        מועד הסגירה הוא הרגע שבו המסחר בשוק נעצר. הפוזיציות נשארות פתוחות עד להכרעה.
+        מועד הסגירה הוא הרגע שבו התחזיות בשוק נעצרות. התחזיות שכבר נשלחו נשארות פתוחות עד להכרעה.
       </p>
       <div className="flex items-end gap-2 flex-wrap">
         <label className="block">
@@ -593,9 +593,9 @@ function OutcomesEditor({ market, traded, onChanged }) {
       <>
         <p className="flex items-start gap-1.5 text-[11px] text-fg-muted leading-relaxed mb-2">
           <Lock className="w-3.5 h-3.5 text-gold shrink-0 mt-px" />
-          כבר בוצעו עסקאות בשוק הזה, ולכן רשימת האפשרויות נעולה. הוספה או הסרה של אפשרות
-          הייתה משנה את המחיר של מניות שכבר נקנו. כדי לשנות את הרשימה צריך לבטל את השוק
-          (כל ההימורים חוזרים) ולפתוח אותו מחדש.
+          כבר נשלחו תחזיות בשוק הזה, ולכן רשימת האפשרויות נעולה. הוספה או הסרה של אפשרות
+          הייתה משנה את הסיכויים של תחזיות שכבר נשלחו. כדי לשנות את הרשימה צריך לבטל את השוק
+          (כל הסטופרים חוזרים) ולפתוח אותו מחדש.
         </p>
         <OutcomeList outcomes={market.outcomes} />
       </>
@@ -605,7 +605,7 @@ function OutcomesEditor({ market, traded, onChanged }) {
   return (
     <>
       <p className="text-[11px] text-fg-subtle leading-relaxed mb-2.5">
-        אפשר להוסיף ולהסיר אפשרויות כל עוד לא בוצעה עסקה. עדיף לבחור שחקן או קבוצה
+        אפשר להוסיף ולהסיר אפשרויות כל עוד לא נשלחה תחזית. עדיף לבחור שחקן או קבוצה
         מהרשימה ולא להקליד שם — כך האפשרות מקבלת תמונה וצבע קבוצה.
       </p>
 
@@ -735,7 +735,7 @@ function LiquidityForm({ market, onChanged }) {
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} שמירה
       </button>
       <span className="text-fg-subtle">
-        ככל שהיא גבוהה יותר, הימור בודד מזיז פחות את המחיר. לשוק עם כל שחקני הליגה — 2000.
+        ככל שהיא גבוהה יותר, תחזית בודדת מזיזה פחות את הסיכוי. לשוק עם כל שחקני הליגה — 2000.
       </span>
       {saved && <span className="text-pos font-semibold">נשמר</span>}
       {err && <span className="text-neg">{err}</span>}

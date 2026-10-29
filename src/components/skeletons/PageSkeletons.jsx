@@ -343,7 +343,7 @@ export function ArchiveSeasonSkeleton() {
   )
 }
 
-/* ─── /market — הוקי מרקט ───────────────────────────────────────────────── */
+/* ─── /market — סטופר מרקט ───────────────────────────────────────────────── */
 
 /**
  * The market re-skins the shell through the same tokens, so these blocks come

@@ -738,7 +738,7 @@ export default function GameDetail() {
         </div>
       </motion.div>
 
-      {/* ============ הוקי מרקט: the bettors' odds — 18+ only, gated by the RPC ============ */}
+      {/* ============ סטופר מרקט: the players' predictions — public; predicting is 18+ (RPC `block`) ============ */}
       <GameMarketCard game={game} teamsMap={teamsMap} />
 
       {/* ============ TEAM PAGE LINKS ============ */}

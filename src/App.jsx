@@ -242,7 +242,7 @@ function App() {
             <Route path="/teams/:id" element={<TeamDetail />} />
             <Route path="/players" element={<Players />} />
             <Route path="/players/:id" element={<PlayerDetail />} />
-            {/* הוקי מרקט — play-money prediction market, 18+ league players only.
+            {/* סטופר מרקט — play-money prediction market, 18+ league players only.
                 Both routes re-skin the whole shell (see useMarketTheme). */}
             <Route path="/loans" element={<Loans />} />
             <Route path="/market" element={<Market />} />

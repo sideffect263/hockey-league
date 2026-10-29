@@ -104,7 +104,7 @@ export default function PriceChart({ market, trades, variant = 'card' }) {
     return (
       <div className={hero ? '' : 'mkt-card p-4'}>
         <p className="text-xs text-fg-subtle text-center py-8">
-          עדיין אין מספיק מסחר כדי להציג גרף
+          עדיין אין מספיק תחזיות כדי להציג גרף
         </p>
       </div>
     )
@@ -132,7 +132,7 @@ export default function PriceChart({ market, trades, variant = 'card' }) {
           text or circle drawn inside it. */}
       <div className="relative">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="none"
-          role="img" aria-label="גרף מחירים">
+          role="img" aria-label="גרף סיכויים">
           {[0.25, 0.5, 0.75].map(g => (
             <line key={g} x1="0" x2={W} y1={H - PAD_Y - g * (H - PAD_Y * 2)} y2={H - PAD_Y - g * (H - PAD_Y * 2)}
               stroke="rgb(var(--line))" strokeWidth="1" strokeDasharray="3 4" />
@@ -184,8 +184,8 @@ export default function PriceChart({ market, trades, variant = 'card' }) {
       {hero && (
         <p className="text-[10px] text-fg-subtle mt-2">
           {points > 0
-            ? `מפתיחת השוק ועד עכשיו · ${points === 1 ? 'עסקה אחת' : `${points} עסקאות`}`
-            : 'השוק עוד לא נסחר — המחירים הם מחירי הפתיחה'}
+            ? `מפתיחת השוק ועד עכשיו · ${points === 1 ? 'תחזית אחת' : `${points} תחזיות`}`
+            : 'עוד אין תחזיות — אלה סיכויי הפתיחה'}
         </p>
       )}
     </>

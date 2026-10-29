@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
 
 /**
- * הוקי מרקט — a play-money prediction market.
+ * סטופר מרקט — a play-money predictions game (the currency is called סטופרים).
+ * Anyone can look; only linked league players aged 18+ can predict.
  *
  * Pricing is an LMSR automated market maker rather than an order book. With a
  * league this size an order book would never fill: you would post a bet and sit
@@ -87,23 +88,26 @@ export function coins(n) {
   })
 }
 
-/** Hebrew label for why a signed-in user cannot trade. */
+/**
+ * Why this viewer can look but not predict, in Hebrew. Everyone sees the board;
+ * these headline the banner that says what it takes to join in.
+ */
 export const BLOCK_COPY = {
   'signed-out': {
-    title: 'צריך להתחבר',
-    body: 'הוקי מרקט פתוח לשחקני הליגה הרשומים בלבד.',
+    title: 'רוצים לחזות?',
+    body: 'כולם יכולים לצפות בסיכויים. לחזות יכולים שחקני הליגה הרשומים מגיל 18. מתחברים ומצטרפים.',
   },
   'no-player': {
-    title: 'הכרטיס שלך עדיין לא משויך',
-    body: 'הוקי מרקט פתוח לשחקנים עם כרטיס שחקן בליגה. אם יש לך כרטיס, אפשר לבקש שיוך מהדף שלי.',
+    title: 'החשבון שלך עוד לא משויך לכרטיס שחקן',
+    body: 'אפשר לצפות בכל הסיכויים. לחזות יכולים שחקני הליגה עם כרטיס שחקן משויך. אם יש לך כרטיס, אפשר לבקש שיוך מהדף שלי.',
   },
   'no-dob': {
     title: 'חסר תאריך לידה',
-    body: 'המרקט פתוח לגילאי 18 ומעלה בלבד, ולכן צריך תאריך לידה בכרטיס השחקן.',
+    body: 'התחזיות פתוחות מגיל 18, ולכן צריך תאריך לידה בכרטיס השחקן.',
   },
   'under-18': {
-    title: 'המרקט פתוח מגיל 18',
-    body: 'לפי תאריך הלידה בכרטיס השחקן שלך עדיין לא מלאו לך 18. הגישה תיפתח מעצמה ביום ההולדת.',
+    title: 'התחזיות פתוחות מגיל 18',
+    body: 'אפשר לצפות בכל הסיכויים. לפי תאריך הלידה בכרטיס שלך עוד לא מלאו לך 18, והאפשרות לחזות תיפתח מעצמה ביום ההולדת.',
   },
 }
 
@@ -212,8 +216,18 @@ export async function getMyPositions() {
   return Object.fromEntries((data || []).map(p => [p.outcome_id, p]))
 }
 
-/** The tape for one market, newest first. */
+/**
+ * The tape for one market, newest first. Signed in, each row carries who made it;
+ * signed out, the rows come from market_public_history — same prices and times,
+ * no identities — enough for the chart, and the page leaves the names list out.
+ */
 export async function getTrades(marketId, limit = 60) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) {
+    const { data, error } = await supabase.rpc('market_public_history', { p_market: marketId, p_limit: limit })
+    if (error) return []
+    return (data || []).map((t, i) => ({ ...t, id: `${t.created_at}-${i}`, anonymous: true }))
+  }
   const { data, error } = await supabase
     .from('market_trades').select('*')
     .eq('market_id', marketId).order('created_at', { ascending: false }).limit(limit)
@@ -242,9 +256,8 @@ export async function getTradedMarketIds() {
 }
 
 /**
- * Market cards for the feed. The RPC returns [] unless the viewer is
- * market_eligible (18+) — the age rule lives on the server, so a failed or
- * skipped call just means no market cards, never cards for the wrong person.
+ * Market cards for the feed — for every viewer. The podium card (names and
+ * avatars) only comes back for a signed-in viewer; the server decides.
  */
 export async function getMarketFeed() {
   const { data, error } = await supabase.rpc('market_feed')
@@ -271,22 +284,22 @@ export async function getConflicts() {
 
 /** Why a market is locked for me, in Hebrew. */
 export const CONFLICT_COPY = {
-  'own-team': 'משחק של הקבוצה שלך — לא ניתן למסחר',
-  referee: 'אתה שופט את המשחק הזה — לא ניתן למסחר',
+  'own-team': 'משחק של הקבוצה שלך, אי אפשר לחזות עליו',
+  referee: 'אתה שופט את המשחק הזה, אי אפשר לחזות עליו',
 }
 
 // ── Writes ──────────────────────────────────────────────────────────────────
 
 function tradeError(error) {
   const m = error?.message || ''
-  if (/not enough coins/i.test(m)) return new Error('אין לך מספיק מטבעות')
-  if (/refereeing/i.test(m)) return new Error('אי אפשר להמר על משחק שאתה שופט')
-  if (/own team/i.test(m)) return new Error('אי אפשר להמר על משחק של הקבוצה שלך')
-  if (/no longer trading|is (closed|resolved|void)/i.test(m)) return new Error('המסחר בשוק הזה נסגר')
-  if (/no shares to sell/i.test(m)) return new Error('אין לך פוזיציה למכירה כאן')
+  if (/not enough coins/i.test(m)) return new Error('אין לך מספיק סטופרים')
+  if (/refereeing/i.test(m)) return new Error('אי אפשר לחזות על משחק שאתה שופט')
+  if (/own team/i.test(m)) return new Error('אי אפשר לחזות על משחק של הקבוצה שלך')
+  if (/no longer trading|is (closed|resolved|void)/i.test(m)) return new Error('התחזיות על זה נסגרו')
+  if (/no shares to sell/i.test(m)) return new Error('אין לך תחזית לממש כאן')
   if (/must be positive|too small/i.test(m)) return new Error('הסכום קטן מדי')
   if (/too large/i.test(m)) return new Error('הסכום גדול מדי לשוק הזה')
-  if (/not eligible/i.test(m)) return new Error('אין לך גישה להוקי מרקט')
+  if (/not eligible/i.test(m)) return new Error('התחזיות פתוחות לשחקני הליגה מגיל 18')
   return new Error('הפעולה נכשלה, נסו שוב')
 }
 
@@ -417,25 +430,15 @@ export async function syncGameMarkets() {
  * Trade activity per market, keyed by market id:
  *   { trades, volume, traders, last }
  *
- * The whole tape is small enough to count on the client (a season is a few
- * hundred rows at most) and it is already readable by anyone allowed on the
- * board, so this is one round trip instead of a new aggregate RPC.
+ * Counted on the server (market_public_activity) so a signed-out board ranks and
+ * labels markets the same way, without ever seeing who traded.
  */
 export async function getActivity() {
-  const { data, error } = await supabase
-    .from('market_trades').select('market_id, coins, user_id, created_at')
+  const { data, error } = await supabase.rpc('market_public_activity')
   if (error) return new Map()
-  const by = new Map()
-  for (const t of data || []) {
-    let a = by.get(t.market_id)
-    if (!a) { a = { trades: 0, volume: 0, traders: new Set(), last: null }; by.set(t.market_id, a) }
-    a.trades += 1
-    a.volume += Number(t.coins || 0)
-    a.traders.add(t.user_id)
-    if (!a.last || t.created_at > a.last) a.last = t.created_at
-  }
-  return new Map([...by].map(([id, a]) => [
-    id, { trades: a.trades, volume: a.volume, traders: a.traders.size, last: a.last },
+  return new Map((data || []).map(r => [
+    r.market_id,
+    { trades: Number(r.trades) || 0, volume: Number(r.volume) || 0, traders: Number(r.traders) || 0, last: r.last },
   ]))
 }
 
@@ -498,8 +501,8 @@ export function pickFeatured(markets, activity, conflicts) {
  * Everything the board and a market page need, fetched in parallel.
  *
  * The eligibility check runs ALONGSIDE the reads instead of in front of them:
- * every read here is RLS-gated and simply comes back empty for someone who is
- * blocked, so there is nothing to protect by waiting. The wallet is the one
+ * the board is public, and the personal reads (positions, conflicts) simply come
+ * back empty for someone who can't predict. The wallet is the one
  * exception — `market_wallet` opens a wallet on first call — so it still waits
  * for a clean eligibility answer.
  *
@@ -517,7 +520,8 @@ export async function loadBoard() {
     getConflicts().catch(() => new Map()),
     getActivity().catch(() => new Map()),
   ])
-  const data = { reason, wallet, markets: reason ? [] : markets, positions, conflicts, activity }
+  // Everyone gets the board; `reason` now only says why this viewer can't predict.
+  const data = { reason, wallet, markets, positions, conflicts, activity }
   const { data: { session } } = await supabase.auth.getSession()
   boardCache = { ...data, userId: session?.user?.id || null, at: Date.now() }
   return data
@@ -533,7 +537,7 @@ let boardCache = null
  * skeleton for data that was on screen a second ago.
  */
 export function cachedBoard(userId) {
-  if (!boardCache || !userId || boardCache.userId !== userId) return null
+  if (!boardCache || boardCache.userId !== (userId || null)) return null
   return boardCache
 }
 

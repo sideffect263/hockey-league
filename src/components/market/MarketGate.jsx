@@ -7,7 +7,9 @@ import { setPlayerBirthDate, ageFromBirthDate } from '@/lib/birthDate'
 import { BLOCK_COPY, START_BALANCE } from '@/lib/market'
 
 /**
- * The locked door, and the key.
+ * How to join in. The board itself is public; this says what it takes to predict.
+ * `compact` renders it as a panel above the board (the market page); without it,
+ * as a page of its own.
  *
  * Only 12 of the league's 96 player cards carry a birth date — nobody was ever
  * asked for one — so gating on age and then sending people off to find /me would
@@ -15,12 +17,34 @@ import { BLOCK_COPY, START_BALANCE } from '@/lib/market'
  * therefore not a dead end but the sign-up step: the date is collected here, and
  * the market opens on submit.
  */
-export default function MarketGate({ reason, onUnlocked }) {
+export default function MarketGate({ reason, onUnlocked, compact = false }) {
   const { user, profile, openAuth } = useAuth()
   const copy = BLOCK_COPY[reason] || BLOCK_COPY['signed-out']
 
   if (reason === 'no-dob' && profile?.player_id) {
-    return <BirthDateUnlock playerId={profile.player_id} onUnlocked={onUnlocked} />
+    return <BirthDateUnlock playerId={profile.player_id} onUnlocked={onUnlocked} compact={compact} />
+  }
+
+  if (compact) {
+    return (
+      <div className="mkt-card p-4 mb-5 flex items-start gap-3 flex-wrap sm:flex-nowrap border-brand/30 bg-brand/[0.04]">
+        <span className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center shrink-0">
+          <Coins className="w-7 h-7" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-extrabold text-fg-strong">{copy.title}</p>
+          <p className="text-xs text-fg-muted leading-relaxed mt-0.5">{copy.body}</p>
+        </div>
+        {!user && (
+          <button onClick={openAuth} className="btn-primary shrink-0 self-center">התחברות</button>
+        )}
+        {reason === 'no-player' && (
+          <Link to="/me" className="btn-secondary shrink-0 self-center inline-flex">
+            לדף שלי <ArrowLeft className="w-4 h-4" />
+          </Link>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -43,7 +67,7 @@ export default function MarketGate({ reason, onUnlocked }) {
   )
 }
 
-function BirthDateUnlock({ playerId, onUnlocked }) {
+function BirthDateUnlock({ playerId, onUnlocked, compact = false }) {
   const [value, setValue] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
@@ -66,15 +90,15 @@ function BirthDateUnlock({ playerId, onUnlocked }) {
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 py-14">
+    <div className={compact ? 'max-w-md mx-auto mb-8' : 'max-w-md mx-auto px-4 py-14'}>
       <div className="text-center mb-7">
         <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mx-auto mb-5">
           <Coins className="w-7 h-7 text-brand" />
         </div>
-        <h1 className="text-2xl font-black text-fg-strong mb-2">ברוכים הבאים להוקי מרקט</h1>
+        <h2 className="text-2xl font-black text-fg-strong mb-2">מצטרפים לסטופר מרקט</h2>
         <p className="text-sm text-fg-muted leading-relaxed">
-          המרקט פתוח לשחקני הליגה מגיל 18 ומעלה. נשאר רק להוסיף תאריך לידה לכרטיס
-          השחקן שלך — ומחכים לך <span className="mkt-coin">{START_BALANCE.toLocaleString('he-IL')}</span> מטבעות,
+          התחזיות פתוחות לשחקני הליגה מגיל 18. נשאר רק להוסיף תאריך לידה לכרטיס
+          השחקן שלך, ומחכים לך <span className="mkt-coin">{START_BALANCE.toLocaleString('he-IL')}</span> סטופרים,
           ועוד <span className="mkt-coin">10</span> בכל שבוע.
         </p>
       </div>
@@ -98,7 +122,7 @@ function BirthDateUnlock({ playerId, onUnlocked }) {
 
         {tooYoung && (
           <p className="text-xs text-neg font-semibold">
-            לפי התאריך הזה עדיין לא מלאו לך 18. הגישה למרקט תיפתח מעצמה ביום ההולדת.
+            לפי התאריך הזה עדיין לא מלאו לך 18. אפשר להמשיך לצפות, והאפשרות לחזות תיפתח מעצמה ביום ההולדת.
           </p>
         )}
         {err && <p className="text-xs text-neg">{err}</p>}
@@ -111,8 +135,8 @@ function BirthDateUnlock({ playerId, onUnlocked }) {
       </form>
 
       <p className="text-center text-[11px] text-fg-subtle mt-5 leading-relaxed">
-        המטבעות בהוקי מרקט הם וירטואליים לחלוטין, אין להם שווי כספי
-        <br />ואי אפשר לקנות או להמיר אותם. זה משחק.
+        הסטופרים וירטואליים לחלוטין, אין להם שווי כספי
+        <br />ואי אפשר לקנות או להמיר אותם. זה משחק תחזיות.
       </p>
     </div>
   )

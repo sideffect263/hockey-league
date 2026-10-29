@@ -112,10 +112,9 @@ export default function Feed() {
     return () => { alive = false }
   }, [user])
 
-  // הוקי מרקט cards. The RPC answers [] for anyone who isn't 18+ (server-side
-  // market_eligible), so guests skip the call and minors simply get no cards.
+  // סטופר מרקט cards — for every viewer, guests included (public since 2026-10-27).
+  // The server leaves the podium card (names) out for a guest. Re-read on sign-in.
   useEffect(() => {
-    if (!user) { setMarketItems([]); return }
     let alive = true
     getMarketFeed().then(items => { if (alive) setMarketItems(items) })
     return () => { alive = false }

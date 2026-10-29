@@ -1,11 +1,11 @@
 import { supabase } from './supabase'
 
 /**
- * הוקי מרקט on the game page — the pure rules behind GameMarketCard.
+ * סטופר מרקט on the game page — the pure rules behind GameMarketCard.
  *
- * The data comes from the `market_game_odds` RPC, which returns null unless the viewer
- * is market_eligible (18+). The age rule lives on the server: a null, an error, or a
- * function that isn't deployed yet all mean "no card", never a card for the wrong person.
+ * The data comes from the `market_game_odds` RPC, public since 2026-10-27 (it was
+ * 18+ only before). Who may PREDICT is its `block` field, decided on the server.
+ * A null, an error, or a function that isn't deployed yet all mean "no card".
  * The same rules are mirrored in the iOS and Android cards — keep them in step.
  */
 

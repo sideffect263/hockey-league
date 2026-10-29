@@ -2,7 +2,7 @@ import { motion } from "framer-motion"
 
 /**
  * The one frame every feed card uses (2026-10-11): people's posts, news, results,
- * milestones, birthdays, season awards and הוקי מרקט all share it, so the feed reads
+ * milestones, birthdays, season awards and סטופר מרקט all share it, so the feed reads
  * as one list instead of a patchwork of boxes.
  *
  *   header (round icon/avatar · title · grey meta line · ⋯)

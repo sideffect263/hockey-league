@@ -1,6 +1,6 @@
 /**
  * What a feed card shares: { url, text, title, type } — or null for a card that has no
- * share button (הוקי מרקט cards are 18+, so they are never handed to the share sheet).
+ * share button (סטופר מרקט cards are 18+, so they are never handed to the share sheet).
  *
  * Pure and import-free so it is unit-testable and so the iOS/Android ports can read it
  * as the reference. Paths follow lib/slugs.js entityPath (the row's slug, else its id,

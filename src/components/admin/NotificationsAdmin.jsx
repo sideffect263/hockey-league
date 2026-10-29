@@ -64,7 +64,7 @@ const TYPE_LABEL = {
   loan_declined: "השאלה סורבה", loan_cancelled: "השאלה בוטלה", loan_removed: "הוסר מהסגל",
   tournament_invite: "הזמנה לטורניר", tournament_invite_accepted: "טורניר אושר",
   tournament_invite_declined: "טורניר נדחה",
-  market_resolved: "שוק הוכרע", market_coins: "מטבעות מרקט",
+  market_resolved: "שוק הוכרע", market_coins: "סטופרים במרקט",
 }
 const typeLabel = (t) => TYPE_LABEL[t] || t
 
