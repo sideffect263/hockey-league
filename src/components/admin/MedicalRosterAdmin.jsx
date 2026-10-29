@@ -81,7 +81,8 @@ export default function MedicalRosterAdmin({ canManage = true }) {
     setError(null); setReason(""); setBusy(true)
     try {
       const certs = await getPlayerMedicalCerts(row.player_id)
-      const cert = certs.find(c => c.status === "approved") || certs[0]
+      // a withdrawn (replaced / removed) upload is history only — never act on it
+      const cert = certs.find(c => c.status === "approved") || certs.find(c => c.status !== "withdrawn")
       if (!cert) { setError("לא נמצא אישור לטיפול"); return }
       setExamDate(cert.exam_date || "")
       setModal({ row, mode, cert })
