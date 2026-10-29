@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Shield, LogIn, LogOut, Sun, Moon, Save, Loader2, ChevronLeft, Trophy, Unlink, Camera, KeyRound, SlidersHorizontal } from "lucide-react"
+import { Shield, LogIn, LogOut, Sun, Moon, Save, Loader2, ChevronLeft, Trophy, Camera, KeyRound, SlidersHorizontal } from "lucide-react"
 import { Person as UserCircle, PersonFollowing as UserCheck, ApprovedStatus as CheckCircle2, Gavel, Hourglass, PersonAdd, Manage } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { useTheme } from "@/lib/ThemeContext"
-import { getMyProfile, updateMyProfile, getPlayerPhotos, disconnectPairing, uploadAvatar } from "@/lib/profile"
+import { getMyProfile, updateMyProfile, getPlayerPhotos, uploadAvatar } from "@/lib/profile"
+import CardUnlinkRequest from "@/components/CardUnlinkRequest"
 import { cancelPlayerSubmission } from "@/lib/playerSubmissions"
 import { cancelClaim } from "@/lib/claims"
 import { getMyLinkState } from "@/lib/linkRequests"
@@ -34,8 +35,6 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [photos, setPhotos] = useState([])
-  const [confirmDisconnect, setConfirmDisconnect] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
   // Claim / new-card state for an UNLINKED account. linkState null + linkErr = the read
   // failed: show a retry, never the "claim / create" CTAs (that invites a duplicate).
   const [linkState, setLinkState] = useState(null)
@@ -140,17 +139,6 @@ export default function Profile() {
     }
   }
 
-  const doDisconnect = async () => {
-    setDisconnecting(true)
-    try {
-      await disconnectPairing()
-      setData(prev => ({ ...prev, player: null }))
-      setPhotos([])
-      setConfirmDisconnect(false)
-    } catch (e) { console.error(e) }
-    finally { setDisconnecting(false) }
-  }
-
   const handleSave = async () => {
     setSaving(true); setSaved(false)
     try {
@@ -253,26 +241,8 @@ export default function Profile() {
           </Link>
           <TeamMembershipCard player={player} onChange={reloadProfile} />
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-            {confirmDisconnect ? (
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-xs text-slate-500 dark:text-slate-400">לנתק את השיוך לשחקן זה?</span>
-                <div className="flex items-center gap-2">
-                  <button onClick={doDisconnect} disabled={disconnecting}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50">
-                    {disconnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlink className="w-3.5 h-3.5" />} כן, נתק
-                  </button>
-                  <button onClick={() => setConfirmDisconnect(false)} disabled={disconnecting}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    ביטול
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmDisconnect(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                <Unlink className="w-3.5 h-3.5" /> נתק שיוך לשחקן
-              </button>
-            )}
+            {/* An approved card is unlinked only through a league-manager request. */}
+            <CardUnlinkRequest playerId={player.id} />
           </div>
         </div>
       ) : linkedButUnloaded ? null : linkErr ? (

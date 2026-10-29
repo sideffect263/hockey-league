@@ -70,6 +70,9 @@ function bodyPreview(n: NotificationRow): string {
 
 // Kept in sync with src/lib/notifications.js — this file is a deliberate duplicate,
 // because the edge function cannot import from the Vite bundle.
+const kickoff = (d: Record<string, any>) => (d.game_date
+  ? new Date(d.game_date).toLocaleTimeString("he-IL", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit" })
+  : "");
 const vs = (d: Record<string, any>) => `${d.home_team ?? ""} נגד ${d.away_team ?? ""}`.trim();
 
 // F1 — player availability constraints. Mirrors src/lib/notifications.js.
@@ -101,6 +104,11 @@ function officialsSummary(d: Record<string, any>): string {
   if (!(d.judges > 0)) missing.push("שופט");
   if (!(d.medics > 0)) missing.push("חובש");
   return missing.length ? `חסר ${missing.join(" ו")}` : "שופט וחובש משובצים ✅";
+}
+
+// official_role_* rows carry the two boxes the user ticked (official-role-requests.sql).
+function officialWord(d: Record<string, any>): string {
+  return d.wants_referee && d.wants_secretary ? "שופט ומזכירות" : d.wants_secretary ? "מזכירות" : "שופט";
 }
 
 function notificationText(n: NotificationRow, actorName: string): string {
@@ -150,6 +158,13 @@ function notificationText(n: NotificationRow, actorName: string): string {
     case "game_change_opponent": return `${actorName} מבקש/ת שינוי מועד — יש לבחור מועד שמתאים לך${d.reason ? ` (${d.reason})` : ""}`;
     case "coach_request":          return `${d.requester ?? actorName} מבקש/ת להיות מאמן/ת של ${d.team_name ?? "קבוצה"}`;
     case "coach_request_rejected": return `בקשתך להיות מאמן/ת של ${d.team_name ?? "קבוצה"} נדחתה`;
+    // supabase/official-role-requests.sql + card-unlink-requests.sql — keep in step with src/lib/notifications.js
+    case "official_role_request":  return `${d.requester ?? actorName} מבקש/ת תפקיד ${officialWord(d)}`;
+    case "official_role_approved": return `בקשתך לתפקיד ${officialWord(d)} אושרה 🎉`;
+    case "official_role_rejected": return `בקשתך לתפקיד ${officialWord(d)} נדחתה`;
+    case "card_unlink_request":    return `${d.requester ?? actorName} מבקש/ת להתנתק מהכרטיס ${d.player_name ?? ""}${d.reason ? ` — ${d.reason}` : ""}`;
+    case "card_unlink_approved":   return `החשבון נותק מהכרטיס ${d.player_name ?? ""}`;
+    case "card_unlink_rejected":   return `בקשת הניתוק מהכרטיס ${d.player_name ?? ""} נדחתה`;
     case "official_assigned":              return `שובצת כ${ROLE_LABEL[d.role] ?? "בעל תפקיד"} למשחק`;
     case "official_application":           return `${actorName} הגיש/ה מועמדות כ${ROLE_LABEL[d.role] ?? "בעל תפקיד"}`;
     case "official_application_approved":  return `מועמדותך לשיבוץ כ${ROLE_LABEL[d.role] ?? "בעל תפקיד"} אושרה 🎉`;
@@ -188,6 +203,7 @@ function notificationText(n: NotificationRow, actorName: string): string {
     case "game_moved":             return `${vs(d)} — ${movedSummary(d)}`;
     case "game_postponed":         return `${vs(d)} — המשחק נדחה, מועד חדש יפורסם`;
     case "follow_game_alert":      return `מחר: ${vs(d)}`;
+    case "follow_game_today":      return `היום ב־${kickoff(d)}: ${vs(d)}`;
     case "goal_scored":            return `${d.scoring_team ?? ""} הבקיעה! ${vs(d)} ${d.away_score ?? ""}:${d.home_score ?? ""}`;
     // הוקי מרקט. A settlement push IS the payoff — landing it as "התראה חדשה"
     // would waste the one notification that brings a trader back to the board.
@@ -241,6 +257,12 @@ function notificationHref(n: NotificationRow): string {
     case "content_report":         return "/admin?tab=reports";
     case "game_change_request":    return "/admin?tab=game_requests";
     case "coach_request":          return "/admin?tab=claims&section=coaches";
+    case "official_role_request":  return "/admin?tab=claims&section=officials";
+    case "card_unlink_request":    return "/admin?tab=claims&section=unlinks";
+    case "official_role_approved":
+    case "official_role_rejected":
+    case "card_unlink_approved":
+    case "card_unlink_rejected":   return "/me";
     case "official_application":   return "/admin?tab=officials";
     case "team_join_request":          return "/admin?tab=claims&section=joins";
     case "player_submission_request":  return "/admin?tab=claims&section=submissions";
@@ -268,6 +290,7 @@ function notificationHref(n: NotificationRow): string {
     case "game_moved":
     case "game_postponed":
     case "follow_game_alert":
+    case "follow_game_today":
     case "goal_scored":
     case "loan_join_request":
     case "loan_join_approved":

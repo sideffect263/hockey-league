@@ -96,6 +96,8 @@ export function subscribeToNotifications(userId, cb, onRejoin) {
 // ---- presentation --------------------------------------------------------
 
 const actorName = (n) => n.actor?.display_name?.trim() || 'מישהו'
+// official_role_* rows carry the two boxes the user ticked (official-role-requests.sql).
+const officialWord = (d) => d.wants_referee && d.wants_secretary ? 'שופט ומזכירות' : d.wants_secretary ? 'מזכירות' : 'שופט'
 
 // "בית נגד חוץ" for the scheduled game reminders.
 const vs = (d) => `${d.home_team || ''} נגד ${d.away_team || ''}`.trim()
@@ -158,6 +160,13 @@ export function notificationText(n) {
     case 'team_join_rejected':   return `בקשתך להצטרף לקבוצת ${d.team_name || ''} נדחתה`
     case 'coach_request':          return `${d.requester || actorName(n)} מבקש/ת להיות מאמן/ת של ${d.team_name || 'קבוצה'}`
     case 'coach_request_rejected': return `בקשתך להיות מאמן/ת של ${d.team_name || 'קבוצה'} נדחתה`
+    // supabase/official-role-requests.sql + card-unlink-requests.sql — keep in step with send-push
+    case 'official_role_request':  return `${d.requester || actorName(n)} מבקש/ת תפקיד ${officialWord(d)}`
+    case 'official_role_approved': return `בקשתך לתפקיד ${officialWord(d)} אושרה 🎉`
+    case 'official_role_rejected': return `בקשתך לתפקיד ${officialWord(d)} נדחתה`
+    case 'card_unlink_request':    return `${d.requester || actorName(n)} מבקש/ת להתנתק מהכרטיס ${d.player_name || ''}${d.reason ? ` — ${d.reason}` : ''}`
+    case 'card_unlink_approved':   return `החשבון נותק מהכרטיס ${d.player_name || ''}`
+    case 'card_unlink_rejected':   return `בקשת הניתוק מהכרטיס ${d.player_name || ''} נדחתה`
     case 'player_submission_request':  return `${actorName(n)} הגיש/ה כרטיס שחקן חדש${d.candidate_name ? `: ${d.candidate_name}` : ''}${d.team_name ? ` — ${d.team_name}` : ''}`
     case 'player_submission_approved': return `כרטיס השחקן ${d.candidate_name || ''} שהגשת אושר 🎉`
     // P6 row 30 — a rejection without its reason is a dead end for the submitter
@@ -219,6 +228,8 @@ export function notificationText(n) {
     case 'game_postponed':         return `${vs(d)} — המשחק נדחה, מועד חדש יפורסם`
     // P5 — you follow one of these teams and asked to be told
     case 'follow_game_alert':      return `מחר: ${vs(d)}`
+    // a team you follow plays today (game-day morning, on by default)
+    case 'follow_game_today':      return `היום: ${vs(d)}`
     // P5 — a goal in a game you follow. Score reads away:home, per the RTL gotcha.
     case 'app_update':             return `גרסה חדשה של האפליקציה זמינה${d.version_name ? ` (${d.version_name})` : ''} — הורידו מהאתר`
     case 'goal_scored':            return `${d.scoring_team || ''} הבקיעה! ${vs(d)} ${d.away_score ?? ''}:${d.home_score ?? ''}`
@@ -262,6 +273,12 @@ export function notificationIcon(n) {
     case 'team_join_rejected':   return '⛔'
     case 'coach_request':          return '🧑‍🏫'
     case 'coach_request_rejected': return '⛔'
+    case 'official_role_request':  return '🧑‍⚖️'
+    case 'official_role_approved': return '✅'
+    case 'official_role_rejected': return '⛔'
+    case 'card_unlink_request':    return '🔗'
+    case 'card_unlink_approved':   return '✅'
+    case 'card_unlink_rejected':   return '⛔'
     case 'player_submission_request':  return '🆕'
     case 'player_submission_approved': return '✅'
     case 'player_submission_rejected': return '⛔'
@@ -301,7 +318,8 @@ export function notificationIcon(n) {
     case 'lm_broadcast':           return '📢'
     case 'game_moved':             return '🌧️'
     case 'game_postponed':         return '⏸️'
-    case 'follow_game_alert':      return '⭐'
+    case 'follow_game_alert':
+    case 'follow_game_today':      return '⭐'
     case 'app_update':             return '⬇️'
     case 'goal_scored':            return ''
     case 'official_assigned':              return '⚖️'
@@ -324,7 +342,9 @@ const BRAND_ICON = {
   game_result: 'goal', game_change_request: 'calendar-move', game_change_opponent: 'calendar-move',
   game_change_approved: 'approved-status', game_change_rejected: 'rejected', team_join_request: 'join-team',
   team_join_approved: 'approved-status', team_join_rejected: 'rejected', coach_request: 'coach',
-  coach_request_rejected: 'rejected', player_submission_request: 'new', player_submission_approved: 'approved-status',
+  coach_request_rejected: 'rejected', official_role_request: 'referee', official_role_approved: 'approved-status',
+  official_role_rejected: 'rejected', card_unlink_request: 'person-claim', card_unlink_approved: 'approved-status',
+  card_unlink_rejected: 'rejected', player_submission_request: 'new', player_submission_approved: 'approved-status',
   player_submission_rejected: 'rejected', medical_submitted: 'medical', medical_pending_manager: 'medical',
   medical_coach_approved: 'waiting', medical_reinspection: 'medical', medical_approved: 'medical',
   medical_rejected: 'rejected', medical_expiring: 'reminder', coach_open_items: 'clipboard',
@@ -337,7 +357,7 @@ const BRAND_ICON = {
   loan_removed: 'person-remove', game_register_reminder: 'announce', game_register_nudge: 'reminder',
   game_form_sign: 'sign', coach_squad_digest: 'clipboard', lm_squad_digest: 'clipboard',
   lm_officials_digest: 'officials', lm_broadcast: 'announce', game_moved: 'calendar-move', game_postponed: 'calendar-move',
-  follow_game_alert: 'star', app_update: 'app-update', goal_scored: 'goal',
+  follow_game_alert: 'star', follow_game_today: 'star', app_update: 'app-update', goal_scored: 'goal',
   official_assigned: 'officials', official_application: 'document', official_application_approved: 'approved-status',
   official_application_rejected: 'rejected', market_resolved: 'trend-up', market_coins: 'coin',
 }
@@ -392,6 +412,7 @@ export function notificationHref(n) {
     case 'game_moved':
     case 'game_postponed':
     case 'follow_game_alert':
+    case 'follow_game_today':
     // loans: the invite card (player) and the loan desk (coach) both live on the game page
     case 'loan_join_request':
     case 'loan_join_approved':
@@ -420,6 +441,12 @@ export function notificationHref(n) {
     case 'team_join_rejected':     return n.entity_id ? `/teams/${n.entity_id}` : '/me'
     case 'coach_request':          return '/admin?tab=claims&section=coaches'
     case 'coach_request_rejected': return n.entity_id ? `/teams/${n.entity_id}` : '/me'
+    case 'official_role_request':  return '/admin?tab=claims&section=officials'
+    case 'card_unlink_request':    return '/admin?tab=claims&section=unlinks'
+    case 'official_role_approved':
+    case 'official_role_rejected':
+    case 'card_unlink_approved':
+    case 'card_unlink_rejected':   return '/me'
     case 'player_submission_approved': return n.data?.player_id ? `/players/${n.data.player_id}` : '/me'
     case 'player_submission_rejected':
     case 'medical_approved':
