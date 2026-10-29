@@ -7,7 +7,7 @@ import { supabase } from './supabase'
 
 /** Active venues for dropdowns. */
 export async function getVenues() {
-  const { data, error } = await supabase.from('venues').select('id,name,city').eq('is_active', true).order('name')
+  const { data, error } = await supabase.from('venues').select('id,name,city,address,lat,lng').eq('is_active', true).order('name')
   if (error) return []
   return data || []
 }
@@ -33,3 +33,6 @@ export async function deleteVenue(id) {
   const { error } = await supabase.from('venues').delete().eq('id', id)
   if (error) throw error
 }
+
+
+export { parseMapPin, hasPin, googleMapsPinUrl, googleMapsDirectionsUrl, wazeNavigateUrl, osmEmbedUrl } from './mapPin'
