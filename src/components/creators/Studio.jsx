@@ -663,6 +663,10 @@ function KitCard({ kit, game, gameLabel, teamName, onGone, onChange }) {
         <span className={`px-2 py-0.5 rounded-full font-bold ${state.cls}`}>{state.label}</span>
         <span className="text-slate-400">{stamp}</span>
         {game && <Link to={`/games/${game.slug || game.id}`} className="text-slate-500 hover:text-brand">{gameLabel(game)}</Link>}
+        {kit.external_guid?.startsWith("ig:") && (
+          <a href={kit.source_link || undefined} target="_blank" rel="noreferrer"
+            className="px-2 py-0.5 rounded-full font-bold bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300">מאינסטגרם</a>
+        )}
       </header>
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:items-start">

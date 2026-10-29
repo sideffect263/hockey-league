@@ -338,18 +338,22 @@ export async function getPlayerRoleBadges(playerId) {
   return (isAdmin || roles.length) ? { isAdmin, roles } : null
 }
 
-export async function createPost({ body, teamId = null, video = null, gameId = null }) {
+export async function createPost({ body, teamId = null, video = null, gameId = null, imageUrl = null, asLeague = false }) {
   const user = await sessionUser()
   if (!user) throw new Error('not authenticated')
-  // video: { uid, cfCode, ratio } from uploadFeedVideo (admins / content editors only —
-  // the posts_guard_video trigger enforces it).
-  const row = { author_id: user.id, body: body.trim(), team_id: teamId }
-  if (video?.uid) Object.assign(row, { video_uid: video.uid, video_cf_code: video.cfCode, video_ratio: video.ratio })
-  if (gameId) row.game_id = gameId
+  // create_feed_post (creator-posting.sql): staff-only insert; content editors / admins may post
+  // as the league account. video: { uid, cfCode, ratio } from uploadFeedVideo (admins / content
+  // editors only — the posts_guard_video trigger enforces it); imageUrl from uploadFeedPhoto.
+  const { data: id, error: rpcError } = await supabase.rpc('create_feed_post', {
+    p_body: body.trim(), p_image_url: imageUrl, p_video_uid: video?.uid ?? null,
+    p_video_cf_code: video?.cfCode ?? null, p_video_ratio: video?.ratio ?? null,
+    p_game_id: gameId, p_team_id: teamId, p_as_league: asLeague,
+  })
+  if (rpcError) throw rpcError
   const { data, error } = await supabase
     .from('posts')
-    .insert(row)
     .select('*, author:profiles!posts_author_id_fkey(display_name, avatar_url, player_id)')
+    .eq('id', id)
     .single()
   if (error) throw error
   return { ...data, like_count: 0, comment_count: 0 }

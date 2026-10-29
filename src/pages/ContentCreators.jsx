@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Navigate } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
-import { Images, FolderPlus, Send, ExternalLink, RefreshCw, Loader2, Check, BookOpen, Upload } from "lucide-react"
+import { Images, FolderPlus, Send, ExternalLink, RefreshCw, Loader2, Check, BookOpen, Upload, PenSquare, Instagram } from "lucide-react"
 import { Report as Flag, Declined as Ban, Film as Clapperboard, Clock, BrandTile } from "@/components/icons/BrandIcons"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import ReportsReview from "@/components/admin/ReportsReview"
@@ -12,17 +12,21 @@ import Studio from "@/components/creators/Studio"
 import GameStoriesReview from "@/components/creators/GameStoriesReview"
 import { countStoryDrafts } from "@/lib/gameStories"
 import VideoIngest from "@/components/creators/VideoIngest"
+import NewPost from "@/components/creators/NewPost"
+import InstagramSync from "@/components/creators/InstagramSync"
 
 // The lab, 3D replay, media (face naming) and photo clusters moved to /devs (2026-10-15).
 // Old links (/creators?tab=lab&clip=…) keep working: they redirect with the query intact.
 const MOVED_TO_DEVS = new Set(["lab", "scene3d", "media", "clusters"])
 
 const tabs = [
+  { id: "new", label: "פוסט חדש", icon: PenSquare },
   { id: "drafts", label: "סטודיו", icon: Clapperboard },
   { id: "stories", label: "סיפורי משחקים", icon: BookOpen },
   { id: "ingest", label: "העלאת וידאו", icon: Upload },
   { id: "reports", label: "דיווחים", icon: Flag },
   { id: "albums", label: "אלבומים חדשים", icon: FolderPlus },
+  { id: "instagram", label: "אינסטגרם", icon: Instagram },
 ]
 
 /**
@@ -43,7 +47,7 @@ function CreatorsWorkspace() {
   // ?tab=drafts deep-links straight to the review queue.
   const [activeTab, setActiveTab] = useState(() => {
     const t = new URLSearchParams(window.location.search).get("tab")
-    return tabs.some(x => x.id === t) ? t : "drafts"
+    return tabs.some(x => x.id === t) ? t : "new"
   })
   const [draftCount, setDraftCount] = useState(null)
   const [storyCount, setStoryCount] = useState(null)
@@ -67,7 +71,7 @@ function CreatorsWorkspace() {
         <h1 className="page-title flex items-center gap-2.5">
           <BrandTile name="edit" className="w-10 h-10 -my-1.5" /> יוצרי תוכן
         </h1>
-        <p className="page-subtitle mt-1">סטודיו ליצירת תוכן, סיפורי משחקים, העלאת וידאו, דיווחים ואלבומים חדשים</p>
+        <p className="page-subtitle mt-1">פוסט חדש, סטודיו, סיפורי משחקים, העלאת וידאו, דיווחים, אלבומים וחיבור אינסטגרם</p>
       </motion.div>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
@@ -98,11 +102,13 @@ function CreatorsWorkspace() {
         </aside>
 
         <div className="min-w-0">
+          {activeTab === "new" && <NewPost />}
           {activeTab === "drafts" && <Studio onCountChange={setDraftCount} />}
           {activeTab === "stories" && <GameStoriesReview onCountChange={setStoryCount} />}
           {activeTab === "ingest" && <VideoIngest />}
           {activeTab === "reports" && <ReportsReview />}
           {activeTab === "albums" && <AlbumSubmissions />}
+          {activeTab === "instagram" && <InstagramSync />}
         </div>
       </div>
     </div>

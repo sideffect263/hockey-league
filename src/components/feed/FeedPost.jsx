@@ -588,6 +588,9 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
   const bdayId = birthdayPlayerId(p)
   const bday = bdayId ? (playersMap?.[bdayId] || { id: bdayId }) : null
   const ext = p.source_name && !bday ? { source: p.source_name, link: p.link_url, image: p.image_url } : null
+  // The card's photo: a news item's lead image, or a photo posted from the composer / synced
+  // from Instagram (creator-posting.sql). Same frame either way.
+  const photo = ext ? ext.image : (!bday ? p.image_url : null)
   const [extImgError, setExtImgError] = useState(false)
   // Full-width redesign (2026-10-08): the photo keeps its own shape, clamped between
   // 4:5 portrait and 1.91:1 landscape (Instagram's bounds) — 16:9 until it loads.
@@ -854,15 +857,15 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
       {/* External news media, edge to edge on a phone. The photo is no longer a link —
           a tap would fight the double-tap like; "צפייה במקור" sits in the counts line.
           onError collapses the image rather than leaving a broken-image box. */}
-      {ext && (extVideoId || (ext.image && !extImgError)) && (
+      {(extVideoId || (photo && !extImgError)) && (
         <div className="mt-3">
           {extVideoId ? (
-            <FeedVideo videoId={extVideoId} poster={ext.image}
+            <FeedVideo videoId={extVideoId} poster={photo}
                        title={postBody.split("\n")[0] || ext.source} />
           ) : (
             <div className="relative bg-slate-900 sm:rounded-xl overflow-hidden select-none" onDoubleClick={likeFromMedia}
                  style={{ aspectRatio: String(mediaRatio) }}>
-              <img src={ext.image} alt="" loading="lazy" draggable={false} onError={() => setExtImgError(true)}
+              <img src={ext ? photo : sizedImage(photo, 540, "contain")} alt="" loading="lazy" draggable={false} onError={() => setExtImgError(true)}
                    onLoad={e => {
                      const { naturalWidth: w, naturalHeight: h } = e.currentTarget
                      if (w && h) setMediaRatio(Math.min(1.91, Math.max(0.8, w / h)))
