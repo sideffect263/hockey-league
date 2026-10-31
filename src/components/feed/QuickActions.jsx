@@ -123,7 +123,7 @@ export default function QuickActions({ games = [], teamsMap = {} }) {
 
   return (
     <nav className="card p-2 space-y-0.5">
-      <p className="px-3 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <p className="px-3 pt-1.5 pb-1 text-[12px] font-bold text-fg-muted">
         פעולות מהירות
       </p>
 
@@ -150,18 +150,16 @@ export default function QuickActions({ games = [], teamsMap = {} }) {
 
 // A single tappable action — a Link (to) or a button (onClick).
 function ActionRow({ label, icon: Icon, to, onClick, primary, busy }) {
-  const cls = `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-    primary
-      ? "bg-brand text-white shadow-sm shadow-brand/25 hover:brightness-105"
-      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:text-slate-900 dark:hover:text-white"
+  const cls = `w-full min-h-[44px] flex items-center gap-3 px-3 rounded-control text-[14px] font-semibold transition-colors ${
+    primary ? "bg-brand text-brand-fg hover:bg-brand-hover" : "text-fg hover:bg-surface-inset hover:text-fg-strong"
   }`
   const inner = (
     <>
       {busy
         ? <Loader2 size={18} className="animate-spin shrink-0" />
-        : <Icon size={18} className={primary ? "shrink-0" : "shrink-0 text-slate-500 dark:text-slate-400"} />}
+        : <Icon size={18} className="shrink-0" />}
       <span className="flex-1 text-right">{label}</span>
-      <ChevronLeft size={16} className={primary ? "text-white/70" : "text-slate-300 dark:text-slate-600"} />
+      <ChevronLeft size={16} className={primary ? "opacity-70" : "text-fg-faint"} />
     </>
   )
   return to
@@ -178,7 +176,7 @@ function AlertRow({ label, sub, icon: Icon, to, tone = "amber" }) {
     red: "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/50 ring-red-200/70 dark:ring-red-800/50",
   }
   return (
-    <Link to={to} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg ring-1 transition-colors ${tones[tone]}`}>
+    <Link to={to} className={`w-full min-h-[44px] flex items-center gap-2.5 px-3 py-2 rounded-control ring-1 transition-colors ${tones[tone]}`}>
       <Icon size={18} className="shrink-0" />
       <span className="flex-1 min-w-0 text-right">
         <span className="block text-[13px] font-bold leading-tight line-clamp-2">{label}</span>
