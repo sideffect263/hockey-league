@@ -3,6 +3,7 @@ import { FeedCard, FeedCardHeader, FeedIcon, INSET } from "@/components/feed/Fee
 import { Target, ChevronLeft, Zap } from "lucide-react"
 import { Coin as Coins, TrendUp as TrendingUp, TrendDown as TrendingDown, Squad as Users, Flame, Trophy, Medal } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
+import { FLScore } from "@/components/fl/Floodlight"
 import { SplitBar, useSideColors } from "@/components/market/MatchCard"
 import { pct, gameSides, matchdayLabel } from "@/lib/market"
 import { sizedImage } from "@/lib/imageSize"
@@ -156,7 +157,7 @@ function ResultsCard({ item, teamsMap }) {
                 </div>
                 <p className="text-[11px] text-fg-muted truncate">
                   {/* away:home inside an LTR run, so each score sits beside its own team (home on the right) */}
-                  {teamName(teamsMap, g.home_team_id)} <span className="mkt-num font-bold" dir="ltr">{g.away_score}–{g.home_score}</span> {teamName(teamsMap, g.away_team_id)}
+                  {teamName(teamsMap, g.home_team_id)} <FLScore home={g.home_score} away={g.away_score} size={13} sep="–" /> {teamName(teamsMap, g.away_team_id)}
                 </p>
               </div>
               <div className="text-end shrink-0">

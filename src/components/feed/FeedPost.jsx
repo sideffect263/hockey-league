@@ -750,24 +750,25 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 
       {/* Actions: icons, then the counts on their own line (and the link out). */}
       <div data-reactions className={`mt-2 ${INSET}`}>
-        <div className="flex items-center gap-4 py-1">
-          <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
-            className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
+        {/* ♥ 💬 ↗ as 44px targets, the same row as the game post (GamePost / PostPage boards). */}
+        <div className="flex items-center -ms-2.5">
+          <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"} aria-pressed={liked}
+            className={`size-11 flex items-center justify-center transition-colors ${liked ? "text-fl-live" : "text-fg-strong hover:text-fl-live"}`}>
             {liked ? <LikeOn className="w-6 h-6" /> : <LikeOff className="w-6 h-6" />}
           </button>
-          <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+          <button onClick={toggleComments} aria-label="תגובות" aria-expanded={showComments} className="size-11 flex items-center justify-center text-fg-strong hover:opacity-70 transition-opacity">
             <MessageCircle className="w-6 h-6" />
           </button>
-          <button onClick={sharePost} disabled={!share} aria-label="שיתוף" className="ms-auto text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
-            <Share2 className="w-5 h-5" />
+          <button onClick={sharePost} disabled={!share} aria-label="שיתוף" className="size-11 flex items-center justify-center text-fg-strong hover:opacity-70 transition-opacity disabled:opacity-40">
+            <Share2 className="w-[22px] h-[22px]" />
           </button>
         </div>
         {(likeCount > 0 || commentCount > 0 || ext?.link) && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-1.5">
-            {likeCount > 0 && <span className="font-bold text-slate-900 dark:text-white">{likeCount} אהבו</span>}
-            {commentCount > 0 && <>{likeCount > 0 && <span>·</span>}<button onClick={toggleComments} className="hover:text-brand">{commentCount} תגובות</button></>}
-            {ext?.link && <>{(likeCount > 0 || commentCount > 0) && <span>·</span>}
-              <a href={ext.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand hover:text-brand-hover">
+          <p className="text-[13px] text-fg-muted flex flex-wrap items-center gap-x-1.5">
+            {likeCount > 0 && <span className="font-bold text-fg-strong"><span className="tabular-nums">{likeCount}</span> אהבו</span>}
+            {commentCount > 0 && <>{likeCount > 0 && <span aria-hidden="true">·</span>}<button onClick={toggleComments} className="min-h-[32px] hover:text-fg-strong"><span className="tabular-nums">{commentCount}</span> תגובות</button></>}
+            {ext?.link && <>{(likeCount > 0 || commentCount > 0) && <span aria-hidden="true">·</span>}
+              <a href={ext.link} target="_blank" rel="noopener noreferrer" className="min-h-[32px] inline-flex items-center gap-1 font-semibold text-fg-strong underline-offset-4 hover:underline">
                 <ExternalLink className="w-3 h-3" /> {extVideoId ? "פתיחה ביוטיוב" : "צפייה במקור"}
               </a></>}
           </p>

@@ -139,8 +139,9 @@ export default function GamePost({ post, teamsMap = {}, playersMap = {}, large =
         <div className="flex gap-1.5 px-4 pt-2.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {slides.map((s, i) => (
             <button key={s.key} type="button" onClick={() => go(i)} aria-label={s.label} aria-current={i === active}
-              className={`relative shrink-0 w-[54px] h-[70px] rounded-[10px] overflow-hidden bg-[#1B2532] ring-inset ${i === active ? "ring-2 ring-fl-accent" : ""}`}>
+              className="relative shrink-0 w-[54px] h-[70px] rounded-[10px] overflow-hidden bg-[#1B2532]">
               <Thumb s={s} game={game} home={home} away={away} cover={cover} />
+              {i === active && <span aria-hidden="true" className="absolute inset-0 rounded-[10px] ring-2 ring-inset ring-fl-accent" />}
               <span className="absolute bottom-1 right-1.5 left-1 text-[10.5px] font-extrabold text-white text-right truncate [text-shadow:0_1px_4px_rgba(0,0,0,.6)]">{s.label}</span>
             </button>
           ))}
@@ -178,7 +179,14 @@ export default function GamePost({ post, teamsMap = {}, playersMap = {}, large =
       {showBox && <div className="px-4 pt-1"><BoxScore game={game} stats={stats} teamsMap={teamsMap} playersMap={playersMap} /></div>}
 
       {/* Admins / content editors keep the "another photo" tool for the game's picture. */}
-      {(isAdmin || isContentEditor) && adminPhoto && <div className="mt-2">{adminPhoto}</div>}
+      {(isAdmin || isContentEditor) && adminPhoto && post.data.photo && (
+        <details className="mx-4 mt-1 group">
+          <summary className="min-h-[44px] inline-flex items-center gap-1 text-[13px] font-semibold text-fg-muted cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            תמונת המשחק (עריכה) <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="-mx-4 sm:mx-0">{adminPhoto}</div>
+        </details>
+      )}
 
       {showPredict && <PredictionStrip game={game} homeName={home.name} awayName={away.name} />}
     </article>
@@ -202,11 +210,11 @@ function ResultBand({ game, home, away, cover, large, label, to, priority }) {
         </>
       )}
       <span aria-hidden="true" className="absolute inset-0 -z-10" style={{ backgroundImage: "linear-gradient(180deg, rgba(10,14,20,0) 40%, rgba(10,14,20,0.55) 100%)" }} />
-      <RinkDrawing strength={0.45} className="absolute left-2.5 right-2.5 -z-10 w-[calc(100%-20px)]" style={{ top: large ? 110 : 58, height: large ? 185 : 185 }} />
+      <RinkDrawing strength={0.45} className="absolute inset-x-0 mx-auto -z-10 w-[calc(100%-20px)] max-w-[440px]" style={{ top: large ? 110 : 58, height: 185 }} />
       <span className="absolute top-[18px] inset-x-0 flex justify-center">
         <span className="text-[12px] font-bold px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm">{label}</span>
       </span>
-      <span dir="rtl" className="absolute inset-x-0 grid grid-cols-3 items-center" style={{ top: large ? 160 : 90 }}>
+      <span dir="rtl" className="absolute inset-x-0 mx-auto max-w-[440px] grid grid-cols-3 items-center" style={{ top: large ? 160 : 90 }}>
         <span className="flex justify-center"><CrestDisc team={home} size={crest} shadow /></span>
         <span className="flex justify-center"><FLScore home={game.home_score} away={game.away_score} size={score} dimLoser /></span>
         <span className="flex justify-center"><CrestDisc team={away} size={crest} shadow /></span>

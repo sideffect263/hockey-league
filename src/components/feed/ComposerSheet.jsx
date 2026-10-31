@@ -10,15 +10,18 @@ import Composer from "@/components/feed/Composer"
  */
 export default function ComposerSheet({ open, onClose, onPosted }) {
   const panel = useRef(null)
+  const { user, canPost } = useAuth()
+  // Signed in without posting rights: nothing to open (a guest gets the sign-in prompt).
+  const show = open && !(user && !canPost)
   useEffect(() => {
-    if (!open) return
+    if (!show) return
     const onKey = (e) => { if (e.key === "Escape") onClose() }
     document.addEventListener("keydown", onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev }
-  }, [open, onClose])
-  if (!open) return null
+  }, [show, onClose])
+  if (!show) return null
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
       <button type="button" aria-label="סגירה" onClick={onClose} className="absolute inset-0 bg-[rgba(7,11,16,.6)] fl-fade-in cursor-default" tabIndex={-1} />
