@@ -32,7 +32,7 @@ export default function Support() {
           <h2 className="text-base font-bold text-slate-900 dark:text-white mb-2">יצירת קשר</h2>
           <p>
             לכל שאלה, תקלה או הצעה כתבו לנו:{" "}
-            <a className="text-brand dark:text-brand-light font-semibold" href={`mailto:${EMAIL}`}>{EMAIL}</a>.
+            <a className="text-fg-strong font-bold underline underline-offset-2" href={`mailto:${EMAIL}`}>{EMAIL}</a>.
             {" "}כדי שנעזור מהר, ציינו את סוג הטלפון ומה בדיוק קרה.
           </p>
         </section>
@@ -52,9 +52,9 @@ export default function Support() {
         <section>
           <h2 className="text-base font-bold text-slate-900 dark:text-white mb-2">עוד</h2>
           <ul className="list-disc pr-5 space-y-1.5">
-            <li><Link className="text-brand dark:text-brand-light font-semibold" to="/app">הורדת האפליקציה</Link></li>
-            <li><Link className="text-brand dark:text-brand-light font-semibold" to="/guide">מדריך לאפליקציה</Link></li>
-            <li><Link className="text-brand dark:text-brand-light font-semibold" to="/privacy">מדיניות פרטיות</Link></li>
+            <li><Link className="text-fg-strong font-bold underline underline-offset-2" to="/app">הורדת האפליקציה</Link></li>
+            <li><Link className="text-fg-strong font-bold underline underline-offset-2" to="/guide">מדריך לאפליקציה</Link></li>
+            <li><Link className="text-fg-strong font-bold underline underline-offset-2" to="/privacy">מדיניות פרטיות</Link></li>
           </ul>
         </section>
 

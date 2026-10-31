@@ -144,7 +144,7 @@ export default function MobileApp() {
           <ShieldCheck className="w-4 h-4 text-emerald-500" />
           ללא פרסומות · לא אוספים מיקום · לא מוכרים מידע
         </span>
-        <Link to="/privacy" className="font-semibold text-brand dark:text-brand-light hover:underline">
+        <Link to="/privacy" className="font-bold text-fg-strong underline underline-offset-2">
           מדיניות פרטיות
         </Link>
       </div>
