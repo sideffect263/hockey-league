@@ -35,7 +35,7 @@ export default function GameCarousel({ slides, label }) {
 
   const go = i => {
     const el = refs.current[Math.max(0, Math.min(slides.length - 1, i))]
-    el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" })
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }) // block nearest: never scrolls the page
   }
 
   const many = slides.length > 1
@@ -49,14 +49,14 @@ export default function GameCarousel({ slides, label }) {
           role="region"
           aria-roledescription="קרוסלה"
           aria-label={label}
-          className="flex overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:rounded-xl"
+          className="flex overflow-x-auto snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-[#1B2532]"
         >
           {slides.map((s, i) => (
             <div
               key={s.key}
               ref={el => { refs.current[i] = el }}
               data-i={i}
-              className="w-full shrink-0 snap-center"
+              className="w-full shrink-0 snap-center snap-always"
               aria-roledescription="שקופית"
               aria-label={`${i + 1} מתוך ${slides.length}`}
             >
@@ -70,19 +70,19 @@ export default function GameCarousel({ slides, label }) {
 
         {many && (
           <>
-            <span className="pointer-events-none absolute top-2.5 right-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white tabular-nums" dir="ltr">
+            <span className="pointer-events-none absolute top-3 left-3 rounded-full bg-[rgba(10,14,20,0.55)] px-2.5 py-1 text-[12px] font-bold text-white tabular-nums" dir="ltr">
               {active + 1}/{slides.length}
             </span>
             {/* Arrows for mouse users; on touch the swipe is the control. RTL: "next" is to the left. */}
             {active > 0 && (
               <button type="button" onClick={() => go(active - 1)} aria-label="הקודם"
-                className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow hover:bg-white">
+                className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 size-11 items-center justify-center rounded-full bg-surface/90 text-fg-strong shadow hover:bg-surface">
                 <ChevronRight className="w-5 h-5" />
               </button>
             )}
             {active < slides.length - 1 && (
               <button type="button" onClick={() => go(active + 1)} aria-label="הבא"
-                className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow hover:bg-white">
+                className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 size-11 items-center justify-center rounded-full bg-surface/90 text-fg-strong shadow hover:bg-surface">
                 <ChevronLeft className="w-5 h-5" />
               </button>
             )}
@@ -93,12 +93,12 @@ export default function GameCarousel({ slides, label }) {
       {many && (
         <div className="flex justify-center gap-1.5 pt-2" aria-hidden="true">
           {slides.map((s, i) => (
-            <span key={s.key} className={`h-1.5 rounded-full transition-all ${i === active ? "w-4 bg-brand" : "w-1.5 bg-slate-300 dark:bg-slate-600"}`} />
+            <span key={s.key} className={`h-1.5 rounded-full transition-all ${i === active ? "w-4 bg-fl-accent" : "w-1.5 bg-line-strong"}`} />
           ))}
         </div>
       )}
       {cur?.caption && (
-        <p className="px-4 sm:px-0 pt-2 text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 whitespace-pre-line">{cur.caption}</p>
+        <p className="px-4 sm:px-0 pt-2 text-[13.5px] leading-[1.5] text-fg-muted line-clamp-2 whitespace-pre-line">{cur.caption}</p>
       )}
     </div>
   )

@@ -30,23 +30,24 @@ export function WorldPost({ post }) {
   return (
     <FeedCard>
       <FeedCardHeader
-        avatar={<FeedIcon tone="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><Globe className="w-5 h-5" /></FeedIcon>}
-        title={<span>מהעולם{sources.length ? ` · ${sources.join(", ")}` : ""}</span>}
-        meta={<span>{post.data?.total || items.length} עדכונים מחו״ל</span>}
+        avatar={<FeedIcon tone="bg-[#11161D] text-[#F4F2EC] dark:bg-[#ECEAE4] dark:text-[#11161D]"><Globe className="w-5 h-5" /></FeedIcon>}
+        title={<span className="truncate">מהעולם{sources.length ? ` · ${sources.join(", ")}` : ""}</span>}
+        meta={<span><span className="tabular-nums">{post.data?.total || items.length}</span> תקצירים מחו״ל</span>}
         menu={
-          <button type="button" onClick={toggle} className="min-h-[44px] px-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+          <button type="button" onClick={toggle} aria-pressed={less}
+            className="shrink-0 h-11 px-3.5 rounded-full border border-line text-[12px] font-semibold text-fg-muted hover:text-fg-strong transition-colors">
             {less ? "הצג" : "הצג פחות"}
           </button>
         }
       />
       {!less && (
         <>
-          {slides.length > 0 && <div className="mt-1"><GameCarousel slides={slides} label="תקצירים מהעולם" /></div>}
+          {slides.length > 0 && <GameCarousel slides={slides} label="תקצירים מהעולם" />}
           {links.length > 0 && (
-            <ul className={`mt-3 space-y-1.5 ${INSET}`}>
+            <ul className={`mt-3 space-y-1 ${INSET}`}>
               {links.map(l => (
                 <li key={l.key}>
-                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-300 hover:text-brand">
+                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="min-h-[44px] inline-flex items-center gap-1.5 text-[13.5px] text-fg-muted hover:text-fg-strong">
                     <ExternalLink className="w-3.5 h-3.5 shrink-0" />{l.caption}
                   </a>
                 </li>
@@ -59,16 +60,20 @@ export function WorldPost({ post }) {
   )
 }
 
-/** The line between what is new to you and the rest (Instagram's "You're all caught up"). */
+/** The line between what is new to you and the rest (FeedTail board, Instagram's "You're all caught up"). */
 export function CaughtUpLine({ signedIn }) {
   return (
-    <div role="separator" className="flex items-center gap-3 px-4 sm:px-0 py-3">
-      <span className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-      <span className="inline-flex items-center gap-2 text-[13px] font-bold text-slate-700 dark:text-slate-300">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 9.8" /></svg>
-        {signedIn ? "ראית את כל החדש" : "זה כל מה שחדש בליגה"}
+    <div role="separator" aria-label={signedIn ? "ראית את כל החדש" : "זה כל מה שחדש בליגה"} className="flex flex-col items-center gap-1.5 px-4 pt-5 pb-4 text-center">
+      <span className="size-11 rounded-full border-2 border-fg-strong text-fg-strong flex items-center justify-center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 12.5l4 4L18 8.5" /></svg>
       </span>
-      <span className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+      <span className="text-[16px] font-extrabold text-fg-strong">{signedIn ? "ראית את כל החדש" : "זה כל מה שחדש בליגה"}</span>
+      <span className="text-[12px] text-fg-muted">מכאן: מהעולם, ואז מה שכבר ראית</span>
     </div>
   )
+}
+
+/** "כבר ראית" — the label over what this viewer already saw (FeedTail board). */
+export function SeenHeader() {
+  return <h2 className="px-4 sm:px-0 pt-4 pb-1 text-[12px] font-bold text-fg-subtle">כבר ראית</h2>
 }
