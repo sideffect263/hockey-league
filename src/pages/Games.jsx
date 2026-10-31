@@ -1,32 +1,51 @@
-import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Clock, MapPin, Trophy, MatchFallback as Crossed, Referee, Squad, BrandTile, Warning as AlertTriangle, ApprovedStatus as CheckCircle2, Rejected as XCircle } from "@/components/icons/BrandIcons"
-import { Link } from "react-router-dom"
+import { useState, useEffect, useMemo } from "react"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, Referee, Squad, Warning as AlertTriangle, ApprovedStatus as CheckCircle2, Rejected as XCircle, CalendarPlus } from "@/components/icons/BrandIcons"
 import { getGames, getTeams, getPlayers, getReferees, getGameStats } from "@/lib/api"
-import { Shield, X, ArrowLeft, RefreshCw, Utensils } from "lucide-react"
-import { motion } from "framer-motion"
-import { format } from "date-fns"
-import { he } from "date-fns/locale"
-import TeamLogo from "@/components/TeamLogo"
+import { X, RefreshCw, Utensils, ChevronDown } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { getAvailabilityForGames } from "@/lib/availability"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
 import { DEFAULT_AGE, ageGroupsOf } from "@/lib/ageGroups"
 import LiveGameBanner from "@/components/LiveGameBanner"
 import { useLiveGames } from "@/lib/useLiveGames"
-import { Radio } from "lucide-react"
 import { useSeasonName } from "@/App"
-import { entityPath } from "@/lib/slugs"
-import { GamesSkeleton } from "@/components/skeletons/PageSkeletons"
-import GamesCalendar from "@/components/games/GamesCalendar"
-import { ilDate } from "@/lib/ilTime"
+import GamesCalendar, { CalendarSheet } from "@/components/games/GamesCalendar"
+import { RinkDrawing } from "@/components/fl/Floodlight"
+import FixtureRow, { DayHeader } from "@/components/fl/games/FixtureRow"
+import { GamesSkeletonFL } from "@/components/fl/games/GamesSkeletons"
+import { useIsDesktop } from "@/components/fl/games/useIsDesktop"
+import { dayKey, daysUntil, roundsOf, weekday, dayMonth } from "@/components/fl/games/flGamesKit"
+
+const VIEW_KEY = "games-view"
+const readPref = (k, d) => { try { return localStorage.getItem(k) ?? d } catch { return d } }
+const writePref = (k, v) => { try { localStorage.setItem(k, v) } catch { /* private mode */ } }
+
+/** Games grouped by Israel day: [{ key, date, games }] (inside a day, by kick-off). */
+function groupByDay(games, newestFirst = false) {
+  const map = new Map()
+  for (const g of games) {
+    const k = dayKey(g.game_date)
+    if (!map.has(k)) map.set(k, [])
+    map.get(k).push(g)
+  }
+  const keys = [...map.keys()].sort((a, b) => (newestFirst ? (a < b ? 1 : -1) : (a < b ? -1 : 1)))
+  return keys.map(k => {
+    const list = map.get(k).sort((a, b) => new Date(a.game_date) - new Date(b.game_date))
+    return { key: k, date: list[0].game_date, games: list }
+  })
+}
+
+const pill = (on) => `inline-flex items-center gap-1.5 min-h-11 px-4 rounded-full text-[14px] whitespace-nowrap transition-colors ${on
+  ? "bg-fg-strong text-surface font-semibold" : "border border-line text-fg-strong font-medium hover:bg-surface-sunken"}`
 
 export default function Games() {
   const { coachTeamIds, profile } = useAuth()
   const myPlayerId = profile?.player_id || null
   const seasonName = useSeasonName()
+  const isDesktop = useIsDesktop()
   const [games, setGames] = useState([])
   const [availByGame, setAvailByGame] = useState({})
-  // The signed-in player's own answer per upcoming game → "מגיע/ה" badge on the card.
+  // The signed-in player's own answer per upcoming game → "מגיע/ה" tag on the row.
   const [myAvail, setMyAvail] = useState({})
   const [teams, setTeams] = useState([])
   const [players, setPlayers] = useState([])
@@ -38,12 +57,16 @@ export default function Games() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [teamFilter, setTeamFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("")
-  // game_stats grouped by game id — every finished card shows its scorers/cards inline.
+  const [view, setView] = useState(() => readPref(VIEW_KEY, "list"))   // list | month
+  const [mode, setMode] = useState(null)                               // upcoming | results (null = auto)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  // game_stats grouped by game id — every finished row shows its scorers/cards inline.
   const [statsByGame, setStatsByGame] = useState({})
 
   useEffect(() => { loadData() }, [])
+  const pickView = (v) => { setView(v); writePref(VIEW_KEY, v) }
 
-  // Coach-only: fetch attendance for the coach's own upcoming games → per-card chip.
+  // Coach-only: fetch attendance for the coach's own upcoming games → per-row chip.
   useEffect(() => {
     const cids = coachTeamIds || []
     const myGames = cids.length ? games.filter(g => g.status === "scheduled" && (cids.includes(g.home_team_id) || cids.includes(g.away_team_id))) : []
@@ -78,8 +101,6 @@ export default function Games() {
     try {
       setLoading(true); setError(null)
       const [g, t, p, r] = await Promise.all([getGames(), getTeams(), getPlayers(), getReferees()])
-      // Keep tournament games too — the age tabs + טורנירים filter surface them
-      // (youth teams only ever play tournament games).
       setGames(g); setTeams(t); setPlayers(p); setReferees(r)
       // Box scores are secondary — load them after the schedule renders, never block on them.
       getGameStats().then(rows => {
@@ -94,7 +115,9 @@ export default function Games() {
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const gamesById = Object.fromEntries(games.map(g => [g.id, g]))
   const playersMap = Object.fromEntries(players.map(p => [p.id, p]))
-  const teamName = (id) => teamsMap[id]?.name || '—'
+  const liveById = Object.fromEntries(liveGames.map(l => [l.game_id, l]))
+  const rounds = useMemo(() => roundsOf(games), [games])
+  const myTeamId = profile?.player?.team_id || (coachTeamIds || [])[0] || null
 
   const refInfo = (game) => {
     if (!game.referee_id) return null
@@ -103,23 +126,12 @@ export default function Games() {
     return ref ? `${ref.first_name} ${ref.last_name}` : null
   }
 
-  const statusCfg = {
-    scheduled: { label: "מתוכנן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-    waiting_result: { label: "ממתין", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-    in_progress: { label: "במהלך", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-    completed: { label: "הסתיים", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400" },
-    postponed: { label: "נדחה", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
-  }
-
-  // The Games page is senior-only (youth play tournaments, shown on the tournament
-  // pages). A game belongs to an age group if either team is in it; ageTab is always
-  // senior here, so this keeps senior league/playoff/friendly games.
+  // Senior-only page: a game belongs if either team is senior; tournament games live on
+  // the tournament pages.
   const gameInAge = (g, age) => {
     const h = teamsMap[g.home_team_id], a = teamsMap[g.away_team_id]
     return (h && ageGroupsOf(h).includes(age)) || (a && ageGroupsOf(a).includes(age))
   }
-  // This page is senior league/playoff/friendly only; tournament games live on the
-  // tournament pages, so every tab here excludes tournament-tagged games.
   const compMatch = (g) => g.game_type === activeCompetition && !g.tournament_id
 
   // Every filter except the date: this is what the season calendar shows, and the
@@ -131,177 +143,72 @@ export default function Games() {
     if (teamFilter !== "all" && g.home_team_id !== teamFilter && g.away_team_id !== teamFilter) return false
     return true
   })
-  const filtered = dateFilter
-    ? calendarGames.filter(g => format(ilDate(g.game_date), 'yyyy-MM-dd') === dateFilter)
-    : calendarGames
+  const filtered = dateFilter ? calendarGames.filter(g => dayKey(g.game_date) === dateFilter) : calendarGames
 
   const completed = filtered.filter(g => g.status === 'completed')
-  const upcoming = filtered.filter(g => ['scheduled', 'in_progress', 'waiting_result'].includes(g.status))
+  // Postponed games stay in the schedule (struck time + נדחה), so nobody wonders where they went.
+  const upcoming = filtered.filter(g => ['scheduled', 'in_progress', 'waiting_result', 'postponed'].includes(g.status) && !liveById[g.id])
     .sort((a, b) => new Date(a.game_date) - new Date(b.game_date))
+  const live = filtered.filter(g => liveById[g.id])
 
   // The last round = every completed game played on the same day as the most recent
-  // result (rounds are one matchday; there's no round column). Pinned above the
-  // schedule so last weekend's scores are the first thing you see; pulled out of
-  // תוצאות so they don't render twice. Skipped when a date is picked — that list is
-  // already just one day.
+  // result (rounds are one matchday). Skipped when a date is picked.
   const sortedCompleted = [...completed].sort((a, b) => new Date(b.game_date) - new Date(a.game_date))
-  const lastRoundDay = !dateFilter && sortedCompleted.length
-    ? format(ilDate(sortedCompleted[0].game_date), 'yyyy-MM-dd') : null
-  const inLastRound = (g) => lastRoundDay && format(ilDate(g.game_date), 'yyyy-MM-dd') === lastRoundDay
-  const lastRound = sortedCompleted.filter(inLastRound)
-  const olderResults = sortedCompleted.filter(g => !inLastRound(g))
+  const lastRoundDay = !dateFilter && sortedCompleted.length ? dayKey(sortedCompleted[0].game_date) : null
+  const lastRound = sortedCompleted.filter(g => lastRoundDay && dayKey(g.game_date) === lastRoundDay)
+  const olderResults = sortedCompleted.filter(g => !lastRound.includes(g))
+  const upcomingDays = groupByDay(upcoming)
+  const olderDays = groupByDay(olderResults, true)
+  const current = mode || (upcoming.length === 0 && live.length === 0 ? "results" : "upcoming")
 
-  if (loading) return <GamesSkeleton />
+  if (loading) return <GamesSkeletonFL />
 
   if (error) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-        <div className="card p-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
-          <span className="text-red-700 dark:text-red-400 text-sm font-medium">{error}</span>
-          <button onClick={loadData} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" /> נסה שוב
-          </button>
+        <div className="fl-card p-6 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
+          <span className="text-fl-red text-sm font-medium">{error}</span>
+          <button onClick={loadData} className="btn btn-secondary"><RefreshCw className="w-4 h-4" /> נסה שוב</button>
         </div>
       </div>
     )
   }
 
-  // Rendered by INVOKING this function inline (`{GameCard({ game })}`), not as
-  // `<GameCard/>`. It's defined inside Games, so its identity changes every render;
-  // as a JSX element that remounts every card on any state change — tearing down the
-  // DOM (scroll jumps to top) and replaying the entrance animation when stats arrive.
-  // Invoking it inline keeps the keyed root <motion.div> stable. Safe because it has
-  // no hooks. Keep the `key` on the returned motion.div.
-  const GameCard = ({ game }) => {
-    const done = game.status === "completed"
-    const status = statusCfg[game.status] || statusCfg.completed
-    const ref = refInfo(game)
-    // Coach-only attendance chip for the coach's own upcoming games.
+  // Tags under a row: the coach's attendance chip, the player's own answer, the game type.
+  const tagsFor = (game) => {
+    const tags = []
     const myCoachTid = (coachTeamIds || []).find(tid => tid === game.home_team_id || tid === game.away_team_id)
-    const att = (myCoachTid && game.status === "scheduled") ? (() => {
+    if (myCoachTid && game.status === "scheduled") {
       const st = Object.fromEntries((availByGame[game.id] || []).map(r => [r.player_id, r.status]))
       const coming = players.filter(p => p.team_id === myCoachTid && st[p.id] === "available")
-      return { count: coming.length, gk: coming.some(p => p.position === "Goalkeeper"), tooFew: coming.length < 4 }
-    })() : null
-    const home = teamsMap[game.home_team_id]
-    const away = teamsMap[game.away_team_id]
-    const homeWin = done && game.home_score > game.away_score
-    const awayWin = done && game.away_score > game.home_score
-    const tie = done && game.home_score === game.away_score
-
-    return (
-      <motion.div key={game.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card-hover overflow-hidden">
-        {/* The whole card is the link to the full game page (live scoreboard, stream,
-            H2H, box score). Nothing inside may be another <a> — names are plain text. */}
-        <Link to={entityPath('games', game)} className="block text-right p-4 sm:p-5">
-          {/* Tags row */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className={`stat-pill ${status.cls}`}>{status.label}</span>
-            {game.game_type === 'פלייאוף' && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">פלייאוף</span>}
-            {game.game_type === FRIENDLY_GAME_TYPE && <span className="stat-pill bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">ידידותי</span>}
-            {game.series_game && <span className="stat-pill bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">משחק {game.series_game}</span>}
-            {att && (
-              <span className={`stat-pill inline-flex items-center gap-1 ${att.tooFew ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"}`} title="מגיעים מהקבוצה שלך">
-                <Squad className="w-4 h-4" /> {att.count}{!att.gk && <AlertTriangle className="w-4 h-4 text-red-500" />}
-              </span>
-            )}
-            {game.status === "scheduled" && myAvail[game.id] === "available" && (
-              <span className="stat-pill inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" title="אישרת הגעה למשחק">
-                <CheckCircle2 className="w-4 h-4" /> מגיע/ה
-              </span>
-            )}
-            {game.status === "scheduled" && myAvail[game.id] === "unavailable" && (
-              <span className="stat-pill inline-flex items-center gap-1 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" title="סימנת שלא תגיע/י">
-                <XCircle className="w-4 h-4" /> לא מגיע/ה
-              </span>
-            )}
-          </div>
-
-          {/* Match row — winning side is tinted + trophy-marked */}
-          <div className="flex items-center justify-between gap-2">
-            <div className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${homeWin ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
-              <TeamLogo team={home} size={10} />
-              <div className="min-w-0 max-w-full text-center sm:text-start">
-                <p className={`text-sm leading-tight flex items-center justify-center sm:justify-start gap-1 ${homeWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : awayWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
-                  {homeWin && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
-                  <span className="line-clamp-2 break-words">{home?.name}</span>
-                </p>
-                <p className={`text-[11px] ${homeWin ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>{tie ? 'תיקו' : homeWin ? 'מנצחת' : 'בית'}</p>
-              </div>
-            </div>
-
-            {/* RTL: the flex row visually places the home team on the RIGHT and the
-                away team on the LEFT, but numeric digits always render left-to-right.
-                So the score outputs away_score first (renders on the left, beside the
-                away team) and home_score last (renders on the right, beside the home
-                team). Do NOT reorder to home:away — it looks flipped. */}
-            <div className="px-1 sm:px-3 text-center shrink-0">
-              {done ? (
-                <div className="text-2xl font-extrabold tracking-tight tabular-nums">
-                  <span className={awayWin ? 'text-emerald-600 dark:text-emerald-400' : homeWin ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}>{game.away_score}</span>
-                  <span className="text-slate-300 dark:text-slate-600 mx-1">:</span>
-                  <span className={homeWin ? 'text-emerald-600 dark:text-emerald-400' : awayWin ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}>{game.home_score}</span>
-                </div>
-              ) : (
-                <div className="text-lg font-bold text-slate-300 dark:text-slate-600">
-                  {format(ilDate(game.game_date), "HH:mm")}
-                </div>
-              )}
-            </div>
-
-            <div className={`flex flex-col sm:flex-row-reverse items-center gap-1 sm:gap-3 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${awayWin ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
-              <TeamLogo team={away} size={10} />
-              <div className="min-w-0 max-w-full text-center sm:text-left">
-                <p className={`text-sm leading-tight flex items-center justify-center sm:justify-start gap-1 flex-row-reverse ${awayWin ? 'font-extrabold text-emerald-700 dark:text-emerald-300' : homeWin ? 'font-semibold text-slate-500 dark:text-slate-400' : 'font-bold text-slate-900 dark:text-white'}`}>
-                  {awayWin && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
-                  <span className="line-clamp-2 break-words">{away?.name}</span>
-                </p>
-                <p className={`text-[11px] ${awayWin ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>{tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'}</p>
-              </div>
-            </div>
-          </div>
-
-          {done && EventsRow(game)}
-
-          {/* Meta row */}
-          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
-            {/* Upcoming games already show the time in place of the score. */}
-            {done && <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(ilDate(game.game_date), "HH:mm")}</span>}
-            <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{game.venue || '—'}</span>
-            {/* Kiosk — only when someone has actually said. null stays silent. */}
-            {game.kiosk_open != null && (
-              <span className={`flex items-center gap-1 font-semibold ${game.kiosk_open ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                <Utensils className="w-3.5 h-3.5" />{game.kiosk_open ? 'דוכן פתוח' : 'אין דוכן'}
-              </span>
-            )}
-            {ref && <span className="flex items-center gap-1"><Referee className="w-4 h-4" />{ref}</span>}
-            <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">לעמוד המשחק <ArrowLeft className="w-3.5 h-3.5" /></span>
-          </div>
-
-          {game.notes && (
-            <div className="mt-3 p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-xs text-amber-700 dark:text-amber-300 border border-amber-100 dark:border-amber-800/50">
-              {game.notes}
-            </div>
-          )}
-        </Link>
-      </motion.div>
-    )
+      const gk = coming.some(p => p.position === "Goalkeeper")
+      tags.push({ icon: <Squad className="w-4 h-4" />, text: <>מגיעים {coming.length}{!gk && <AlertTriangle className="w-4 h-4" aria-label="אין שוער" />}</>,
+        tone: coming.length < 4 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400" })
+    }
+    if (game.status === "scheduled" && myAvail[game.id] === "available") tags.push({ icon: <CheckCircle2 className="w-4 h-4" />, text: "מגיע/ה", tone: "text-emerald-700 dark:text-emerald-400" })
+    if (game.status === "scheduled" && myAvail[game.id] === "unavailable") tags.push({ icon: <XCircle className="w-4 h-4" />, text: "לא מגיע/ה" })
+    if (game.status === "waiting_result") tags.push({ text: "ממתין לתוצאה", tone: "text-amber-700 dark:text-amber-400" })
+    if (game.game_type === 'פלייאוף') tags.push({ text: game.series_game ? `פלייאוף · משחק ${game.series_game}` : "פלייאוף" })
+    if (game.game_type === FRIENDLY_GAME_TYPE) tags.push({ text: "ידידותי" })
+    if (game.kiosk_open != null) tags.push({ icon: <Utensils className="w-3.5 h-3.5" />, text: game.kiosk_open ? "דוכן פתוח" : "אין דוכן" })
+    const ref = refInfo(game)
+    if (ref && game.status !== "completed") tags.push({ icon: <Referee className="w-4 h-4" />, text: ref })
+    return tags
   }
 
-  // Goals + cards of a finished game, one column per team (home on the right in RTL).
-  // Only players who did something — the full box score is on the game page.
+  // Goals + cards of a finished game, home column on the RIGHT. Only players who did
+  // something — the full box score is on the game page.
   const statLine = (s, name) => (
-    <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
-      <span className="truncate text-slate-700 dark:text-slate-300">{name}</span>
-      <span className="flex gap-1 shrink-0">
-        {s.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{s.goals}</span>}
-        {s.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{s.blue_cards}</span>}
-        {s.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{s.red_cards}</span>}
+    <span key={s.id} className="flex items-center justify-between gap-2 text-[12px] min-w-0">
+      <span className="truncate text-fg-soft">{name}</span>
+      <span className="flex gap-1.5 shrink-0 items-center fl-num text-[12px]">
+        {s.goals > 0 && <span className="inline-flex items-center gap-0.5"><Ball className="w-4 h-4" /><span dir="ltr">{s.goals}</span></span>}
+        {s.blue_cards > 0 && <span className="inline-flex items-center gap-0.5 text-fl-blue"><BlueCard className="w-4 h-4" /><span dir="ltr">{s.blue_cards}</span></span>}
+        {s.red_cards > 0 && <span className="inline-flex items-center gap-0.5 text-fl-red"><RedCard className="w-4 h-4" /><span dir="ltr">{s.red_cards}</span></span>}
       </span>
-    </div>
+    </span>
   )
-  const EventsRow = (game) => {
+  const eventsFor = (game) => {
     const notable = (statsByGame[game.id] || []).filter(s => s.goals > 0 || s.blue_cards > 0 || s.red_cards > 0)
     if (!notable.length) return null
     const nameOf = (s) => {
@@ -312,118 +219,176 @@ export default function Games() {
     const teamOf = (s) => s.played_for_team_id || playersMap[s.player_id]?.team_id
     const guests = notable.filter(s => s.is_guest_player && !s.played_for_team_id)
     return (
-      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+      <span className="block mt-1 pt-1.5 border-t border-line/70">
+        <span className="grid grid-cols-2 gap-x-5 gap-y-0.5">
           {[game.home_team_id, game.away_team_id].map(tid => (
-            <div key={tid} className="space-y-1 min-w-0">
+            <span key={tid} className="flex flex-col gap-0.5 min-w-0">
               {notable.filter(s => !guests.includes(s) && teamOf(s) === tid)
                 .sort((a, b) => (b.goals || 0) - (a.goals || 0))
                 .map(s => statLine(s, nameOf(s)))}
-            </div>
+            </span>
           ))}
-        </div>
+        </span>
         {guests.length > 0 && (
-          <div className="mt-2 space-y-1">
+          <span className="flex flex-col gap-0.5 mt-1">
             {guests.map(s => statLine(s, `${nameOf(s)}${s.guest_player_original_team ? ` (${s.guest_player_original_team})` : ''}`))}
-          </div>
+          </span>
         )}
-      </div>
+      </span>
     )
   }
 
+  const row = (g, onDark = false) => (
+    <FixtureRow key={g.id} game={g} home={teamsMap[g.home_team_id]} away={teamsMap[g.away_team_id]} live={liveById[g.id]}
+      onDark={onDark} tags={tagsFor(g)} extra={!onDark && g.status === "completed" ? eventsFor(g) : null} />
+  )
+  const notes = (list) => list.filter(g => g.notes).map(g => (
+    <p key={`n-${g.id}`} className="text-[12.5px] text-amber-800 dark:text-amber-300 bg-amber-500/10 rounded-[12px] px-3 py-2">{g.notes}</p>
+  ))
+  const dayBlock = (day) => (
+    <section key={day.key} className="flex flex-col gap-2.5" aria-label={`${weekday(day.date)} ${dayMonth(day.date)}`}>
+      <div className="px-2"><DayHeader date={day.date} games={day.games} round={rounds[day.games[0].id]} /></div>
+      <div className="flex flex-col gap-1.5">{day.games.map(g => row(g))}{notes(day.games)}</div>
+    </section>
+  )
+  const blockTitle = (t, tone = "text-fg-strong") => <h2 className={`text-[13px] font-extrabold px-2 -mb-1 ${tone}`}>{t}</h2>
+
+  const nTotal = games.filter(g => !g.tournament_id && gameInAge(g, ageTab)).length
+  const selectedTeam = teamFilter !== "all" ? teamsMap[teamFilter] : null
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5">
-          <BrandTile name="match-fallback" className="w-10 h-10 -my-1.5" /> משחקים
-        </h1>
-        <p className="page-subtitle mt-1">לוח משחקים ותוצאות{seasonName && ` עונת ${seasonName}`}</p>
-      </motion.div>
-
-      <GamesCalendar
-        games={calendarGames}
-        teamsMap={teamsMap}
-        selectedDate={dateFilter}
-        onSelectDate={setDateFilter}
-        team={teamFilter !== "all" ? teamsMap[teamFilter] : null}
-        seasonName={seasonName}
-      />
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2.5">
-        <div className="tab-bar sm:w-auto">
-          <button onClick={() => setActiveCompetition("ליגה")} className={activeCompetition === "ליגה" ? "tab-active" : "tab-inactive"}>
-            <Trophy className="w-4 h-4" /> ליגה
-          </button>
-          <button onClick={() => setActiveCompetition("פלייאוף")} className={activeCompetition === "פלייאוף" ? "tab-active" : "tab-inactive"}>
-            <Trophy className="w-4 h-4" /> פלייאוף
-          </button>
-          <button onClick={() => setActiveCompetition(FRIENDLY_GAME_TYPE)} className={activeCompetition === FRIENDLY_GAME_TYPE ? "tab-active" : "tab-inactive"}>
-            <Crossed className="w-4 h-4" /> ידידותי
-          </button>
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
+      <header className="flex items-end justify-between gap-3 px-1 pb-3.5">
+        <div className="flex flex-col gap-1.5 min-w-0">
+          <h1 className="text-[40px] sm:text-[44px] font-extrabold leading-none text-fg-strong">משחקים</h1>
+          <p className="text-[13px] text-fg-muted">{seasonName ? <>עונת <bdi dir="ltr">{seasonName}</bdi> · </> : null}{nTotal} משחקים</p>
         </div>
-        <div className="flex gap-2 flex-1 flex-wrap">
-          <select aria-label="סינון לפי סטטוס" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="filter-select flex-1 min-w-[120px]">
-            <option value="all">כל הסטטוסים</option>
-            <option value="scheduled">מתוכנן</option>
-            <option value="completed">הסתיים</option>
-            <option value="waiting_result">ממתין</option>
-          </select>
-          <select aria-label="סינון לפי קבוצה" value={teamFilter} onChange={e => setTeamFilter(e.target.value)} className="filter-select flex-1 min-w-[120px]">
-            <option value="all">כל הקבוצות</option>
-            {teams.filter(t => ageGroupsOf(t).includes(ageTab)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <div className="relative flex-1 min-w-[130px]">
-            <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} aria-label="סינון לפי תאריך" className={`peer filter-input w-full ${dateFilter ? '' : 'text-transparent focus:text-fg-soft'}`} />
-            {/* iOS shows an empty date field as a blank box (desktop shows dd/mm/yyyy) — label it */}
-            {!dateFilter && <span className="peer-focus:hidden pointer-events-none absolute inset-y-0 right-9 flex items-center text-sm font-medium text-fg-soft">כל התאריכים</span>}
-            {dateFilter && <button onClick={() => setDateFilter('')} aria-label="נקה תאריך" className="absolute left-2 top-1/2 -translate-y-1/2"><X className="w-4 h-4 text-slate-400" /></button>}
+        <button type="button" onClick={() => setSheetOpen(o => !o)} aria-expanded={sheetOpen}
+          className="inline-flex items-center gap-1.5 min-h-11 px-3.5 rounded-full bg-fg-strong text-surface text-[13.5px] font-bold shrink-0">
+          <CalendarPlus className="w-[22px] h-[22px]" /> ליומן שלי
+        </button>
+      </header>
+
+      {sheetOpen && (
+        <div className="mb-4 fl-fade-in">
+          <CalendarSheet games={calendarGames} teamsMap={teamsMap} team={selectedTeam || (myTeamId ? teamsMap[myTeamId] : null)} seasonName={seasonName} onClose={() => setSheetOpen(false)} />
+        </div>
+      )}
+
+      {/* Filters: view · הבאים/תוצאות · team, then competition + status + date. */}
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="flex gap-2 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap [scrollbar-width:none]">
+          <div role="group" aria-label="תצוגה" className="flex shrink-0 bg-surface-sunken rounded-full p-0.5 lg:hidden">
+            {[["list", "רשימה"], ["month", "חודש"]].map(([v, t]) => (
+              <button key={v} type="button" onClick={() => pickView(v)} aria-pressed={view === v}
+                className={`min-h-11 px-3.5 rounded-full text-[13.5px] font-bold ${view === v ? "bg-surface text-fg-strong shadow-sm" : "text-fg-soft"}`}>{t}</button>
+            ))}
+          </div>
+          {(view === "list" || isDesktop) && <>
+            <button type="button" className={pill(current === "upcoming")} aria-pressed={current === "upcoming"} onClick={() => setMode("upcoming")}>הבאים</button>
+            <button type="button" className={pill(current === "results")} aria-pressed={current === "results"} onClick={() => setMode("results")}>תוצאות</button>
+          </>}
+          {myTeamId && teamsMap[myTeamId] && (
+            <button type="button" className={pill(teamFilter === myTeamId)} aria-pressed={teamFilter === myTeamId}
+              onClick={() => setTeamFilter(f => (f === myTeamId ? "all" : myTeamId))}>הקבוצה שלי</button>
+          )}
+          <label className="relative shrink-0">
+            <span className="sr-only">סינון לפי קבוצה</span>
+            <select value={teamFilter} onChange={e => setTeamFilter(e.target.value)}
+              className={`${pill(teamFilter !== "all" && teamFilter !== myTeamId)} appearance-none pe-9 bg-transparent cursor-pointer`}>
+              <option value="all">כל הקבוצות</option>
+              {teams.filter(t => ageGroupsOf(t).includes(ageTab)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <ChevronDown className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-70" aria-hidden="true" />
+          </label>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="tab-bar sm:w-auto">
+            {[["ליגה", "ליגה"], ["פלייאוף", "פלייאוף"], [FRIENDLY_GAME_TYPE, "ידידותי"]].map(([v, t]) => (
+              <button key={v} type="button" onClick={() => setActiveCompetition(v)} className={activeCompetition === v ? "tab-active" : "tab-inactive"}>{t}</button>
+            ))}
+          </div>
+          <div className="flex gap-2 flex-1">
+            <select aria-label="סינון לפי סטטוס" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="filter-select flex-1 min-w-[120px] min-h-11">
+              <option value="all">כל הסטטוסים</option>
+              <option value="scheduled">מתוכנן</option>
+              <option value="completed">הסתיים</option>
+              <option value="waiting_result">ממתין</option>
+              <option value="postponed">נדחה</option>
+            </select>
+            <div className="relative flex-1 min-w-[130px]">
+              <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} aria-label="סינון לפי תאריך" className={`peer filter-input w-full min-h-11 ${dateFilter ? '' : 'text-transparent focus:text-fg-soft'}`} />
+              {/* iOS shows an empty date field as a blank box (desktop shows dd/mm/yyyy) — label it */}
+              {!dateFilter && <span className="peer-focus:hidden pointer-events-none absolute inset-y-0 right-9 flex items-center text-sm font-medium text-fg-soft">כל התאריכים</span>}
+              {dateFilter && <button onClick={() => setDateFilter('')} aria-label="נקה תאריך" className="absolute left-1 top-1/2 -translate-y-1/2 size-9 flex items-center justify-center"><X className="w-4 h-4 text-fg-muted" /></button>}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Games */}
-      <div className="space-y-6">
-        {liveGames.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
-              <Radio className="w-4 h-4 text-red-500" /> משחקים חיים
-            </h2>
-            <LiveGameBanner liveGames={liveGames} gamesById={gamesById} teamsMap={teamsMap} />
+      {/* Desktop: the month calendar always sits beside the list (the toggle is for phones). */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6 lg:items-start">
+        {(
+          <div className={`mb-5 lg:mb-0 lg:sticky lg:top-20 ${view === "month" ? "" : "hidden lg:block"}`}>
+            <GamesCalendar games={calendarGames} teamsMap={teamsMap} selectedDate={dateFilter} onSelectDate={setDateFilter} />
           </div>
         )}
-        {lastRound.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
-              <Trophy className="w-4 h-4 text-amber-500" /> המחזור האחרון
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 normal-case">{format(ilDate(lastRound[0].game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
-            </h2>
-            <div className="grid gap-3">{lastRound.map(g => GameCard({ game: g }))}</div>
-          </div>
-        )}
-        {upcoming.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
-              <Clock className="w-4 h-4 text-blue-500" /> משחקים קרובים
-            </h2>
-            <div className="grid gap-3">{upcoming.map(g => GameCard({ game: g }))}</div>
-          </div>
-        )}
-        {olderResults.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2 uppercase tracking-wide">
-              <Trophy className="w-4 h-4 text-emerald-500" /> תוצאות
-            </h2>
-            <div className="grid gap-3">{olderResults.map(g => GameCard({ game: g }))}</div>
-          </div>
-        )}
-        {filtered.length === 0 && (
-          <div className="text-center py-16">
-            <Calendar className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-            <h3 className="text-lg font-semibold text-slate-500 dark:text-slate-400">אין משחקים תואמים</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">נסה לשנות את הסינונים</p>
-          </div>
-        )}
+
+        <div className="flex flex-col gap-6 min-w-0">
+          {dateFilter && (
+            <button type="button" onClick={() => setDateFilter("")} className="self-start inline-flex items-center gap-1.5 min-h-11 px-3.5 rounded-full bg-fg-strong text-surface text-[14px] font-semibold"
+              aria-label="ביטול סינון היום">
+              {weekday(`${dateFilter}T12:00:00+02:00`)} <bdi dir="ltr">{dayMonth(`${dateFilter}T12:00:00+02:00`)}</bdi><X className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {liveGames.length > 0 && (
+            <section className="flex flex-col gap-2.5">
+              {blockTitle("משחקים חיים", "text-fl-live")}
+              <LiveGameBanner liveGames={liveGames} gamesById={gamesById} teamsMap={teamsMap} />
+            </section>
+          )}
+
+          {((view === "month" && !isDesktop) || current === "upcoming") && upcomingDays.length > 0 && (() => {
+            const [first, ...rest] = upcomingDays
+            return (
+              <>
+                <section aria-label="יום המשחקים הבא" className="relative isolate overflow-hidden rounded-[24px] bg-[#0E151F] px-3 pt-4.5 pb-3 pt-[18px]">
+                  <RinkDrawing strength={0.2} className="absolute inset-x-2 top-1/2 -translate-y-1/2 w-[calc(100%-16px)] -z-10 opacity-20" />
+                  <div className="px-1.5 pb-3.5">
+                    <DayHeader date={first.date} games={first.games} round={rounds[first.games[0].id]} size={56} onDark trailing={daysUntil(first.date)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">{first.games.map(g => row(g, true))}</div>
+                  {first.games.some(g => g.notes) && <div className="flex flex-col gap-1.5 mt-1.5">{notes(first.games)}</div>}
+                </section>
+                {rest.map(dayBlock)}
+              </>
+            )
+          })()}
+
+          {((view === "month" && !isDesktop) || current === "results") && (
+            <>
+              {lastRound.length > 0 && (
+                <div className="flex flex-col gap-2.5">
+                  {blockTitle("המחזור האחרון")}
+                  {dayBlock(groupByDay(lastRound)[0])}
+                </div>
+              )}
+              {olderDays.map(dayBlock)}
+            </>
+          )}
+
+          {(view === "list" || isDesktop) && current === "upcoming" && upcomingDays.length === 0 && filtered.length > 0 && (
+            <p className="text-center text-[14px] text-fg-muted py-6">אין משחקים קרובים</p>
+          )}
+          {filtered.length === 0 && (
+            <div className="text-center py-16">
+              <Calendar className="w-12 h-12 mx-auto mb-3" />
+              <h3 className="text-lg font-extrabold text-fg-strong">אין משחקים תואמים</h3>
+              <p className="text-sm text-fg-muted mt-1">נסה לשנות את הסינונים</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
