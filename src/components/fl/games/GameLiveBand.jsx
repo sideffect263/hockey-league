@@ -103,10 +103,10 @@ export default function GameLiveBand({ home, away, live }) {
   return (
     <div className="flex flex-col gap-3">
       <TeamBlend as="section" aria-label="תוצאה חיה" home={home} away={away} className="rounded-[26px] px-3.5 sm:px-5 pt-3.5 pb-4">
-        <LiveChip className="absolute top-2.5 right-2.5" />
         <div dir="ltr" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
           <SideHeader team={away} role="חוץ" crestFirst />
           <div className="flex flex-col items-center gap-1.5 px-1">
+            <LiveChip />
             <FLScore home={live.home_score ?? 0} away={live.away_score ?? 0} size={52} />
             <span dir="rtl" className="text-[13px] font-bold text-fl-accent whitespace-nowrap">
               {status} · <span dir="ltr" className="tabular-nums">{clockString(remaining)}</span>

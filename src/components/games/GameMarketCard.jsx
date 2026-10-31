@@ -9,7 +9,7 @@ import { pct, coins } from "@/lib/market"
 import { useSideColors } from "@/components/market/MatchCard"
 import {
   getGameMarketOdds, sidesOf, isHidden, leaderChip, trendPoints,
-  resolvedHeadline, closesLabel, sparkSeries,
+  closesLabel, sparkSeries,
 } from "@/lib/gameMarket"
 
 /**
@@ -65,24 +65,24 @@ function MarketCardBody({ odds, teamsMap }) {
   const byKey = { home, draw, away }
   const my = (odds.my || []).filter((p) => Number(p.shares) > 0)
 
-  const subtitle = open ? "הסיכויים לפי תחזיות השחקנים" : resolved ? "מה השחקנים חזו" : "הסיכויים בשריקת הפתיחה"
+  const subtitle = open ? "תחזיות השחקנים · פתוח עד שריקת הפתיחה" : resolved ? "מה השחקנים חזו" : "התחזיות נסגרו בשריקת הפתיחה"
 
   return (
     <motion.section
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-      className="card overflow-hidden relative"
+      className="fl-card overflow-hidden relative"
       data-market-status={status}
     >
       {/* warm glow behind the header — the market's own corner of the page */}
       <div aria-hidden className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-32 rounded-full bg-gold/10 blur-3xl" />
 
       <div className="relative px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
-        <span className="w-7 h-7 rounded-lg bg-gold/15 text-gold flex items-center justify-center shrink-0"><Coins className="w-4 h-4" /></span>
+        <span className="size-10 rounded-control bg-gold/15 text-gold flex items-center justify-center shrink-0"><Coins className="w-6 h-6" /></span>
         <div className="min-w-0 flex-1">
-          <h2 className="flex items-center gap-1.5 font-bold text-sm text-slate-900 dark:text-white">
+          <h2 className="flex items-center gap-1.5 text-[20px] sm:text-[22px] font-extrabold leading-tight text-fg-strong">
             סטופר מרקט
           </h2>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>
+          <p className="text-[12px] text-fg-muted truncate">{subtitle}</p>
         </div>
         {open && chip?.kind === "close" && traded && (
           <span className="stat-pill bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold shrink-0"><CloseGame className="w-4 h-4" /> משחק צמוד</span>
@@ -95,7 +95,7 @@ function MarketCardBody({ odds, teamsMap }) {
           <Side o={home} color={colors.home} odds={odds} chip={chip} winner={winner} showTrend={open && traded} />
           <div className={`pt-6 text-center ${winner && winner !== draw ? "opacity-40" : ""}`}>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">תיקו</p>
-            <p className="mkt-num text-lg font-black text-slate-600 dark:text-slate-300" dir="ltr">{draw ? pct(draw.price) : "—"}</p>
+            <p className="fl-num text-lg text-fg-soft" dir="ltr">{draw ? pct(draw.price) : "—"}</p>
             {winner && winner === draw && <Crown className="w-4 h-4 text-gold mx-auto mt-0.5" />}
           </div>
           <Side o={away} color={colors.away} odds={odds} chip={chip} winner={winner} showTrend={open && traded} />
@@ -107,7 +107,7 @@ function MarketCardBody({ odds, teamsMap }) {
         {open && !traded ? (
           <p className="flex items-center gap-2 text-[13px] text-slate-600 dark:text-slate-300 rounded-xl bg-surface-sunken px-3 py-2.5">
             <Sparkles className="w-4 h-4 text-gold shrink-0" />
-            אף אחד עוד לא חזה את המשחק. התחזית הראשונה קובעת את הסיכויים
+            אף אחד עוד לא חזה את המשחק. התחזית הראשונה קובעת את האחוזים
           </p>
         ) : series.length > 0 && (
           <Spark series={series} colors={colors} />
@@ -115,7 +115,7 @@ function MarketCardBody({ odds, teamsMap }) {
 
         {/* ── resolved verdict ── */}
         {resolved && winner && (() => {
-          const h = resolvedHeadline(winner.name, winner.price, winner.okey === "draw")
+          const h = verdict(winner.name, winner.price, winner.okey === "draw")
           return (
             <div className={`rounded-xl px-3 py-2.5 ${h.tone === "upset" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : h.tone === "called" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-surface-sunken text-slate-700 dark:text-slate-200"}`}>
               <p className="text-sm font-bold">{h.text}</p>
@@ -146,7 +146,7 @@ function MarketCardBody({ odds, teamsMap }) {
               }
               return (
                 <p key={p.okey} className="text-[13px] text-slate-800 dark:text-slate-100">
-                  התחזית שלך: <span className="mkt-num font-bold">{coins(shares)}</span> יחידות על <b>{o?.name}</b>
+                  התחזית שלך: <span className="mkt-num font-bold">{coins(shares)}</span> סטופרים על <b>{o?.name}</b>
                   {" · "}שווי עכשיו ~<span className="mkt-coin">{coins(Math.round(shares * (o?.price || 0)))}</span>
                 </p>
               )
@@ -159,7 +159,7 @@ function MarketCardBody({ odds, teamsMap }) {
           <p className="flex-1 min-w-[10rem] flex items-center flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <Users className="w-4 h-4 shrink-0" />
             <span className="whitespace-nowrap"><span className="mkt-num font-bold text-slate-700 dark:text-slate-200">{odds.traders || 0}</span> משתתפים</span>
-            {Number(odds.volume) > 0 && <span className="whitespace-nowrap">· <span className="mkt-coin">{coins(odds.volume)}</span> סטופרים בשוק</span>}
+            {Number(odds.volume) > 0 && <span className="whitespace-nowrap">· <span className="mkt-coin">{coins(odds.volume)}</span> סטופרים בתחזיות</span>}
             {open && odds.closes_at && <span className="whitespace-nowrap">· נסגר {closesLabel(odds.closes_at)}</span>}
             {status === "closed" && <span className="whitespace-nowrap">· התחזיות נסגרו</span>}
           </p>
@@ -168,6 +168,17 @@ function MarketCardBody({ odds, teamsMap }) {
       </div>
     </motion.section>
   )
+}
+
+/** The resolved verdict in predictions words (no betting words, no emoji). Same tones as
+ * lib/gameMarket resolvedHeadline (upset < 34% · called ≥ 50% · plain). */
+function verdict(name, price, isDraw) {
+  const w = Number(price) || 0
+  const p = `${Math.round(w * 100)}%`
+  const who = isDraw ? "תיקו" : name
+  if (w < 0.34) return { tone: "upset", text: `הפתעה! רק ${p} חזו ${who}` }
+  if (w >= 0.5) return { tone: "called", text: `התחזיות צדקו: ${p} חזו ${who}` }
+  return { tone: "plain", text: `${isDraw ? "תיקו" : `${name} ניצחו`} · ${p} חזו את זה` }
 }
 
 function Side({ o, color, odds, chip, winner, showTrend }) {
@@ -183,7 +194,7 @@ function Side({ o, color, odds, chip, winner, showTrend }) {
         )}
       </div>
       <p className="mt-1.5 text-[13px] font-semibold text-slate-900 dark:text-white truncate max-w-full">{o.name}</p>
-      <p className="mkt-num text-3xl font-black leading-tight" style={{ color }} dir="ltr">{pct(o.price)}</p>
+      <p className="fl-num text-3xl leading-tight" style={{ color }} dir="ltr">{pct(o.price)}</p>
       <div className="h-5 flex items-center gap-1.5">
         {t != null && (
           <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${t > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`} title="ב-48 שעות">
@@ -193,7 +204,7 @@ function Side({ o, color, odds, chip, winner, showTrend }) {
         )}
       </div>
       {odds.status === "open" && chip?.kind === "favourite" && chip.okey === o.okey && (
-        <span className="stat-pill bg-gold/15 text-gold text-[10px] font-bold mt-0.5">פייבוריט</span>
+        <span className="stat-pill bg-gold/15 text-gold text-[10px] font-bold mt-0.5">מובילה בתחזיות</span>
       )}
     </div>
   )
@@ -238,14 +249,14 @@ function Spark({ series, colors }) {
   return (
     <div className="rounded-xl bg-surface-sunken/60 px-2 py-1.5">
       {/* RTL page, but time runs left → right on a chart */}
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-14" dir="ltr" preserveAspectRatio="none" aria-label="תנועת הסיכויים">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-14" dir="ltr" preserveAspectRatio="none" aria-label="תנועת אחוזי התחזיות">
         {pts.mid != null && <line x1={P} x2={W - P} y1={pts.mid} y2={pts.mid} stroke="rgb(var(--fg-faint))" strokeDasharray="3 4" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
         <path d={pts.away} fill="none" stroke={colors.away} strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
         <path d={pts.home} fill="none" stroke={colors.home} strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
         <circle cx={pts.hx} cy={pts.ay} r="3" fill={colors.away} />
         <circle cx={pts.hx} cy={pts.hy} r="3.5" fill={colors.home} />
       </svg>
-      <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">תנועת הסיכויים מאז פתיחת השוק</p>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">תנועת אחוזי התחזיות מאז הפתיחה</p>
     </div>
   )
 }
@@ -253,22 +264,29 @@ function Spark({ series, colors }) {
 function Cta({ odds, traded }) {
   const href = marketHref(odds)
   const link = (label) => (
-    <Link to={href} className="inline-flex items-center gap-1 text-xs font-semibold text-brand dark:text-brand-light hover:text-brand-hover shrink-0">
+    <Link to={href} className="inline-flex items-center gap-1 min-h-11 text-[13px] font-bold text-fg-strong underline-offset-4 hover:underline shrink-0">
       {label} <ChevronLeft className="w-3 h-3" />
     </Link>
   )
-  if (odds.status !== "open") return link("לשוק")
+  if (odds.status !== "open") return link("לסטופר מרקט")
   if (odds.block === "conflict") {
     return (
       <div className="w-full flex items-center justify-between gap-2 text-[12px] text-slate-500 dark:text-slate-400">
         <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 shrink-0" /> משחק שלך או שאת/ה שופט/ת בו, אי אפשר לחזות עליו</span>
-        {link("לצפייה בשוק")}
+        {link("לסטופר מרקט")}
       </div>
     )
   }
-  if (odds.block) return link("לצפייה בשוק")
+  if (odds.block) {
+    return (
+      <div className="w-full flex items-center justify-between gap-2 text-[12px] text-fg-muted">
+        <span>רק שחקנים רשומים מגיל 18 חוזים. כל השאר רואים את האחוזים.</span>
+        {link("לסטופר מרקט")}
+      </div>
+    )
+  }
   return (
-    <Link to={href} className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-gold text-slate-900 hover:brightness-110 transition shadow-sm shrink-0">
+    <Link to={href} className="inline-flex items-center gap-1.5 min-h-11 text-[14px] font-bold px-4 rounded-control bg-fg-strong text-surface hover:brightness-110 transition shadow-sm shrink-0">
       <Coins className="w-4 h-4" /> {traded ? "לחזות את המשחק" : "להיות הראשון לחזות"}
     </Link>
   )

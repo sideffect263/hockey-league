@@ -89,7 +89,7 @@ export default function GameHero({ game, home, away, stage, chip, round, judges 
       </div>
 
       <div className="relative mt-5 sm:mt-6 py-3.5">
-        {!photoUrl && <RinkDrawing strength={0.18} className="absolute inset-0 -z-10 size-full" />}
+        {!photoUrl && <RinkDrawing strength={0.3} className="absolute inset-0 -z-10 size-full opacity-50" />}
         {/* Physical left → right: away, centre, home (home on the RIGHT). */}
         <div dir="ltr" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-6 max-w-3xl mx-auto">
           <div dir="rtl" className="min-w-0 flex justify-center"><TeamColumn team={away} role="חוץ" crest={crest} lost={awayLost} played={played} /></div>

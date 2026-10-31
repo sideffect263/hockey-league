@@ -358,7 +358,7 @@ export default function GameAvailability({ game, myPlayerId, officialTeamIds = [
 
   return (
     <div className="card p-4 space-y-4">
-      <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+      <h3 className="flex items-center gap-2 text-[20px] font-extrabold leading-tight text-fg-strong">
         <CalendarCheck className="w-4 h-4 text-brand" /> זמינות למשחק
       </h3>
 

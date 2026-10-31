@@ -121,7 +121,7 @@ export function BroadcastNote() {
 /** Postponed: what happened and what is kept (reminders stop; sign-ups ask again). */
 export function PostponedCards() {
   return (
-    <>
+    <div id="availability" className="scroll-mt-20 flex flex-col gap-3.5">
       <section aria-label="נדחה" className="fl-card p-4 border-2 border-dashed border-fg-muted/45 flex flex-col gap-2.5">
         <div className="flex items-center gap-3">
           <CalendarMove className="size-[46px] shrink-0" />
@@ -137,7 +137,7 @@ export function PostponedCards() {
       <FLSection title="מה נשמר">
         <p className="text-[13.5px] text-fg-muted">ההרשמות נשארות, עם סימן "נא לאשר שוב".</p>
       </FLSection>
-    </>
+    </div>
   )
 }
 

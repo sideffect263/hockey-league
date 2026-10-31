@@ -462,13 +462,9 @@ export default function GameDetail() {
       <GameAvailability game={game} myPlayerId={myAvailPlayerId} officialTeamIds={officialTeamIds} playerTeamId={playerTeamId} publicView={!!user} nudgeTeamIds={nudgeTeamIds} teamsMap={teamsMap} playersMap={playersMap} />
     </div>
   ) : game.status === "postponed" ? (
-    // Postponed with no new date: nothing to sign up for (game-postpone-reconfirm.sql).
-    <div id="availability" className="fl-card p-4 scroll-mt-20 flex items-center gap-3">
-      <CalendarCheck className="w-6 h-6 shrink-0" />
-      <p className="flex-1 text-[14px] text-fg-strong">
-        המשחק נדחה. מועד חדש יפורסם, ונעדכן בהתראה כשייקבע — אז אפשר יהיה לאשר הגעה.
-      </p>
-    </div>
+    // Postponed: PostponedCards carries #availability and the explanation
+    // (game-postpone-reconfirm.sql: a new date re-asks everyone who said מגיע).
+    null
   ) : game.status === "scheduled" && (!user || hash === "#availability") ? (
     <div id="availability" className="fl-card p-4 scroll-mt-20 flex items-center gap-3 flex-wrap">
       <CalendarCheck className="w-6 h-6 shrink-0" />

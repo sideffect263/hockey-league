@@ -83,7 +83,7 @@ export default function GameMediaUpload({ gameId }) {
   return (
     <section className="card p-4 sm:p-5 space-y-4" aria-labelledby="game-media-upload-title">
       <div>
-        <h2 id="game-media-upload-title" className="flex items-center gap-2 text-base font-extrabold text-fg-strong">
+        <h2 id="game-media-upload-title" className="flex items-center gap-2 text-[20px] font-extrabold leading-tight text-fg-strong">
           <UploadCloud className="w-5 h-5 text-brand" /> העלאת סרטונים ותמונות מהמשחק
         </h2>
         <p className="mt-1 text-xs leading-5 text-fg-muted flex gap-1.5">

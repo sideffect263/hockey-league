@@ -75,7 +75,7 @@ export default function GamePosts({ game, teamsMap, playersMap }) {
 
   return (
     <section aria-labelledby="game-posts-title" className="space-y-3">
-      <h2 id="game-posts-title" className="text-base font-bold text-slate-900 dark:text-white">
+      <h2 id="game-posts-title" className="text-[20px] font-extrabold leading-tight text-fg-strong">
         <button type="button" onClick={toggle} aria-expanded={open} aria-controls="game-posts-list"
           className="w-full flex items-center gap-2 text-right rounded-lg -mx-1 px-1 py-1 hover:bg-surface-sunken transition-colors">
           <Clapperboard className="w-5 h-5 text-brand shrink-0" /> היילייטס ופוסטים מהמשחק
