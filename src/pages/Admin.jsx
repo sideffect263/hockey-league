@@ -68,6 +68,7 @@ import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, 
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { ilDate } from "@/lib/ilTime"
+import { AdminIndex, AdminRail, ToolHeader, ClaimsJump, useAdminCounts } from "@/components/fl/tools/AdminShell"
 
 const tabs = [
   { id: "games", label: "משחקים", icon: Calendar },
@@ -151,18 +152,18 @@ export default function Admin() {
   const [searchParams, setSearchParams] = useSearchParams()
   // ?tab=readiness predates the התראות tab that absorbed it — keep old links landing.
   const requestedTab = searchParams.get('tab') === 'readiness' ? 'notifications' : searchParams.get('tab')
-  const [activeTab, setActiveTab] = useState(requestedTab || firstTabId)
-  // React to the param changing after mount too (clicking a second notification while
-  // already on /admin) — but only when it names a tab this role can actually see.
-  useEffect(() => {
-    if (requestedTab && visibleTabs.some(t => t.id === requestedTab)) setActiveTab(requestedTab)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestedTab, visibleTabs.length])
+  // Floodlight (board Manage): /admin with no ?tab is the INDEX (summary + tool tiles);
+  // ?tab=<id> opens that tool. The URL is the state, so a notification link still lands
+  // on its tool and the phone's back button returns to the index.
   // Auth may still be loading when this mounts (e.g. the OAuth redirect lands on
-  // /admin), so roles can arrive after the initial render. Derive the tab actually
-  // shown: if the stored one isn't visible for this role, fall back to the first
-  // visible one — keeps a coach off the (hidden) games tab and an admin on games.
-  const currentTab = visibleTabs.some(t => t.id === activeTab) ? activeTab : firstTabId
+  // /admin), so roles can arrive after the initial render: a tab this role can't see
+  // falls back to the index rather than to a tool.
+  const currentTab = requestedTab && visibleTabs.some(t => t.id === requestedTab) ? requestedTab : null
+  const openTab = (id) => {
+    setSearchParams(id ? { tab: id } : {})
+    window.scrollTo({ top: 0 })
+  }
+  void firstTabId
   const [teams, setTeams] = useState([])
   const [players, setPlayers] = useState([])
   const [games, setGames] = useState([])
@@ -188,6 +189,9 @@ export default function Admin() {
     if (!authLoading && (!user || !canManage)) return
     loadData()
   }, [authLoading, user, isAdmin, coachTeamIds.length, isJudgeRole])
+  // Open-item badges for the index / rail (same pending reads the queues make).
+  const counts = useAdminCounts({ enabled: !authLoading && !!user && canManage, manager: isAdmin || isLeagueManager,
+    coachTeamIds: coachScoped ? coachTeamIds : null, reloadKey: currentTab ? 0 : 1 })
 
   const loadData = async () => {
     try {
@@ -211,49 +215,47 @@ export default function Admin() {
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const { byTeam: membersByTeam, byPlayer: membersByPlayer } = buildMemberMaps(playerTeams, players)
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="page-title flex items-center gap-2.5">
-              <BrandTile name="manage" className="w-10 h-10 -my-1.5" /> ניהול
-            </h1>
-            <p className="page-subtitle mt-1 truncate">מחובר כ-{user.email}</p>
-          </div>
-          <button onClick={() => { signOut(); navigate('/') }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shrink-0 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
-            <LogOut className="w-4 h-4" /> התנתק
-          </button>
-        </div>
-      </motion.div>
+  const roleName = isAdmin ? "מנהל" : isLeagueManager ? "מנהלת ליגה" : isCoach ? "מאמן" : isJudgeRole ? "שופט" : ""
+  const tabObj = visibleTabs.find(t => t.id === currentTab)
+  // A coach-only account: his games list is read-only and his tournaments tab is requests;
+  // medical / suspensions / notifications are READ views of his squad (see scopedTabIds).
+  const coachOnly = !isAdmin && !isLeagueManager && !isJudgeRole && isCoach
+  const subs = coachOnly ? { games: "המשחקים של הקבוצה", tournaments: "בקשות טורניר של הקבוצה" }
+    : (!isAdmin && !isLeagueManager && isJudgeRole) ? { games: "משחקי העונה" } : {}
+  const viewOnly = new Set(coachScoped ? ["medical", "suspensions", "notifications"] : [])
+  const indexView = (
+    <AdminIndex tabs={visibleTabs} counts={counts} onOpen={openTab} subs={subs} viewOnly={viewOnly}>
+      <div className="flex justify-center pt-2">
+        <button onClick={() => { signOut(); navigate('/') }}
+          className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-control text-sm font-semibold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+          <LogOut className="w-4 h-4" aria-hidden="true" /> התנתק
+        </button>
+      </div>
+    </AdminIndex>
+  )
 
-      {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
-      <div className="lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 lg:items-start">
-        <aside className="lg:sticky lg:top-20 self-start mb-4 lg:mb-0">
-          {/* The rail is sticky, so on desktop it must cap its own height and scroll —
-              with this many tabs it previously ran straight off the bottom of the
-              viewport and the last few were unreachable. The scrollbar is hidden on
-              mobile (a horizontal strip) but shown on desktop, so it's discoverable. */}
-          <nav className="card p-2 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto lg:max-h-[calc(100vh-7rem)] [scrollbar-width:none] lg:[scrollbar-width:thin] [&::-webkit-scrollbar]:hidden lg:[&::-webkit-scrollbar]:block lg:[&::-webkit-scrollbar]:w-1.5 lg:[&::-webkit-scrollbar-thumb]:rounded-full lg:[&::-webkit-scrollbar-thumb]:bg-slate-300 dark:lg:[&::-webkit-scrollbar-thumb]:bg-slate-600">
-            {visibleTabs.map(tab => {
-              const active = currentTab === tab.id
-              return (
-                <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSearchParams(tab.id === firstTabId ? {} : { tab: tab.id }, { replace: true }) }}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shrink-0 lg:w-full ${
-                    active
-                      ? "bg-brand text-white shadow-sm shadow-brand/25"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-                  }`}>
-                  <tab.icon className="w-4 h-4 shrink-0" />
-                  <span>{tab.label}</span>
-                </button>
-              )
-            })}
-          </nav>
+  return (
+    <div className="px-4 py-5 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      <header className={`mb-5 ${currentTab ? "hidden lg:block" : ""}`}>
+        <h1 className="text-[34px] sm:text-[40px] font-extrabold leading-none text-fg-strong">ניהול</h1>
+        <p className="text-[14px] text-fg-muted mt-2 truncate">
+          {roleName}{roleName && " · "}<span className="fl-num">{visibleTabs.length}</span> כלים
+          {coachScoped && " · רק הסגל שלך, השאר מנוהל ע״י הליגה"}
+          <span className="hidden sm:inline"> · {user.email}</span>
+        </p>
+      </header>
+
+      {/* Desktop: side rail (right, RTL) + content. Phone: index tiles → tool page with a back link. */}
+      <div className="lg:grid lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+        <aside className="hidden lg:block lg:sticky lg:top-20 self-start">
+          <AdminRail tabs={visibleTabs} counts={counts} current={currentTab} onOpen={openTab} />
         </aside>
 
         <div className="min-w-0">
+          {!currentTab ? indexView : (
+          <>
+          <ToolHeader tab={tabObj} onBack={() => openTab(null)} sub={subs[currentTab]} />
+          {currentTab === "claims" && <ClaimsJump by={counts.claimsBy} manager={isAdmin || isLeagueManager} />}
           {loading ? (
             <AdminPanelSkeleton />
           ) : (
@@ -297,6 +299,8 @@ export default function Admin() {
               {currentTab === "roles" && <RolesAdmin teamsMap={teamsMap} players={players} />}
               {currentTab === "users" && <UsersAdmin adminUsers={adminUsers} currentUserEmail={user.email} reload={loadData} />}
             </>
+          )}
+          </>
           )}
         </div>
       </div>

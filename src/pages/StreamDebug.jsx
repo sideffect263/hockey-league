@@ -147,12 +147,12 @@ export default function StreamDebug() {
   const verdict = buildVerdict(report)
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5">
-          <Stethoscope className="w-7 h-7 text-brand" /> אבחון שידור
+    <div className="px-4 py-5 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <h1 className="text-[34px] sm:text-[40px] font-extrabold leading-none text-fg-strong flex items-center gap-2.5">
+          <Stethoscope className="w-8 h-8" aria-hidden="true" /> אבחון שידור
         </h1>
-        <p className="page-subtitle mt-1">
+        <p className="text-[14px] text-fg-muted mt-2">
           הריצו את הבדיקות <b>על המכשיר שלא מצליח לצפות</b> — התוצאה מצביעה על השלב שנכשל.
         </p>
       </motion.div>

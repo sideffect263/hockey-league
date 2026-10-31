@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
 import { motion } from "framer-motion"
 import { Images, FolderPlus, Send, ExternalLink, RefreshCw, Loader2, Check, BookOpen, Upload, PenSquare, Instagram } from "lucide-react"
-import { Report as Flag, Declined as Ban, Film as Clapperboard, Clock, BrandTile } from "@/components/icons/BrandIcons"
+import { Report as Flag, Declined as Ban, Film as Clapperboard, Clock } from "@/components/icons/BrandIcons"
 import { Edit as EditIcon } from "@/components/icons/HockeyIcons"
 import ReportsReview from "@/components/admin/ReportsReview"
 import { submitAlbum, getAlbumSubmissions } from "@/lib/albums"
@@ -66,34 +66,33 @@ function CreatorsWorkspace() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5">
-          <BrandTile name="edit" className="w-10 h-10 -my-1.5" /> יוצרי תוכן
-        </h1>
-        <p className="page-subtitle mt-1">פוסט חדש, סטודיו, סיפורי משחקים, העלאת וידאו, דיווחים, אלבומים וחיבור אינסטגרם</p>
-      </motion.div>
+    <div className="px-4 py-5 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5">
+      <header>
+        <h1 className="text-[34px] sm:text-[40px] font-extrabold leading-none text-fg-strong">יוצרי תוכן</h1>
+        <p className="text-[14px] text-fg-muted mt-2">פוסט חדש, סטודיו, סיפורי משחקים, העלאת וידאו, דיווחים, אלבומים וחיבור אינסטגרם</p>
+      </header>
 
       {/* Side-nav layout: vertical rail (right in RTL) on desktop, scrollable row on mobile */}
-      <div className="lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      <div className="lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6 lg:items-start">
         <aside className="lg:sticky lg:top-20 self-start mb-4 lg:mb-0">
           <nav className="card p-2 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {tabs.map(tab => {
               const active = activeTab === tab.id
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shrink-0 lg:w-full ${
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 lg:w-full ${
                     active
-                      ? "bg-brand text-white shadow-sm shadow-brand/25"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                      ? "bg-brand text-brand-fg"
+                      : "text-fg-muted hover:bg-surface-sunken hover:text-fg-strong"
                   }`}>
                   <tab.icon className="w-4 h-4 shrink-0" />
                   <span>{tab.label}</span>
                   {tab.id === "stories" && storyCount > 0 && (
-                    <span className={`ms-auto text-[11px] font-bold px-1.5 rounded-full ${active ? "bg-white/25" : "bg-brand/10 text-brand"}`}>{storyCount}</span>
+                    <span className="ms-auto min-w-[20px] h-5 px-1.5 rounded-full bg-[#E0362C] text-white fl-num text-[11px] inline-flex items-center justify-center">{storyCount}</span>
                   )}
                   {tab.id === "drafts" && draftCount > 0 && (
-                    <span className={`ms-auto text-[11px] font-bold px-1.5 rounded-full ${active ? "bg-white/25" : "bg-brand/10 text-brand"}`}>{draftCount}</span>
+                    <span className="ms-auto min-w-[20px] h-5 px-1.5 rounded-full bg-[#E0362C] text-white fl-num text-[11px] inline-flex items-center justify-center">{draftCount}</span>
                   )}
                 </button>
               )

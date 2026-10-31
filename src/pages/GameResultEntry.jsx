@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Sparkle as Sparkles, Warning as AlertTriangle, ApprovedStatus as CheckCircle2, EditIcon as PencilLine } from "@/components/icons/BrandIcons"
+import { GoalIcon as Ball, BlueCard, RedCard, Sparkle as Sparkles, Warning as AlertTriangle, ApprovedStatus as CheckCircle2, EditIcon as PencilLine, BrandIcon } from "@/components/icons/BrandIcons"
 import { useParams, Link } from "react-router-dom"
 import { format } from "date-fns"
 import { ArrowRight, Camera, ImagePlus, X, Loader2, Minus, Plus, RefreshCw, FileImage, ChevronDown } from "lucide-react"
@@ -7,6 +7,7 @@ import { getGameById, getTeams } from "@/lib/api"
 import { useAuth } from "@/lib/AuthContext"
 import { useSlugId, entityPath } from "@/lib/slugs"
 import TeamLogo from "@/components/TeamLogo"
+import { TeamBlend, CrestDisc } from "@/components/fl/Floodlight"
 import { JudgeGameSkeleton } from "@/components/skeletons/PageSkeletons"
 import {
   canEnterResults, isAwaitingResult, submitGameForm, getOpenSubmission, signFormPhotos,
@@ -39,13 +40,13 @@ function Stepper({ value, onChange, max, tone = "slate", label }) {
   return (
     <div className="inline-flex items-center gap-0.5" aria-label={label}>
       <button type="button" onClick={() => onChange(Math.max(0, value - 1))} disabled={value <= 0}
-        className="w-7 h-7 rounded-lg flex items-center justify-center text-fg-muted hover:bg-surface-sunken disabled:opacity-30" aria-label={`הפחת ${label}`}>
-        <Minus className="w-3.5 h-3.5" />
+        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-fg-strong hover:bg-surface-sunken disabled:opacity-30" aria-label={`הפחת ${label}`}>
+        <Minus className="w-4 h-4" strokeWidth={3} />
       </button>
-      <span className={`w-6 text-center text-sm font-black tabular-nums ${value > 0 ? tones[tone] : "text-slate-300 dark:text-slate-600"}`}>{value}</span>
+      <span className={`w-5 text-center text-[17px] fl-num ${value > 0 ? tones[tone] : "text-fg-muted/50"}`}>{value}</span>
       <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}
-        className="w-7 h-7 rounded-lg flex items-center justify-center text-fg-muted hover:bg-surface-sunken disabled:opacity-30" aria-label={`הוסף ${label}`}>
-        <Plus className="w-3.5 h-3.5" />
+        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-fg-strong hover:bg-surface-sunken disabled:opacity-30" aria-label={`הוסף ${label}`}>
+        <Plus className="w-4 h-4" strokeWidth={3} />
       </button>
     </div>
   )
@@ -54,8 +55,8 @@ function Stepper({ value, onChange, max, tone = "slate", label }) {
 // The icon labels a counter on phones, where the column header is hidden.
 function StatCell({ icon, children }) {
   return (
-    <div className="flex items-center justify-center gap-0.5">
-      <span className="sm:hidden text-xs" aria-hidden="true">{icon}</span>
+    <div className="flex flex-col sm:flex-row items-center justify-center">
+      <span className="sm:hidden text-xs leading-none" aria-hidden="true">{icon}</span>
       {children}
     </div>
   )
@@ -65,7 +66,7 @@ function ScoreInput({ value, onChange, label }) {
   return (
     <input type="number" inputMode="numeric" min={0} max={50} aria-label={label}
       value={value ?? ""} onChange={e => onChange(e.target.value === "" ? null : Math.max(0, Math.min(50, parseInt(e.target.value, 10) || 0)))}
-      className="w-16 h-14 text-center text-3xl stat-num rounded-xl border border-line-strong bg-surface focus:outline-none focus:ring-2 focus:ring-brand" />
+      className="w-20 h-16 text-center text-[40px] fl-num rounded-control border border-line-strong bg-surface focus:outline-none focus:ring-2 focus:ring-fl-accent" />
   )
 }
 
@@ -91,6 +92,15 @@ function UploadStep({ onSubmit, onManual, busy, error }) {
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { add(e.target.files); e.target.value = "" }} />
       <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { add(e.target.files); e.target.value = "" }} />
 
+      {files.length === 0 && (
+        <button type="button" onClick={() => cameraRef.current?.click()} disabled={busy}
+          className="w-full rounded-card border-2 border-dashed border-line-strong bg-surface-sunken/40 hover:bg-surface-sunken py-10 px-4 flex flex-col items-center gap-3 text-center transition-colors">
+          <BrandIcon name="game-form" variant="large" className="w-16 h-16" />
+          <span className="text-[18px] font-extrabold text-fg-strong">צילום הטופס</span>
+          <span className="text-[13px] text-fg-muted max-w-xs">הטופס כולו בפריים, על שולחן, באור טוב. אפשר כמה צילומים.</span>
+        </button>
+      )}
+
       {files.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {previews.map((u, i) => (
@@ -102,14 +112,22 @@ function UploadStep({ onSubmit, onManual, busy, error }) {
               </button>
             </div>
           ))}
+          {files.length < 4 && (
+            <button type="button" onClick={() => cameraRef.current?.click()} disabled={busy}
+              className="aspect-[3/4] rounded-xl border-2 border-dashed border-line-strong text-fg-muted text-[13px] font-bold flex items-center justify-center gap-1 hover:bg-surface-sunken">
+              <Plus className="w-4 h-4" /> צילום נוסף
+            </button>
+          )}
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => cameraRef.current?.click()} className="btn-primary" disabled={busy || files.length >= 4}>
-          <Camera className="w-4 h-4" /> {files.length ? "צילום נוסף" : "צילום הטופס"}
-        </button>
-        <button type="button" onClick={() => galleryRef.current?.click()} className="btn-secondary" disabled={busy || files.length >= 4}>
+        {files.length > 0 && (
+          <button type="button" onClick={() => cameraRef.current?.click()} className="btn-primary min-h-[44px]" disabled={busy || files.length >= 4}>
+            <Camera className="w-4 h-4" /> צילום נוסף
+          </button>
+        )}
+        <button type="button" onClick={() => galleryRef.current?.click()} className="btn-secondary min-h-[44px]" disabled={busy || files.length >= 4}>
           <ImagePlus className="w-4 h-4" /> בחירה מהגלריה
         </button>
       </div>
@@ -235,16 +253,16 @@ function TeamSection({ team, side, roster, state, setRow, own, setOwn, score, un
 
       <div className="divide-y divide-line">
         <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-x-1 px-4 py-1.5 text-[10px] font-bold text-fg-muted">
-          <span>שחקן</span><span className="w-[4.5rem] text-center">שערים</span><span className="w-[4.5rem] text-center">כחול</span><span className="w-[4.5rem] text-center">אדום</span>
+          <span>שחקן</span><span className="w-[6.75rem] text-center">שערים</span><span className="w-[6.75rem] text-center">כחול</span><span className="w-[6.75rem] text-center">אדום</span>
         </div>
         {visible.map(p => {
           const r = state.rows[p.id]
           const ai = state.fromAi[p.id]
           const low = ai && ai.confidence !== "high"
           return (
-            <div key={p.id} className={`px-4 py-1.5 ${low ? "bg-amber-50/70 dark:bg-amber-950/20" : ai ? "bg-sky-50/60 dark:bg-sky-950/20" : ""}`}>
+            <div key={p.id} className={`px-3 sm:px-4 py-1.5 ${low ? "bg-amber-50/70 dark:bg-amber-950/20" : ai ? "bg-sky-50/60 dark:bg-sky-950/20" : ""}`}>
               {/* Phones: name on its own line, the three counters under it. sm+: one row. */}
-              <div className="grid grid-cols-3 sm:grid-cols-[1fr_auto_auto_auto] gap-x-1 gap-y-0.5 items-center">
+              <div className="grid grid-cols-3 sm:grid-cols-[1fr_auto_auto_auto] sm:gap-x-1 gap-y-0.5 items-center">
                 <div className="min-w-0 col-span-3 sm:col-span-1">
                   <p className="text-sm font-semibold text-fg-strong truncate">
                     {p.jersey_number != null && <span className="text-fg-muted font-bold tabular-nums me-1.5">{p.jersey_number}</span>}
@@ -498,12 +516,17 @@ export default function GameResultEntry() {
   if (loading || auth.loading) return <JudgeGameSkeleton />
 
   const back = (
-    <Link to={game ? entityPath("games", game) || `/games/${id}` : "/games"} className="inline-flex items-center gap-1.5 text-sm font-semibold text-fg-muted hover:text-fg-strong">
-      <ArrowRight className="w-4 h-4" /> חזרה למשחק
-    </Link>
+    <div className="flex items-center justify-between gap-3">
+      <Link to="/results" className="inline-flex items-center gap-1 min-h-[44px] text-[15px] font-bold text-fg-muted hover:text-fg-strong">
+        <ArrowRight className="w-4 h-4" aria-hidden="true" /> הזנת תוצאות
+      </Link>
+      <Link to={game ? entityPath("games", game) || `/games/${id}` : "/games"} className="inline-flex items-center min-h-[44px] text-[13px] font-semibold text-fg-muted hover:text-fg-strong">
+        לעמוד המשחק
+      </Link>
+    </div>
   )
 
-  const shell = (children) => <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">{back}{children}</div>
+  const shell = (children) => <div className="px-4 py-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">{back}{children}</div>
 
   if (!allowed) return shell(<div className="card p-6 text-center text-sm text-fg-muted">הזנת תוצאה מטופס שיפוט פתוחה לשופטים ולמנהלי הליגה בלבד.</div>)
   if (loadError || !game) return shell(<div className="card p-6 text-center text-sm text-red-600">{loadError || "המשחק לא נמצא"}</div>)
@@ -512,11 +535,19 @@ export default function GameResultEntry() {
   const away = teams.find(t => t.id === game.away_team_id)
 
   const header = (
-    <div className="space-y-1">
-      <h1 className="page-title !text-2xl sm:!text-3xl">הזנת תוצאה מטופס שיפוט</h1>
-      <p className="text-sm text-fg-muted">
-        {home?.name} נגד {away?.name} · <span dir="ltr">{format(ilDate(game.game_date), "dd.MM.yyyy HH:mm")}</span>{game.venue ? ` · ${game.venue}` : ""}
-      </p>
+    <div className="space-y-3">
+      <h1 className="text-[28px] sm:text-[34px] font-extrabold leading-none text-fg-strong">טופס השיפוט</h1>
+      {/* home on the RIGHT, team-colour blend like every game surface */}
+      <TeamBlend home={home} away={away} className="rounded-card px-4 py-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+          <span className="flex flex-col items-center gap-1 min-w-0 text-center"><CrestDisc team={home} size={40} /><span className="font-extrabold text-[14px] leading-tight line-clamp-2">{home?.name}</span></span>
+          <span className="flex flex-col items-center text-[12px] text-white/80 leading-tight">
+            <span dir="ltr" className="fl-num text-[15px] text-white">{format(ilDate(game.game_date), "d.M · HH:mm")}</span>
+            {game.venue && <span className="truncate max-w-[8rem]">{game.venue}</span>}
+          </span>
+          <span className="flex flex-col items-center gap-1 min-w-0 text-center"><CrestDisc team={away} size={40} /><span className="font-extrabold text-[14px] leading-tight line-clamp-2">{away?.name}</span></span>
+        </div>
+      </TeamBlend>
     </div>
   )
 

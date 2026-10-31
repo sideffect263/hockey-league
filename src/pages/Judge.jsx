@@ -5,10 +5,9 @@ import { getAvailabilityForOfficialBatch } from "@/lib/availability"
 import { getMyApprovedGameIds } from "@/lib/officials"
 import { useAuth } from "@/lib/AuthContext"
 import { RefreshCw, ChevronLeft } from "lucide-react"
-import { Warning as AlertTriangle, Calendar, MapPin, Clock, Squad, BrandTile } from "@/components/icons/BrandIcons"
-import { motion } from "framer-motion"
+import { Warning as AlertTriangle, Calendar, MapPin, Squad, Gavel } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
-import TeamLogo from "@/components/TeamLogo"
+import { CrestDisc, TeamBlend, FLChip } from "@/components/fl/Floodlight"
 import JudgeGate from "@/components/judge/JudgeGate"
 import { JudgeSkeleton } from "@/components/skeletons/PageSkeletons"
 import { ilDate } from "@/lib/ilTime"
@@ -54,10 +53,11 @@ function JudgePicker() {
   if (error) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-        <div className="card p-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
-          <span className="text-red-700 dark:text-red-400 text-sm font-medium">{error}</span>
-          <button onClick={loadData} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" /> נסה שוב
+        <div className="card p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
+          <AlertTriangle className="w-10 h-10" />
+          <span className="text-fg-strong text-base font-bold">{error}</span>
+          <button onClick={loadData} className="btn-primary min-h-[44px] inline-flex items-center gap-1.5">
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> נסה שוב
           </button>
         </div>
       </div>
@@ -83,74 +83,137 @@ function JudgePicker() {
     const coming = players.filter(p => sideOf(p) === tid && avail[p.id]?.status === "available")
     return { count: coming.length, gk: coming.some(p => p.position === "Goalkeeper"), tooFew: coming.length < 4 }
   }
-  const AttChip = ({ att }) => (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded ${att.tooFew ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"}`}>
-      <Squad className="w-4 h-4" /> {att.count}{!att.gk && <AlertTriangle className="w-4 h-4 text-red-500" />}
-    </span>
-  )
+
+  // Board JudgeGames: games grouped by game day (big date, day name, venues), the next
+  // game as a team-colour hero, the rest as rows.
+  const days = []
+  for (const g of officiable) {
+    const key = format(ilDate(g.game_date), "yyyy-MM-dd")
+    let d = days.find(x => x.key === key)
+    if (!d) { d = { key, date: ilDate(g.game_date), games: [] }; days.push(d) }
+    d.games.push(g)
+  }
+  const nextId = officiable[0]?.id
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5">
-          <BrandTile name="referee" className="w-10 h-10 -my-1.5" /> שיפוט משחקים
-        </h1>
-        <p className="page-subtitle mt-1">בחר/י משחק כדי לנהל תוצאה וסטטיסטיקות בזמן אמת</p>
-      </motion.div>
+    <div className="px-4 py-5 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
+      <header>
+        <h1 className="text-[34px] sm:text-[40px] font-extrabold leading-none text-fg-strong">שיפוט משחק</h1>
+        <p className="text-[14px] text-fg-muted mt-2">יופיעו כאן רק משחקים שאושרת לשפוט בהם{isAdmin ? " · מנהל רואה את כל המשחקים" : ""}</p>
+      </header>
 
       {officiable.length === 0 ? (
         <div className="card p-10 text-center">
-          <Calendar className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">אין משחקים זמינים לשיפוט</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">משחקים מתוכננים או פעילים יופיעו כאן</p>
+          <Calendar className="w-10 h-10 mx-auto mb-2 opacity-60" />
+          <p className="text-[15px] font-bold text-fg-strong">אין משחקים זמינים לשיפוט</p>
+          <p className="text-[13px] text-fg-muted mt-1">משחקים שאושרת לשפוט בהם יופיעו כאן</p>
         </div>
-      ) : (
-        <div className="grid gap-3">
-          {officiable.map((game, i) => {
-            const home = teamsMap[game.home_team_id]
-            const away = teamsMap[game.away_team_id]
-            const st = statusCfg[game.status] || statusCfg.scheduled
-            return (
-              <motion.div key={game.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-                <Link to={`/judge/${game.id}`} className="card-hover p-4 sm:p-5 block">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={`stat-pill ${st.cls}`}>{st.label}</span>
-                    {game.game_type && game.game_type !== 'ליגה' && (
-                      <span className="stat-pill bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">{game.game_type}</span>
-                    )}
+      ) : days.map(day => {
+        const venues = [...new Set(day.games.map(g => g.venue).filter(Boolean))]
+        return (
+          <section key={day.key} className="space-y-3" aria-label={format(day.date, "d.M")}>
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[15px] font-extrabold text-fg-strong">{dayName(day.date)}</div>
+                {venues.length > 0 && <div className="text-[13px] text-fg-muted truncate">{venues.join(" + ")}</div>}
+              </div>
+              <span dir="ltr" className="fl-num text-[34px] leading-none text-fg-strong shrink-0">{format(day.date, "d.M")}</span>
+            </div>
+            {day.games.map(game => {
+              const home = teamsMap[game.home_team_id]
+              const away = teamsMap[game.away_team_id]
+              const st = statusCfg[game.status] || statusCfg.scheduled
+              const time = format(ilDate(game.game_date), "HH:mm")
+              const homeAtt = game.status === "scheduled" ? teamAtt(game, game.home_team_id) : null
+              const awayAtt = game.status === "scheduled" ? teamAtt(game, game.away_team_id) : null
+              if (game.id === nextId) {
+                return (
+                  <TeamBlend key={game.id} as={Link} to={`/judge/${game.id}`} home={home} away={away}
+                    className="block rounded-card p-4 sm:p-5 fl-fade-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fl-accent">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        <FLChip tone="glass">הבא שלך · {st.label}</FLChip>
+                        {game.game_type && game.game_type !== 'ליגה' && <FLChip tone="glass">{game.game_type}</FLChip>}
+                      </span>
+                      <span dir="ltr" className="fl-num text-[30px] leading-none">{time}</span>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 mt-4">
+                      <HeroSide team={home} att={homeAtt} />
+                      <span className="text-[15px] font-bold text-white/70">נגד</span>
+                      <HeroSide team={away} att={awayAtt} />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+                      <span className="flex items-center gap-1.5 text-[13px] text-white/80 min-w-0"><MapPin className="w-4 h-4" /><span className="truncate">{game.venue || '—'}</span></span>
+                      <span className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-control bg-[#FAF9F6] text-[#11161D] text-[15px] font-extrabold">
+                        <Gavel className="w-5 h-5" /> פתח לוח שיפוט
+                      </span>
+                    </div>
+                  </TeamBlend>
+                )
+              }
+              return (
+                <Link key={game.id} to={`/judge/${game.id}`} className="card-hover flex items-center gap-3 p-3.5 sm:p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-fl-accent">
+                  <span className="flex flex-col items-start gap-1.5 shrink-0 w-[3.9rem] sm:w-[4.4rem]">
+                    <span dir="ltr" className="fl-num text-[20px] sm:text-[22px] leading-none text-fg-strong">{time}</span>
+                    <span className={`stat-pill !px-1.5 ${st.cls}`}>{st.label}</span>
+                  </span>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <RowSide team={home} att={homeAtt} />
+                    <RowSide team={away} att={awayAtt} />
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <TeamLogo team={home} size={10} />
-                      <span className="font-bold text-sm text-slate-900 dark:text-white truncate">{home?.name || '—'}</span>
-                    </div>
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">נגד</span>
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0 flex-row-reverse">
-                      <TeamLogo team={away} size={10} />
-                      <span className="font-bold text-sm text-slate-900 dark:text-white truncate text-left">{away?.name || '—'}</span>
-                    </div>
-                  </div>
-                  {game.status === "scheduled" && (
-                    <div className="flex items-center justify-between gap-2 mt-2.5">
-                      <AttChip att={teamAtt(game, game.home_team_id)} />
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400">מגיעים</span>
-                      <AttChip att={teamAtt(game, game.away_team_id)} />
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                    <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(ilDate(game.game_date), "d/M/yyyy")}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(ilDate(game.game_date), "HH:mm")}</span>
-                    <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{game.venue || '—'}</span>
-                    <span className="mr-auto flex items-center gap-1 font-semibold text-brand dark:text-brand-light">
-                      פתח לוח שיפוט <ChevronLeft className="w-3.5 h-3.5" />
-                    </span>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    {game.game_type && game.game_type !== 'ליגה' && <span className="stat-pill bg-surface-sunken text-fg-muted">{game.game_type}</span>}
+                    <span className="inline-flex items-center justify-center gap-0.5 min-h-[32px] min-w-[32px] px-2 sm:px-3 rounded-full bg-brand text-brand-fg text-[12px] font-extrabold"><span className="hidden sm:inline">לוח שיפוט</span> <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" /></span>
                   </div>
                 </Link>
-              </motion.div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+const DAYS_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
+function dayName(d) {
+  const today = ilDate(new Date())
+  const key = (x) => format(x, "yyyy-MM-dd")
+  const tomorrow = new Date(today.getTime() + 86400000)
+  const prefix = key(d) === key(today) ? "היום · " : key(d) === key(tomorrow) ? "מחר · " : "יום "
+  return `${prefix}${DAYS_HE[d.getDay()]}`
+}
+
+/** Attendance readiness: how many said "מגיע", amber under 4, a warning when no goalkeeper. */
+function AttChip({ att, onBlend = false, compact = false }) {
+  if (!att) return null
+  const cls = onBlend
+    ? (att.tooFew ? "bg-amber-300/90 text-[#3A2A00]" : "bg-white/15 text-white")
+    : (att.tooFew ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300")
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}
+      aria-label={`מגיעים ${att.count}${att.gk ? "" : ", אין שוער"}`}>
+      <Squad className="w-4 h-4" /> {!compact && "מגיעים "}<span className="fl-num">{att.count}</span>{!att.gk && <AlertTriangle className="w-4 h-4" />}
+    </span>
+  )
+}
+
+function HeroSide({ team, att }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5 min-w-0 text-center">
+      <CrestDisc team={team} size={56} />
+      <span className="text-[15px] font-extrabold leading-tight line-clamp-2">{team?.name || '—'}</span>
+      <AttChip att={att} onBlend />
+    </div>
+  )
+}
+
+function RowSide({ team, att }) {
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <CrestDisc team={team} size={28} />
+      <span className="text-[14px] font-bold text-fg-strong truncate min-w-0 flex-1">{team?.name || '—'}</span>
+      <AttChip att={att} compact />
     </div>
   )
 }
