@@ -6,6 +6,7 @@ import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
 import { getTeams } from "@/lib/api"
 import TeamLogo from "@/components/TeamLogo"
+import { TeamBlend, FLScore } from "@/components/fl/Floodlight"
 import { useAuth } from "@/lib/AuthContext"
 import { loadYouTubeApi } from "@/lib/youtubeApi"
 import { getMyVotes, getVoteCounts, saveVote, addMissed } from "@/lib/matchStats"
@@ -72,7 +73,12 @@ export default function MatchStats() {
   }
 
   if (idLoading || loading) {
-    return <div className="max-w-5xl mx-auto px-4 py-10 text-center text-fg-muted">טוען…</div>
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-5 space-y-4" aria-busy="true" aria-label="טוען">
+        <div className="h-48 rounded-[26px] bg-surface-sunken animate-none" />
+        <div className="h-64 rounded-card bg-surface-sunken" />
+      </div>
+    )
   }
   if (!data) {
     return (
@@ -91,7 +97,7 @@ export default function MatchStats() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-5 space-y-4">
-      <Link to={`/games/${param}`} className="inline-flex items-center gap-1 text-sm text-fg-muted hover:text-brand">
+      <Link to={`/games/${param}`} className="inline-flex items-center gap-1 min-h-11 text-[14px] font-semibold text-fg-strong hover:underline">
         <ArrowRight className="w-4 h-4" /> לעמוד המשחק
       </Link>
 
@@ -124,13 +130,13 @@ export default function MatchStats() {
 
 function Card({ title, icon: Icon, subtitle, right, children, className = "" }) {
   return (
-    <section className={`card p-4 sm:p-5 ${className}`}>
+    <section className={`fl-card p-4 sm:p-5 ${className}`}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-            {Icon && <Icon className="w-4 h-4 text-brand" />} {title}
+          <h2 className="flex items-center gap-2 text-[20px] sm:text-[22px] font-extrabold leading-tight text-fg-strong">
+            {Icon && <Icon className="w-5 h-5" aria-hidden="true" />} {title}
           </h2>
-          {subtitle && <p className="text-[11px] text-fg-muted mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-[12px] text-fg-muted mt-1">{subtitle}</p>}
         </div>
         {right}
       </div>
@@ -146,11 +152,11 @@ function Chip({ grade: g }) {
 
 function Seg({ options, value, onChange }) {
   return (
-    <div className="flex flex-wrap rounded-lg bg-slate-100 dark:bg-slate-700/50 p-0.5 gap-0.5">
+    <div className="flex flex-wrap rounded-control bg-surface-sunken p-[3px] gap-0.5">
       {options.map((o) => (
         <button key={o.key} type="button" onClick={() => onChange(o.key)} aria-pressed={value === o.key}
-          className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
-            value === o.key ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
+          className={`min-h-11 px-3 text-[13px] rounded-[10px] transition-colors ${
+            value === o.key ? "bg-surface text-fg-strong font-semibold shadow-sm" : "text-fg-muted font-medium"}`}>
           {o.label}
         </button>
       ))}
@@ -162,31 +168,26 @@ function Scoreboard({ data, home, away }) {
   const { teams, team_stats: ts } = data
   const [rows, setRows] = useState([])
   useEffect(() => { getTeams().then(setRows).catch(() => {}) }, [])
-  const side = (k) => (
-    <Link to={entityPath("teams", teams[k].slug)} className="flex flex-col items-center gap-2 min-w-0">
-      <span className="rounded-full p-1" style={{ boxShadow: `0 0 0 3px ${teams[k].color}` }}>
-        <TeamLogo team={rows.find((t) => t.name === teams[k].name) || { name: teams[k].name }} size={14} />
-      </span>
-      <span className="font-bold text-sm sm:text-base text-center truncate max-w-full">{teams[k].name}</span>
+  const team = (k) => rows.find((t) => t.name === teams[k].name) || { name: teams[k].name, primary_color: teams[k].color }
+  const side = (k, role) => (
+    <Link to={entityPath("teams", teams[k].slug)} className="flex flex-col items-center gap-2 min-w-0 rounded-2xl p-1 hover:bg-white/5">
+      <TeamLogo team={team(k)} px={64} />
+      <span className="font-extrabold text-[16px] sm:text-[20px] text-center leading-tight line-clamp-2 text-white">{teams[k].name}</span>
+      <span className="text-[12px] text-white/75">{role}</span>
     </Link>
   )
   return (
-    <section className="card p-5 overflow-hidden relative">
-      <div className="absolute inset-x-0 top-0 h-1 flex">
-        <div className="flex-1" style={{ background: teams[home].color }} />
-        <div className="flex-1" style={{ background: teams[away].color }} />
-      </div>
-      <p className="text-center text-[11px] font-semibold text-fg-muted mb-3">
-        מרכז המשחק · {data.venue} · {data.date.split("-").reverse().join(".")}
+    <TeamBlend as="section" home={team(home)} away={team(away)} className="rounded-[26px] px-4 pt-4 pb-5">
+      <p className="text-center text-[12px] font-bold text-white/85 mb-3">
+        מרכז המשחק · {data.venue} · <bdi dir="ltr">{data.date.split("-").reverse().join(".")}</bdi>
       </p>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        {side(home)}
-        <div dir="ltr" className="text-4xl sm:text-5xl font-black tabular-nums tracking-tight">
-          {ts[away].goals_scoreboard}<span className="text-fg-muted mx-2">–</span>{ts[home].goals_scoreboard}
-        </div>
-        {side(away)}
+      {/* Physical left → right: away, score, home. */}
+      <div dir="ltr" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+        <div dir="rtl" className="min-w-0 flex justify-center">{side(away, "חוץ")}</div>
+        <FLScore home={ts[home].goals_scoreboard} away={ts[away].goals_scoreboard} size={56} />
+        <div dir="rtl" className="min-w-0 flex justify-center">{side(home, "בית")}</div>
       </div>
-    </section>
+    </TeamBlend>
   )
 }
 
