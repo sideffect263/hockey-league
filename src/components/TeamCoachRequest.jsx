@@ -8,7 +8,7 @@ import { getMyCoachRequest, requestCoachRole, cancelCoachRequest } from "@/lib/c
  * requests the team-scoped coach role. Admin/league-manager approve it in the Admin
  * review queue (which grants the role). Self-contained: tracks its own pending state.
  */
-export default function TeamCoachRequest({ teamId }) {
+export default function TeamCoachRequest({ teamId, tone = "dark" }) {
   const [pending, setPending] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -42,12 +42,12 @@ export default function TeamCoachRequest({ teamId }) {
 
   if (pending) {
     return (
-      <div className="ms-auto self-start shrink-0 flex items-center gap-2">
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+      <div className="shrink-0 flex items-center gap-2">
+        <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${tone === "light" ? "text-[#11161D]" : "text-white/90"}`}>
           <Hourglass className="w-4 h-4" /> בקשת ניהול ממתינה
         </span>
         <button onClick={doCancel} disabled={busy}
-          className="text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50">
+          className={`min-h-[44px] px-2 text-[12px] font-bold underline underline-offset-2 disabled:opacity-50 ${tone === "light" ? "text-[#11161D]" : "text-white"}`}>
           ביטול
         </button>
       </div>
@@ -55,12 +55,12 @@ export default function TeamCoachRequest({ teamId }) {
   }
 
   return (
-    <div className="ms-auto self-start shrink-0 text-end">
+    <div className="shrink-0 text-end">
       <button onClick={doRequest} disabled={busy} title="בקשה להיות מאמן/ת הקבוצה"
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold/[0.15] text-gold ring-1 ring-gold/30 text-xs font-semibold hover:bg-gold/25 transition-colors disabled:opacity-50">
+        className={`inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-control text-[13px] font-bold transition-colors disabled:opacity-50 ${tone === "light" ? "bg-[#11161D]/[0.07] text-[#11161D]" : "bg-[#080C12]/35 text-white"}`}>
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldPlus className="w-4 h-4" />} בקשה לניהול הקבוצה
       </button>
-      {error && <p className="text-[11px] text-red-600 dark:text-red-400 mt-1">{error}</p>}
+      {error && <p className={`text-[12px] font-semibold mt-1 ${tone === "light" ? "text-[#11161D]" : "text-white"}`}>{error}</p>}
     </div>
   )
 }

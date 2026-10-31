@@ -65,8 +65,8 @@ export function FLTHero({ palette, rink = true, className = '', children, style 
       style={{ backgroundImage: heroGradient(palette), color: palette.ink, ...style }}>
       {rink && (
         <RinkDrawing strength={palette.light ? 0.3 : 0.16}
-          className="pointer-events-none absolute inset-x-0 top-24 -z-10 w-full max-h-[70%]"
-          style={{ opacity: palette.light ? 0.45 : 0.4 }} />
+          className="pointer-events-none absolute inset-x-0 top-24 -z-10 mx-auto w-full max-w-[520px] max-h-[70%]"
+          style={{ opacity: palette.light ? 0.28 : 0.3 }} />
       )}
       {palette.light && <span aria-hidden="true" className="absolute inset-x-8 bottom-0 h-px" style={{ background: 'rgba(17,22,29,.08)' }} />}
       {children}

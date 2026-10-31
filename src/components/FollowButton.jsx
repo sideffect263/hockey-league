@@ -73,14 +73,18 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
     finally { setBusy(false) }
   }
 
+  // Floodlight: 44px targets, radius 14. onDark = on a team-colour hero (white glass);
+  // onDark="light" = on a LIGHT team's white hero (קריית מוצקין): ink glass, ink text.
   const sm = size === "sm"
-  const pad = sm ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-xs"
+  const onLight = onDark === "light"
+  const pad = sm ? "min-h-[44px] px-3.5 text-[13px]" : "min-h-[44px] px-4 text-[14px]"
+  const glass = onLight ? "bg-[#11161D]/[0.07] text-[#11161D]" : "bg-[#080C12]/35 text-white"
 
   if (own) {
     return (
       <span title={targetType === "team" ? "את/ה משחק/ת בקבוצה — שחקנים לא נספרים כאוהדים שלה" : "שחקן לא נספר כאוהד של עצמו"}
-        className={`inline-flex items-center gap-1.5 font-bold rounded-xl ${pad} ${
-          onDark ? "bg-white/15 text-white ring-1 ring-white/25" : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200"}`}>
+        className={`inline-flex items-center gap-1.5 font-bold rounded-control ${pad} ${
+          onDark ? glass : "bg-surface-sunken text-fg-strong"}`}>
         <Shirt className="w-4 h-4" />
         {targetType === "team" ? "הקבוצה שלי" : "האוהדים שלך"}
         {showCount && count != null && (
@@ -94,13 +98,13 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
     <div className="inline-flex items-center gap-1.5">
       <button onClick={toggleFollow} disabled={busy || !ready}
         aria-pressed={following}
-        className={`inline-flex items-center gap-1.5 font-bold rounded-xl transition-colors disabled:opacity-50 ${pad} ${
+        className={`inline-flex items-center gap-1.5 font-bold rounded-control transition-colors disabled:opacity-50 ${pad} ${
           onDark
             ? following
-              ? "bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25"
-              : "bg-white text-slate-900 hover:bg-white/90"
+              ? glass
+              : onLight ? "bg-[#11161D] text-white hover:bg-[#11161D]/90" : "bg-white text-[#11161D] hover:bg-white/90"
             : following
-              ? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+              ? "bg-surface-sunken text-fg-strong hover:brightness-95"
               : "bg-brand text-brand-fg hover:bg-brand-hover"
         }`}>
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -117,12 +121,12 @@ export default function FollowButton({ targetType, targetId, size = "md", showCo
           aria-pressed={notify}
           title={notify ? "כיבוי התראות על הקבוצה" : "קבלת התראות על משחקים ואירועים"}
           aria-label={notify ? "כיבוי התראות" : "הפעלת התראות"}
-          className={`inline-flex items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${sm ? "p-1" : "p-1.5"} ${
+          className={`inline-flex items-center justify-center rounded-control size-11 transition-colors disabled:opacity-50 ${
             onDark
-              ? notify ? "bg-white/20 text-white" : "text-white/70 hover:text-white hover:bg-white/15"
+              ? `${glass} ${notify ? "" : "opacity-70 hover:opacity-100"}`
               : notify
-                ? "bg-brand/10 text-brand"
-                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                ? "bg-surface-sunken text-fg-strong"
+                : "text-fg-muted hover:text-fg-strong hover:bg-surface-sunken"
           }`}>
           {notify ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
         </button>
