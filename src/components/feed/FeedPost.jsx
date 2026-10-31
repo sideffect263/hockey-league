@@ -11,6 +11,8 @@ import { setPhotoOverride } from "@/lib/photoOverrides"
 import { parseYouTubeId, youTubeInText, withoutUrl } from "@/lib/video"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import ExperimentalVideo from "@/components/feed/ExperimentalVideo"
+import GameCarousel, { clipSlide } from "@/components/feed/GameCarousel"
+import { WorldPost, CaughtUpLine } from "@/components/feed/WorldPost"
 import ReactionBar from "@/components/feed/ReactionBar"
 import MarketFeedCard from "@/components/feed/MarketFeedCard"
 import ModerationMenu from "@/components/feed/ModerationMenu"
@@ -340,6 +342,9 @@ function TopScorerPost({ post, onPhotoRefreshed, ...rx }) {
 function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx }) {
   const [open, setOpen] = useState(false)
   const { game, home, away, stats } = post.data
+  const slides = post.data.slides || []
+  const milestones = post.data.milestones || []
+  const { fullGame, story } = post.data
   const teamName = (id) => teamsMap[id]?.name || '—'
   const homeWin = game.home_score > game.away_score
   const awayWin = game.away_score > game.home_score
@@ -365,7 +370,7 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
           {game.game_type === FRIENDLY_GAME_TYPE && <span className="stat-pill badge-neutral !py-0.5">ידידותי</span>}
           {game.series_game && <span className="stat-pill badge-info !py-0.5">משחק {game.series_game}</span>}
         </>}
-        meta={<><span>{fmtDate(post.date)}</span>{game.venue && <><span>·</span><span className="inline-flex items-center gap-0.5"><MapPin className="w-4 h-4" />{game.venue}</span></>}</>}
+        meta={<><span>{fmtDate(game.game_date || post.date)}</span>{game.venue && <><span>·</span><span className="inline-flex items-center gap-0.5"><MapPin className="w-4 h-4" />{game.venue}</span></>}</>}
       />
 
       {/* Match row — the score is the hero; winning side tinted + trophy-marked.
@@ -380,13 +385,34 @@ function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx })
           label={tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'} />
       </div>
 
-      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={game} />
+      {/* One post per game (arrangeFeed): hat-tricks ride on the result, not as posts of their own. */}
+      {milestones.length > 0 && (
+        <div className={`mt-1 flex flex-wrap gap-1.5 ${INSET}`}>
+          {milestones.map(m => (
+            <span key={`${m.playerId || m.name}`} className="stat-pill bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 !py-0.5 inline-flex items-center gap-1">
+              <HatTrick className="w-4 h-4 -my-1" />
+              {m.kind === 'big_game' ? `${m.goals} שערים` : 'שלושער'} · {m.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {story && <p className={`mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-line line-clamp-4 ${INSET}`}>{story.data.post.body}</p>}
+
+      {slides.length > 0
+        ? <div className="mt-3"><GameCarousel slides={slides.map(clipSlide)} label={`הקליפים של ${home?.name || ''} נגד ${away?.name || ''}`} /></div>
+        : <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={game} />}
 
       {/* Links — one small line, like "למשחק המלא" under a video post. */}
       <div className={`mt-2 flex items-center gap-4 text-xs font-semibold ${INSET}`}>
         <Link to={gamePath} className="inline-flex items-center gap-1 text-brand dark:text-brand-light hover:text-brand-hover">
           לעמוד המשחק <ArrowLeft className="w-3 h-3" />
         </Link>
+        {fullGame && (
+          <Link to={`/posts/${fullGame.data.post.id}`} className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300 hover:text-brand transition-colors">
+            צפייה במשחק המלא
+          </Link>
+        )}
         {stats.length > 0 && (
           <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
             <FileText className="w-4 h-4" />
@@ -1028,9 +1054,17 @@ export default function FeedPost({ priority = false, ...props }) {
 
 function FeedPostCard({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt }) {
   // Every card but סטופר מרקט gets a share target — see lib/shareLinks.js.
-  const share = buildShare(post, { playersMap })
+  // A folded game (arrangeFeed) shares, likes and comments as its result card did.
+  const share = post.type === 'world' || post.type === 'caught_up' ? null
+    : buildShare(post.type === 'game' ? { ...post, type: 'game_result' } : post, { playersMap })
   const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
   switch (post.type) {
+    case 'game':
+      return <GameResultPost post={post} playersMap={playersMap} teamsMap={teamsMap} {...rx} />
+    case 'world':
+      return <WorldPost post={post} />
+    case 'caught_up':
+      return <CaughtUpLine signedIn={post.data?.signedIn} />
     case 'champion':
       return <ChampionPost post={post} {...rx} />
     case 'top_scorer':
