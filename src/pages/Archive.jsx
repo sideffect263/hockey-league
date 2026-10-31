@@ -4,15 +4,15 @@ import {
   getArchivedSeasons, getArchivedStandings,
   getArchivedPlayerStats, getArchivedGames
 } from "@/lib/api"
-import { Archive, ArrowRight, RefreshCw } from "lucide-react"
-import { PersonFollowing as UserCheck, Trophy, Calendar, BrandTile } from "@/components/icons/BrandIcons"
-import { Crate } from "@/components/icons/HockeyIcons"
+import { Archive, ChevronLeft, RefreshCw } from "lucide-react"
+import { FLScore } from "@/components/fl/Floodlight"
+import { FLTPills, fmtDiff } from "@/components/fl/teams/FLTeamsKit"
+import { Trophy, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import TeamLogo from "@/components/TeamLogo"
 import { useSlugId } from "@/lib/slugs"
 import { ArchiveSkeleton, ArchiveSeasonSkeleton, StatisticsSkeleton } from "@/components/skeletons/PageSkeletons"
-import { Stats } from "@/components/icons/HockeyIcons"
 import { ilDate } from "@/lib/ilTime"
 
 // The live /statistics page, run on this season's archived data (its own chunk).
@@ -59,10 +59,10 @@ function SeasonsList() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5">
-          <Crate className="w-7 h-7 text-brand" /> ארכיון עונות
+        <h1 className="flex items-center gap-2.5 text-[28px] font-extrabold leading-tight text-fg-strong">
+          <BrandTile name="trophy" className="w-11 h-11" /> ארכיון
         </h1>
-        <p className="page-subtitle mt-1">צפייה בנתוני עונות קודמות</p>
+        <p className="text-[13px] text-fg-muted mt-1">צפייה בנתוני עונות קודמות · בכל מקום באתר: תג העונה בסרגל העליון פותח את רשימת העונות</p>
       </motion.div>
 
       {seasons.length === 0 ? (
@@ -75,16 +75,16 @@ function SeasonsList() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {seasons.map((season, i) => (
             <motion.div key={season.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Link to={`/archive/${encodeURIComponent(season.slug || season.id)}`} className="card-hover p-5 block">
+              <Link to={`/archive/${encodeURIComponent(season.slug || season.id)}`} className="block rounded-[18px] bg-surface p-4 hover:brightness-[.98] dark:hover:brightness-110 transition">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand to-amber-500 flex items-center justify-center shadow-md">
-                    <Trophy className="w-6 h-6 text-white" />
+                  <div className="size-12 rounded-[14px] bg-fl-accent/25 flex items-center justify-center">
+                    <Trophy className="w-8 h-8" />
                   </div>
                   <div className="flex-1">
-                    <h2 className="font-bold text-lg text-slate-900 dark:text-white">עונת {season.name}</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">אורכבה {new Date(season.archived_at).toLocaleDateString('he-IL')}</p>
+                    <h2 className="text-[18px] font-extrabold text-fg-strong">עונת <bdi dir="ltr">{season.name}</bdi></h2>
+                    <p className="text-[12.5px] text-fg-muted mt-0.5">טבלה סופית, מלכי השערים וכל המשחקים · אורכבה {new Date(season.archived_at).toLocaleDateString('he-IL')}</p>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-slate-400" />
+                  <ChevronLeft className="w-5 h-5 text-fg-muted" aria-hidden="true" />
                 </div>
               </Link>
             </motion.div>
@@ -163,70 +163,67 @@ function SeasonDetail({ routeKey }) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
       {/* You are in the past: the palette already says so; this says it in words. */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand/30 bg-brand/10 px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface px-4 py-2.5 ring-1 ring-brand/30">
         <p className="text-sm font-semibold text-fg-strong">
           את/ה צופה בעונת {season?.name} — עונה שהסתיימה
         </p>
-        <Link to="/standings" className="text-xs font-bold text-brand-strong dark:text-brand-light hover:underline">
+        <Link to="/standings" className="min-h-[44px] inline-flex items-center text-[13px] font-bold text-fg-strong underline underline-offset-2">
           חזרה לעונה הנוכחית ←
         </Link>
       </div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <Link to="/archive" className="text-xs font-semibold text-brand hover:text-brand-hover mb-2 inline-block">
+        <Link to="/archive" className="min-h-[44px] inline-flex items-center text-[13px] font-bold text-fg-strong hover:underline">
           ← כל העונות
         </Link>
-        <h1 className="page-title flex items-center gap-2.5">
-          <BrandTile name="trophy" className="w-10 h-10 -my-1.5" /> עונת {season?.name}
+        <h1 className="flex items-center gap-2.5 text-[28px] sm:text-[36px] font-extrabold leading-tight text-fg-strong">
+          <BrandTile name="trophy" className="w-11 h-11 -my-1.5" /> עונת <bdi dir="ltr">{season?.name}</bdi>
         </h1>
-        <p className="page-subtitle mt-1">טבלה סופית, מלכי השערים וכל המשחקים של העונה</p>
+        <p className="text-[13px] text-fg-muted mt-1">טבלה סופית, מלכי השערים וכל המשחקים של העונה</p>
       </motion.div>
 
       {/* Stats overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="card p-4 flex flex-col items-center text-center gap-1.5">
-          {champion && <TeamLogo team={teamOf(champion.team_id, champion.team_name)} size={10} />}
-          <p className="text-base font-extrabold text-fg-strong leading-tight">{champion?.team_name || '—'}</p>
-          <p className="text-[10px] text-amber-500 font-bold">אלופה</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {/* The champion on the amber card (board FinalFourArchive). */}
+        <div className="col-span-2 rounded-card p-4 flex items-center gap-3 text-[#11161D]" style={{ backgroundImage: "linear-gradient(135deg, #F2B233, #C98A12)" }}>
+          <Trophy className="w-12 h-12 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-extrabold">אלופת הליגה</p>
+            <p className="text-[22px] font-black leading-tight truncate">{champion?.team_name || '—'}</p>
+          </div>
+          {champion && <TeamLogo team={teamOf(champion.team_id, champion.team_name)} px={58} />}
         </div>
-        <div className="card p-4 flex flex-col items-center justify-center text-center">
-          <p className="text-2xl font-extrabold text-fg-strong">{completed.length}</p>
-          <p className="text-[10px] text-fg-subtle font-medium">משחקים</p>
+        <div className="rounded-[18px] bg-surface p-3.5 flex flex-col">
+          <p className="fl-num text-[30px] text-fg-strong">{completed.length}</p>
+          <p className="text-[12.5px] text-fg-muted mt-1">משחקים</p>
         </div>
-        <div className="card p-4 flex flex-col items-center justify-center text-center">
-          <p className="text-2xl font-extrabold text-fg-strong">{totalGoals}</p>
-          <p className="text-[10px] text-fg-subtle font-medium">שערים{completed.length ? ` · ${(totalGoals / completed.length).toFixed(1)} למשחק` : ''}</p>
+        <div className="rounded-[18px] bg-surface p-3.5 flex flex-col">
+          <p className="fl-num text-[30px] text-fg-strong">{totalGoals}</p>
+          <p className="text-[12.5px] text-fg-muted mt-1">שערים{completed.length ? ` · ${(totalGoals / completed.length).toFixed(1)} למשחק` : ''}</p>
         </div>
-        <div className="card p-4 flex flex-col items-center justify-center text-center">
-          <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">
-            {topScorer ? <PlayerName p={topScorer} /> : '—'}
-          </p>
-          <p className="text-[10px] text-fg-subtle font-medium mt-1">מלך שערים ({topScorer?.goals || 0})</p>
+        <div className="col-span-2 lg:col-span-4 rounded-[18px] bg-surface p-3.5 flex items-center justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block text-[12.5px] text-fg-muted">מלך השערים</span>
+            <span className="block text-[17px] font-extrabold text-fg-strong truncate">{topScorer ? <PlayerName p={topScorer} /> : '—'}</span>
+          </span>
+          <span className="flex items-baseline gap-1"><span className="fl-num text-[30px] text-fg-strong">{topScorer?.goals || 0}</span><span className="text-[12px] text-fg-muted">שערים</span></span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="tab-bar">
-        {[
-          { id: "standings", label: "טבלה", icon: Trophy },
-          { id: "players", label: "שחקנים", icon: UserCheck },
-          { id: "games", label: "משחקים", icon: Calendar },
-          { id: "stats", label: "סטטיסטיקות", icon: Stats },
-        ].map(t => (
-          // Four tabs must fit a 375px phone: icons hide and padding tightens below sm.
-          <button key={t.id} onClick={() => setTab(t.id)} className={`${tab === t.id ? "tab-active" : "tab-inactive"} !px-2 sm:!px-4`}>
-            <t.icon className="w-4 h-4 hidden sm:block" />
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <FLTPills label={`עונת ${season?.name || ''}`} value={tab} onChange={setTab} items={[
+        { value: "standings", label: "טבלה" },
+        { value: "players", label: "שחקנים" },
+        { value: "games", label: "משחקים" },
+        { value: "stats", label: "סטטיסטיקות" },
+      ]} />
 
       {/* Standings */}
       {tab === "standings" && (
-        <div className="card overflow-x-auto">
+        <div className="rounded-[18px] bg-surface overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-900 dark:bg-slate-800 text-white text-xs">
+              <tr className="border-b border-line text-fg-muted text-[11px]">
                 <th className="py-3 px-4 text-right font-semibold">#</th>
                 <th className="py-3 px-4 text-right font-semibold">קבוצה</th>
                 <th className="py-3 px-2 text-center font-semibold">נק׳</th>
@@ -238,40 +235,40 @@ function SeasonDetail({ routeKey }) {
                 <th className="py-3 px-2 text-center font-semibold">הפרש</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+            <tbody className="divide-y divide-line">
               {standings.map(team => {
                 const href = teamHref(team.team_id)
                 const diff = (team.goals_for || 0) - (team.goals_against || 0)
                 return (
-                  <tr key={team.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr key={team.id} className={team.final_rank === 1 ? "bg-fl-accent/15" : ""}>
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold ${
-                        team.final_rank === 1 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' :
-                        team.final_rank === 2 ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
-                        team.final_rank === 3 ? 'bg-bronze-100 text-bronze-700 dark:bg-bronze-900/40 dark:text-bronze-400' :
-                        'text-slate-400'
+                        team.final_rank === 1 ? 'bg-fl-accent text-[#11161D]' :
+                        team.final_rank === 2 ? 'bg-[#C9CDD2] text-[#11161D]' :
+                        team.final_rank === 3 ? 'bg-[#D9A066] text-[#11161D]' :
+                        'text-fg-muted'
                       }`}>
                         {team.final_rank}
                       </span>
                     </td>
                     <td className="py-3 px-4">
                       {href ? (
-                        <Link to={href} className="flex items-center gap-2 font-semibold text-fg-strong hover:text-brand-strong dark:hover:text-brand-light">
-                          <TeamLogo team={teamOf(team.team_id, team.team_name)} size={6} />{team.team_name}
+                        <Link to={href} className="flex items-center gap-2 font-semibold text-fg-strong whitespace-nowrap hover:underline underline-offset-2">
+                          <TeamLogo team={teamOf(team.team_id, team.team_name)} px={28} />{team.team_name}
                         </Link>
                       ) : (
-                        <span className="flex items-center gap-2 font-semibold text-fg-strong">
-                          <TeamLogo team={teamOf(team.team_id, team.team_name)} size={6} />{team.team_name}
+                        <span className="flex items-center gap-2 font-semibold text-fg-strong whitespace-nowrap">
+                          <TeamLogo team={teamOf(team.team_id, team.team_name)} px={28} />{team.team_name}
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-2 text-center font-extrabold text-fg-strong">{team.points}</td>
-                    <td className="py-3 px-2 text-center text-emerald-600 dark:text-emerald-400 font-semibold">{team.wins}</td>
-                    <td className="py-3 px-2 text-center text-slate-500">{team.ties}</td>
-                    <td className="py-3 px-2 text-center text-red-500 font-semibold">{team.losses}</td>
-                    <td className="py-3 px-2 text-center text-slate-700 dark:text-slate-300">{team.goals_for}</td>
-                    <td className="py-3 px-2 text-center text-slate-400">{team.goals_against}</td>
-                    <td dir="ltr" className={`py-3 px-2 text-center font-semibold ${diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : diff < 0 ? 'text-red-500' : 'text-slate-400'}`}>{diff > 0 ? `+${diff}` : diff}</td>
+                    <td className="py-3 px-2 text-center fl-num text-[16px] text-fg-strong">{team.points}</td>
+                    <td className="py-3 px-2 text-center tabular-nums text-fg-strong font-semibold">{team.wins}</td>
+                    <td className="py-3 px-2 text-center tabular-nums text-fg-muted">{team.ties}</td>
+                    <td className="py-3 px-2 text-center tabular-nums text-fg-muted">{team.losses}</td>
+                    <td className="py-3 px-2 text-center tabular-nums text-fg-muted">{team.goals_for}</td>
+                    <td className="py-3 px-2 text-center tabular-nums text-fg-muted">{team.goals_against}</td>
+                    <td dir="ltr" className="py-3 px-2 text-center tabular-nums font-semibold text-fg-strong">{fmtDiff(diff)}</td>
                   </tr>
                 )
               })}
@@ -292,38 +289,36 @@ function SeasonDetail({ routeKey }) {
 
       {/* Games */}
       {tab === "games" && (
-        <div className="card overflow-hidden">
-          <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+        <div className="rounded-[18px] bg-surface overflow-hidden">
+          <div className="divide-y divide-line">
             {games.map(game => {
               const row = (
                 <>
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <TeamLogo team={teamOf(game.home_team_id, game.home_team_name)} size={6} />
+                    <TeamLogo team={teamOf(game.home_team_id, game.home_team_name)} px={24} />
                     <span className="font-semibold text-sm text-fg-strong truncate">{game.home_team_name}</span>
-                    {/* RTL: away first, home last so each score renders beside its team (home is on the right).
-                        dir=ltr because the spaces around the colon are bidi-neutral: without it the two digit
-                        runs swap and every score sits next to the wrong team. */}
+                    {/* Home on the RIGHT: FLScore = separate spans, never one "a : h" string. */}
                     <div className="text-center px-2">
                       {game.status === 'completed' ? (
-                        <span dir="ltr" className="font-bold text-sm text-fg-strong tabular-nums">{game.away_score} : {game.home_score}</span>
+                        <FLScore home={game.home_score} away={game.away_score} size={16} className="text-fg-strong" />
                       ) : (
-                        <span className="text-[10px] text-slate-400">—</span>
+                        <span className="text-[11px] text-fg-muted">—</span>
                       )}
                     </div>
                     <span className="font-semibold text-sm text-fg-strong truncate">{game.away_team_name}</span>
-                    <TeamLogo team={teamOf(game.away_team_id, game.away_team_name)} size={6} />
+                    <TeamLogo team={teamOf(game.away_team_id, game.away_team_name)} px={24} />
                   </div>
                   <div className="flex items-center gap-2 ms-3 shrink-0">
-                    <span dir="ltr" className="text-[10px] text-slate-400">
-                      {game.game_date ? format(ilDate(game.game_date), "d/M/yy") : '—'}
+                    <span dir="ltr" className="text-[11px] text-fg-muted">
+                      {game.game_date ? format(ilDate(game.game_date), "d.M.yy") : '—'}
                     </span>
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                    <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-sunken text-fg-muted">
                       {game.playoff_round || game.game_type}
                     </span>
                   </div>
                 </>
               )
-              const cls = "flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              const cls = "flex items-center justify-between px-4 py-3 min-h-[52px] hover:bg-surface-sunken transition-colors"
               return game.slug
                 ? <Link key={game.id} to={`/games/${encodeURIComponent(game.slug)}`} className={cls}>{row}</Link>
                 : <div key={game.id} className={cls}>{row}</div>
@@ -365,7 +360,7 @@ function SeasonPlayers({ players }) {
     .filter(p => sort !== 'avg' || (p.games_played || 0) >= 3)
     .sort((a, b) => by.key(b) - by.key(a))
 
-  const chip = (active) => `px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${active ? 'bg-brand text-brand-fg' : 'bg-surface-sunken text-fg-muted hover:text-fg-strong'}`
+  const chip = (active) => `min-h-[44px] px-4 rounded-full text-[13px] font-bold transition-colors ${active ? 'bg-fg-strong text-surface' : 'bg-surface text-fg-strong hover:bg-surface-sunken'}`
 
   return (
     <div className="space-y-3">
@@ -380,33 +375,33 @@ function SeasonPlayers({ players }) {
       </div>
       {sort === 'avg' && <p className="text-[11px] text-fg-subtle">מינימום 3 משחקים</p>}
 
-      <div className="card overflow-hidden">
+      <div className="rounded-[18px] bg-surface overflow-hidden">
         {list.length === 0 ? (
           <p className="p-6 text-center text-sm text-fg-muted">אין שחקנים להצגה</p>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+          <div className="divide-y divide-line">
             {list.map((p, i) => (
-              <div key={p.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              <div key={p.id} className="flex items-center justify-between px-4 py-3 min-h-[56px]">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className={`w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center shrink-0 ${
-                    i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' :
-                    i === 1 ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
-                    i === 2 ? 'bg-bronze-100 text-bronze-700 dark:bg-bronze-900/40 dark:text-bronze-400' :
-                    'text-slate-400'
+                    i === 0 ? 'bg-fl-accent text-[#11161D]' :
+                    i === 1 ? 'bg-[#C9CDD2] text-[#11161D]' :
+                    i === 2 ? 'bg-[#D9A066] text-[#11161D]' :
+                    'text-fg-muted'
                   }`}>
                     {i + 1}
                   </span>
                   <div className="min-w-0">
                     <span className="font-semibold text-sm text-fg-strong"><PlayerName p={p} /></span>
-                    <p className="text-[11px] text-fg-subtle">{p.team_name}{p.position === 'Goalkeeper' ? ' · שוער' : ''}</p>
+                    <p className="text-[12px] text-fg-muted">{p.team_name}{p.position === 'Goalkeeper' ? ' · שוער' : ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-xs shrink-0">
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{p.goals} שערים</span>
-                  <span className="text-slate-400">{p.games_played} מש׳</span>
+                  <span className="font-bold text-fg-strong"><span className="fl-num text-[15px]">{p.goals}</span> שערים</span>
+                  <span className="text-fg-muted">{p.games_played} מש׳</span>
                   {sort === 'avg' && <span dir="ltr" className="text-fg-muted">{by.key(p).toFixed(2)}</span>}
-                  {p.blue_cards > 0 && <span className="text-blue-500">{p.blue_cards} כחול</span>}
-                  {p.red_cards > 0 && <span className="text-red-500">{p.red_cards} אדום</span>}
+                  {p.blue_cards > 0 && <span className="inline-flex items-center gap-1 text-fg-strong"><span aria-hidden="true" className="w-2 h-2.5 rounded-[2px] bg-fl-blue" />{p.blue_cards} כחול</span>}
+                  {p.red_cards > 0 && <span className="inline-flex items-center gap-1 text-fg-strong"><span aria-hidden="true" className="w-2 h-2.5 rounded-[2px] bg-fl-red" />{p.red_cards} אדום</span>}
                 </div>
               </div>
             ))}
