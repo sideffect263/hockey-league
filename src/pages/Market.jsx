@@ -227,11 +227,11 @@ function Board({
     </section>
   )
 
-  const settledBlock = settled.length > 0 && (
+  const settledBlock = (max = settled.length) => settled.length > 0 && (
     <section aria-label="הוכרעו לאחרונה">
       <MoreSectionHead title="הוכרעו לאחרונה" />
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-3 px-3 snap-x snap-mandatory lg:mx-0 lg:px-0 lg:flex-col lg:overflow-visible">
-        {settled.map(m => (
+        {settled.slice(0, max).map(m => (
           <div key={m.id} className="shrink-0 w-[270px] snap-start lg:w-auto">
             <MarketCard market={m} myShares={positions} />
           </div>
@@ -308,11 +308,12 @@ function Board({
             {featured.length > 0 && <FeaturedCarousel markets={featured} activity={activity} />}
             {gamesBlock}
             <div className="lg:hidden space-y-6">{seasonBlock}</div>
-            <div className="lg:hidden">{settledBlock}</div>
+            <div className="lg:hidden">{settledBlock()}</div>
           </div>
           <aside className="hidden lg:block space-y-6">
             {seasonBlock}
-            {settledBlock}
+            {/* Beside the board, the last three are enough; the phone strip scrolls. */}
+            {settledBlock(3)}
           </aside>
         </div>
       )}
