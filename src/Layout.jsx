@@ -11,11 +11,15 @@ import {
 } from "lucide-react"
 import { RinkIcon, Trophy as BrandTrophy, MatchFallback, TeamsIcon, PlayerIcon, Referee, VideoLibrary, Person, Table, StatsIcon, EditIcon, Manage, Loan, DocumentIcon, PlayerPose, Market, GameForm } from "@/components/icons/BrandIcons"
 import { useAuth } from "./lib/AuthContext"
-import AuthModal from "./components/AuthModal"
-import OnboardingModal from "./components/OnboardingModal"
 import OgCelebration from "./components/OgCelebration"
 import NotificationBell from "./components/NotificationBell"
-import ChatDrawer from "./components/ChatDrawer"
+import { lazy, Suspense } from "react"
+// Loaded on demand: the sign-in welcome only when it opens, onboarding and the members'
+// chat only for a signed-in account. Most visits are guests who never open either, and
+// in the main bundle they cost every first load ~30 kB gzip (Floodlight perf check 10-31).
+const AuthModal = lazy(() => import("./components/AuthModal"))
+const OnboardingModal = lazy(() => import("./components/OnboardingModal"))
+const ChatDrawer = lazy(() => import("./components/ChatDrawer"))
 import LiveEditPanel from "./components/liveedit/LiveEditPanel"
 import { sizedImage } from "@/lib/imageSize"
 import { FLTabBar, LineIcon } from "@/components/fl/shell/FLShell"
@@ -230,7 +234,7 @@ function AvatarMenu({ user, profile, roleNav, isActivePage, signOut }) {
 export default function Layout({ children }) {
   const location = useLocation()
   const fullscreen = isFullscreen(location.pathname)
-  const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isDeveloper, profile, signOut, openAuth } = useAuth()
+  const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isDeveloper, profile, signOut, openAuth, authOpen } = useAuth()
 
 
   // The header is split into three groups so its width no longer depends on how
@@ -343,16 +347,16 @@ export default function Layout({ children }) {
       {!fullscreen && <FLTabBar />}
 
       {/* Auth (login / signup) modal */}
-      <AuthModal />
+      {authOpen && <Suspense fallback={null}><AuthModal /></Suspense>}
 
       {/* First-run prompt to link the account to a player profile */}
-      <OnboardingModal />
+      {user && <Suspense fallback={null}><OnboardingModal /></Suspense>}
 
       {/* One-time "OG #N" surprise for the 25 OG players */}
       <OgCelebration />
 
       {/* Members-only chat / mailbox (self-gates to members) */}
-      <ChatDrawer />
+      {user && <Suspense fallback={null}><ChatDrawer /></Suspense>}
 
       {/* עריכה חיה — report a UI bug from the page it is on (self-gates to admins) */}
       <LiveEditPanel />
