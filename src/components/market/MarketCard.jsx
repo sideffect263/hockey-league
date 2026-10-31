@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Lock } from "lucide-react"
-import { ApprovedStatus as CircleCheck, Declined as Ban, TrendUp as TrendingUp, Clock, Flame } from "@/components/icons/BrandIcons"
+import { ApprovedStatus as CircleCheck, Declined as Ban, TrendUp as TrendingUp, Clock, BrandIcon } from "@/components/icons/BrandIcons"
+import { useTheme } from '@/lib/ThemeContext'
+import { seriesTeamColors } from '@/lib/teamMarkColor'
 import TeamLogo from '@/components/TeamLogo'
 import { pct, CONFLICT_COPY } from '@/lib/market'
 
@@ -56,18 +59,32 @@ export function OutcomeFace({ outcome, size = 6 }) {
         className={`${FACE_PX[size] || FACE_PX[6]} rounded-full object-cover shrink-0 bg-surface-sunken`} />
     )
   }
+  // Player cards carry no photos yet: fall back to the club crest they play for.
+  if (outcome.markTeam) return <TeamLogo team={outcome.markTeam} size={size} />
   return null
 }
 
+/** Bar colours for a season question: the club's hue for team runners, ink for players. */
+function useRowColors(outcomes) {
+  const { dark } = useTheme()
+  return useMemo(() => {
+    const teams = outcomes.filter(o => o.team)
+    const cs = seriesTeamColors(teams.map(o => ({ color: o.team.primary_color, teamId: o.team.id })), dark)
+    const m = new Map(teams.map((o, i) => [o.id, cs[i]]))
+    return o => m.get(o.id) || 'rgb(var(--fg-strong))'
+  }, [outcomes, dark])
+}
+
 /**
- * One market on the board. Shows the top outcomes by price, because on a
- * 20-runner futures market the interesting information is the front of the
- * field, not an alphabetical wall of 5% chances.
+ * One market on the board (PredictHome "העונה" card): an icon, the question, how many
+ * took part, and the front of the field as bars. Top three by price, because on a
+ * 20-runner season question the interesting part is the front, not 5% chances.
  */
-export default function MarketCard({ market, myShares = {}, conflict = null }) {
+export default function MarketCard({ market, myShares = {}, conflict = null, activity = null }) {
   const sorted = [...market.outcomes].sort((a, b) => b.price - a.price)
   const shown = sorted.slice(0, 3)
   const rest = sorted.length - shown.length
+  const colorOf = useRowColors(shown)
   // Shares survive settlement as a record of what was held, so a settled market
   // must not advertise them as an open position: a voided market has already
   // refunded them and a resolved one has already paid them out.
@@ -76,63 +93,67 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
   const winner = market.resolved_outcome_id
     ? market.outcomes.find(o => o.id === market.resolved_outcome_id)
     : null
+  const icon = market.outcomes.some(o => o.player) ? 'goal' : 'trophy'
 
   const body = (
     <>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="min-w-0">
-          <h3 className="font-extrabold text-fg-strong leading-snug text-[15px]">{market.title}</h3>
-          {market.subtitle && (
-            <p className="text-xs text-fg-muted mt-0.5">{market.subtitle}</p>
+      <div className="flex items-start gap-2.5 mb-3">
+        <BrandIcon name={icon} variant="large" className="w-9 h-9 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <h3 className="font-extrabold text-fg-strong leading-snug text-base">{market.title}</h3>
+          {market.subtitle && <p className="text-xs text-fg-muted mt-0.5">{market.subtitle}</p>}
+        </div>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <StatusChip market={market} />
+          {activity?.traders > 0 && (
+            <span className="text-[12px] text-fg-muted"><span className="fl-num">{activity.traders}</span> חזו</span>
           )}
         </div>
-        <StatusChip market={market} />
       </div>
 
       {winner && (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-brand/10">
-          <CircleCheck className="w-4 h-4 text-brand shrink-0" />
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-pos/10">
+          <CircleCheck className="w-4 h-4 text-pos shrink-0" />
           <span className="text-sm font-bold text-fg-strong truncate">{winner.label}</span>
         </div>
       )}
 
       <div className="space-y-1.5">
-        {shown.map((o, i) => {
-          const leading = i === 0 && shown.length > 1
+        {shown.map(o => {
+          const p = Math.round(o.price * 100)
           return (
-            <div key={o.id}
-              className={`mkt-bar flex items-center gap-2 px-2.5 py-2 ${leading ? 'ring-1 ring-inset ring-brand/30' : ''}`}>
-              <div className={`mkt-bar-fill ${leading ? 'bg-brand/25' : ''}`} style={{ width: `${Math.round(o.price * 100)}%` }} />
-              <div className="relative flex items-center gap-2 min-w-0 flex-1">
+            <div key={o.id} className="flex items-center gap-2.5 min-h-[30px]">
+              <span className="w-[30px] h-[30px] rounded-full bg-fl-disc flex items-center justify-center shrink-0 overflow-hidden">
                 <OutcomeFace outcome={o} size={6} />
-                <span className="text-[13px] font-semibold text-fg-soft truncate">{o.label}</span>
-                {leading && <Flame className="w-4 h-4 text-gold shrink-0" />}
-                {myShares[o.id]?.shares > 0 && (
-                  <span className="stat-pill bg-brand/15 text-brand text-[10px] px-1.5 py-0 shrink-0">שלי</span>
-                )}
-              </div>
-              <span className={`relative mkt-num text-sm font-bold shrink-0 ${leading ? 'text-brand' : 'text-fg-strong'}`}>
-                {pct(o.price)}
               </span>
+              <span className="w-[110px] sm:w-[140px] text-[13.5px] font-semibold text-fg-strong truncate shrink-0">
+                {o.label}
+                {myShares[o.id]?.shares > 0 && <span className="sr-only"> · שלי</span>}
+              </span>
+              <span className="flex-1 h-2.5 rounded-full bg-surface-page overflow-hidden" aria-hidden="true">
+                <span className="block h-full rounded-full transition-[width] duration-300 ease-out"
+                  style={{ width: `${Math.max(p, 2)}%`, backgroundColor: colorOf(o) }} />
+              </span>
+              <span className="w-10 text-left mkt-num text-[15px] text-fg-strong shrink-0">{p}%</span>
             </div>
           )
         })}
         {rest > 0 && (
-          <p className="text-[11px] text-fg-subtle px-2.5 pt-0.5">
+          <p className="text-[12px] text-fg-muted pt-0.5">
             {rest === 1 ? 'ועוד אפשרות אחת' : `ועוד ${rest} אפשרויות`}
           </p>
         )}
       </div>
 
       {(conflict || held.length > 0) && (
-        <div className="mt-3 pt-3 border-t border-line-subtle flex items-center gap-2 text-[11px]">
+        <div className="mt-3 pt-3 border-t border-line flex items-center gap-2 text-[12px]">
           {conflict ? (
             <span className="flex items-center gap-1.5 text-fg-muted">
               <Lock className="w-3 h-3 shrink-0" /> {CONFLICT_COPY[conflict] || CONFLICT_COPY['own-team']}
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 text-brand font-semibold">
-              <TrendingUp className="w-4 h-4" /> יש לך תחזית פתוחה
+            <span className="flex items-center gap-1.5 text-pos font-bold">
+              <TrendingUp className="w-4 h-4" /> התחזית שלך: {held.map(o => o.label).join(', ')}
             </span>
           )}
         </div>
@@ -141,11 +162,11 @@ export default function MarketCard({ market, myShares = {}, conflict = null }) {
   )
 
   if (conflict) {
-    return <div className="mkt-card p-4 opacity-60 cursor-not-allowed">{body}</div>
+    return <div className="mkt-card p-3.5 opacity-60 cursor-not-allowed">{body}</div>
   }
   return (
     <Link to={`/market/${encodeURIComponent(market.slug || market.id)}`}
-      className="mkt-card-hover p-4 block transition-all hover:-translate-y-0.5 hover:shadow-md">
+      className="mkt-card-hover p-3.5 block transition-transform hover:-translate-y-0.5">
       {body}
     </Link>
   )

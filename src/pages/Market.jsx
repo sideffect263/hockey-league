@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { LayoutGrid, Settings, ChevronDown, Lock, Target } from "lucide-react"
-import { Coin as Coins, Wallet, Star, Celebrate as Gift, TrendUp as TrendingUp, TrendDown as TrendingDown, Trophy, CalendarDays, History } from "@/components/icons/BrandIcons"
+import { ChevronDown, Lock, Target } from "lucide-react"
+import { Wallet, Star, Celebrate as Gift, TrendUp as TrendingUp, TrendDown as TrendingDown, CalendarDays, Approved, Declined } from "@/components/icons/BrandIcons"
 import { useAuth } from '@/lib/AuthContext'
 import {
   loadBoard, cachedBoard, invalidateBoard, pickFeaturedList, groupByMatchday, holdsAny,
-  coins as fmtCoins, pct, START_BALANCE,
+  coins as fmtCoins, pct, START_BALANCE, getLeaderboard,
 } from '@/lib/market'
 import MarketGate from '@/components/market/MarketGate'
 import MarketCard, { OutcomeFace, StatusChip } from '@/components/market/MarketCard'
@@ -15,19 +15,15 @@ import Leaderboard from '@/components/market/Leaderboard'
 import MarketAdmin from '@/components/market/MarketAdmin'
 import { useSeasonName } from '@/App'
 import { MarketSkeleton } from "@/components/skeletons/PageSkeletons"
+import { MoreCoin, MorePillTabs, MoreChip, MoreSectionHead, MoreEmpty } from "@/components/fl/more/MoreKit"
 
 /**
- * Repoints the design tokens at the market palette for as long as this screen is
- * mounted. It goes on <html> rather than on a wrapper so the sticky header
- * changes with the page — the market is meant to feel like its own room, not a
- * differently-coloured panel inside the league's.
+ * The market used to repaint the whole site emerald (html.market-theme) while it was
+ * open. Floodlight drops that room: the market lives in the league palette, with the
+ * סטופר coin gold as its own colour (see components/fl/more/more.css, `.fl-mkt`).
+ * Kept as a no-op so nothing that still calls it re-adds the class.
  */
-export function useMarketTheme() {
-  useEffect(() => {
-    document.documentElement.classList.add('market-theme')
-    return () => document.documentElement.classList.remove('market-theme')
-  }, [])
-}
+export function useMarketTheme() {}
 
 /** Season markets shown on the "הכל" board before "כל שווקי העונה". */
 const SEASON_PREVIEW = 4
@@ -35,7 +31,6 @@ const SEASON_PREVIEW = 4
 const LATER_PREVIEW = 2
 
 export default function Market() {
-  useMarketTheme()
   const { user, isAdmin, loading: authLoading } = useAuth()
   const seasonName = useSeasonName()
 
@@ -95,53 +90,76 @@ export default function Market() {
   const games = live.filter(m => m.kind === 'game')
   const futures = live.filter(m => m.kind === 'futures')
   const mineCount = live.filter(m => holdsAny(m, positions)).length
-  const settled = markets
+  const settledAll = markets
     .filter(m => m.status === 'resolved' || m.status === 'void')
     .sort((a, b) => new Date(b.resolved_at || 0) - new Date(a.resolved_at || 0))
-    .slice(0, 6)
+  const settled = settledAll.slice(0, 6)
   const netWorth = Number(wallet?.balance || 0) + openValue
+  // First visit: a wallet that never predicted gets the one-line welcome (board
+  // PredictHome "new player"); it goes away after the first prediction.
+  const isNew = canPredict && !!wallet && Object.keys(positions).length === 0
 
   // The leaderboard has names, so it needs a signed-in viewer; "mine" needs a
   // wallet, so it needs someone who can predict.
   const TABS = [
-    { key: 'board', label: 'שווקים', icon: LayoutGrid },
-    ...(canPredict ? [{ key: 'mine', label: 'התחזיות שלי', icon: Wallet }] : []),
-    ...(user ? [{ key: 'top', label: 'מובילים', icon: Trophy }] : []),
-    ...(isAdmin ? [{ key: 'admin', label: 'ניהול', icon: Settings }] : []),
+    { key: 'board', label: 'פתוחות' },
+    ...(canPredict ? [{ key: 'mine', label: 'שלי' }] : []),
+    ...(user ? [{ key: 'top', label: 'מובילים' }] : []),
+    ...(isAdmin ? [{ key: 'admin', label: 'ניהול' }] : []),
   ]
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-      {canPredict
-        ? <WalletHero balance={wallet?.balance} netWorth={netWorth} ready={!!wallet} />
-        : (
-          <>
-            <PublicHero />
-            <MarketGate compact reason={board.reason} onUnlocked={() => { invalidateBoard(); loadedFor.current = null; load() }} />
-          </>
+    <div className="fl-mkt max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-8">
+      <header className="flex items-center justify-between gap-3 px-1 pb-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <MoreCoin size={36} />
+          <h1 className="text-[28px] sm:text-[32px] font-extrabold leading-tight text-fg-strong truncate">סטופר מרקט</h1>
+        </div>
+        {canPredict && (
+          <button type="button" onClick={() => setTab('mine')}
+            aria-label={`היתרה שלי: ${fmtCoins(wallet?.balance ?? 0)} סטופרים`}
+            className="h-11 ps-2 pe-3.5 rounded-full bg-[#11161D] text-white inline-flex items-center gap-2 shrink-0 dark:bg-surface dark:ring-1 dark:ring-line">
+            <MoreCoin size={28} />
+            {wallet
+              ? <span className="fl-num text-lg">{fmtCoins(wallet.balance)}</span>
+              : <span className="block h-4 w-12 rounded bg-white/20" />}
+          </button>
         )}
+      </header>
 
-      {/* The allowance is paid on read, so this is the only moment the trader is
+      {TABS.length > 1 && (
+        <MorePillTabs label="סטופר מרקט" tabs={TABS} value={tab} onChange={setTab} className="px-1 pt-1 pb-3" />
+      )}
+
+      {tab === 'board' && (
+        <>
+          {isNew && (
+            <section aria-label="ברוכים הבאים" className="rounded-card p-4 mb-3 flex gap-3 items-center text-[#11161D]"
+              style={{ background: 'linear-gradient(135deg, #F2B233, #E8743B)' }}>
+              <MoreCoin size={58} />
+              <div className="flex flex-col gap-1">
+                <span className="text-[17px] font-extrabold">קיבלת {fmtCoins(START_BALANCE)} סטופרים</span>
+                <span className="text-[13px] leading-snug">בוחרים מה יקרה, וכשצודקים הסטופרים גדלים. אין כסף אמיתי, רק כבוד בטבלת המובילים.</span>
+              </div>
+            </section>
+          )}
+          {!canPredict && (
+            <MarketGate compact reason={board.reason} onUnlocked={() => { invalidateBoard(); loadedFor.current = null; load() }} />
+          )}
+        </>
+      )}
+
+      {/* The allowance is paid on read, so this is the only moment the predictor is
           told it happened — a silent top-up reads as a balance that drifts. */}
       {Number(wallet?.allowance_credited) > 0 && (
-        <div className="mkt-card px-4 py-2.5 mb-5 flex items-center gap-2 border-brand/40 bg-brand/5">
-          <Gift className="w-4 h-4 text-brand shrink-0" />
-          <p className="text-xs text-fg-soft">
-            דמי כיס שבועיים: <span className="mkt-coin">{fmtCoins(wallet.allowance_credited)}</span> סטופרים
+        <div className="fl-card px-4 py-3 mb-3 flex items-center gap-2.5">
+          <Gift className="w-5 h-5 shrink-0" />
+          <p className="text-[13px] text-fg-strong">
+            הסטופרים השבועיים נכנסו: <span className="mkt-coin">{fmtCoins(wallet.allowance_credited)}</span> סטופרים
             {Number(wallet.allowance_weeks) > 1 && ` (${wallet.allowance_weeks} שבועות)`}
           </p>
         </div>
       )}
-
-      {TABS.length > 1 && <div className="tab-bar mb-5">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={tab === t.key ? 'tab-active' : 'tab-inactive'}>
-            <t.icon className="w-4 h-4" />
-            <span className="text-xs sm:text-sm">{t.label}</span>
-          </button>
-        ))}
-      </div>}
 
       {tab === 'board' && (
         <Board canPredict={canPredict}
@@ -154,13 +172,13 @@ export default function Market() {
       )}
 
       {tab === 'mine' && canPredict && (
-        <MyPositions markets={markets} positions={positions} balance={wallet?.balance ?? 0}
-          netWorth={netWorth} onBrowse={() => setTab('board')} />
+        <MyPositions markets={markets} settledAll={settledAll} positions={positions} balance={wallet?.balance ?? 0}
+          netWorth={netWorth} openValue={openValue} userId={user?.id} onBrowse={() => setTab('board')} />
       )}
-      {tab === 'top' && user && <Leaderboard />}
+      {tab === 'top' && user && <div className="max-w-2xl mx-auto"><Leaderboard /></div>}
       {tab === 'admin' && isAdmin && <MarketAdmin markets={markets} onChanged={load} />}
 
-      <p className="text-center text-[11px] text-fg-subtle mt-10 leading-relaxed">
+      <p className="text-center text-[12px] text-fg-muted mt-10 leading-relaxed max-w-xl mx-auto">
         סטופר מרקט הוא משחק תחזיות. הסטופרים וירטואליים, אין להם שווי כספי, ואי אפשר
         לקנות, למכור או להמיר אותם בכסף אמיתי.
       </p>
@@ -168,64 +186,11 @@ export default function Market() {
   )
 }
 
-/** The page's title for someone who can look but not predict: no wallet, no numbers. */
-function PublicHero() {
-  return (
-    <div className="mkt-card p-5 mb-4 bg-gradient-to-bl from-brand/15 via-brand/[0.04] to-transparent relative overflow-hidden">
-      <Coins className="absolute -bottom-6 -start-6 w-32 h-32 opacity-[0.08] pointer-events-none" aria-hidden />
-      <div className="relative">
-        <h1 className="text-2xl sm:text-3xl font-black text-fg-strong tracking-tight">סטופר מרקט</h1>
-        <p className="text-xs text-fg-muted mt-1 max-w-md leading-relaxed">
-          מה הליגה חושבת שיקרה בשבת? כל אחוז כאן הוא הסיכוי שהשחקנים נותנים לתוצאה.
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function WalletHero({ balance, netWorth, ready }) {
-  const up = netWorth >= START_BALANCE
-  const change = netWorth - START_BALANCE
-  return (
-    <div className="mkt-card p-5 mb-5 bg-gradient-to-bl from-brand/15 via-brand/[0.04] to-transparent relative overflow-hidden">
-      {/* A faint coin mark behind the numbers — the room's signage, not data. */}
-      <Coins className="absolute -bottom-6 -start-6 w-32 h-32 opacity-[0.08] pointer-events-none" aria-hidden />
-      <div className="relative flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-fg-strong tracking-tight">סטופר מרקט</h1>
-          <p className="text-xs text-fg-muted mt-1">
-            כל אחוז הוא הסיכוי שהליגה נותנת לתוצאה. חוזים נכון, צוברים סטופרים.
-          </p>
-        </div>
-        <div className="flex items-center gap-5">
-          <div>
-            <p className="text-[11px] text-fg-muted font-semibold mb-0.5">סטופרים</p>
-            {ready ? (
-              <p className="flex items-center gap-1.5 mkt-coin text-2xl"><Coins className="w-5 h-5" />{fmtCoins(balance)}</p>
-            ) : <span className="block h-8 w-20 rounded-md bg-surface-sunken animate-pulse" />}
-          </div>
-          <div className="ps-5 border-s border-line">
-            <p className="text-[11px] text-fg-muted font-semibold mb-0.5">שווי התחזיות</p>
-            {ready ? (
-              <div className="flex items-baseline gap-2">
-                <p className={`mkt-num text-2xl font-black ${up ? 'text-pos' : 'text-neg'}`}>{fmtCoins(Math.round(netWorth))}</p>
-                <span className={`mkt-num text-[11px] font-bold ${up ? 'text-pos' : 'text-neg'}`} dir="ltr">
-                  {change >= 0 ? '+' : ''}{Math.round((change / START_BALANCE) * 100)}%
-                </span>
-              </div>
-            ) : <span className="block h-8 w-20 rounded-md bg-surface-sunken animate-pulse" />}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /**
  * The board, with the forty-fixture problem solved by structure rather than by
- * scrolling: season markets come first (there are only a handful), then the next
- * matchday in full, then later rounds folded to one line per game. The chips on
- * top jump straight to one kind.
+ * scrolling: the next matchday in full first (board PredictHome "השבת"), then the
+ * season questions, then later rounds folded to one line per game. On a laptop the
+ * season questions and the settled strip move to a side column.
  */
 function Board({
   canPredict, filter, setFilter, featured, games, futures, settled, mineCount,
@@ -233,195 +198,164 @@ function Board({
 }) {
   const [showAllRounds, setShowAllRounds] = useState(false)
   const rounds = useMemo(() => groupByMatchday(games), [games])
-  const seasonTitle = seasonName ? `עונת ${seasonName}` : 'שווקי עונה'
+  const seasonTitle = seasonName ? `העונה · ${seasonName}` : 'העונה'
 
   const FILTERS = [
     { key: 'all', label: 'הכל' },
-    { key: 'season', label: 'עונתיים', n: futures.length, icon: Star },
-    { key: 'games', label: 'משחקים', n: games.length, icon: CalendarDays },
-    ...(canPredict && mineCount ? [{ key: 'mine', label: 'שלי', n: mineCount, icon: Wallet }] : []),
+    { key: 'season', label: 'העונה', n: futures.length },
+    { key: 'games', label: 'משחקים', n: games.length },
+    ...(canPredict && mineCount ? [{ key: 'mine', label: 'שלי', n: mineCount }] : []),
   ]
 
-  const card = m => <MarketCard key={m.id} market={m} myShares={positions} conflict={conflicts.get(m.id)} />
+  const card = m => <MarketCard key={m.id} market={m} myShares={positions} conflict={conflicts.get(m.id)} activity={activity.get(m.id)} />
   const [next, ...later] = rounds
   const laterShown = filter === 'games' || showAllRounds ? later : later.slice(0, LATER_PREVIEW)
   const hiddenRounds = later.length - laterShown.length
 
+  const seasonList = filter === 'all'
+    ? futures.filter(m => !featured.some(f => f.id === m.id)).slice(0, SEASON_PREVIEW)
+    : futures
+  const seasonBlock = (
+    <section aria-label="העונה">
+      <MoreSectionHead title={seasonTitle}
+        action={filter === 'all' && futures.length > SEASON_PREVIEW
+          ? <button type="button" onClick={() => setFilter('season')} className="text-[13px] font-bold text-fg-strong underline underline-offset-4 min-h-[44px] -my-3">כל {futures.length}</button>
+          : <span className="text-[12.5px] text-fg-muted">מוכרעות בסוף העונה</span>} />
+      {futures.length === 0
+        ? <MoreEmpty icon="trophy" text="אין שאלות עונה פתוחות." />
+        : <Stack two={filter === 'season'}>{seasonList.map(card)}</Stack>}
+    </section>
+  )
+
+  const settledBlock = settled.length > 0 && (
+    <section aria-label="הוכרעו לאחרונה">
+      <MoreSectionHead title="הוכרעו לאחרונה" />
+      <div className="flex gap-3 overflow-x-auto pb-1 -mx-3 px-3 snap-x snap-mandatory lg:mx-0 lg:px-0 lg:flex-col lg:overflow-visible">
+        {settled.map(m => (
+          <div key={m.id} className="shrink-0 w-[270px] snap-start lg:w-auto">
+            <MarketCard market={m} myShares={positions} />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+
+  const gamesBlock = games.length === 0 ? (
+    <section aria-label="משחקים">
+      <MoreSectionHead title="משחקים" />
+      <MoreEmpty icon="calendar" text="אין כרגע משחקים פתוחים לתחזיות. תחזית נפתחת אוטומטית לכל משחק חדש בלוח." />
+    </section>
+  ) : (
+    <>
+      <section aria-label={next.label}>
+        <MoreSectionHead title={next.label} note="נסגרות בשריקת הפתיחה" />
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {next.markets.map(m => (
+            <MatchCard key={m.id} market={m} positions={positions}
+              conflict={conflicts.get(m.id)} activity={activity.get(m.id)} />
+          ))}
+        </div>
+      </section>
+
+      {laterShown.length > 0 && (
+        <section aria-label="בהמשך העונה">
+          <MoreSectionHead title="בהמשך העונה" note={`${later.reduce((n, r) => n + r.markets.length, 0)} משחקים`} />
+          <div className="space-y-2.5">
+            {laterShown.map(r => (
+              <div key={r.key} className="mkt-card overflow-hidden">
+                <div className="px-3 py-2 bg-surface-inset flex items-center gap-2">
+                  <span className="text-[13px] font-extrabold text-fg-strong">{r.label}</span>
+                  <span className="text-[12px] text-fg-muted"><span className="fl-num">{r.markets.length}</span> משחקים</span>
+                  <span className="ms-auto flex gap-1 text-[11px] text-fg-muted font-semibold">
+                    <span className="w-9 sm:w-10 text-center">בית</span>
+                    <span className="w-9 sm:w-10 text-center">תיקו</span>
+                    <span className="w-9 sm:w-10 text-center">חוץ</span>
+                  </span>
+                </div>
+                <div className="divide-y divide-line">
+                  {r.markets.map(m => (
+                    <GameRow key={m.id} market={m} positions={positions} conflict={conflicts.get(m.id)} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {hiddenRounds > 0 && (
+              <button type="button" onClick={() => setShowAllRounds(true)}
+                className="w-full mkt-card min-h-[48px] text-[13px] font-bold text-fg-strong hover:bg-surface-inset transition-colors inline-flex items-center justify-center gap-1.5">
+                <ChevronDown className="w-4 h-4" />
+                עוד {hiddenRounds} מחזורים (<span className="fl-num">{later.slice(LATER_PREVIEW).reduce((n, r) => n + r.markets.length, 0)}</span> משחקים)
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+    </>
+  )
+
   return (
     <div>
-      <div className="sticky top-16 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 py-2 mb-4 bg-surface-page/85 backdrop-blur">
+      <div className="sticky top-16 z-20 -mx-3 px-3 sm:-mx-6 sm:px-6 py-2 mb-3 bg-surface-page/90 backdrop-blur">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {FILTERS.map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                filter === f.key
-                  ? 'bg-brand text-brand-fg border-brand'
-                  : 'bg-surface text-fg-muted border-line hover:text-fg-soft hover:border-line-strong'
-              }`}>
-              {f.icon && <f.icon className="w-3.5 h-3.5" />}
-              {f.label}
-              {f.n != null && (
-                <span className={`mkt-num text-[10px] rounded-full px-1.5 ${filter === f.key ? 'bg-white/20' : 'bg-surface-sunken'}`}>{f.n}</span>
-              )}
-            </button>
+            <MoreChip key={f.key} on={filter === f.key} onClick={() => setFilter(f.key)} n={f.n}>{f.label}</MoreChip>
           ))}
         </div>
       </div>
 
-      <div className="space-y-10">
-        {filter === 'all' && featured.length > 0 && (
-          <FeaturedCarousel markets={featured} activity={activity} />
-        )}
-
-        {(filter === 'all' || filter === 'season') && (
-          <Section title={seasonTitle} icon={Star} accent="gold" count={futures.length}
-            action={filter === 'all' && futures.length > SEASON_PREVIEW
-              ? { label: `כל ${futures.length} השווקים`, onClick: () => setFilter('season') } : null}>
-            {futures.length === 0 ? (
-              <Empty icon={Star} text="אין שווקי עונה פתוחים." />
-            ) : (
-              <Grid>
-                {(filter === 'all'
-                  ? futures.filter(m => !featured.some(f => f.id === m.id)).slice(0, SEASON_PREVIEW)
-                  : futures
-                ).map(card)}
-              </Grid>
-            )}
-          </Section>
-        )}
-
-        {(filter === 'all' || filter === 'games') && (
-          games.length === 0 ? (
-            <Section title="משחקים" icon={CalendarDays}>
-              <Empty icon={CalendarDays} text="אין כרגע משחקים פתוחים לתחזיות. שוק נפתח אוטומטית לכל משחק חדש בלוח." />
-            </Section>
-          ) : (
-            <>
-              <Section title={`המחזור הקרוב · ${next.label}`} icon={CalendarDays} count={next.markets.length}>
-                <Grid>
-                  {next.markets.map(m => (
-                    <MatchCard key={m.id} market={m} positions={positions}
-                      conflict={conflicts.get(m.id)} activity={activity.get(m.id)} />
-                  ))}
-                </Grid>
-              </Section>
-
-              {laterShown.length > 0 && (
-                <Section title="בהמשך העונה" icon={CalendarDays} count={later.reduce((n, r) => n + r.markets.length, 0)}>
-                  <div className="space-y-3">
-                    {laterShown.map(r => (
-                      <div key={r.key} className="mkt-card overflow-hidden">
-                        <div className="px-3 py-2 bg-surface-inset border-b border-line-subtle flex items-center gap-2">
-                          <span className="text-xs font-extrabold text-fg-soft">{r.label}</span>
-                          <span className="mkt-num text-[10px] text-fg-subtle">{r.markets.length} משחקים</span>
-                          <span className="ms-auto flex gap-1 text-[10px] text-fg-subtle font-semibold">
-                            <span className="w-9 sm:w-10 text-center">בית</span>
-                            <span className="w-9 sm:w-10 text-center">תיקו</span>
-                            <span className="w-9 sm:w-10 text-center">חוץ</span>
-                          </span>
-                        </div>
-                        <div className="divide-y divide-line-subtle">
-                          {r.markets.map(m => (
-                            <GameRow key={m.id} market={m} positions={positions} conflict={conflicts.get(m.id)} />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {hiddenRounds > 0 && (
-                      <button onClick={() => setShowAllRounds(true)}
-                        className="w-full mkt-card py-3 text-xs font-bold text-brand hover:bg-surface-inset transition-colors inline-flex items-center justify-center gap-1.5">
-                        <ChevronDown className="w-4 h-4" />
-                        עוד {hiddenRounds} מחזורים ({later.slice(LATER_PREVIEW).reduce((n, r) => n + r.markets.length, 0)} משחקים)
-                      </button>
-                    )}
-                  </div>
-                </Section>
-              )}
-            </>
-          )
-        )}
-
-        {filter === 'mine' && (
-          <Section title="השווקים שלי" icon={Wallet} count={mineCount}>
-            <Grid>{live.filter(m => holdsAny(m, positions)).map(card)}</Grid>
-          </Section>
-        )}
-
-        {filter === 'all' && settled.length > 0 && (
-          <Section title="הוכרעו לאחרונה" icon={History}>
-            <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory">
-              {settled.map((m, i) => (
-                <div key={m.id} className="mkt-rise shrink-0 w-[260px] snap-start" style={{ animationDelay: `${i * 45}ms` }}>
-                  <MarketCard market={m} myShares={positions} />
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function Section({ title, icon: Icon, children, count, accent = 'brand', action = null }) {
-  const chip = accent === 'gold' ? 'bg-gold/10 text-gold' : 'bg-brand/10 text-brand'
-  return (
-    <section>
-      <div className="flex items-center gap-2.5 mb-4">
-        <span className={`flex items-center justify-center w-8 h-8 rounded-xl shrink-0 ${chip}`}>
-          <Icon className="w-4 h-4" />
-        </span>
-        <h2 className="text-base font-extrabold text-fg-strong">{title}</h2>
-        {count > 0 && (
-          <span className="mkt-num text-[11px] font-bold text-fg-muted bg-surface-sunken rounded-full min-w-[1.5rem] text-center px-2 py-0.5">
-            {count}
-          </span>
-        )}
-        <span className="flex-1 h-px bg-line-subtle" />
-        {action && (
-          <button onClick={action.onClick} className="text-xs font-bold text-brand hover:underline shrink-0">
-            {action.label}
-          </button>
-        )}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function Grid({ children }) {
-  const list = (Array.isArray(children) ? children : [children]).filter(Boolean)
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {list.map((item, i) => (
-        <div key={item.key ?? i} className="mkt-rise" style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}>
-          {item}
+      {filter === 'all' && (
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-6 lg:items-start">
+          <div className="space-y-6 min-w-0">
+            {featured.length > 0 && <FeaturedCarousel markets={featured} activity={activity} />}
+            {gamesBlock}
+            <div className="lg:hidden space-y-6">{seasonBlock}</div>
+            <div className="lg:hidden">{settledBlock}</div>
+          </div>
+          <aside className="hidden lg:block space-y-6">
+            {seasonBlock}
+            {settledBlock}
+          </aside>
         </div>
-      ))}
+      )}
+
+      {filter === 'season' && seasonBlock}
+      {filter === 'games' && <div className="space-y-6">{gamesBlock}</div>}
+
+      {filter === 'mine' && (
+        <section aria-label="התחזיות שלי">
+          <MoreSectionHead title="התחזיות שלי" note={`${mineCount}`} />
+          <Stack two>{live.filter(m => holdsAny(m, positions)).map(card)}</Stack>
+        </section>
+      )}
     </div>
   )
 }
 
-function Empty({ icon: Icon, text }) {
-  return (
-    <div className="mkt-card border-dashed py-10 px-6 text-center">
-      <Icon className="w-6 h-6 text-fg-faint mx-auto mb-2" />
-      <p className="text-sm text-fg-subtle max-w-sm mx-auto leading-relaxed">{text}</p>
-    </div>
-  )
+function Stack({ children, two = false }) {
+  return <div className={`grid gap-2.5 ${two ? 'sm:grid-cols-2' : ''}`}>{children}</div>
 }
 
 const WEEK = 7 * 86400000
 
 /**
- * Open positions, marked to the live price.
+ * "שלי" (board PredictMine): the balance, open predictions marked to the live
+ * percentages, and the ones already decided.
  *
  * Settling pays coins out to the wallet but deliberately leaves the position row
- * standing as a record of the trade. Valuing those rows here would price a
- * winning bet at zero and report it as a total loss — the payout already landed
- * in the balance — so only live markets belong in the portfolio.
+ * standing as a record of the prediction. Valuing those rows as open would price a
+ * correct prediction at zero — the payout already landed in the balance — so only
+ * live markets are "open"; settled ones are listed as decided, with what they returned.
  */
-function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
+function MyPositions({ markets, settledAll, positions, balance, netWorth, openValue, userId, onBrowse }) {
+  const [rank, setRank] = useState(null)
+  useEffect(() => {
+    let alive = true
+    getLeaderboard().then(rows => {
+      const i = rows.findIndex(r => r.user_id === userId)
+      if (alive && i >= 0) setRank(i + 1)
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [userId])
+
   const rows = []
   for (const m of markets) {
     if (m.status !== 'open' && m.status !== 'closed') continue
@@ -438,19 +372,16 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
   }
   rows.sort((a, b) => b.value - a.value)
 
-  if (!rows.length) {
-    return (
-      <div className="mkt-card p-10 text-center">
-        <Wallet className="w-8 h-8 text-fg-faint mx-auto mb-3" />
-        <p className="text-sm text-fg-muted mb-1">אין לך תחזיות פתוחות</p>
-        <p className="text-xs text-fg-subtle mb-4">
-          יש לך <span className="mkt-coin">{fmtCoins(balance)}</span> סטופרים מוכנים לתחזית הבאה.
-        </p>
-        <button onClick={onBrowse} className="btn-primary inline-flex">
-          <Target className="w-4 h-4" /> למשחקים הקרובים
-        </button>
-      </div>
-    )
+  // Decided: a correct share returned 1 coin, a wrong one 0, a void refunded the stake.
+  const decided = []
+  for (const m of settledAll) {
+    for (const o of m.outcomes) {
+      const p = positions[o.id]
+      if (!p || !(Number(p.shares) > 0)) continue
+      const cost = Number(p.cost_basis) || 0
+      const back = m.status === 'void' ? cost : (o.id === m.resolved_outcome_id ? Number(p.shares) : 0)
+      decided.push({ key: o.id, market: m, outcome: o, net: back - cost, void: m.status === 'void', right: m.status === 'resolved' && o.id === m.resolved_outcome_id })
+    }
   }
 
   const invested = rows.reduce((n, r) => n + r.cost, 0)
@@ -462,30 +393,74 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
   const later = rows.filter(r => !soon.includes(r))
 
   return (
-    <div className="space-y-6">
-      <div className="mkt-card p-5 bg-gradient-to-bl from-brand/10 to-transparent">
-        <p className="text-[11px] font-semibold text-fg-muted mb-1">רווח/הפסד על התחזיות הפתוחות</p>
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <span className={`mkt-num text-4xl font-black ${up ? 'text-pos' : 'text-neg'}`} dir="ltr">
-            {up ? '+' : ''}{fmtCoins(Math.round(pnl))}
-          </span>
-          <span className={`stat-pill ${up ? 'bg-pos/10 text-pos' : 'bg-neg/10 text-neg'}`} dir="ltr">
-            {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            {invested > 0 ? `${up ? '+' : ''}${Math.round((pnl / invested) * 100)}%` : '0%'}
+    <div className="max-w-3xl mx-auto space-y-5">
+      <section aria-label="היתרה" className="rounded-card p-4 bg-[#11161D] text-white flex items-center gap-3 dark:bg-surface dark:ring-1 dark:ring-line">
+        <MoreCoin size={52} />
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <span className="text-[12.5px] opacity-75">יש לך</span>
+          <span className="fl-num text-[32px]">{fmtCoins(balance)}</span>
+          <span className="text-[12.5px] opacity-80">
+            בתחזיות פתוחות: <span className="fl-num">{fmtCoins(Math.round(invested))}</span> · שווה עכשיו <span className="fl-num">{fmtCoins(Math.round(openValue))}</span>
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-3 mt-4 text-center">
-          <Stat label="הושקעו" value={fmtCoins(Math.round(invested))} />
-          <Stat label="שווה עכשיו" value={fmtCoins(Math.round(worth))} />
-          <Stat label="שווי כולל" value={fmtCoins(Math.round(netWorth))} tone={netWorth >= START_BALANCE ? 'text-pos' : 'text-neg'} />
-        </div>
-      </div>
+        {rank && (
+          <div className="flex flex-col items-center gap-1 shrink-0 ps-3 border-s border-white/15">
+            <span className="fl-num text-[30px] text-[#F2B233]">{rank}</span>
+            <span className="text-[12px] opacity-75">בטבלה</span>
+          </div>
+        )}
+      </section>
 
-      {soon.length > 0 && (
-        <PositionGroup title="נסגרים השבוע" icon={Lock} rows={soon} />
+      {rows.length === 0 ? (
+        <MoreEmpty icon="coin" title="אין לך תחזיות פתוחות"
+          text={<>יש לך <span className="mkt-coin">{fmtCoins(balance)}</span> סטופרים מוכנים לתחזית הבאה.</>}
+          action={<button type="button" onClick={onBrowse} className="btn-primary inline-flex min-h-[44px]"><Target className="w-4 h-4" /> למשחקים הקרובים</button>} />
+      ) : (
+        <>
+          <div className="fl-card p-4">
+            <p className="text-[12px] font-semibold text-fg-muted mb-1">השינוי בתחזיות הפתוחות</p>
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <span className={`fl-num text-4xl ${up ? 'text-pos' : 'text-neg'}`} dir="ltr">
+                {up ? '+' : ''}{fmtCoins(Math.round(pnl))}
+              </span>
+              <span className={`stat-pill ${up ? 'bg-pos/10 text-pos' : 'bg-neg/10 text-neg'}`} dir="ltr">
+                {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                {invested > 0 ? `${up ? '+' : ''}${Math.round((pnl / invested) * 100)}%` : '0%'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+              <Stat label="נכנסו" value={fmtCoins(Math.round(invested))} />
+              <Stat label="שווה עכשיו" value={fmtCoins(Math.round(worth))} />
+              <Stat label="שווי כולל" value={fmtCoins(Math.round(netWorth))} tone={netWorth >= START_BALANCE ? 'text-pos' : 'text-neg'} />
+            </div>
+          </div>
+
+          {soon.length > 0 && <PositionGroup title="נסגרות השבוע" icon={Lock} rows={soon} />}
+          {later.length > 0 && <PositionGroup title={soon.length ? 'בהמשך' : 'פתוחות'} icon={Star} rows={later} />}
+        </>
       )}
-      {later.length > 0 && (
-        <PositionGroup title={soon.length ? 'בהמשך' : 'התחזיות שלי'} icon={Star} rows={later} />
+
+      {decided.length > 0 && (
+        <section aria-label="הוכרעו">
+          <MoreSectionHead title="הוכרעו" />
+          <div className="fl-card divide-y divide-line overflow-hidden">
+            {decided.map(d => (
+              <div key={d.key} className="flex items-center gap-3 px-3.5 py-3">
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  d.right ? 'bg-pos text-white' : d.void ? 'bg-surface-sunken text-fg-muted' : 'bg-neg text-white'}`}>
+                  {d.right ? <Approved className="w-4 h-4" /> : <Declined className="w-4 h-4" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-bold text-fg-strong truncate">{d.outcome.label}</p>
+                  <p className="text-[12px] text-fg-muted truncate">{d.market.title}{d.void ? ' · בוטלה, הסטופרים חזרו' : ''}</p>
+                </div>
+                <span className={`fl-num text-[17px] shrink-0 ${d.net > 0 ? 'text-pos' : d.net < 0 ? 'text-neg' : 'text-fg-muted'}`} dir="ltr">
+                  {d.net > 0 ? '+' : d.net < 0 ? '−' : ''}{fmtCoins(Math.abs(Math.round(d.net)))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )
@@ -493,41 +468,43 @@ function MyPositions({ markets, positions, balance, netWorth, onBrowse }) {
 
 function Stat({ label, value, tone }) {
   return (
-    <div className="rounded-lg bg-surface/70 border border-line-subtle py-2">
-      <p className="text-[10px] text-fg-subtle font-semibold">{label}</p>
-      <p className={`mkt-num font-bold text-sm ${tone || 'text-fg-strong'}`}>{value}</p>
+    <div className="rounded-xl bg-surface-page py-2">
+      <p className="text-[11px] text-fg-muted font-semibold">{label}</p>
+      <p className={`fl-num text-[15px] mt-1 ${tone || 'text-fg-strong'}`}>{value}</p>
     </div>
   )
 }
 
 function PositionGroup({ title, icon: Icon, rows }) {
   return (
-    <section>
-      <h3 className="flex items-center gap-2 text-sm font-extrabold text-fg-strong mb-2.5">
-        <Icon className="w-4 h-4 text-brand" /> {title}
-        <span className="mkt-num text-[11px] font-bold text-fg-muted bg-surface-sunken rounded-full px-2">{rows.length}</span>
+    <section aria-label={title}>
+      <h3 className="flex items-center gap-2 text-[17px] font-extrabold text-fg-strong mb-2.5 px-1.5">
+        <Icon className="w-4 h-4" /> {title}
+        <span className="fl-num text-[13px] text-fg-muted">{rows.length}</span>
       </h3>
       <div className="space-y-2">
         {rows.map(r => {
           const up = r.pnl >= 0
           return (
             <Link key={r.key} to={`/market/${encodeURIComponent(r.market.slug || r.market.id)}`}
-              className={`mkt-card-hover p-3.5 flex items-center gap-3 border-s-4 ${up ? 'border-s-pos' : 'border-s-neg'}`}>
-              <OutcomeFace outcome={r.outcome} size={10} />
+              className="mkt-card-hover p-3.5 flex items-center gap-3">
+              <span className="w-10 h-10 rounded-full bg-fl-disc flex items-center justify-center shrink-0 overflow-hidden">
+                <OutcomeFace outcome={r.outcome} size={8} />
+              </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-fg-strong truncate">{r.outcome.label}</span>
                   <span className="mkt-num text-xs text-fg-muted shrink-0">{pct(r.outcome.price)}</span>
                 </div>
-                <p className="text-[11px] text-fg-muted truncate">{r.market.title}</p>
-                <p className="text-[11px] text-fg-subtle mt-0.5">
-                  אם זה יקרה: <span className="mkt-coin">{fmtCoins(Math.round(r.shares))}</span>
+                <p className="text-[12px] text-fg-muted truncate">{r.market.title}</p>
+                <p className="text-[12px] text-fg-muted mt-0.5">
+                  אם צודקים, גדלים ל־<span className="mkt-coin">{fmtCoins(Math.round(r.shares))}</span>
                 </p>
               </div>
               <div className="text-end shrink-0">
-                <p className="mkt-num font-black text-fg-strong">{fmtCoins(Math.round(r.value))}</p>
-                <p className={`mkt-num text-[11px] font-bold ${up ? 'text-pos' : 'text-neg'}`} dir="ltr">
-                  {up ? '+' : ''}{fmtCoins(Math.round(r.pnl))}
+                <p className="fl-num text-[17px] text-fg-strong">{fmtCoins(Math.round(r.cost))}</p>
+                <p className={`text-[12px] font-bold mt-1 ${up ? 'text-pos' : 'text-neg'}`}>
+                  שווה <span className="fl-num">{fmtCoins(Math.round(r.value))}</span> {up ? '▲' : '▼'}
                 </p>
                 <div className="mt-1"><StatusChip market={r.market} /></div>
               </div>
