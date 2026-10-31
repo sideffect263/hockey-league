@@ -4,6 +4,8 @@ import { getMyLoanRequests, respondLoan, cancelLoan } from "@/lib/loans"
 import { setMyAvailability } from "@/lib/availability"
 import { Check, X, Loader2 } from "lucide-react"
 import { Loan as Handshake } from "@/components/icons/BrandIcons"
+import TeamLogo from "@/components/TeamLogo"
+import { supabase } from "@/lib/supabase"
 
 /**
  * The invited player's side of a loan (supabase/loan-requests.sql). He decides — not his
@@ -18,6 +20,19 @@ export default function LoanInvite({ gameId = null, compact = false }) {
   const [busy, setBusy] = useState(null)
   const [msg, setMsg] = useState({})
   const [tick, setTick] = useState(0)
+  const [crests, setCrests] = useState({})
+
+  // my_loan_requests carries the team's name, not its crest: one small lookup, only
+  // when there is an invite to draw.
+  const needCrests = invites.length > 0 && !Object.keys(crests).length
+  useEffect(() => {
+    if (!needCrests) return
+    let alive = true
+    supabase.from("teams").select("id, name, logo_url").then(({ data }) => {
+      if (alive && data) setCrests(Object.fromEntries(data.map(t => [t.id, t])))
+    })
+    return () => { alive = false }
+  }, [needCrests])
 
   useEffect(() => {
     let alive = true
@@ -73,56 +88,74 @@ export default function LoanInvite({ gameId = null, compact = false }) {
     weekday: "long", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit",
   })
 
+  const head = r => r.status === "accepted"
+    ? <>את/ה משחק/ת בהשאלה ב{r.team_name}</>
+    : r.initiated_by === "player"
+      ? <>ביקשת לשחק ב{r.team_name} · ממתין למאמן/ת</>
+      : <>{r.team_name} מזמינה אותך</>
+
+  // Board Loans "הזמנה בשבילך": amber-ringed card, crest, game line, note, the two answers.
   return (
-    <div className="space-y-2">
-      {invites.map(r => (
-        <div key={r.id} className="card p-4 border-2 border-brand/30 space-y-2">
-          <p className="flex items-start gap-2 text-sm font-bold text-slate-900 dark:text-white">
-            <Handshake className="w-5 h-5 text-brand shrink-0" />
-            <span>
-              {r.status === "accepted"
-                ? <>את/ה משחק/ת בהשאלה ב<span className="text-brand">{r.team_name}</span></>
-                : r.initiated_by === "player"
-                  ? <>ביקשת לשחק בהשאלה ב<span className="text-brand">{r.team_name}</span> — ממתין לאישור המאמן/ת</>
-                  : <><span className="text-brand">{r.team_name}</span> מזמינה אותך לשחק בהשאלה</>}
-            </span>
-          </p>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
-            {compact || !gameId
-              ? <Link to={`/games/${r.game_id}`} className="underline font-semibold">{r.home_team} נגד {r.away_team}</Link>
-              : <>{r.home_team} נגד {r.away_team}</>}
-            {" · "}{when(r)}
-          </p>
-          {r.note && r.note !== "שחקן בהשאלה" && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">„{r.note}”</p>
-          )}
-          {r.status === "pending" && r.initiated_by === "player" ? (
-            <button onClick={() => cancelAsk(r)} disabled={busy === r.id}
-              className="text-xs font-semibold text-slate-500 hover:text-red-600 underline disabled:opacity-50">
-              ביטול הבקשה
-            </button>
-          ) : r.status === "pending" ? (
-            <div className="flex items-center gap-2">
-              <button onClick={() => answer(r, true)} disabled={busy === r.id}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50">
-                {busy === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} אני מגיע/ה
-              </button>
-              <button onClick={() => answer(r, false)} disabled={busy === r.id}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
-                <X className="w-4 h-4" /> לא יכול/ה
-              </button>
+    <div className="space-y-2.5">
+      {invites.map(r => {
+        const waiting = r.status === "pending" && r.initiated_by !== "player"
+        return (
+          <section key={r.id} aria-label="הזמנה בשבילך"
+            className={`rounded-[22px] overflow-hidden bg-surface ${waiting ? "border-2 border-[#F2B233]" : "border border-line"}`}>
+            {waiting && (
+              <div className="px-3.5 py-3 bg-[#F2B233]/15 flex items-center gap-2 text-[13px] font-extrabold text-fg-strong">
+                <span className="w-2 h-2 rounded-full bg-fl-live" aria-hidden="true" />הזמנה בשבילך
+              </div>
+            )}
+            <div className="p-3.5 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <TeamLogo team={crests[r.team_id] || { name: r.team_name }} px={54} />
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="text-base font-extrabold text-fg-strong">{head(r)}</span>
+                  <span className="text-[13px] text-fg-soft">
+                    {compact || !gameId
+                      ? <Link to={`/games/${r.game_id}`} className="underline underline-offset-2">{r.home_team} נגד {r.away_team}</Link>
+                      : <>{r.home_team} נגד {r.away_team}</>}
+                    {" · "}{when(r)}
+                  </span>
+                  {r.note && r.note !== "שחקן בהשאלה" && (
+                    <span className="text-[12.5px] text-fg-muted">„{r.note}”</span>
+                  )}
+                </div>
+                <Handshake className="w-8 h-8 shrink-0" />
+              </div>
+              {r.status === "pending" && r.initiated_by === "player" ? (
+                <button onClick={() => cancelAsk(r)} disabled={busy === r.id}
+                  className="self-start min-h-[44px] text-[13px] font-semibold text-fg-muted underline underline-offset-2 disabled:opacity-50">
+                  ביטול הבקשה
+                </button>
+              ) : r.status === "pending" ? (
+                <>
+                  <div className="flex gap-2">
+                    <button onClick={() => answer(r, true)} disabled={busy === r.id}
+                      className="flex-1 h-12 rounded-control bg-brand text-brand-fg text-[15px] font-extrabold inline-flex items-center justify-center gap-1.5 disabled:opacity-50">
+                      {busy === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} אני מגיע/ה
+                    </button>
+                    <button onClick={() => answer(r, false)} disabled={busy === r.id}
+                      className="h-12 px-[18px] rounded-control border border-line-strong text-fg-strong text-[15px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-50">
+                      <X className="w-4 h-4" /> לא הפעם
+                    </button>
+                  </div>
+                  <span className="text-[12px] text-fg-muted">רק את/ה מאשר/ת. המאמן/ת שלך מקבל/ת עדכון, לא שאלה.</span>
+                </>
+              ) : (
+                <button onClick={() => withdraw(r)} disabled={busy === r.id}
+                  className="self-start min-h-[44px] text-[13px] font-semibold text-fg-muted underline underline-offset-2 disabled:opacity-50">
+                  לא אוכל להגיע
+                </button>
+              )}
+              {msg[r.id] && <p className="text-[13px] text-fg-soft">{msg[r.id]}</p>}
             </div>
-          ) : (
-            <button onClick={() => withdraw(r)} disabled={busy === r.id}
-              className="text-xs font-semibold text-slate-500 hover:text-red-600 underline disabled:opacity-50">
-              לא אוכל להגיע
-            </button>
-          )}
-          {msg[r.id] && <p className="text-xs text-slate-600 dark:text-slate-300">{msg[r.id]}</p>}
-        </div>
-      ))}
+          </section>
+        )
+      })}
       {done.map(id => (
-        <p key={id} className="card p-3 text-xs text-slate-600 dark:text-slate-300">{msg[id]}</p>
+        <p key={id} className="fl-card p-3.5 text-[13px] text-fg-soft">{msg[id]}</p>
       ))}
     </div>
   )

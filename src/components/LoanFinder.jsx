@@ -25,7 +25,7 @@ import { Loan as Handshake, PersonAdd as UserPlus, Announce as Megaphone, Hourgl
  */
 const STATUS = {
   pending:   { label: "ממתין לתשובה", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-  accepted:  { label: "אישר ✓",        cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  accepted:  { label: "אישר",          cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
   declined:  { label: "לא יכול",       cls: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400" },
   cancelled: { label: "בוטל",          cls: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400" },
   filled:    { label: "הסגל התמלא",    cls: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400" },
@@ -144,27 +144,48 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
     finally { setBusyId(null) }
   }
 
+  const gkHave = (summary.own_gk || 0) > 0 || summary.gk_slots === 0
+  const Meter = ({ filled, total }) => (
+    <div className="flex gap-1" aria-hidden="true">
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className={`flex-1 h-2.5 rounded-full ${i < filled ? "bg-pos" : "border-2 border-dashed border-fg-faint"}`} />
+      ))}
+    </div>
+  )
+
+  // Board LoanFinder: the cap meters, the "publish on /loans" switches, then the list.
   return (
-    <div className="mt-3 p-3 rounded-lg border border-brand/20 bg-brand/5 dark:bg-brand/10 space-y-2.5">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
-          <Handshake className="w-4 h-4 text-brand" /> השאלת שחקנים
-        </p>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${signed >= LOAN_FIELD_TARGET ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
-          {signed}/{LOAN_FIELD_TARGET} שחקני שדה
-        </span>
+    <div className="mt-3 p-3.5 rounded-card bg-surface border border-line space-y-3">
+      <p className="flex items-center gap-2 text-[17px] font-extrabold text-fg-strong">
+        <Handshake className="w-6 h-6" /> שחקן בהשאלה
+      </p>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl bg-surface-page p-3 flex flex-col gap-2">
+          <span className="text-[12.5px] font-bold text-fg-strong">שחקני שדה</span>
+          <Meter filled={Math.min(signed, LOAN_FIELD_TARGET)} total={LOAN_FIELD_TARGET} />
+          <span className="text-[12px] text-fg-soft">
+            <span className="fl-num">{signed}</span> מתוך <span className="fl-num">{LOAN_FIELD_TARGET}</span>
+            {summary.field_slots > 0 ? <> · אפשר לשאול עוד <span className="fl-num">{summary.field_slots}</span></> : ""}
+          </span>
+        </div>
+        <div className="rounded-2xl bg-surface-page p-3 flex flex-col gap-2">
+          <span className="text-[12.5px] font-bold text-fg-strong">שוער</span>
+          <Meter filled={gkHave ? 1 : 0} total={1} />
+          <span className="text-[12px] text-fg-soft">{summary.gk_slots > 0 ? "אפשר לשאול שוער אחד" : (summary.own_gk > 0 ? "יש שוער משלכם · לא צריך" : "כבר הושאל שוער")}</span>
+        </div>
       </div>
 
-      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+      <p className="text-[12.5px] text-fg-soft leading-relaxed">
         {!summary.open
           ? "המשחק כבר התחיל — אי אפשר לשלוח הזמנות."
           : summary.field_slots > 0
-            ? <>אפשר להשאיל עוד <strong>{summary.field_slots}</strong> שחקני שדה{summary.gk_slots > 0 ? " ושוער אחד" : ""}. השחקן מקבל הזמנה ומאשר בעצמו.</>
+            ? <>השחקן מקבל הזמנה ומאשר בעצמו.</>
             : summary.gk_slots > 0
               ? `יש ${LOAN_FIELD_TARGET} שחקני שדה — אפשר להשאיל רק שוער.`
               : "הסגל מלא — אין צורך בהשאלה."}
         {summary.open && summary.loan_field > 0 && (
-          <span className="block text-slate-500 dark:text-slate-400">
+          <span className="block text-fg-muted mt-0.5">
             אם יירשמו עוד שחקנים מהקבוצה, המושאל האחרון יוסר אוטומטית והוא יקבל הודעה.
           </span>
         )}
@@ -173,69 +194,74 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
       {/* Raise a hand instead of chasing one player: the call shows on /loans to every
           player who could come, and their asks land in the list below. */}
       {summary.open && (anyRoom || call.need_field || call.need_gk) && (
-        <div className="p-2 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 space-y-1.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-            <Megaphone className="w-4 h-4 text-brand" /> מחפשים שחקנים? פרסמו בעמוד ההשאלות
+        <div className="rounded-2xl border border-line p-3 space-y-2">
+          <p className="flex items-center gap-2 text-[14px] font-bold text-fg-strong">
+            <Megaphone className="w-5 h-5" /> לפרסם בעמוד ההשאלות
+            {callBusy && <Loader2 className="w-4 h-4 animate-spin text-fg-muted" />}
           </p>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {[["field", "שחקן שדה", call.need_field, summary.field_slots], ["gk", "שוער", call.need_gk, summary.gk_slots]].map(([k, label, on, slots]) => (
-              <button key={k} onClick={() => toggleCall(k)} disabled={callBusy || (!on && slots === 0)} role="switch" aria-checked={on}
-                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors disabled:opacity-40 ${on ? "bg-brand text-white" : "border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300"}`}>
-                <span className={`w-2 h-2 rounded-full ${on ? "bg-white" : "bg-slate-300 dark:bg-slate-600"}`} />
-                {label}{on ? " — מחפשים" : ""}
-              </button>
-            ))}
-            {callBusy && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
-          </div>
+          <p className="text-[12px] text-fg-muted -mt-1">שחקנים מתאימים יקבלו הודעה אחת ויוכלו לבקש</p>
+          {[["field", "מחפשים שחקן שדה", call.need_field, summary.field_slots], ["gk", "מחפשים שוער", call.need_gk, summary.gk_slots]].map(([k, label, on, slots]) => (
+            <button key={k} type="button" onClick={() => toggleCall(k)} disabled={callBusy || (!on && slots === 0)} role="switch" aria-checked={on}
+              className="w-full min-h-[48px] flex items-center justify-between gap-3 disabled:opacity-40">
+              <span className="text-[14px] font-semibold text-fg-strong">{label}</span>
+              <span className={`relative w-[52px] h-[30px] rounded-full shrink-0 transition-colors ${on ? "bg-pos" : "bg-surface-sunken"}`}>
+                <span className={`absolute top-[3px] start-[3px] w-6 h-6 rounded-full bg-white shadow transition-transform duration-200 ${on ? "rtl:-translate-x-[22px] ltr:translate-x-[22px]" : ""}`} />
+              </span>
+            </button>
+          ))}
           {(call.need_field || call.need_gk) && (
             <input value={callNote} onChange={e => setCallNote(e.target.value)} onBlur={saveCallNote} maxLength={80}
               placeholder="הערה לשחקנים (לא חובה) — למשחק ב-17:00 חסרים לנו 2" aria-label="הערה לשחקנים"
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-[11px] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+              className="w-full min-h-[44px] bg-surface-inset border border-line rounded-control px-3 text-[14px] text-fg-strong placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/30" />
           )}
           {(call.need_field || call.need_gk) && (
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">
-              שחקנים שיכולים לשחק קיבלו הודעה. הפרסום יורד לבד כשהסגל מתמלא.
-            </p>
+            <p className="text-[12px] text-fg-muted">שחקנים שיכולים לשחק קיבלו הודעה. הפרסום יורד לבד כשהסגל מתמלא.</p>
           )}
         </div>
       )}
 
       {openRequests.length > 0 && (
-        <ul className="space-y-1">
-          {openRequests.map(r => (
-            <li key={r.id} className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
-              <span className="truncate">{r.player_name}{r.position === "Goalkeeper" ? <> <Goalkeeper className="w-4 h-4 inline-block align-[-2px]" title="שוער" /></> : null}</span>
-              <span className="text-[10px] text-slate-400 truncate">({r.team_name || "ללא קבוצה"})</span>
-              <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded ${STATUS[r.status].cls}`}>
-                {r.initiated_by === "player" && r.status === "pending" ? `ביקש/ה להצטרף${r.age != null ? ` · בן/בת ${r.age}` : ""}` : STATUS[r.status].label}
-              </span>
-              {summary.open && r.initiated_by === "player" && r.status === "pending" ? (
-                <span className="ms-auto shrink-0 flex items-center gap-1">
-                  <button onClick={() => answerAsk(r, true)} disabled={busyId === r.id}
-                    className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500 text-white disabled:opacity-50">
-                    {busyId === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} אישור
+        <ul className="divide-y divide-line">
+          {openRequests.map(r => {
+            const asked = r.initiated_by === "player" && r.status === "pending"
+            return (
+              <li key={r.id} className="flex items-center gap-2.5 min-h-[60px] py-1.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14.5px] font-bold text-fg-strong truncate">
+                    {r.player_name}{r.position === "Goalkeeper" ? <> <Goalkeeper className="w-4 h-4 inline-block align-[-2px]" title="שוער" /></> : null}
+                  </p>
+                  <p className="text-[12px] text-fg-muted truncate">
+                    {asked ? `ביקש/ה לשחק אצלכם${r.age != null ? ` · ${r.age}` : ""}` : STATUS[r.status].label} · {r.team_name || "ללא קבוצה"}
+                  </p>
+                </div>
+                {summary.open && asked ? (
+                  <span className="shrink-0 flex items-center gap-1.5">
+                    <button onClick={() => answerAsk(r, true)} disabled={busyId === r.id}
+                      className="h-11 min-w-[76px] px-3.5 rounded-xl bg-pos text-white text-[13.5px] font-bold inline-flex items-center justify-center gap-1 disabled:opacity-50">
+                      {busyId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} לאשר
+                    </button>
+                    <button onClick={() => answerAsk(r, false)} disabled={busyId === r.id} aria-label={`דחיית הבקשה של ${r.player_name}`}
+                      className="h-11 w-11 rounded-xl bg-surface-page text-fg-muted inline-flex items-center justify-center disabled:opacity-50">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </span>
+                ) : summary.open && (
+                  <button onClick={() => cancel(r)} disabled={busyId === r.id} aria-label={`ביטול ההזמנה של ${r.player_name}`}
+                    className="shrink-0 h-11 px-3.5 rounded-xl bg-surface-page text-fg-muted text-[13px] font-bold disabled:opacity-50">
+                    {busyId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "ביטול"}
                   </button>
-                  <button onClick={() => answerAsk(r, false)} disabled={busyId === r.id}
-                    className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-50">
-                    <X className="w-3 h-3" /> דחייה
-                  </button>
-                </span>
-              ) : summary.open && (
-                <button onClick={() => cancel(r)} disabled={busyId === r.id} aria-label={`ביטול ההזמנה של ${r.player_name}`}
-                  className="ms-auto shrink-0 text-[10px] font-semibold text-slate-400 hover:text-red-500 disabled:opacity-50">
-                  {busyId === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "ביטול"}
-                </button>
-              )}
-            </li>
-          ))}
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
       {closedRequests.length > 0 && (
-        <ul className="space-y-0.5">
+        <ul className="space-y-1">
           {closedRequests.map(r => (
-            <li key={r.id} className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            <li key={r.id} className="flex items-center gap-2 text-[12.5px] text-fg-muted">
               <span className="truncate">{r.player_name}</span>
-              <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded ${STATUS[r.status]?.cls || ""}`}>{STATUS[r.status]?.label || r.status}</span>
+              <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS[r.status]?.cls || ""}`}>{STATUS[r.status]?.label || r.status}</span>
             </li>
           ))}
         </ul>
@@ -243,65 +269,69 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
 
       {summary.open && anyRoom && !open && (
         <button onClick={() => setOpen(true)}
-          className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity">
-          <Search className="w-3.5 h-3.5" /> חיפוש שחקן להשאלה
+          className="w-full h-12 rounded-control bg-brand text-brand-fg text-[14.5px] font-bold inline-flex items-center justify-center gap-2">
+          <Search className="w-4 h-4" /> חיפוש שחקן להשאלה
         </button>
       )}
 
       {open && (
-        <div className="space-y-2 pt-1">
-          <div className="flex items-center gap-1.5">
-            {[["field", `שחקני שדה (${summary.field_slots})`], ["gk", `שוער (${summary.gk_slots})`]].map(([k, label]) => (
-              <button key={k} onClick={() => setTab(k)}
-                className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors ${tab === k ? "bg-brand text-white" : "border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"}`}>
-                {label}
+        <div className="space-y-2.5 pt-1">
+          <div className="flex items-center gap-2">
+            {[["field", "שחקני שדה", summary.field_slots], ["gk", "שוער", summary.gk_slots]].map(([k, label, n]) => (
+              <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k}
+                className={`h-11 px-4 rounded-full text-[13.5px] font-bold transition-colors ${tab === k ? "bg-brand text-brand-fg" : "bg-surface-page text-fg-strong"}`}>
+                {label} <span className="fl-num opacity-70">{n}</span>
               </button>
             ))}
             <button onClick={() => { setOpen(false); setQuery("") }} aria-label="סגירה"
-              className="ms-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              className="ms-auto w-11 h-11 rounded-full bg-surface-page flex items-center justify-center text-fg-muted">
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="חיפוש לפי שם או קבוצה" aria-label="חיפוש שחקן"
-            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+          <label className="h-11 rounded-control bg-surface-page flex items-center gap-2 px-3">
+            <Search className="w-4 h-4 text-fg-muted shrink-0" />
+            <span className="sr-only">חיפוש שחקן</span>
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="חיפוש לפי שם או קבוצה"
+              className="flex-1 min-w-0 bg-transparent text-[15px] text-fg-strong placeholder:text-fg-subtle focus:outline-none" />
+          </label>
 
           {candidates === null ? (
-            <p className="flex items-center gap-1.5 text-[11px] text-slate-400"><Loader2 className="w-3 h-3 animate-spin" /> טוען שחקנים…</p>
+            <div className="space-y-2">{[0, 1, 2, 3].map(i => <span key={i} className="skeleton block h-[52px] rounded-xl" />)}</div>
           ) : (
             <>
               {slotsForTab === 0 && (
-                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                <p className="text-[12.5px] text-fg-strong rounded-xl bg-[#F2B233]/15 px-3 py-2">
                   {tab === "gk" ? (summary.own_gk > 0 ? "שוער הקבוצה כבר אישר הגעה — אין צורך בשוער מושאל." : "כבר הושאל שוער למשחק הזה.") : `יש כבר ${LOAN_FIELD_TARGET} שחקני שדה — אין מקום לעוד השאלה.`}
                 </p>
               )}
-              <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">יכולים לשחק ({available.length})</p>
-              {available.length === 0 && <p className="text-[11px] text-slate-400">אין שחקנים זמינים{query ? " בחיפוש הזה" : ""}.</p>}
-              <ul className="divide-y divide-slate-100 dark:divide-slate-700/60 max-h-80 overflow-y-auto">
+              <p className="text-[12px] font-bold text-fg-muted">יכולים לשחק <span className="fl-num">{available.length}</span></p>
+              {available.length === 0 && <p className="text-[13px] text-fg-muted">אין שחקנים זמינים{query ? " בחיפוש הזה" : ""}.</p>}
+              <ul className="divide-y divide-line max-h-96 overflow-y-auto">
                 {available.map(c => {
                   const inv = inviteOf(c)
                   return (
-                    <li key={c.player_id} className="flex items-center gap-2 py-1.5">
+                    <li key={c.player_id} className="flex items-center gap-2.5 min-h-[60px] py-1.5">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
-                          {c.jersey_number != null && <span className="text-slate-400 font-normal">{c.jersey_number} · </span>}
+                        <p className="text-[14.5px] font-bold text-fg-strong truncate">
+                          {c.jersey_number != null && <span className="fl-num text-fg-muted font-normal">{c.jersey_number} · </span>}
                           {fullName(c)}{c.position === "Goalkeeper" ? <> <Goalkeeper className="w-4 h-4 inline-block align-[-2px]" title="שוער" /></> : null}
                         </p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                          {c.team_name || "ללא קבוצה"}{c.age != null ? ` · בן/בת ${c.age}` : " · אין תאריך לידה"}
+                        <p className="text-[12px] text-fg-muted truncate">
+                          {c.team_name || "ללא קבוצה"}{c.age != null ? ` · גיל ${c.age}` : " · אין תאריך לידה"}
                           {!c.has_account && " · אין חשבון באפליקציה"}
                         </p>
                       </div>
                       {inv ? (
-                        <span className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded ${STATUS[inv.status].cls}`}>
-                          {inv.status === "pending" ? <Hourglass className="w-4 h-4" /> : <Check className="w-3 h-3" />} {STATUS[inv.status].label}
+                        <span className="shrink-0 h-11 min-w-[76px] px-3 rounded-xl bg-surface-page text-fg-muted text-[13px] font-bold inline-flex items-center justify-center gap-1">
+                          {inv.status === "pending" ? <><Hourglass className="w-4 h-4" /> נשלח</> : <><Check className="w-4 h-4" /> אישר</>}
                         </span>
                       ) : (
                         <button onClick={() => invite(c)} disabled={busyId === c.player_id || slotsForTab === 0}
-                          className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity disabled:opacity-40">
-                          {busyId === c.player_id ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : c.has_account ? <Send className="w-3 h-3" /> : <UserPlus className="w-4 h-4" />}
-                          {c.has_account ? "הזמנה" : "הוספה"}
+                          className="shrink-0 h-11 min-w-[76px] px-3.5 rounded-xl bg-brand text-brand-fg text-[13.5px] font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-40">
+                          {busyId === c.player_id ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : c.has_account ? <Send className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                          {c.has_account ? "להזמין" : "להוסיף"}
                         </button>
                       )}
                     </li>
@@ -311,18 +341,20 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
 
               {blocked.length > 0 && (
                 <div>
-                  <button onClick={() => setShowBlocked(v => !v)}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700">
-                    <ChevronDown className={`w-3 h-3 transition-transform ${showBlocked ? "rotate-180" : ""}`} />
-                    לא יכולים לשחק במשחק הזה ({blocked.length})
+                  <button type="button" onClick={() => setShowBlocked(v => !v)} aria-expanded={showBlocked}
+                    className="min-h-[44px] flex items-center gap-1.5 text-[13px] font-bold text-fg-muted">
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showBlocked ? "rotate-180" : ""}`} />
+                    לא יכולים לשחק במשחק הזה <span className="fl-num">{blocked.length}</span>
                   </button>
                   {showBlocked && (
-                    <ul className="mt-1 space-y-0.5 max-h-60 overflow-y-auto">
+                    <ul className="divide-y divide-line max-h-72 overflow-y-auto opacity-70">
                       {blocked.map(c => (
-                        <li key={c.player_id} className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                          <span className="truncate">{fullName(c)}</span>
-                          <span className="text-[10px] truncate">({c.team_name || "ללא קבוצה"})</span>
-                          <span className="ms-auto shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700">
+                        <li key={c.player_id} className="flex items-center gap-2.5 min-h-[52px] py-1">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[14px] font-bold text-fg-strong truncate">{fullName(c)}</p>
+                            <p className="text-[12px] text-fg-muted truncate">{c.team_name || "ללא קבוצה"}</p>
+                          </div>
+                          <span className="shrink-0 text-[12px] font-bold px-2.5 py-1.5 rounded-xl bg-surface-page text-fg-muted">
                             {LOAN_BLOCK_LABEL[c.block] || c.block}
                           </span>
                         </li>
@@ -336,7 +368,7 @@ export default function LoanFinder({ gameId, teamId, teamName, refreshKey = 0, o
         </div>
       )}
 
-      {err && <p className="text-[11px] text-red-600 dark:text-red-400">{err}</p>}
+      {err && <p className="text-[13px] text-neg">{err}</p>}
     </div>
   )
 }
