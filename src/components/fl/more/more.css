@@ -1,0 +1,42 @@
+/* Floodlight "more" area (סטופר מרקט, loans, media, status screens).
+   The market used to re-skin the whole site emerald through html.market-theme; Floodlight
+   drops that room. Its components still use the .mkt-* classes from index.css, so inside a
+   .fl-mkt wrapper they are re-pointed at the Floodlight look: Rubik 800 italic numbers
+   (not monospace), borderless 20px cards, and the סטופר coin gold for coin figures. */
+
+.fl-mkt {
+  /* Coin text: the coin's gold is too pale for text on paper, so light mode darkens it
+     (≥4.5:1 on #FAF9F6); dark mode uses the coin gold itself. */
+  --mkt-coin-ink: #8A5A00;
+}
+html.dark .fl-mkt { --mkt-coin-ink: #F2B233; }
+
+.fl-mkt .mkt-num,
+.fl-mkt .mkt-coin {
+  font-family: inherit;
+  font-weight: 800;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.fl-mkt .mkt-card {
+  border-color: transparent;
+  border-radius: 20px;
+}
+.fl-mkt .mkt-card-hover:hover { border-color: rgb(var(--line-strong) / 0.6); }
+.fl-mkt .mkt-coin { color: var(--mkt-coin-ink); }
+.fl-mkt .mkt-bar { border-radius: 12px; }
+
+/* Bottom sheet (prediction ticket on phones). transform/opacity only, ≤300 ms. */
+.fl-more-sheet-in { animation: fl-more-sheet-in 260ms cubic-bezier(.2,.8,.2,1) both; }
+.fl-more-fade-in { animation: fl-more-fade-in 200ms ease-out both; }
+@keyframes fl-more-sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fl-more-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Launch splash: the mark settles in once (no loop). */
+.fl-splash-mark { animation: fl-splash-mark 520ms cubic-bezier(.2,.9,.25,1) both; }
+@keyframes fl-splash-mark { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-more-sheet-in, .fl-more-fade-in, .fl-splash-mark { animation: none; }
+}

@@ -4,6 +4,7 @@ import { ArrowLeft, Minus } from "lucide-react"
 import { Squad as Users, StatsIcon as BarChart3, TrendUp as TrendingUp, TrendDown as TrendingDown, Flame } from "@/components/icons/BrandIcons"
 import { coins as fmtCoins, pct, getTrades } from '@/lib/market'
 import { StatusChip, OutcomeFace } from '@/components/market/MarketCard'
+import { FLChip } from '@/components/fl/Floodlight'
 import PriceChart, { useSeriesColors } from '@/components/market/PriceChart'
 
 /**
@@ -52,15 +53,15 @@ export default function FeaturedMarket({ market, trades, activity }) {
   const href = `/market/${encodeURIComponent(market.slug || market.id)}`
 
   return (
-    <section className="mkt-card overflow-hidden border-brand/30">
-      <div className="p-4 sm:p-5 bg-gradient-to-bl from-brand/[0.07] to-transparent">
+    <section className="mkt-card overflow-hidden" aria-label="בולט עכשיו">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0">
-            <span className="stat-pill bg-brand/10 text-brand mb-2">
-              <Flame className="w-4 h-4" /> שוק מוביל
-            </span>
-            <h2 className="text-lg sm:text-xl font-black text-fg-strong leading-snug">
-              <Link to={href} className="hover:text-brand transition-colors">{market.title}</Link>
+            <FLChip tone="accent" className="mb-2">
+              <Flame className="w-4 h-4" /> בולט עכשיו
+            </FLChip>
+            <h2 className="text-lg sm:text-xl font-extrabold text-fg-strong leading-snug">
+              <Link to={href} className="hover:underline underline-offset-4">{market.title}</Link>
             </h2>
             {market.subtitle && <p className="text-xs text-fg-muted mt-0.5">{market.subtitle}</p>}
           </div>
@@ -75,7 +76,7 @@ export default function FeaturedMarket({ market, trades, activity }) {
           <div className="space-y-1.5">
             {shown.map(o => (
               <Link key={o.id} to={href}
-                className="mkt-bar flex items-center gap-2 px-2.5 py-2 hover:bg-surface-inset transition-colors">
+                className="mkt-bar flex items-center gap-2 px-2.5 min-h-[44px] hover:bg-surface-inset transition-colors">
                 <div className="mkt-bar-fill" style={{ width: `${Math.round(o.price * 100)}%` }} />
                 <div className="relative flex items-center gap-2 min-w-0 flex-1">
                   {/* The row's own line in the chart above it. */}
@@ -101,12 +102,12 @@ export default function FeaturedMarket({ market, trades, activity }) {
         </div>
       </div>
 
-      <div className="px-4 sm:px-5 py-2.5 border-t border-line-subtle flex items-center justify-between gap-3 flex-wrap">
+      <div className="px-4 sm:px-5 py-2 border-t border-line flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-4 flex-wrap">
           <Stat icon={BarChart3} label="סטופרים בשוק" value={fmtCoins(activity?.volume || 0)} />
           <Stat icon={Users} label="משתתפים" value={activity?.traders || 0} />
         </div>
-        <Link to={href} className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline">
+        <Link to={href} className="inline-flex items-center gap-1.5 min-h-[44px] text-[13px] font-bold text-fg-strong hover:underline">
           לחזות <ArrowLeft className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -152,18 +153,20 @@ export function FeaturedCarousel({ markets, activity }) {
   if (!market) return null
 
   return (
-    <div className="mb-6"
+    <div
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <div key={market.id} className="mkt-fade">
         <FeaturedMarket market={market} trades={trades[market.id] || null} activity={activity.get(market.id)} />
       </div>
       {count > 1 && (
-        <div className="flex justify-center gap-1.5 mt-3" role="tablist" aria-label="שווקים מובילים">
+        <div className="flex justify-center gap-0.5 mt-2" role="tablist" aria-label="שווקים מובילים">
           {markets.map((m, n) => (
             <button key={m.id} type="button" role="tab" aria-selected={n === i} aria-label={m.title}
               onClick={() => setIdx(n)}
-              className={`h-1.5 rounded-full transition-all ${n === i ? 'w-6 bg-brand' : 'w-1.5 bg-fg-subtle/40 hover:bg-fg-subtle'}`} />
+              className="h-6 px-1 flex items-center">
+              <span className={`block h-1.5 rounded-full transition-all ${n === i ? 'w-6 bg-fg-strong' : 'w-1.5 bg-fg-subtle/40 hover:bg-fg-subtle'}`} />
+            </button>
           ))}
         </div>
       )}

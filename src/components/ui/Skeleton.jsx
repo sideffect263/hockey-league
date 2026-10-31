@@ -79,8 +79,8 @@ export function SkeletonPageHeader({ titleWidth = "w-52", subtitle = true, actio
     <div className="flex items-start justify-between gap-3">
       <div className="space-y-2.5">
         <div className="flex items-center gap-2.5">
-          <Skeleton className="size-8 rounded-xl" />
-          <Skeleton className={`h-8 sm:h-9 ${titleWidth} rounded-lg`} />
+          <Skeleton className="size-10 rounded-full" />
+          <Skeleton className={`h-8 sm:h-9 ${titleWidth} rounded-[10px]`} />
         </div>
         {subtitle && <Skeleton className="h-3.5 w-64 max-w-full" />}
       </div>
@@ -94,12 +94,12 @@ export function SkeletonBackLink() {
   return <Skeleton className="h-4 w-28" />
 }
 
-/** A `.tab-bar` of n tabs. */
+/** A row of n tabs — Floodlight's 44px pill tabs. */
 export function SkeletonTabs({ count = 3, className = "" }) {
   return (
-    <div className={`tab-bar w-fit ${className}`}>
+    <div className={`flex gap-2 w-fit ${className}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="h-8 w-20 rounded-lg" />
+        <Skeleton key={i} className="h-11 w-20 rounded-full" />
       ))}
     </div>
   )
@@ -110,7 +110,7 @@ export function SkeletonChips({ count = 4, className = "" }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="h-8 w-24 rounded-full shrink-0" />
+        <Skeleton key={i} className="h-9 w-24 rounded-full shrink-0" />
       ))}
     </div>
   )
@@ -123,7 +123,7 @@ export function SkeletonFilters({ count = 3, withTabs = false, tabCount = 3 }) {
       {withTabs && <SkeletonTabs count={tabCount} className="sm:w-auto" />}
       <div className="flex gap-2 flex-1 flex-wrap">
         {Array.from({ length: count }).map((_, i) => (
-          <Skeleton key={i} className="h-11 flex-1 min-w-[120px] rounded-xl" />
+          <Skeleton key={i} className="h-11 flex-1 min-w-[120px] rounded-control" />
         ))}
       </div>
     </div>
@@ -135,7 +135,7 @@ export function SkeletonCards({ count = 4, height = "h-24", className = "" }) {
   return (
     <div className={`space-y-3 ${className}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className={`${height} w-full rounded-2xl`} />
+        <Skeleton key={i} className={`${height} w-full rounded-card`} />
       ))}
     </div>
   )
@@ -146,7 +146,7 @@ export function SkeletonGrid({ count = 6, height = "h-28", cols = "grid-cols-1 s
   return (
     <div className={`grid ${cols} ${gap}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className={`${height} w-full rounded-2xl`} />
+        <Skeleton key={i} className={`${height} w-full rounded-card`} />
       ))}
     </div>
   )
@@ -181,7 +181,7 @@ export function SkeletonStatTiles({ count = 5, cols = "grid-cols-2 sm:grid-cols-
   return (
     <div className={`grid ${cols} gap-3`}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="h-24 rounded-2xl" />
+        <Skeleton key={i} className="h-24 rounded-card" />
       ))}
     </div>
   )
@@ -204,7 +204,7 @@ export function SkeletonChartCard({ height = "h-52", className = "" }) {
  * The hero card every detail page opens with: a crest or avatar beside a name,
  * a line of meta, and a row of `.stat-pill`s.
  */
-export function SkeletonDetailHeader({ avatar = "size-16 rounded-2xl", pills = 3 }) {
+export function SkeletonDetailHeader({ avatar = "size-16 rounded-card", pills = 3 }) {
   return (
     <div className="card p-5 sm:p-6">
       <div className="flex items-center gap-4">

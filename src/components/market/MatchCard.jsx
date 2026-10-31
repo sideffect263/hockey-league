@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Lock, ChevronLeft } from "lucide-react"
-import { Squad as Users, TrendUp as TrendingUp } from "@/components/icons/BrandIcons"
+import { Lock } from "lucide-react"
+import { Squad as Users } from "@/components/icons/BrandIcons"
 import TeamLogo from '@/components/TeamLogo'
+import { TeamBlend, CrestDisc } from '@/components/fl/Floodlight'
 import { useTheme } from '@/lib/ThemeContext'
 import { seriesTeamColors } from '@/lib/teamMarkColor'
-import { pct, gameSides, CONFLICT_COPY } from '@/lib/market'
+import { pct, gameSides, CONFLICT_COPY, coins as fmtCoins } from '@/lib/market'
 import { StatusChip } from './MarketCard'
 
 const TZ = 'Asia/Jerusalem'
@@ -53,99 +54,90 @@ export function SplitBar({ home, draw, away, colors, tall = false }) {
   )
 }
 
-function Side({ outcome, color, align, mine }) {
-  if (!outcome) return <div className="flex-1" />
+/** One outcome tile under the blend: the fill IS the probability, from the right. */
+function OutcomeTile({ outcome, label, color, mine }) {
+  if (!outcome) return <span />
+  const p = Math.round(outcome.price * 100)
   return (
-    <div className={`flex-1 min-w-0 flex flex-col items-center gap-1.5 text-center`}>
-      <div className="relative">
-        <TeamLogo team={outcome.team} size={12} />
-        {mine && (
-          <span className="absolute -top-1 -end-1 w-4 h-4 rounded-full bg-brand ring-2 ring-surface flex items-center justify-center"
-            title="יש לך תחזית כאן">
-            <TrendingUp className="w-4 h-4 text-brand-fg" />
-          </span>
-        )}
-      </div>
-      <span className="text-[13px] font-bold text-fg-strong leading-tight line-clamp-2">{outcome.label}</span>
-      <span className="mkt-num text-lg font-black leading-none" style={{ color }} data-align={align}>
-        {pct(outcome.price)}
-      </span>
-    </div>
+    <span className={`relative h-[54px] rounded-xl bg-surface-page overflow-hidden flex flex-col items-center justify-center gap-0.5 border-2 ${
+      mine ? 'border-pos' : 'border-transparent'}`}>
+      <span aria-hidden="true" className="absolute inset-y-0 right-0 transition-[width] duration-300 ease-out"
+        style={{ width: `${Math.max(p, 2)}%`, backgroundColor: color, opacity: 0.18 }} />
+      <span className="relative fl-num text-[19px] text-fg-strong">{p}%</span>
+      <span className="relative text-[12px] font-semibold text-fg-strong max-w-full px-1 truncate">{label}</span>
+    </span>
   )
 }
 
 /**
- * A fixture on the board, head to head: both crests, the kickoff between them,
- * and the odds as one split bar. Built for the next matchday, where a trader
- * decides — later rounds use the compact GameRow below.
+ * A fixture on the board (PredictHome board): the two-team blend with both crests
+ * (home RIGHT) and the kick-off, then the three-way percentages as tiles. The tile
+ * the viewer predicted on gets a green ring and a "התחזית שלך" line.
  */
 export default function MatchCard({ market, positions = {}, conflict = null, activity = null }) {
   const { home, draw, away } = gameSides(market)
   const colors = useSideColors(home, away)
   const mineOf = o => o && Number(positions[o.id]?.shares) > 0
   const heldAny = market.outcomes.some(mineOf)
+  const myPick = market.outcomes.find(mineOf)
   const href = `/market/${encodeURIComponent(market.slug || market.id)}`
+  const pickLine = myPick && (() => {
+    const p = positions[myPick.id]
+    return `${myPick.label} · ${fmtCoins(Math.round(Number(p.cost_basis) || 0))} סטופרים · אם צודקים, גדלים ל־${fmtCoins(Math.round(Number(p.shares)))}`
+  })()
 
   const body = (
     <>
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="text-[11px] font-semibold text-fg-muted truncate">
-          {market.game?.venue || market.subtitle || 'מי ינצח?'}
+      <TeamBlend home={home?.team} away={away?.team} className="h-16 px-3.5 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 min-w-0 flex-1">
+          <CrestDisc team={home?.team} size={40} />
+          <span className="text-sm font-bold truncate">{home?.label}</span>
         </span>
-        {conflict
-          ? <span className="stat-pill bg-surface-sunken text-fg-muted"><Lock className="w-3 h-3" /> חסום עבורך</span>
-          : <StatusChip market={market} />}
+        <span className="fl-num text-[18px] shrink-0" dir="ltr">{kickoff(market.game?.game_date)}</span>
+        <span className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+          <span className="text-sm font-bold truncate">{away?.label}</span>
+          <CrestDisc team={away?.team} size={40} />
+        </span>
+      </TeamBlend>
+
+      <div className="grid grid-cols-3 gap-1.5 p-2.5">
+        <OutcomeTile outcome={home} label={home?.label} color={colors.home} mine={mineOf(home)} />
+        <OutcomeTile outcome={draw} label="תיקו" color="rgb(var(--fg-faint))" mine={mineOf(draw)} />
+        <OutcomeTile outcome={away} label={away?.label} color={colors.away} mine={mineOf(away)} />
       </div>
 
-      <div className="flex items-start gap-2">
-        <Side outcome={home} color={colors.home} align="home" mine={mineOf(home)} />
-        <div className="shrink-0 flex flex-col items-center pt-3 px-1">
-          <span className="mkt-num text-sm font-black text-fg-strong" dir="ltr">{kickoff(market.game?.game_date)}</span>
-          <span className="text-[10px] font-bold text-fg-subtle tracking-widest mt-0.5">VS</span>
-          {draw && (
-            <span className="mt-2 text-[10px] text-fg-muted whitespace-nowrap">
-              תיקו <span className="mkt-num font-bold text-fg-soft">{pct(draw.price)}</span>
-            </span>
-          )}
-        </div>
-        <Side outcome={away} color={colors.away} align="away" mine={mineOf(away)} />
-      </div>
+      {pickLine && (
+        <p className="px-3.5 -mt-0.5 pb-2 text-[12.5px] font-bold text-pos">התחזית שלך: {pickLine}</p>
+      )}
 
-      <div className="mt-3">
-        <SplitBar home={home} draw={draw} away={away} colors={colors} />
-      </div>
-
-      <div className="mt-3 pt-2.5 border-t border-line-subtle flex items-center gap-3 text-[11px]">
+      <div className="px-3.5 pb-3 flex items-center gap-2 text-[12px] text-fg-muted min-w-0">
         {conflict ? (
-          <span className="flex items-center gap-1.5 text-fg-muted">
-            <Lock className="w-3 h-3 shrink-0" /> {CONFLICT_COPY[conflict] || CONFLICT_COPY['own-team']}
+          <span className="flex items-center gap-1.5 min-w-0">
+            <Lock className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{CONFLICT_COPY[conflict] || CONFLICT_COPY['own-team']}</span>
           </span>
         ) : (
-          <>
-            <span className="flex items-center gap-1 text-fg-muted">
-              <Users className="w-4 h-4" />
+          <span className="flex items-center gap-1.5 min-w-0">
+            <Users className="w-4 h-4 shrink-0" />
+            <span className="truncate">
               {activity?.traders
-                ? <>{activity.traders === 1 ? 'משתתף אחד' : <><span className="mkt-num font-bold text-fg-soft">{activity.traders}</span> משתתפים</>}</>
-                : 'עוד אין תחזיות — היה הראשון'}
+                ? (activity.traders === 1 ? 'משתתף אחד' : <><span className="fl-num">{activity.traders}</span> משתתפים</>)
+                : 'עוד אין תחזיות'}
+              {market.game?.venue ? ` · ${market.game.venue}` : ''}
             </span>
-            {heldAny && (
-              <span className="stat-pill bg-brand/15 text-brand text-[10px] px-1.5 py-0">שלי</span>
-            )}
-            <span className="ms-auto inline-flex items-center gap-0.5 font-bold text-brand">
-              לחזות <ChevronLeft className="w-3.5 h-3.5" />
-            </span>
-          </>
+          </span>
         )}
+        <span className="ms-auto shrink-0"><StatusChip market={market} /></span>
       </div>
     </>
   )
 
   if (conflict) {
-    return <div className="mkt-card p-4 bg-surface-inset/60">{body}</div>
+    return <div className="mkt-card block overflow-hidden">{body}</div>
   }
   return (
-    <Link to={href}
-      className={`mkt-card-hover p-4 block transition-all hover:-translate-y-0.5 hover:shadow-md ${heldAny ? 'border-s-4 border-s-brand' : ''}`}>
+    <Link to={href} aria-label={`${home?.label || ''} נגד ${away?.label || ''}${heldAny ? ' · יש לך תחזית' : ''}`}
+      className="mkt-card-hover block overflow-hidden transition-transform hover:-translate-y-0.5">
       {body}
     </Link>
   )

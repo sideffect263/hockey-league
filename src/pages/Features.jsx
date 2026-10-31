@@ -229,19 +229,19 @@ function RoleCard({ id, Icon, title, who, feats }) {
 export default function Features() {
   const seasonName = useSeasonName()
   return (
-    <div dir="rtl" className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-      {/* Header — navy brand band */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 mb-6 text-white bg-gradient-to-bl from-[#12295a] to-[#0B1B3A] border border-amber-400/30">
-        <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
-        <div className="text-[13px] font-extrabold tracking-widest text-amber-300 mb-2">מדריך תכונות{seasonName && ` · עונת ${seasonName}`}</div>
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-balance leading-tight">מה אפשר לעשות במערכת</h1>
-        <p className="mt-2.5 text-[15px] text-slate-200 max-w-2xl leading-relaxed">
+    <div dir="rtl" className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 lg:py-8">
+      {/* Header — Floodlight night band (the rink at night), one amber accent line */}
+      <div className="relative overflow-hidden rounded-card p-6 sm:p-8 mb-6 text-white bg-fl-night ring-1 ring-white/10" style={{ backgroundImage: "radial-gradient(120% 90% at 85% 0%, #142133, #0B0F14)" }}>
+        <div className="absolute inset-x-0 bottom-0 h-0.5 bg-fl-accent/70" />
+        <div className="relative text-[13px] font-extrabold text-[#F2B233] mb-2">מדריך תכונות{seasonName && ` · עונת ${seasonName}`}</div>
+        <h1 className="relative text-3xl sm:text-4xl font-black text-balance leading-tight">מה אפשר לעשות במערכת</h1>
+        <p className="relative mt-2.5 text-[15px] text-white/85 max-w-2xl leading-relaxed">
           כל מה שהמערכת מציעה — מסודר לפי סוג המשתמש ולפי הפלטפורמה. השתמשו בזה כדי לדעת בדיוק מה אפשר לנסות, ואיפה.
           אם משהו לא עובד, מבלבל, או שנראה לכם שאפשר לשפר — ספרו לנו. גם המדריך הזה בשבילנו.
         </p>
-        <div className="flex flex-wrap gap-x-5 gap-y-2 items-center mt-5 pt-4 border-t border-white/15 text-sm text-slate-200">
+        <div className="relative flex flex-wrap gap-x-5 gap-y-2 items-center mt-5 pt-4 border-t border-white/15 text-sm text-white/85">
           <span className="flex items-center gap-2">
-            <span className="stat-pill bg-white/10 text-sky-200"><Globe className="w-3 h-3" /> אתר</span>
+            <span className="stat-pill bg-white/10 text-white"><Globe className="w-3 h-3" /> אתר</span>
             = אתר האינטרנט (מחשב או נייד)
           </span>
           <span className="flex items-center gap-2">
@@ -257,7 +257,7 @@ export default function Features() {
           <a
             key={r.id}
             href={`#${r.id}`}
-            className="text-sm font-bold text-fg-soft bg-surface border border-line rounded-full px-3.5 py-1.5 shadow-sm hover:border-brand hover:-translate-y-px transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            className="min-h-[40px] inline-flex items-center text-sm font-bold text-fg-strong bg-surface rounded-full px-4 hover:bg-surface-inset transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent"
           >
             {r.title}
           </a>
@@ -268,7 +268,7 @@ export default function Features() {
       {TIERS.map((tier) => (
         <div key={tier.num}>
           <div className="flex items-center gap-3.5 mt-8 mb-4">
-            <span className="text-xs font-extrabold tracking-widest text-brand-strong dark:text-brand-light">{tier.num}</span>
+            <span className="fl-num text-sm text-fg-strong">{tier.num}</span>
             <h2 className="text-base font-extrabold text-fg-muted whitespace-nowrap">{tier.label}</h2>
             <span className="flex-1 h-px bg-line" />
           </div>
@@ -278,7 +278,7 @@ export default function Features() {
 
       {/* Known / in progress */}
       <div className="flex items-center gap-3.5 mt-8 mb-4">
-        <span className="text-xs font-extrabold tracking-widest text-brand-strong dark:text-brand-light">05</span>
+        <span className="fl-num text-sm text-fg-strong">05</span>
         <h2 className="text-base font-extrabold text-fg-muted whitespace-nowrap">בעבודה — ידוע לנו</h2>
         <span className="flex-1 h-px bg-line" />
       </div>
@@ -303,7 +303,7 @@ export default function Features() {
 
       {/* How to test + feedback */}
       <div className="flex items-center gap-3.5 mt-8 mb-4">
-        <span className="text-xs font-extrabold tracking-widest text-brand-strong dark:text-brand-light">06</span>
+        <span className="fl-num text-sm text-fg-strong">06</span>
         <h2 className="text-base font-extrabold text-fg-muted whitespace-nowrap">איך לבדוק ואיך לתת פידבק</h2>
         <span className="flex-1 h-px bg-line" />
       </div>

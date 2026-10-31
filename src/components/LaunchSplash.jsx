@@ -4,8 +4,8 @@
 // Spec: MOBILE-BUILD/brand/interim-mark/LAUNCH-ANIMATION-SPEC.md (an original mark used until the
 // association signs off on its crest; the crest version is MOBILE-BUILD/brand/official-crest/).
 //
-// Never on a normal browser visit: index.html decides (bootSplash) and paints the blue cover
-// before the bundle loads; this module is a separate chunk, mounted in its own root by
+// Never on a normal browser visit: index.html decides (bootSplash) and paints the night cover
+// before the bundle loads (Floodlight: the night rink #0B0F14, was the blue #3B4FC4); this module is a separate chunk, mounted in its own root by
 // main.jsx only when that cover is up. The page renders underneath the whole time.
 
 import { useEffect, useRef, useState } from "react"
@@ -16,7 +16,7 @@ const T = 2600 // ms, the spec's 2.6 s
 // measured at start (--fx/--fy/--fs). From 58% on the drawn mark is exactly /logos/mark.svg.
 const CSS = `
 .ls{position:fixed;inset:0;z-index:2147483000;pointer-events:auto;--t:${T}ms}
-.ls-bg{position:absolute;inset:0;background:#3B4FC4}
+.ls-bg{position:absolute;inset:0;background:#0B0F14 radial-gradient(120% 70% at 50% 30%,#142133,#070B10)}
 .ls-rink{position:absolute;left:50%;top:50%;transform-origin:center}
 .ls-cw{position:absolute;left:50%;top:50%;transform-origin:center}
 .ls-cw>*{position:absolute;inset:0;width:100%;height:100%}
@@ -69,8 +69,8 @@ export default function LaunchSplash({ reducedMotion, onDone }) {
   }
 
   useEffect(() => {
-    document.getElementById("boot-splash")?.remove() // our own blue takes over, same colour
-    // A blue screen that never lifts is the one failure this must not have. Opened straight
+    document.getElementById("boot-splash")?.remove() // our own night rink takes over, same #0B0F14
+    // A cover that never lifts is the one failure this must not have. Opened straight
     // into the background (no frames run there): skip it. And whatever happens, lift by 6 s.
     if (document.hidden) { finish(); return }
     const safety = setTimeout(finish, 6000)
@@ -108,7 +108,7 @@ export default function LaunchSplash({ reducedMotion, onDone }) {
       {!reducedMotion && (
         <>
           <svg className="ls-rink" viewBox="0 0 200 380" style={{ width: W, height: (W * 380) / 200 }}>
-            <g fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".9">
+            <g fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".55">
               <rect className="ls-dl ls-rk" pathLength="1" x="20" y="40" width="160" height="300" rx="36" />
               <line className="ls-dl ls-rk" pathLength="1" x1="20" y1="190" x2="180" y2="190" />
               <path className="ls-dl ls-rk" pathLength="1" d="M75 40 v22 a25 25 0 0 0 50 0 v-22" />

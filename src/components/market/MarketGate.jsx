@@ -26,24 +26,28 @@ export default function MarketGate({ reason, onUnlocked, compact = false }) {
   }
 
   if (compact) {
+    // Board PredictHome "fan or under 18": one quiet card that says why, plus the one
+    // step that opens predicting for this viewer (sign in / link a card).
     return (
-      <div className="mkt-card p-4 mb-5 flex items-start gap-3 flex-wrap sm:flex-nowrap border-brand/30 bg-brand/[0.04]">
-        <span className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center shrink-0">
-          <Coins className="w-7 h-7" />
+      <section aria-label="מי יכול לחזות" className="fl-card p-3.5 mb-3 flex items-center gap-3 flex-wrap sm:flex-nowrap">
+        <span className="w-11 h-11 rounded-full bg-surface-page flex items-center justify-center shrink-0" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="text-fg-strong">
+            <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z" /><circle cx="12" cy="12" r="2.5" />
+          </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-extrabold text-fg-strong">{copy.title}</p>
-          <p className="text-xs text-fg-muted leading-relaxed mt-0.5">{copy.body}</p>
+          <p className="text-[14px] font-bold text-fg-strong">{copy.title}</p>
+          <p className="text-[13px] text-fg-muted leading-relaxed mt-0.5">{copy.body}</p>
         </div>
         {!user && (
-          <button onClick={openAuth} className="btn-primary shrink-0 self-center">התחברות</button>
+          <button onClick={openAuth} className="btn-primary shrink-0 min-h-[44px] w-full sm:w-auto">התחברות</button>
         )}
         {reason === 'no-player' && (
-          <Link to="/me" className="btn-secondary shrink-0 self-center inline-flex">
+          <Link to="/me" className="btn-secondary shrink-0 min-h-[44px] inline-flex w-full sm:w-auto">
             לדף שלי <ArrowLeft className="w-4 h-4" />
           </Link>
         )}
-      </div>
+      </section>
     )
   }
 
@@ -90,10 +94,10 @@ function BirthDateUnlock({ playerId, onUnlocked, compact = false }) {
   }
 
   return (
-    <div className={compact ? 'max-w-md mx-auto mb-8' : 'max-w-md mx-auto px-4 py-14'}>
+    <div className={compact ? 'max-w-md mx-auto mb-6' : 'max-w-md mx-auto px-4 py-14'}>
       <div className="text-center mb-7">
-        <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mx-auto mb-5">
-          <Coins className="w-7 h-7 text-brand" />
+        <div className="mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+          <Coins className="w-16 h-16" variant="large" />
         </div>
         <h2 className="text-2xl font-black text-fg-strong mb-2">מצטרפים לסטופר מרקט</h2>
         <p className="text-sm text-fg-muted leading-relaxed">
@@ -103,15 +107,15 @@ function BirthDateUnlock({ playerId, onUnlocked, compact = false }) {
         </p>
       </div>
 
-      <form onSubmit={save} className="mkt-card p-5 space-y-4">
+      <form onSubmit={save} className="fl-card p-5 space-y-4">
         <label className="block">
           <span className="flex items-center gap-2 text-sm font-bold text-fg-strong mb-2">
-            <Cake className="w-4 h-4 text-brand" /> תאריך לידה
+            <Cake className="w-4 h-4" /> תאריך לידה
           </span>
           <input
             type="date" value={value} onChange={e => setValue(e.target.value)}
             max={new Date().toLocaleDateString('en-CA')} required dir="ltr"
-            className="w-full bg-surface-inset border border-line rounded-lg px-3 py-2.5 text-sm text-fg-soft focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            className="w-full min-h-[44px] bg-surface-inset border border-line rounded-control px-3 py-2.5 text-sm text-fg-soft focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           />
         </label>
 
@@ -128,7 +132,7 @@ function BirthDateUnlock({ playerId, onUnlocked, compact = false }) {
         {err && <p className="text-xs text-neg">{err}</p>}
 
         <button type="submit" disabled={saving || !value || tooYoung}
-          className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed">
+          className="btn-primary w-full min-h-[48px] disabled:opacity-40 disabled:cursor-not-allowed">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           פתיחת החשבון
         </button>

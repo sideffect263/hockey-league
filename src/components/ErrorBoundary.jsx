@@ -1,5 +1,6 @@
 import React from 'react'
 import { trackError, flush } from '@/lib/telemetry'
+import { BrandIcon } from '@/components/icons/BrandIcons'
 import { isStaleChunkError, reloadForStaleChunk, isReloadingForStaleChunk } from '@/lib/staleChunkReload'
 
 /**
@@ -51,56 +52,24 @@ export default class ErrorBoundary extends React.Component {
     if (!this.state.crashed) return this.props.children
     // The new build is already loading; a blank beat beats a crash page.
     if (isReloadingForStaleChunk()) return null
+    // ShellStates board, "4 · תקלה": today's copy, our whistle, the ink button.
     return (
-      <div dir="rtl" className="min-h-screen flex items-center justify-center p-6 text-center bg-white dark:bg-slate-950">
-        <div className="max-w-sm space-y-4">
-          <BallOutOfRink />
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-            המשחק נעצר – הכדור יצא מהמגרש
-          </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            נסו לרענן את העמוד ונחזור לשחק 🛼
+      <div dir="rtl" className="min-h-screen flex items-center justify-center px-8 py-6 text-center bg-surface-page text-fg-strong">
+        <div className="max-w-sm flex flex-col items-center gap-3">
+          <BrandIcon name="referee" variant="large" className="w-[92px] h-[92px]" />
+          <h1 className="text-[26px] font-black">המשחק נעצר</h1>
+          <p className="text-[15px] text-fg-soft leading-relaxed">
+            בטח בדיוק דחפנו עדכון חדש. נסו לרענן ונחזור לשחק.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold"
+            className="mt-1.5 h-[52px] px-[30px] rounded-2xl bg-brand text-brand-fg text-[15.5px] font-extrabold"
           >
             רענון
           </button>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            בטח בדיוק דחפנו עדכון חדש 😅
-          </p>
+          <p className="text-[12px] text-fg-muted">התקלה נשלחה אלינו אוטומטית</p>
         </div>
       </div>
     )
   }
-}
-
-// The crash illustration, drawn in the HockeyIcons family's language (2px rounded
-// strokes in currentColor, the ball as the one brand-colored accent): the rink from
-// above with an empty faceoff spot, and the ball bouncing off past the boards.
-function BallOutOfRink() {
-  return (
-    <svg
-      viewBox="0 0 120 84"
-      className="w-40 h-28 mx-auto text-slate-400 dark:text-slate-500"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="8" y="30" width="80" height="48" rx="13" />
-      <line x1="48" y1="30" x2="48" y2="78" />
-      <circle cx="48" cy="54" r="8" />
-      <path d="M8 46 h7 v16 h-7" />
-      <path d="M88 46 h-7 v16 h7" />
-      {/* the ball's flight: from center ice, over the boards, out */}
-      <path d="M48 54 C 62 30, 86 12, 104 16" strokeDasharray="2 5" opacity="0.6" />
-      <g className="ball-out">
-        <circle cx="106" cy="16" r="5" fill="rgb(var(--brand))" stroke="none" />
-      </g>
-    </svg>
-  )
 }

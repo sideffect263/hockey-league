@@ -138,7 +138,7 @@ export default function Privacy() {
         </Section>
 
         <Section title="יצירת קשר">
-          לשאלות או בקשות בנוגע לפרטיות: <a className="text-brand dark:text-brand-light font-semibold" href="mailto:arielbiton03@gmail.com">arielbiton03@gmail.com</a>
+          לשאלות או בקשות בנוגע לפרטיות: <a className="text-fg-strong font-bold underline underline-offset-2" href="mailto:arielbiton03@gmail.com">arielbiton03@gmail.com</a>
         </Section>
 
         <hr className="border-slate-200 dark:border-slate-700" />

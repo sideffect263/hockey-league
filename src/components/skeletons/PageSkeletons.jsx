@@ -44,27 +44,31 @@ import {
  * layout and not a desktop layout squeezed.
  */
 export function FeedSkeleton() {
+  // Floodlight (ShellStates "2 · טעינה"): stories row of 68px circles, the search
+  // pill, then post-shaped cards — the feed itself, not a spinner.
   return (
     <SkeletonPage width="max-w-[1500px]" className="!space-y-0">
       <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)_300px] lg:gap-6 lg:items-start">
         <aside className="hidden lg:block space-y-4">
-          <Skeleton className="h-64 w-full rounded-2xl" />
-          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-card" />
+          <Skeleton className="h-40 w-full rounded-card" />
         </aside>
 
-        <div className="space-y-5 min-w-0">
-          <SkeletonPageHeader titleWidth="w-36" />
-          {/* composer */}
-          <Skeleton className="h-28 w-full rounded-2xl" />
-          <div className="lg:hidden space-y-5">
-            <Skeleton className="h-12 w-full rounded-2xl" />
+        <div className="space-y-3 min-w-0">
+          <div className="flex justify-between">
+            <Skeleton className="h-7 w-36 rounded-[10px]" />
+            <Skeleton className="h-9 w-28 rounded-full" />
           </div>
+          <div className="flex gap-3.5 overflow-hidden">
+            {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="size-[68px] rounded-full shrink-0" />)}
+          </div>
+          <Skeleton className="h-11 w-full rounded-xl" />
           <SkeletonFeedPosts count={3} />
         </div>
 
         <aside className="hidden lg:block space-y-5">
-          <Skeleton className="h-72 w-full rounded-2xl" />
-          <Skeleton className="h-44 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-card" />
+          <Skeleton className="h-44 w-full rounded-card" />
         </aside>
       </div>
     </SkeletonPage>
@@ -143,28 +147,23 @@ export function GamesSkeleton() {
 /* ─── /games/:id — game detail ──────────────────────────────────────────── */
 
 export function GameDetailSkeleton() {
+  // The game hero is a full-bleed team-colour band (home right): a dark block of
+  // the same height with crest · score · crest, then the page's cards.
   return (
-    <SkeletonPage width="max-w-3xl">
-      <SkeletonBackLink />
-      {/* Scoreboard header: crest · score · crest, the one block on the site
-          whose three columns must not shift when the numbers arrive. */}
-      <div className="card p-5 sm:p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-6 w-16 rounded-full" />
-          <Skeleton className="h-6 w-14 rounded-full" />
-        </div>
+    <SkeletonPage width="max-w-3xl" pad={false} className="px-3 sm:px-6 py-4 sm:py-6">
+      <div className="rounded-card bg-surface-sunken p-5 space-y-5 h-[230px] flex flex-col justify-center">
+        <div className="flex justify-center"><Skeleton className="h-6 w-36 rounded-full bg-surface" /></div>
         <div className="flex items-center justify-between gap-3">
           {[0, 1].map(i => (
             <div key={i} className={`flex flex-col items-center gap-2 flex-1 min-w-0 ${i === 1 ? "order-last" : ""}`}>
-              <Skeleton className="size-14 rounded-full" />
-              <Skeleton className="h-3.5 w-24 max-w-full" />
-              <Skeleton className="h-3 w-10" />
+              <Skeleton className="size-16 rounded-full bg-surface" />
+              <Skeleton className="h-3.5 w-24 max-w-full bg-surface" />
             </div>
           ))}
-          <Skeleton className="h-10 w-24 rounded-lg shrink-0" />
+          <Skeleton className="h-12 w-28 rounded-xl shrink-0 bg-surface" />
         </div>
       </div>
-      <Skeleton className="h-16 w-full rounded-2xl" />
+      <Skeleton className="h-12 w-full rounded-control" />
       <SkeletonCards count={2} height="h-40" />
     </SkeletonPage>
   )
@@ -213,7 +212,7 @@ export function PlayerDetailSkeleton() {
   return (
     <SkeletonPage width="max-w-3xl">
       <SkeletonBackLink />
-      <SkeletonDetailHeader avatar="size-20 rounded-2xl" pills={3} />
+      <SkeletonDetailHeader avatar="size-20 rounded-card" pills={3} />
       <SkeletonStatTiles count={4} cols="grid-cols-2 sm:grid-cols-4" />
       <SkeletonCards count={2} height="h-44" />
     </SkeletonPage>
@@ -252,7 +251,7 @@ export function TournamentDetailSkeleton() {
   return (
     <SkeletonPage width="max-w-3xl">
       <SkeletonBackLink />
-      <SkeletonDetailHeader avatar="size-14 rounded-2xl" pills={2} />
+      <SkeletonDetailHeader avatar="size-14 rounded-card" pills={2} />
       <SkeletonCards count={2} height="h-36" />
     </SkeletonPage>
   )
@@ -300,21 +299,46 @@ export function SkeletonNotificationRows({ count = 5, compact = false }) {
 
 export function MediaSkeleton() {
   return (
-    <SkeletonPage width="max-w-6xl">
-      <SkeletonPageHeader titleWidth="w-64" />
-      <Skeleton className="h-20 w-full rounded-2xl" />
-      <SkeletonGrid count={6} height="h-72" gap="gap-4" />
+    <SkeletonPage width="max-w-6xl" pad={false} className="px-3 sm:px-6 pt-4 sm:pt-6">
+      <MediaHeadSkeleton />
+      <MediaBodySkeleton />
     </SkeletonPage>
   )
 }
 
-/** /media's core is also embedded in /creators, where the page chrome differs. */
+function MediaHeadSkeleton() {
+  return (
+    <>
+      <div className="flex items-center gap-2.5">
+        <Skeleton className="size-11 rounded-xl" />
+        <div className="space-y-2"><Skeleton className="h-7 w-24 rounded-[10px]" /><Skeleton className="h-3.5 w-48" /></div>
+      </div>
+      <Skeleton className="h-[50px] w-full sm:w-[420px] rounded-2xl" />
+    </>
+  )
+}
+
+export function MediaLibrarySkeleton() {
+  return <SkeletonBlock className="space-y-4"><MediaBodySkeleton /></SkeletonBlock>
+}
+
+function MediaBodySkeleton() {
+  return (
+    <>
+      <Skeleton className="h-5 w-36" />
+      <SkeletonGrid count={3} height="h-[220px]" gap="gap-3" />
+      <Skeleton className="h-5 w-36" />
+      <SkeletonGrid count={4} height="h-[190px]" cols="grid-cols-2 md:grid-cols-3 lg:grid-cols-4" gap="gap-3" />
+    </>
+  )
+}
+
+/** /media's tab body (and the /creators embed, where the page chrome differs). */
 export function MediaClustersSkeleton() {
   return (
-    <SkeletonBlock className="space-y-5">
-      <SkeletonPageHeader titleWidth="w-64" />
-      <Skeleton className="h-20 w-full rounded-2xl" />
-      <SkeletonGrid count={6} height="h-72" gap="gap-4" />
+    <SkeletonBlock className="space-y-4">
+      <div className="space-y-2 px-1"><Skeleton className="h-3.5 w-full max-w-lg" /><Skeleton className="h-3.5 w-2/3 max-w-sm" /></div>
+      <SkeletonGrid count={6} height="h-[290px]" gap="gap-3" />
     </SkeletonBlock>
   )
 }
@@ -346,29 +370,37 @@ export function ArchiveSeasonSkeleton() {
 /* ─── /market — סטופר מרקט ───────────────────────────────────────────────── */
 
 /**
- * The market re-skins the shell through the same tokens, so these blocks come
- * out warm-stone-on-emerald there without a market-specific class. Its shell is
- * `px-4 sm:px-6 py-6` rather than the league's `p-4 sm:p-6 lg:p-8`.
+ * סטופר מרקט (Floodlight): coin + title with the balance pill, pill tabs, filter
+ * chips, then the board — two columns on a laptop (games | season questions).
  */
 export function MarketSkeleton() {
   return (
-    <SkeletonPage width="max-w-5xl" pad={false} className="px-4 sm:px-6 py-6">
-      {/* wallet hero */}
-      <Skeleton className="h-28 w-full rounded-xl" />
+    <SkeletonPage width="max-w-6xl" pad={false} className="px-3 sm:px-6 pt-4 sm:pt-6 !space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5"><Skeleton className="size-9 rounded-full" /><Skeleton className="h-8 w-40 rounded-[10px]" /></div>
+        <Skeleton className="h-11 w-28 rounded-full" />
+      </div>
       <SkeletonTabs count={3} />
       <MarketBoardSkeleton />
     </SkeletonPage>
   )
 }
 
-/** The board alone — the wallet hero and tabs stay put while a tab loads. */
+/** The board alone — the header and tabs stay put while a tab loads. */
 export function MarketBoardSkeleton() {
   return (
-    <SkeletonBlock className="space-y-8">
-      <Skeleton className="h-64 w-full rounded-xl" />
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-28" />
-        <SkeletonGrid count={4} height="h-40" cols="grid-cols-1 sm:grid-cols-2" />
+    <SkeletonBlock className="space-y-4">
+      <SkeletonChips count={3} />
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-6 space-y-4 lg:space-y-0">
+        <div className="space-y-3">
+          <Skeleton className="h-64 w-full rounded-card" />
+          <Skeleton className="h-5 w-40" />
+          <SkeletonGrid count={2} height="h-[170px]" cols="grid-cols-1 sm:grid-cols-2" gap="gap-2.5" />
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-28" />
+          <SkeletonCards count={2} height="h-48" />
+        </div>
       </div>
     </SkeletonBlock>
   )
@@ -376,12 +408,14 @@ export function MarketBoardSkeleton() {
 
 export function MarketDetailSkeleton() {
   return (
-    <SkeletonPage width="max-w-5xl" pad={false} className="px-4 sm:px-6 py-6">
-      <Skeleton className="h-4 w-28" />
-      <Skeleton className="h-32 w-full rounded-xl" />
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-5">
-        <Skeleton className="h-72 w-full rounded-xl" />
-        <Skeleton className="h-72 w-full rounded-xl" />
+    <SkeletonPage width="max-w-6xl" pad={false} className="!space-y-3.5 pb-8">
+      <Skeleton className="h-[230px] w-full rounded-none rounded-b-[28px] lg:rounded-[28px] lg:mt-4" />
+      <div className="px-3 sm:px-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-3.5 lg:gap-6">
+        <div className="space-y-3">
+          <Skeleton className="h-80 w-full rounded-card" />
+          <Skeleton className="h-20 w-full rounded-card" />
+        </div>
+        <Skeleton className="hidden lg:block h-[420px] w-full rounded-card" />
       </div>
     </SkeletonPage>
   )
@@ -392,7 +426,7 @@ export function MarketDetailSkeleton() {
 export function ProfileSkeleton() {
   return (
     <SkeletonPage width="max-w-2xl">
-      <SkeletonDetailHeader avatar="size-20 rounded-2xl" pills={2} />
+      <SkeletonDetailHeader avatar="size-20 rounded-card" pills={2} />
       <SkeletonCards count={4} height="h-32" />
     </SkeletonPage>
   )
@@ -414,7 +448,7 @@ export function JudgeGameSkeleton() {
   return (
     <SkeletonPage width="max-w-3xl">
       <SkeletonBackLink />
-      <Skeleton className="h-48 w-full rounded-2xl" />
+      <Skeleton className="h-48 w-full rounded-card" />
       <SkeletonCards count={2} height="h-40" />
     </SkeletonPage>
   )
@@ -481,10 +515,10 @@ export function CreatorsSkeleton() {
 export function CareerSkeleton() {
   return (
     <SkeletonPage width="max-w-5xl" pad={false} className="px-4 py-6 !space-y-4">
-      <Skeleton className="h-28 w-full rounded-2xl" />
+      <Skeleton className="h-28 w-full rounded-card" />
       <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-        <Skeleton className="h-80 w-full rounded-2xl" />
-        <Skeleton className="h-80 w-full rounded-2xl" />
+        <Skeleton className="h-80 w-full rounded-card" />
+        <Skeleton className="h-80 w-full rounded-card" />
       </div>
     </SkeletonPage>
   )
