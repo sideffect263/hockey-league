@@ -704,7 +704,7 @@ export default function GameDetail() {
 
   return (
     <div className="max-w-6xl mx-auto lg:px-8 lg:pt-6 pb-6">
-      {S.season && <div className="px-3 pt-3 lg:px-0 lg:pt-0 lg:mb-4">{S.season}</div>}
+      {S.season && <div className="px-4 pt-3 lg:px-0 lg:pt-0 lg:mb-4">{S.season}</div>}
       {isDesktop && <div className="mb-4 flex flex-wrap items-center justify-end gap-2 empty:hidden">{S.tools}</div>}
       {S.hero}
       {isDesktop ? (
@@ -713,7 +713,7 @@ export default function GameDetail() {
           <aside className="flex flex-col gap-4 min-w-0">{stack(side.filter(k => k !== 'tools'))}</aside>
         </div>
       ) : (
-        <div className={`flex flex-col gap-3.5 px-3 ${liveStage ? 'pt-3' : 'pt-4'}`}>{stack(phone)}</div>
+        <div className={`flex flex-col gap-3.5 px-4 ${liveStage ? 'pt-3' : 'pt-4'}`}>{stack(phone)}</div>
       )}
 
       {showChangeModal && (

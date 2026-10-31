@@ -21,8 +21,24 @@ await new Promise((r) => setTimeout(r, +opt('--wait', 1200)))
 const sc = +opt('--scroll', 0)
 if (sc) { await page.evaluate((y) => window.scrollTo(0, y), sc); await new Promise((r) => setTimeout(r, 500)) }
 // Horizontal overflow is a bug on phones (RTL pages that scroll sideways).
-const ow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-if (ow > 1) console.log(`WARN horizontal overflow ${ow}px`)
+// Measured on elements, not scrollWidth: mobile emulation widens the layout viewport to fit
+// an overflowing child, so scrollWidth == innerWidth even when the page scrolls sideways.
+const ow = await page.evaluate((W) => {
+  const bad = []
+  document.querySelectorAll('body *').forEach((e) => {
+    const r = e.getBoundingClientRect()
+    if (!r.width || (r.right <= W + 1 && r.left >= -1) || getComputedStyle(e).position === 'fixed') return
+    // Inside a clipping/scrolling box (carousel, table scroller): not a page overflow.
+    for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) {
+      const cs = getComputedStyle(a)
+      if (cs.overflowX !== 'visible' || cs.position === 'fixed') return
+    }
+    bad.push(`${e.tagName}.${String(e.className).slice(0, 70)} [${Math.round(r.left)}..${Math.round(r.right)}]`)
+  })
+  return bad
+}, w)
+const real = ow
+if (real.length) console.log(`WARN horizontal overflow: ${real.length} elements, e.g. ${real[0]}`)
 await page.screenshot({ path: out, fullPage: flag('--full') })
 console.log('saved', out)
 await browser.close()
