@@ -13,7 +13,7 @@ import { getTeams } from "@/lib/api"
 import { entityPath } from "@/lib/slugs"
 import TeamLogo from "@/components/TeamLogo"
 import { useAuth } from "@/lib/AuthContext"
-import { MediaClustersSkeleton } from "@/components/skeletons/PageSkeletons"
+import { MediaClustersSkeleton, MediaLibrarySkeleton } from "@/components/skeletons/PageSkeletons"
 import { ilDate } from "@/lib/ilTime"
 
 const PAGE = 24
@@ -202,7 +202,7 @@ function MediaLibrary() {
       </div>
     )
   }
-  if (!videos || !albums) return <MediaClustersSkeleton />
+  if (!videos || !albums) return <MediaLibrarySkeleton />
 
   if (openAlbum) {
     return <AlbumView album={openAlbum} tags={tags} onBack={() => setOpenAlbum(null)} />
