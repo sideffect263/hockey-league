@@ -127,7 +127,7 @@ export default function GameFormCard({ game, home, away, players = [], stats = [
 
   return (
     <div id="game-form" className="card p-4 sm:p-5 space-y-4 scroll-mt-20">
-      <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+      <h3 className="text-[20px] font-extrabold leading-tight text-fg-strong flex items-center gap-2">
         <PenLine className="w-4 h-4 text-brand" /> טופס המשחק
         {showSignatures && signatures && <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">· {signedCount}/6 חתימות</span>}
       </h3>

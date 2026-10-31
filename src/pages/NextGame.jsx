@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { LogIn, Loader2, ArrowRight } from "lucide-react"
+import { LogIn, ArrowRight } from "lucide-react"
 import { PersonAdd as UserPlus, CalendarCheck } from "@/components/icons/BrandIcons"
 import { useAuth } from "@/lib/AuthContext"
 import { getGames } from "@/lib/api"
@@ -53,7 +53,7 @@ export default function NextGame() {
     title = "התחברו כדי לאשר הגעה"
     body = "הקישור הזה מוביל למשחק הבא של הקבוצה שלכם. התחברו עם החשבון שלכם בליגה ותועברו אליו."
     action = (
-      <button onClick={openAuth} className="flex items-center gap-1.5 px-4 py-2 bg-brand text-brand-fg rounded-xl text-sm font-bold hover:bg-brand-hover transition-colors">
+      <button onClick={openAuth} className="btn btn-primary">
         <LogIn className="w-4 h-4" /> התחברות
       </button>
     )
@@ -64,21 +64,22 @@ export default function NextGame() {
       ? "הקישור מוביל כל שחקן למשחק הבא של הקבוצה שלו. אפשר לבחור משחק מרשימת המשחקים."
       : "כדי לאשר הגעה יש לשייך את החשבון לכרטיס השחקן שלך בקבוצה."
     action = isAdmin
-      ? <Link to="/games" className="flex items-center gap-1.5 px-4 py-2 bg-brand text-brand-fg rounded-xl text-sm font-bold hover:bg-brand-hover transition-colors"><ArrowRight className="w-4 h-4" /> למשחקים</Link>
-      : <Link to="/me" className="flex items-center gap-1.5 px-4 py-2 bg-brand text-brand-fg rounded-xl text-sm font-bold hover:bg-brand-hover transition-colors"><UserPlus className="w-4 h-4" /> שיוך לשחקן</Link>
+      ? <Link to="/games" className="btn btn-primary"><ArrowRight className="w-4 h-4" /> למשחקים</Link>
+      : <Link to="/me" className="btn btn-primary"><UserPlus className="w-4 h-4" /> שיוך לשחקן</Link>
   } else if (state === "loading") {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-        <div className="card p-6 flex flex-col items-center justify-center text-center gap-3 min-h-[240px]">
-          <Loader2 className="w-8 h-8 animate-spin text-brand" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">מחפשים את המשחק הבא שלך…</p>
+        <div className="fl-card p-6 flex flex-col items-center justify-center text-center gap-3 min-h-[240px]" aria-busy="true">
+          <span className="h-14 w-full max-w-xs rounded-[16px] bg-surface-sunken" />
+          <span className="h-14 w-full max-w-xs rounded-[16px] bg-surface-sunken" />
+          <p className="text-[14px] text-fg-muted">מחפשים את המשחק הבא שלך…</p>
         </div>
       </div>
     )
   } else if (state === "none") {
     title = "אין משחק קרוב"
     body = "לא נמצא משחק מתוכנן לקבוצה שלך. כשייקבע משחק, הקישור הזה יוביל אליו."
-    action = <Link to="/games" className="flex items-center gap-1.5 px-4 py-2 bg-brand text-brand-fg rounded-xl text-sm font-bold hover:bg-brand-hover transition-colors"><ArrowRight className="w-4 h-4" /> לכל המשחקים</Link>
+    action = <Link to="/games" className="btn btn-primary"><ArrowRight className="w-4 h-4" /> לכל המשחקים</Link>
   } else {
     title = "שגיאה בטעינת המשחקים"
     body = "משהו השתבש, נסו לרענן את הדף."
@@ -87,10 +88,10 @@ export default function NextGame() {
   const Icon = icon
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-      <div className="card p-6 flex flex-col items-center justify-center text-center gap-3 min-h-[240px]">
-        <Icon className="w-12 h-12 text-brand" />
-        <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">{body}</p>
+      <div className="fl-card p-6 sm:p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[260px]">
+        <Icon className="w-14 h-14" />
+        <h1 className="text-[24px] font-extrabold leading-tight text-fg-strong">{title}</h1>
+        <p className="text-[14px] text-fg-muted max-w-sm leading-relaxed">{body}</p>
         {action && <div className="mt-1">{action}</div>}
       </div>
     </div>

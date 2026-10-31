@@ -267,7 +267,7 @@ export default function LiveHlsPlayer({ src, children, onLatency, preview = fals
       )}
       {waiting && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/40 text-white text-sm">
-          <span className="flex items-center gap-2"><Radio className="w-4 h-4 animate-pulse text-red-500" /> מתחבר לשידור…</span>
+          <span className="flex items-center gap-2"><Radio className="w-4 h-4 fl-pulse-2 text-red-500" /> מתחבר לשידור…</span>
         </div>
       )}
      </div>

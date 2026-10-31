@@ -54,7 +54,7 @@ export default function GameFans({ game, home, away }) {
 
   return (
     <div className="card p-4">
-      <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white mb-3">
+      <h2 className="flex items-center gap-2 text-[20px] font-extrabold leading-tight text-fg-strong mb-3">
         <Heart className="w-4 h-4 text-rose-500" /> האוהדים
       </h2>
       <div className="grid grid-cols-2 gap-3">

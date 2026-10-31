@@ -213,7 +213,7 @@ function CloudflarePlayer({ video, isLive }) {
       <video ref={videoRef} autoPlay playsInline muted controls className="absolute inset-0 w-full h-full object-contain bg-black" />
       {status === "connecting" && (
         <div className="absolute inset-0 grid place-items-center bg-black/60 text-white text-sm">
-          <span className="flex items-center gap-2"><Radio className="w-4 h-4 animate-pulse text-red-500" /> מתחבר לשידור…</span>
+          <span className="flex items-center gap-2"><Radio className="w-4 h-4 fl-pulse-2 text-red-500" /> מתחבר לשידור…</span>
         </div>
       )}
     </div>
@@ -331,7 +331,7 @@ function PartTabs({ videos, selected, onSelect }) {
             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${on
               ? "bg-brand text-white"
               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
-            {isLiveRow(v) && <Radio className={`w-4 h-4 ${on ? "" : "text-red-500"} animate-pulse`} />}
+            {isLiveRow(v) && <Radio className={`w-4 h-4 ${on ? "" : "text-red-500"} fl-pulse-2`} />}
             {label}
           </button>
         )
@@ -448,11 +448,11 @@ export default function GameVideo({ game, home, away, players = [] }) {
 
   return (
     <motion.div id="video" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden scroll-mt-20">
-      <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
+      <div className="px-4 pt-4 pb-1 flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-[20px] font-extrabold leading-tight text-fg-strong">
           {onAirNow && (multi || camera?.live)
-            ? <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400"><Radio className="w-4 h-4 animate-pulse" /> שידור חי</span>
-            : <><Video className="w-4 h-4 text-orange-500" /> וידאו מהמשחק</>}
+            ? <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400"><Radio className="w-4 h-4 fl-pulse-2" /> שידור חי</span>
+            : <>וידאו מהמשחק</>}
           {/* A small number reads as "nobody's watching" — only show a crowd. */}
           {streamActive && viewers >= MIN_VIEWERS_SHOWN && (
             <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400" title="צופים בשידור">

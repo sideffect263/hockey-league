@@ -1,22 +1,18 @@
-import { useState, useEffect } from "react"
-import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Clock, MapPin, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck, Squad, Medic, PersonClaim, TrendUp as TrendingUp, GameForm as ClipboardCheck } from "@/components/icons/BrandIcons"
+import { useState, useEffect, useCallback } from "react"
+import { GoalIcon as Ball, BlueCard, RedCard, Calendar, CalendarClock, Flame, MatchFallback as Swords, Referee, MonitorPlay, CalendarCheck, Squad, PersonClaim, TrendUp as TrendingUp, GameForm as ClipboardCheck } from "@/components/icons/BrandIcons"
 import { useParams, Link, useLocation } from "react-router-dom"
 import { getGameStatsByGameId, getTeams, getPlayers, getReferees, getGames, getGameAnySeason, getArchivedGames } from "@/lib/api"
-import { getLiveGame } from "@/lib/live"
+import { getLiveGame, subscribeLiveGame } from "@/lib/live"
 import { useAuth } from "@/lib/AuthContext"
-import { ArrowRight, ArrowLeft, Shield, RefreshCw, Utensils, LogIn } from "lucide-react"
-import { motion } from "framer-motion"
-import { format } from "date-fns"
-import { he } from "date-fns/locale"
-import TeamLogo from "@/components/TeamLogo"
-import LiveGame from "@/components/LiveGame"
+import { ArrowRight, ArrowLeft, RefreshCw, LogIn } from "lucide-react"
 import GameVideo from "@/components/GameVideo"
 import GamePosts from "@/components/games/GamePosts"
 import GameAvailability from "@/components/GameAvailability"
 import LoanInvite from "@/components/LoanInvite"
 import GameSquads from "@/components/GameSquads"
 import GameBroadcast from "@/components/GameBroadcast"
-import { TeamLink, PlayerLink } from "@/components/EntityLinks"
+import { PlayerLink } from "@/components/EntityLinks"
+import { CrestDisc, TeamLink } from "@/components/fl/Floodlight"
 import { useSeo } from "@/lib/seo"
 import { useSlugId, entityPath } from "@/lib/slugs"
 import { FRIENDLY_GAME_TYPE } from "@/lib/leagueStats"
@@ -24,7 +20,6 @@ import GameChangeRequestModal from "@/components/GameChangeRequestModal"
 import GameChangeOpponentCard from "@/components/GameChangeOpponentCard"
 import OfficialSelfSubmit from "@/components/OfficialSelfSubmit"
 import { getGameOfficialsPublic } from "@/lib/officials"
-import AddToCalendar from "@/components/games/AddToCalendar"
 import GameFormExport from "@/components/GameFormExport"
 import GameFormCard from "@/components/games/GameFormCard"
 import GameMvp from "@/components/GameMvp"
@@ -35,41 +30,43 @@ import GameStory from "@/components/games/GameStory"
 import GameMediaUpload from "@/components/games/GameMediaUpload"
 import { MATCH_STATS_GAMES } from "@/lib/matchStats"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
-import { GameDetailSkeleton } from "@/components/skeletons/PageSkeletons"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
-import { ilDate } from "@/lib/ilTime"
+import { getGameReportRow } from "@/lib/gameFormData"
+import { getVenues } from "@/lib/venues"
 import { headToHead, formBefore, gameSummary } from "@/lib/pageSummary"
+import { resultText, SHARE_ORIGIN } from "@/lib/shareLinks"
+import GameHero from "@/components/fl/games/GameHero"
+import GameLiveBand, { GameTimeline } from "@/components/fl/games/GameLiveBand"
+import { FLSection, GameQuickActions, BroadcastNote, PostponedCards, KioskAndNotes, GoalsList } from "@/components/fl/games/GamePieces"
+import { GameDetailSkeletonFL } from "@/components/fl/games/GamesSkeletons"
+import { getGameHeroPhoto } from "@/components/fl/games/gameCover"
+import { useIsDesktop } from "@/components/fl/games/useIsDesktop"
+import {
+  STAGE, resolveStage, isPlayedStage, isLiveStage, chipText, roundsOf, dayAndDate, timeOf, shortDate, buildTimeline,
+} from "@/components/fl/games/flGamesKit"
 
-const statusCfg = {
-  scheduled: { label: "מתוכנן", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  waiting_result: { label: "ממתין לתוצאה", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-  in_progress: { label: "משחק חי", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  completed: { label: "הסתיים", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400" },
-  postponed: { label: "נדחה", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
-}
-
-const resultCls = (r) =>
-  r === 'win' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-  : r === 'loss' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-  : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
 const resultLabel = (r) => (r === 'win' ? 'ניצחון' : r === 'loss' ? 'הפסד' : 'תיקו')
+const formTone = (r) => (r === 'win' ? 'bg-emerald-600 text-white' : r === 'loss' ? 'bg-fl-red text-white' : 'bg-fg-muted text-surface')
 
-// One player's line in a box score — matches Games.jsx pill markup exactly.
+// One player's line in a box score.
 function StatPills({ stat }) {
   return (
-    <div className="flex gap-1.5 shrink-0">
-      {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{stat.goals}</span>}
-      {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{stat.blue_cards}</span>}
-      {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{stat.red_cards}</span>}
-    </div>
+    <span className="flex gap-1.5 shrink-0 items-center">
+      {stat.goals > 0 && <span className="inline-flex items-center gap-0.5 fl-num text-[15px] text-fg-strong" aria-label={`${stat.goals} שערים`}><Ball className="w-5 h-5" /><span dir="ltr">{stat.goals}</span></span>}
+      {stat.blue_cards > 0 && <span className="inline-flex items-center gap-0.5 fl-num text-[15px] text-fl-blue" aria-label={`${stat.blue_cards} כחולים`}><BlueCard className="w-5 h-5" /><span dir="ltr">{stat.blue_cards}</span></span>}
+      {stat.red_cards > 0 && <span className="inline-flex items-center gap-0.5 fl-num text-[15px] text-fl-red" aria-label={`${stat.red_cards} אדומים`}><RedCard className="w-5 h-5" /><span dir="ltr">{stat.red_cards}</span></span>}
+    </span>
   )
 }
+
+const toolBtn = "inline-flex items-center gap-1.5 min-h-11 text-[13px] font-bold px-3.5 rounded-control transition-colors"
 
 export default function GameDetail() {
   const { id: routeKey } = useParams()
   const { id, notFound: unknownRoute } = useSlugId('games', routeKey)
   const { user, isAdmin, isDeveloper, isJudgeRole, isLeagueManager, profile, coachTeamIds, openAuth } = useAuth()
   const { hash } = useLocation()
+  const isDesktop = useIsDesktop()
   const [game, setGame] = useState(null)
   const [stats, setStats] = useState([])
   const [teams, setTeams] = useState([])
@@ -77,6 +74,10 @@ export default function GameDetail() {
   const [referees, setReferees] = useState([])
   const [games, setGames] = useState([])
   const [live, setLive] = useState(null)
+  const [venues, setVenues] = useState([])
+  const [report, setReport] = useState(null)       // game_reports row → the goals' minutes
+  const [heroPhoto, setHeroPhoto] = useState(null)
+  const [now, setNow] = useState(() => new Date())
   // An old-season game wears that season's palette + badge, like its /archive page.
   const pastSeason = usePinSeason(game?.season_id)
   const [officials, setOfficials] = useState([])   // confirmed judge(s) + medic (game_officials)
@@ -85,6 +86,7 @@ export default function GameDetail() {
   const [myRequest, setMyRequest] = useState(null)   // this coach's latest change request for the game
   const [showChangeModal, setShowChangeModal] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [shared, setShared] = useState(false)
 
   // Computed before the early returns so the hooks below (useSeo) always run.
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
@@ -106,6 +108,30 @@ export default function GameDetail() {
     if (id) loadData()
     else if (unknownRoute) { setError('notfound'); setLoading(false) } // sentinel, see the error branch below
   }, [id, unknownRoute])
+
+  // The stage follows the clock (game day → kick-off) without a reload.
+  useEffect(() => {
+    const iv = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(iv)
+  }, [])
+
+  // The live row: realtime for any game that is not over (the judge can start the board
+  // a little early); a DELETE (finished / abandoned) delivers null.
+  const gameDone = game?.status === 'completed'
+  useEffect(() => {
+    if (!id || !game || gameDone) return
+    return subscribeLiveGame(id, (row) => setLive(row))
+  }, [id, !!game, gameDone])
+
+  // Venue (pin + address for ניווט), the board's archived play-by-play, the hero photo.
+  useEffect(() => {
+    if (!id) return
+    let alive = true
+    getVenues().then(v => alive && setVenues(v)).catch(() => {})
+    getGameReportRow(id).then(r => alive && setReport(r)).catch(() => {})
+    getGameHeroPhoto(id).then(u => alive && setHeroPhoto(u)).catch(() => {})
+    return () => { alive = false }
+  }, [id])
 
   // A coach of either team may have an outstanding change request for this game.
   // Refetch when the game or the viewer's coach scope resolves (auth loads async).
@@ -153,25 +179,34 @@ export default function GameDetail() {
     } finally { setLoading(false) }
   }
 
-  if (loading) return <GameDetailSkeleton />
+  const share = useCallback(async () => {
+    if (!game) return
+    const url = `${SHARE_ORIGIN}${entityPath('games', game)}`
+    const done = game.status === 'completed' && game.home_score != null
+    const text = done ? resultText(home?.name, game.home_score, game.away_score, away?.name)
+      : `${home?.name || 'בית'} נגד ${away?.name || 'חוץ'} · ${dayAndDate(game.game_date)} ${timeOf(game.game_date)}`
+    try {
+      if (navigator.share) { await navigator.share({ title: text, text, url }); return }
+    } catch (e) { if (e?.name === 'AbortError') return }
+    try { await navigator.clipboard.writeText(`${text}\n${url}`); setShared(true); setTimeout(() => setShared(false), 2000) }
+    catch { window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`, '_blank', 'noopener,noreferrer') }
+  }, [game, home, away])
+
+  if (loading) return <GameDetailSkeletonFL />
 
   if (error || !game) {
     const notFound = error === 'notfound' || !game
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-        <div className="card p-6 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
-          <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600" />
-          <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">{notFound ? 'המשחק לא נמצא' : 'שגיאה בטעינת המשחק'}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{notFound ? 'ייתכן שהמשחק הוסר או שהקישור שגוי' : 'משהו השתבש, נסו שוב'}</p>
+        <div className="fl-card p-6 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
+          <Calendar className="w-12 h-12" />
+          <h2 className="text-lg font-extrabold text-fg-strong">{notFound ? 'המשחק לא נמצא' : 'שגיאה בטעינת המשחק'}</h2>
+          <p className="text-sm text-fg-muted">{notFound ? 'ייתכן שהמשחק הוסר או שהקישור שגוי' : 'משהו השתבש, נסו שוב'}</p>
           <div className="flex gap-2 mt-1">
             {!notFound && (
-              <button onClick={loadData} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-600 text-white rounded-lg text-xs font-semibold hover:bg-slate-700 transition-colors">
-                <RefreshCw className="w-3.5 h-3.5" /> נסה שוב
-              </button>
+              <button onClick={loadData} className="btn btn-secondary"><RefreshCw className="w-4 h-4" /> נסה שוב</button>
             )}
-            <Link to="/games" className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-lg text-xs font-semibold hover:bg-brand-hover transition-colors">
-              <ArrowRight className="w-3.5 h-3.5" /> חזרה למשחקים
-            </Link>
+            <Link to="/games" className="btn btn-primary"><ArrowRight className="w-4 h-4" /> חזרה למשחקים</Link>
           </div>
         </div>
       </div>
@@ -179,14 +214,14 @@ export default function GameDetail() {
   }
 
   // ---- Derived match state ----
-  // Score is only "real" once a game is completed. Some scheduled rows carry a
-  // pre-entered score in the DB, but the whole app (Games list, TeamDetail)
-  // gates the score on status === 'completed', so we do the same here.
+  // Score is only "real" once a game is completed (the whole app gates it on that).
   const done = game.status === 'completed'
-  // A live game takes over the top of the page: status flips to in_progress when
-  // the judge broadcasts, and a live row is the belt-and-suspenders signal. Never
-  // for a completed game (the finish RPC clears the live row anyway).
-  const showLive = !done && (game.status === 'in_progress' || !!live)
+  const stage = resolveStage(game, live, now)
+  const liveStage = isLiveStage(stage)
+  const played = done && game.home_score != null && game.away_score != null
+  const scores = played ? [game.home_score, game.away_score]
+    : (stage === STAGE.justEnded && live && live.home_score != null) ? [live.home_score, live.away_score] : null
+  const round = roundsOf(games)[game.id] || null
   // Officials (judge/admin) get an in-page entry to run the scoreboard + go live.
   const canOfficiate = isAdmin || isJudgeRole
   // Played without the game clock → referee / LM enters it from the handwritten form.
@@ -204,13 +239,9 @@ export default function GameDetail() {
   // league manager, for either side — can also push a reminder to the silent ones.
   const nudgeTeamIds = (isAdmin || isLeagueManager) ? [game.home_team_id, game.away_team_id] : (coachTeamIds || []).filter(inThisGame)
   const showAvailability = game.status === "scheduled" && (!!user || myAvailPlayerId || officialTeamIds.length > 0 || playerTeamId)
-  const played = done && game.home_score != null && game.away_score != null
-  const homeWin = played && game.home_score > game.away_score
-  const awayWin = played && game.away_score > game.home_score
-  const tie = played && game.home_score === game.away_score
-  const st = statusCfg[game.status] || statusCfg.completed
   const isPlayoff = game.game_type === 'פלייאוף'
   const isFriendly = game.game_type === FRIENDLY_GAME_TYPE
+  const typeLabel = isPlayoff ? (game.series_game ? `פלייאוף · משחק ${game.series_game}` : 'פלייאוף') : isFriendly ? game.game_type : null
 
   const refName = (() => {
     if (judges.length) return judges.map(j => j.name).filter(Boolean).join(', ') || null
@@ -219,20 +250,18 @@ export default function GameDetail() {
     const r = pool.find(x => x.id === game.referee_id)
     return r ? `${r.first_name} ${r.last_name}` : null
   })()
+  const judgeNames = judges.length ? judges.map(j => j.name).filter(Boolean) : (refName ? [refName] : [])
+  const venue = venues.find(v => v.name?.trim() === game.venue?.trim()) || null
 
   // ---- Box score / stat derivations ----
-  // A loaned player's line carries the side he played for (played_for_team_id); everyone
-  // else plays for their own team.
+  // A loaned player's line carries the side he played for (played_for_team_id).
   const sideOf = (s) => s.played_for_team_id || playersMap[s.player_id]?.team_id
   const loanFrom = (s) => (s.played_for_team_id && playersMap[s.player_id]?.team_id !== s.played_for_team_id)
     ? teamsMap[playersMap[s.player_id]?.team_id] : null
   const teamStats = (tid) => stats.filter(s => sideOf(s) === tid)
   const guestStats = stats.filter(s => s.is_guest_player)
   const scorers = [...stats].filter(s => (s.goals || 0) > 0).sort((a, b) => (b.goals || 0) - (a.goals || 0))
-  // Own goals live on the game row, not in game_stats: they count for the side they're
-  // shown against but have no scorer on that side. A box score built purely from
-  // game_stats therefore never adds up to the result (5:2 with only four home scorers),
-  // so render them as their own unattributed line.
+  // Own goals live on the game row, not in game_stats: render them as their own line.
   const ownGoalsFor = (tid) =>
     (tid === game.home_team_id ? game.home_own_goals
       : tid === game.away_team_id ? game.away_own_goals : 0) || 0
@@ -240,20 +269,37 @@ export default function GameDetail() {
   const ownGoalLabel = (n) => (n > 1 ? 'שערים עצמיים' : 'שער עצמי')
   const blueCards = stats.reduce((sum, s) => sum + (s.blue_cards || 0), 0)
   const redCards = stats.reduce((sum, s) => sum + (s.red_cards || 0), 0)
+  const nameOfStat = (s) => {
+    if (s.is_guest_player) return s.guest_player_name || 'אורח'
+    const p = playersMap[s.player_id]
+    return p ? `${p.first_name} ${p.last_name}` : '—'
+  }
 
   const tiles = played ? [
-    { val: game.home_score + game.away_score, label: "סה״כ שערים", color: "text-brand" },
-    { val: game.home_score, label: "שערי הבית", color: "text-emerald-600 dark:text-emerald-400" },
-    { val: game.away_score, label: "שערי החוץ", color: "text-emerald-600 dark:text-emerald-400" },
-    { val: blueCards, label: "כרטיסים כחולים", color: "text-blue-600 dark:text-blue-400" },
-    { val: redCards, label: "כרטיסים אדומים", color: "text-red-500 dark:text-red-400" },
+    { val: game.home_score + game.away_score, label: "סה״כ שערים", color: "text-fg-strong" },
+    { val: game.home_score, label: "שערי הבית", color: "text-fg-strong" },
+    { val: game.away_score, label: "שערי החוץ", color: "text-fg-strong" },
+    { val: blueCards, label: "כרטיסים כחולים", color: "text-fl-blue" },
+    { val: redCards, label: "כרטיסים אדומים", color: "text-fl-red" },
   ] : []
 
-  // ---- Head-to-head: other completed meetings between the two teams ----
-  // Friendlies are excluded — this reflects the competitive record only.
-  const h2h = headToHead(games, game)
+  // ---- "שערים": the board's play-by-play when it adds up to the score, else the box score.
+  const timeline = buildTimeline(report?.events || [], report?.period_ms || undefined)
+  const tlGoals = timeline.filter(e => e.kind === 'goal')
+  const tlAddsUp = tlGoals.length > 0 && scores &&
+    tlGoals.filter(e => e.home).length === scores[0] && tlGoals.filter(e => !e.home).length === scores[1]
+  const goalRows = !isPlayedStage(stage) ? [] : tlAddsUp
+    ? tlGoals.map(e => ({ id: e.id, home: e.home, who: e.ownGoal ? 'שער עצמי' : (e.player || 'שער'), minute: e.minute, score: e.scoreAfter }))
+    : [
+      ...scorers.filter(s => !s.is_guest_player || s.played_for_team_id)
+        .map(s => ({ id: s.id, home: sideOf(s) === game.home_team_id, who: nameOfStat(s), count: s.goals, minute: null }))
+        .sort((a, b) => (a.home === b.home ? 0 : a.home ? -1 : 1)),
+      ...[game.home_team_id, game.away_team_id].filter(t => ownGoalsFor(t) > 0)
+        .map(t => ({ id: `og-${t}`, home: t === game.home_team_id, who: ownGoalLabel(ownGoalsFor(t)), count: ownGoalsFor(t), minute: null })),
+    ]
 
-  // ---- Pre-match form: each team's last 5 completed results BEFORE this game ----
+  // ---- Head-to-head + pre-match form (competitive games only) ----
+  const h2h = headToHead(games, game)
   const homeForm = formBefore(games, game, game.home_team_id)
   const awayForm = formBefore(games, game, game.away_team_id)
 
@@ -268,179 +314,406 @@ export default function GameDetail() {
     }).filter(s => s.name && s.side),
   })
 
-  // A coach of either team may request a reschedule while the game is still
-  // upcoming (scheduled or already postponed). Managers/admins edit games directly.
+  // A coach of either team may request a reschedule while the game is still upcoming.
   const isTeamCoach = (coachTeamIds || []).some(tid => tid === game.home_team_id || tid === game.away_team_id)
   const canRequestChange = isTeamCoach && (game.status === 'scheduled' || game.status === 'postponed')
   const gcOpen = ['pending', 'pending_opponent', 'pending_manager'].includes(myRequest?.status)
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5">
-      {pastSeason && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand/30 bg-brand/10 px-4 py-2.5">
-          <p className="text-sm font-semibold text-fg-strong">משחק מעונת {pastSeason.name} — עונה שהסתיימה</p>
-          <Link to={`/archive/${encodeURIComponent(pastSeason.slug || pastSeason.id)}`} className="text-xs font-bold text-brand-strong dark:text-brand-light hover:underline">
-            לעמוד העונה ←
-          </Link>
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/games" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
-          <ArrowRight className="w-4 h-4" /> חזרה למשחקים
-        </Link>
-        {/* Officials: jump straight to this game's scoreboard to run the clock / go live */}
-        {canOfficiate && !done && (
-          <Link to={`/judge/${id}`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-            <Referee className="w-4 h-4" /> לוח שיפוט
-          </Link>
-        )}
-        {/* Admin: the multi-camera control room — reachable before any camera exists */}
-        {isAdmin && !done && (
-          <Link to={`/games/${id}/control`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-surface-sunken transition-colors">
-            <MonitorPlay className="w-4 h-4" /> חדר שידור
-          </Link>
-        )}
-        {canEnterFromForm && (
-          <Link to={`/games/${id}/result`} className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-surface-sunken transition-colors">
-            <ClipboardCheck className="w-4 h-4" /> הזנת תוצאה מטופס
-          </Link>
-        )}
-        {/* Played: officials + the two coaches can pull the filled refereeing form */}
-        <GameFormExport game={game} home={home} away={away} players={players} stats={stats} refereeName={refName} />
-      </div>
+  // ================= sections (each null when it has nothing to show) =================
+  const S = {}
 
-      {/* ===== LIVE (in-progress): scoreboard + stream unified at the top ===== */}
-      {showLive && (
+  S.season = pastSeason && (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-card bg-surface px-4 py-3 border border-line">
+      <p className="text-sm font-semibold text-fg-strong">משחק מעונת <bdi dir="ltr">{pastSeason.name}</bdi> — עונה שהסתיימה</p>
+      <Link to={`/archive/${encodeURIComponent(pastSeason.slug || pastSeason.id)}`} className="text-[13px] font-bold text-fg-strong underline underline-offset-4">לעמוד העונה ←</Link>
+    </div>
+  )
+
+  // Officials' tools for this game (judge board, control room, result from form, form export).
+  S.tools = (
+    <>
+      {canOfficiate && !done && (
+        <Link to={`/judge/${id}`} className={`${toolBtn} bg-brand text-brand-fg hover:bg-brand-hover`}><Referee className="w-5 h-5" /> לוח שיפוט</Link>
+      )}
+      {isAdmin && !done && (
+        <Link to={`/games/${id}/control`} className={`${toolBtn} border border-line bg-surface text-fg-strong hover:bg-surface-sunken`}><MonitorPlay className="w-5 h-5" /> חדר שידור</Link>
+      )}
+      {canEnterFromForm && (
+        <Link to={`/games/${id}/result`} className={`${toolBtn} border border-line bg-surface text-fg-strong hover:bg-surface-sunken`}><ClipboardCheck className="w-5 h-5" /> הזנת תוצאה מטופס</Link>
+      )}
+      <GameFormExport game={game} home={home} away={away} players={players} stats={stats} refereeName={refName} />
+    </>
+  )
+
+  S.hero = !liveStage && (
+    <GameHero game={game} home={home} away={away} stage={stage} round={round} scores={scores}
+      chip={shared ? 'הקישור הועתק' : chipText(game, stage, { live, now, round })}
+      judges={judgeNames} address={venue?.address || null} photoUrl={isPlayedStage(stage) ? heroPhoto : null}
+      onShare={share} typeLabel={typeLabel} />
+  )
+
+  const canNav = !!game.venue?.trim() && (game.status === 'scheduled' || liveStage)
+  S.quick = !pastSeason && (game.status === 'scheduled' || liveStage) && (
+    <GameQuickActions game={game} teamsMap={teamsMap} venue={venue}
+      showCalendar={game.status === 'scheduled'} showNav={canNav} />
+  )
+
+  S.liveBand = liveStage && <GameLiveBand home={home} away={away} live={live} />
+  S.liveMeta = liveStage && (
+    <div className="text-center -mt-1">
+      <p className="text-[12.5px] text-fg-muted">
+        {dayAndDate(game.game_date)} · <span dir="ltr">{timeOf(game.game_date)}</span>{game.venue ? ` · מגרש ${game.venue}` : ''}
+      </p>
+      {venue?.address && <p className="text-[11px] text-fg-subtle">{venue.address}</p>}
+    </div>
+  )
+  // The timeline stays on a just-ended game until the live row goes away.
+  S.timeline = live && (liveStage || stage === STAGE.justEnded) && (
+    <GameTimeline events={live.state?.events || []} periodMS={live.state?.periodMS} home={home} away={away} over={!liveStage} />
+  )
+  S.video = <GameVideo game={game} home={home} away={away} players={players} />
+  S.postponed = stage === STAGE.postponed && <PostponedCards />
+  S.broadcastNote = stage === STAGE.gameDay && <BroadcastNote />
+  S.goals = goalRows.length > 0 && <GoalsList rows={goalRows} home={home} away={away} />
+  S.kiosk = <KioskAndNotes game={game} />
+
+  S.medics = medics.length > 0 && (
+    <p className="fl-card px-3.5 py-3 text-[13px] text-fg-strong">חובש: {medics.map(m => m.name).filter(Boolean).join(', ')}</p>
+  )
+
+  S.about = summary.length > 0 && (
+    <FLSection title="על המשחק">
+      <p className="text-[14px] leading-relaxed text-fg-soft">{summary.join(' ')}</p>
+    </FLSection>
+  )
+
+  // סיפור המשחק — written story (published, or a draft for editors)
+  S.story = done && <GameStory gameId={game.id} home={home} away={away} />
+  // raw footage from coaches / officials / editors → the timeline pipeline
+  S.mediaUpload = (done || game.status === 'in_progress') && <GameMediaUpload gameId={game.id} />
+
+  // COACH: request a reschedule (date/venue) → manager approves
+  S.changeRequest = canRequestChange && (
+    <div className="fl-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[15px] font-extrabold text-fg-strong flex items-center gap-2">
+          <CalendarClock className="w-5 h-5" /> שינוי מועד או מגרש
+        </p>
+        {gcOpen ? (
+          <p className="text-[13px] text-amber-700 dark:text-amber-400 mt-1">
+            בקשתך {myRequest.status === 'pending_opponent' ? 'ממתינה לאישור המאמן היריב' : 'ממתינה לאישור מנהל הליגה'}
+            {myRequest.proposed_venue && <> · {myRequest.proposed_venue}</>}
+          </p>
+        ) : myRequest?.status === 'rejected' ? (
+          <p className="text-[13px] text-fl-red mt-1">
+            בקשתך האחרונה נדחתה{myRequest.decision_note ? ` — ${myRequest.decision_note}` : ''}. ניתן לשלוח בקשה חדשה.
+          </p>
+        ) : myRequest?.status === 'approved' ? (
+          <p className="text-[13px] text-emerald-700 dark:text-emerald-400 mt-1">בקשתך האחרונה אושרה — המשחק עודכן.</p>
+        ) : (
+          <p className="text-[13px] text-fg-muted mt-1">הבקשה תישלח למנהל הליגה לאישור</p>
+        )}
+      </div>
+      <div className="shrink-0">
+        {gcOpen ? (
+          <button onClick={cancelMyRequest} disabled={cancelling} className="btn btn-secondary">
+            {cancelling ? 'מבטל…' : 'ביטול הבקשה'}
+          </button>
+        ) : (
+          <button onClick={() => setShowChangeModal(true)} className="btn btn-primary">
+            <CalendarClock className="w-5 h-5" /> בקשת שינוי
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
+  // MATCH SHEET: captains + digital signatures of the טופס שיפוט
+  S.formCard = <GameFormCard game={game} home={home} away={away} players={players} stats={stats} />
+  // OPPONENT COACH: respond to a reschedule request
+  S.opponent = <GameChangeOpponentCard game={game} coachTeamIds={coachTeamIds} onResponded={refreshMyRequest} />
+  // FANS: each side's fans + "אני בא/ה לצפות"
+  S.fans = <GameFans game={game} home={home} away={away} />
+  // OFFICIAL SELF-SUBMIT (judge/medic apply for an upcoming game)
+  S.selfSubmit = <OfficialSelfSubmit game={game} />
+
+  // MATCH CENTRE: stats from the video — preview, devs + admins only for now
+  S.matchCentre = (isAdmin || isDeveloper) && MATCH_STATS_GAMES.has(game.id) && (
+    <Link to={`${entityPath('games', game)}/stats`} className="fl-card p-4 flex items-center gap-3 hover:bg-surface-sunken transition-colors">
+      <span className="size-11 rounded-control bg-surface-sunken flex items-center justify-center shrink-0"><TrendingUp className="w-6 h-6" /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-extrabold text-[15px] text-fg-strong">מרכז המשחק · סטטיסטיקות מהווידאו</span>
+        <span className="block text-[12.5px] text-fg-muted">אחזקה, בעיטות, מסירות, מפת חום ושחקנים — חושב אוטומטית מהצילום (תצוגה מקדימה)</span>
+      </span>
+      <ArrowLeft className="w-4 h-4 text-fg-muted shrink-0" />
+    </Link>
+  )
+
+  // HIGHLIGHTS & POSTS attached to this game — hidden when none
+  S.posts = <GamePosts game={game} teamsMap={teamsMap} playersMap={playersMap} />
+  // LOAN INVITE — a coach of another team asked this player for this game
+  S.loan = game.status === "scheduled" && profile?.player_id && <LoanInvite gameId={game.id} />
+
+  // AVAILABILITY. #availability is the target of shared sign-up links (/games/next, the
+  // coach's copied link): it must exist for every viewer, so a guest arriving from WhatsApp
+  // lands on a way in rather than on nothing.
+  S.availability = showAvailability ? (
+    <div id="availability" className="scroll-mt-20">
+      <GameAvailability game={game} myPlayerId={myAvailPlayerId} officialTeamIds={officialTeamIds} playerTeamId={playerTeamId} publicView={!!user} nudgeTeamIds={nudgeTeamIds} teamsMap={teamsMap} playersMap={playersMap} />
+    </div>
+  ) : game.status === "postponed" ? (
+    // Postponed: PostponedCards carries #availability and the explanation
+    // (game-postpone-reconfirm.sql: a new date re-asks everyone who said מגיע).
+    null
+  ) : game.status === "scheduled" && (!user || hash === "#availability") ? (
+    <div id="availability" className="fl-card p-4 scroll-mt-20 flex items-center gap-3 flex-wrap">
+      <CalendarCheck className="w-6 h-6 shrink-0" />
+      <p className="flex-1 min-w-[12rem] text-[14px] text-fg-strong">
+        {!user ? "משחק בקבוצה שלך? התחברו כדי לאשר הגעה."
+          : !profile?.player_id ? "כדי לאשר הגעה יש לשייך את החשבון לכרטיס השחקן שלך."
+          : "אישור הגעה פתוח לשחקני שתי הקבוצות במשחק בלבד."}
+      </p>
+      {!user ? (
+        <button onClick={openAuth} className="btn btn-primary"><LogIn className="w-4 h-4" /> התחברות</button>
+      ) : !profile?.player_id && (
+        <Link to="/me" className="btn btn-primary"><PersonClaim className="w-5 h-5" /> שיוך לשחקן</Link>
+      )}
+    </div>
+  ) : null
+
+  // LM broadcast — renders only for admin / league manager
+  S.lmBroadcast = <GameBroadcast game={game} />
+
+  S.tiles = tiles.length > 0 && (
+    <FLSection title="סיכום המשחק">
+      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-3 gap-2">
+        {tiles.map(({ val, label, color }) => (
+          <div key={label} className="rounded-[14px] bg-surface-sunken py-3 px-1 text-center">
+            <p className={`fl-num text-[26px] ${color}`}>{val}</p>
+            <p className="text-[11px] font-medium text-fg-muted mt-1 truncate">{label}</p>
+          </div>
+        ))}
+      </div>
+    </FLSection>
+  )
+
+  // MVP — picked by an official, shown to everyone once picked.
+  S.mvp = done && (
+    <GameMvp game={game} stats={stats} playersMap={playersMap} teamsMap={teamsMap}
+      canPick={isAdmin || isLeagueManager || isJudgeRole}
+      onChanged={(pid) => setGame(g => ({ ...g, mvp_player_id: pid }))} />
+  )
+
+  // BOX SCORE — הרכבים וסטטיסטיקות (home column on the RIGHT)
+  S.boxScore = done && (
+    <FLSection title="הרכבים וסטטיסטיקות">
+      {stats.length === 0 && ownGoalTotal === 0 ? (
+        <p className="text-center text-[14px] text-fg-muted py-6">לא הוזנו סטטיסטיקות למשחק זה</p>
+      ) : (
         <>
-          <LiveGame gameId={id} home={home} away={away} initial={live} />
-          <GameVideo game={game} home={home} away={away} players={players} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+            {[game.home_team_id, game.away_team_id].map(tid => {
+              const rows = teamStats(tid)
+              return (
+                <div key={tid} className="min-w-0">
+                  <TeamLink team={teamsMap[tid]} className="flex items-center gap-2 mb-2">
+                    <CrestDisc team={teamsMap[tid]} size={28} />
+                    <span className="text-[14px] font-extrabold text-fg-strong truncate">{teamsMap[tid]?.name || '—'}</span>
+                    <span className="text-[12px] text-fg-muted">{tid === game.home_team_id ? 'בית' : 'חוץ'}</span>
+                  </TeamLink>
+                  <ul className="divide-y divide-line">
+                    {rows.length === 0 && ownGoalsFor(tid) === 0 && <li className="text-[13px] text-fg-muted py-2">אין נתונים</li>}
+                    {rows.map(stat => {
+                      const p = playersMap[stat.player_id]
+                      return (
+                        <li key={stat.id} className="flex items-center justify-between gap-2 min-h-11 py-1">
+                          <PlayerLink playerId={stat.player_id} className="text-[14px] text-fg-strong hover:underline truncate min-w-0">
+                            {p ? `${p.first_name} ${p.last_name}` : '—'}
+                            {loanFrom(stat) && <span className="text-[12px] text-fg-muted"> (בהשאלה מ{loanFrom(stat).name})</span>}
+                          </PlayerLink>
+                          <StatPills stat={stat} />
+                        </li>
+                      )
+                    })}
+                    {ownGoalsFor(tid) > 0 && (
+                      <li className="flex items-center justify-between gap-2 min-h-11 py-1">
+                        <span className="text-[14px] text-fg-muted truncate min-w-0">{ownGoalLabel(ownGoalsFor(tid))}</span>
+                        <span className="inline-flex items-center gap-0.5 fl-num text-[15px] text-fg-muted"><Ball className="w-5 h-5" /><span dir="ltr">{ownGoalsFor(tid)}</span></span>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+          {guestStats.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-line">
+              <h3 className="text-[13px] font-bold text-fg-muted mb-1">אורחים</h3>
+              <ul className="divide-y divide-line">
+                {guestStats.map(stat => (
+                  <li key={stat.id} className="flex items-center justify-between gap-2 min-h-11 py-1">
+                    {/* Guests have no player_id → PlayerLink degrades to inert text */}
+                    <PlayerLink playerId={stat.player_id} className="text-[14px] text-fg-strong truncate min-w-0">
+                      {stat.guest_player_name}
+                      {stat.guest_player_original_team && <span className="text-fg-muted"> ({stat.guest_player_original_team})</span>}
+                    </PlayerLink>
+                    <StatPills stat={stat} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </>
       )}
+    </FLSection>
+  )
 
-      {/* ============ HEADER ============ */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-5 sm:p-6">
-        <div className="flex items-center gap-2 mb-5 flex-wrap">
-          <span className={`stat-pill ${st.cls}`}>{st.label}</span>
-          <span className={`stat-pill ${isPlayoff ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : isFriendly ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{game.game_type}</span>
-          {isPlayoff && game.series_game && <span className="stat-pill bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">משחק {game.series_game}</span>}
-        </div>
+  // Who signed up for each side — kept on the page after the final whistle.
+  S.squads = done && user && <GameSquads game={game} teamsMap={teamsMap} playersMap={playersMap} />
 
-        <div className="flex items-center justify-between gap-3">
-          {/* Home (right in RTL) */}
-          <TeamLink team={home} className="flex flex-col items-center gap-2 flex-1 min-w-0 group">
-            <TeamLogo team={home} size={14} />
-            <span className={`font-bold text-sm text-center truncate w-full group-hover:text-brand transition-colors ${homeWin ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}`}>{home?.name || '—'}</span>
-            <span className={`text-[11px] font-medium ${homeWin ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>{tie ? 'תיקו' : homeWin ? 'מנצחת' : 'בית'}</span>
-          </TeamLink>
-
-          {/* Score / kickoff */}
-          <div className="shrink-0 text-center px-1 sm:px-2">
-            {played ? (
-              /* RTL: the flex row places home on the RIGHT and away on the LEFT, but
-                 digits render left-to-right. So away_score prints first (left, beside
-                 the away team) and home_score last (right, beside home). Do NOT flip
-                 to home:away — see hockey-league-rtl-score-gotcha memory. */
-              <div className="text-3xl sm:text-4xl font-extrabold tabular-nums tracking-tight">
-                <span className={awayWin ? 'text-emerald-600 dark:text-emerald-400' : homeWin ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}>{game.away_score}</span>
-                <span className="text-slate-300 dark:text-slate-600 mx-1.5">:</span>
-                <span className={homeWin ? 'text-emerald-600 dark:text-emerald-400' : awayWin ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}>{game.home_score}</span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center">
-                <span className="text-2xl font-extrabold text-slate-300 dark:text-slate-600 tabular-nums">{format(ilDate(game.game_date), "HH:mm")}</span>
-                <span className="text-[11px] text-slate-400 mt-0.5">שעת פתיחה</span>
-              </div>
-            )}
-          </div>
-
-          {/* Away (left in RTL) */}
-          <TeamLink team={away} className="flex flex-col items-center gap-2 flex-1 min-w-0 group">
-            <TeamLogo team={away} size={14} />
-            <span className={`font-bold text-sm text-center truncate w-full group-hover:text-brand transition-colors ${awayWin ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}`}>{away?.name || '—'}</span>
-            <span className={`text-[11px] font-medium ${awayWin ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>{tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'}</span>
-          </TeamLink>
-        </div>
-
-        <div className="flex items-center justify-center gap-x-4 gap-y-2 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(ilDate(game.game_date), "EEEE · d/M/yyyy", { locale: he })}</span>
-          <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(ilDate(game.game_date), "HH:mm")}</span>
-          <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{game.venue || '—'}</span>
-          {/* Labelled: a bare name after the venue read as nothing (nobody saw it was the judge). */}
-          {refName && <span className="flex items-center gap-1"><Referee className="w-4 h-4" />{judges.length > 1 ? 'שופטים' : 'שופט'}: {refName}</span>}
-          {medics.length > 0 && <span className="flex items-center gap-1"><Medic className="w-4 h-4" />חובש: {medics.map(m => m.name).filter(Boolean).join(', ')}</span>}
-        </div>
-
-        {/* Food kiosk (דוכן נקניקיות). Tri-state: null renders NOTHING — silence here
-            means nobody has checked, and a player packing (or not packing) food from
-            home is entitled to the difference between "closed" and "unknown". */}
-        {game.kiosk_open != null && (
-          <div className="mt-4">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${
-              game.kiosk_open
-                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>
-              <Utensils className="w-3.5 h-3.5 shrink-0" />
-              {game.kiosk_open ? 'דוכן אוכל פתוח במגרש' : 'אין דוכן אוכל — כדאי להביא מהבית'}
+  // SCORERS — כובשי השערים. When "שערים" already lists the box score (no minutes) the two
+  // would be the same list, so it shows only next to the board's minute-by-minute goals.
+  S.scorers = (scorers.length > 0 || ownGoalTotal > 0) && (tlAddsUp || !isPlayedStage(stage)) && (
+    <FLSection title="כובשי השערים">
+      <ul className="divide-y divide-line">
+        {scorers.map(stat => {
+          const p = playersMap[stat.player_id]
+          const team = p ? teamsMap[sideOf(stat)] : null
+          return (
+            <li key={stat.id} className="flex items-center justify-between gap-3 min-h-12 py-1">
+              <span className="flex items-center gap-2.5 min-w-0">
+                {team ? <CrestDisc team={team} size={28} /> : <span className="size-7 rounded-full bg-surface-sunken flex items-center justify-center text-[11px] text-fg-muted shrink-0">א</span>}
+                <PlayerLink playerId={stat.player_id} className="font-semibold text-[14px] text-fg-strong truncate hover:underline">{nameOfStat(stat)}</PlayerLink>
+              </span>
+              <span className="inline-flex items-center gap-0.5 fl-num text-[17px] text-fg-strong shrink-0"><span dir="ltr">{stat.goals}</span><Ball className="w-5 h-5" /></span>
+            </li>
+          )
+        })}
+        {[game.home_team_id, game.away_team_id].map(tid => ownGoalsFor(tid) > 0 && (
+          <li key={`og-${tid}`} className="flex items-center justify-between gap-3 min-h-12 py-1">
+            <span className="flex items-center gap-2.5 min-w-0">
+              <CrestDisc team={teamsMap[tid]} size={28} />
+              <span className="font-semibold text-[14px] text-fg-muted truncate">{ownGoalLabel(ownGoalsFor(tid))}</span>
             </span>
-          </div>
-        )}
+            <span className="inline-flex items-center gap-0.5 fl-num text-[17px] text-fg-muted shrink-0"><span dir="ltr">{ownGoalsFor(tid)}</span><Ball className="w-5 h-5" /></span>
+          </li>
+        ))}
+      </ul>
+    </FLSection>
+  )
 
-        {game.notes && (
-          <div className="mt-4 p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-xs text-amber-700 dark:text-amber-300 border border-amber-100 dark:border-amber-800/50">
-            {game.notes}
-          </div>
-        )}
-      </motion.div>
-
-      {summary.length > 0 && (
-        <section className="card p-5">
-          <h2 className="font-bold text-sm text-slate-900 dark:text-white mb-2">על המשחק</h2>
-          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{summary.join(' ')}</p>
-        </section>
-      )}
-
-      {/* ===== סיפור המשחק — written story (published, or a draft for editors) ===== */}
-      {done && <GameStory gameId={game.id} home={home} away={away} />}
-
-      {/* ===== raw footage from coaches / officials / editors → the timeline pipeline ===== */}
-      {(done || game.status === 'in_progress') && <GameMediaUpload gameId={game.id} />}
-
-      {/* ===== COACH: request a reschedule (date/venue) → manager approves ===== */}
-      {canRequestChange && (
-        <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <CalendarClock className="w-4 h-4 text-brand" /> שינוי מועד או מגרש
-            </p>
-            {gcOpen ? (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                בקשתך {myRequest.status === 'pending_opponent' ? 'ממתינה לאישור המאמן היריב' : 'ממתינה לאישור מנהל הליגה'}
-                {myRequest.proposed_venue && <> · {myRequest.proposed_venue}</>}
-              </p>
-            ) : myRequest?.status === 'rejected' ? (
-              <p className="text-xs text-red-500 mt-1">
-                בקשתך האחרונה נדחתה{myRequest.decision_note ? ` — ${myRequest.decision_note}` : ''}. ניתן לשלוח בקשה חדשה.
-              </p>
-            ) : myRequest?.status === 'approved' ? (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">בקשתך האחרונה אושרה — המשחק עודכן.</p>
-            ) : (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">הבקשה תישלח למנהל הליגה לאישור</p>
-            )}
-          </div>
-          <div className="shrink-0">
-            {gcOpen ? (
-              <button onClick={cancelMyRequest} disabled={cancelling}
-                className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
-                {cancelling ? 'מבטל…' : 'ביטול הבקשה'}
-              </button>
-            ) : (
-              <button onClick={() => setShowChangeModal(true)}
-                className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-                <CalendarClock className="w-4 h-4" /> בקשת שינוי
-              </button>
-            )}
-          </div>
+  // BEFORE THE GAME: recent form + head-to-head (מפגשים קודמים)
+  S.preGame = (
+    <FLSection title="לפני המשחק">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="text-[14px] font-bold text-fg-strong">כושר אחרון</h3>
+          <p className="text-[11.5px] text-fg-muted">5 משחקים אחרונים · נ ניצחון · ת תיקו · ה הפסד</p>
         </div>
+        {[{ team: home, form: homeForm, side: 'בית' }, { team: away, form: awayForm, side: 'חוץ' }].map(({ team, form, side }) => (
+          <div key={side} className="flex items-center justify-between gap-3 p-2.5 rounded-[14px] bg-surface-sunken">
+            <TeamLink team={team} className="flex items-center gap-2.5 min-w-0">
+              <CrestDisc team={team} size={36} />
+              <span className="min-w-0">
+                <span className="block font-bold text-[14px] text-fg-strong truncate">{team?.name || '—'}</span>
+                <span className="block text-[11.5px] text-fg-muted">{side}</span>
+              </span>
+            </TeamLink>
+            {form.length > 0 ? (
+              <span className="flex gap-1 shrink-0">
+                {form.map((r, i) => (
+                  <span key={i} title={resultLabel(r)} aria-label={resultLabel(r)}
+                    className={`size-7 rounded-lg flex items-center justify-center text-[12px] font-bold ${formTone(r)}`}>
+                    {r === 'win' ? 'נ' : r === 'loss' ? 'ה' : 'ת'}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="text-[11.5px] text-fg-muted shrink-0">אין משחקים קודמים</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Head-to-head: only when the two teams actually met before */}
+      {h2h.length > 0 && (
+        <div className="flex flex-col gap-1 pt-3 mt-3 border-t border-line">
+          <div className="flex items-baseline justify-between gap-2 mb-1">
+            <h3 className="flex items-center gap-1.5 text-[14px] font-bold text-fg-strong"><Swords className="w-5 h-5" /> מפגשים קודמים</h3>
+            <p className="text-[11.5px] text-fg-muted">מנקודת מבט {home?.name || 'הבית'}</p>
+          </div>
+          {h2h.map(g => {
+            const wasHome = g.home_team_id === game.home_team_id
+            const my = wasHome ? g.home_score : g.away_score
+            const opp = wasHome ? g.away_score : g.home_score
+            const result = my > opp ? 'win' : my < opp ? 'loss' : 'tie'
+            const gh = teamsMap[g.home_team_id], ga = teamsMap[g.away_team_id]
+            return (
+              <Link key={g.id} to={entityPath('games', g)} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 min-h-12 px-1 rounded-xl hover:bg-surface-sunken transition-colors">
+                <span dir="ltr" className="text-[12.5px] text-fg-muted tabular-nums">{shortDate(g.game_date)}</span>
+                {/* Home RIGHT: crest · score · score · crest, physical left→right = away … home. */}
+                <span dir="ltr" className="flex items-center justify-center gap-2" aria-label={`${gh?.name} ${g.home_score}, ${ga?.name} ${g.away_score}`}>
+                  <CrestDisc team={ga} size={26} />
+                  <span className="fl-num text-[17px] text-fg-strong">{g.away_score}</span>
+                  <span className="text-fg-muted">:</span>
+                  <span className="fl-num text-[17px] text-fg-strong">{g.home_score}</span>
+                  <CrestDisc team={gh} size={26} />
+                </span>
+                <span className={`text-[11.5px] font-bold px-2 py-1 rounded-md ${formTone(result)}`}>{resultLabel(result)}</span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </FLSection>
+  )
+
+  // סטופר מרקט: the predictions — % view-only for everyone; predicting is 18+ (RPC gate)
+  S.market = <GameMarketCard game={game} teamsMap={teamsMap} />
+
+  // TEAM PAGE LINKS — home on the RIGHT
+  S.teamLinks = (
+    <div className="grid grid-cols-2 gap-2">
+      {[home, away].map((team, i) => (
+        <TeamLink key={i} team={team} className="fl-card min-h-14 flex items-center justify-center gap-2 px-3 text-[14px] font-bold text-fg-strong hover:bg-surface-sunken transition-colors">
+          <CrestDisc team={team} size={28} />
+          <span className="truncate">{team?.name || '—'}</span>
+          <ArrowLeft className="w-4 h-4 shrink-0 text-fg-muted" />
+        </TeamLink>
+      ))}
+    </div>
+  )
+
+  // ================= order, by stage (iOS GameDetailView.content) =================
+  const upcoming = stage === STAGE.before || stage === STAGE.gameDay || stage === STAGE.postponed
+  let phone, main, side
+  if (liveStage) {
+    phone = ['tools', 'video', 'liveBand', 'liveMeta', 'quick', 'timeline', 'kiosk', 'fans', 'market', 'mediaUpload', 'formCard', 'lmBroadcast', 'posts', 'medics', 'preGame', 'teamLinks']
+    main = ['video', 'liveBand', 'liveMeta', 'quick', 'timeline', 'posts', 'mediaUpload']
+    side = ['tools', 'kiosk', 'fans', 'market', 'formCard', 'lmBroadcast', 'medics', 'preGame', 'teamLinks']
+  } else if (upcoming) {
+    phone = ['postponed', 'quick', 'broadcastNote', 'video', 'kiosk', 'loan', 'availability', 'market', 'fans', 'preGame', 'changeRequest', 'opponent', 'selfSubmit', 'formCard', 'lmBroadcast', 'medics', 'about', 'posts', 'teamLinks']
+    main = ['postponed', 'broadcastNote', 'video', 'loan', 'availability', 'posts', 'about']
+    side = ['quick', 'kiosk', 'market', 'fans', 'preGame', 'changeRequest', 'opponent', 'selfSubmit', 'formCard', 'lmBroadcast', 'medics', 'teamLinks']
+  } else {
+    phone = ['video', 'goals', 'timeline', 'kiosk', 'about', 'story', 'tiles', 'formCard', 'posts', 'mvp', 'boxScore', 'scorers', 'matchCentre', 'market', 'squads', 'fans', 'mediaUpload', 'lmBroadcast', 'medics', 'preGame', 'teamLinks']
+    main = ['video', 'goals', 'timeline', 'story', 'posts', 'boxScore', 'squads', 'mediaUpload']
+    side = ['kiosk', 'about', 'tiles', 'mvp', 'scorers', 'matchCentre', 'market', 'fans', 'formCard', 'lmBroadcast', 'medics', 'preGame', 'teamLinks']
+  }
+  const stack = (keys) => keys.map(k => S[k] ? <SectionSlot key={k} name={k} className={k === 'tools' ? 'flex flex-wrap items-center gap-2' : ''}>{S[k]}</SectionSlot> : null)
+
+  return (
+    <div className="max-w-6xl mx-auto lg:px-8 lg:pt-6 pb-6">
+      {S.season && <div className="px-3 pt-3 lg:px-0 lg:pt-0 lg:mb-4">{S.season}</div>}
+      {isDesktop && <div className="mb-4 flex flex-wrap items-center justify-end gap-2 empty:hidden">{S.tools}</div>}
+      {S.hero}
+      {isDesktop ? (
+        <div className="mt-6 grid grid-cols-[minmax(0,1fr)_minmax(320px,400px)] gap-6 items-start">
+          <div className="flex flex-col gap-4 min-w-0">{stack(main)}</div>
+          <aside className="flex flex-col gap-4 min-w-0">{stack(side.filter(k => k !== 'tools'))}</aside>
+        </div>
+      ) : (
+        <div className={`flex flex-col gap-3.5 px-3 ${liveStage ? 'pt-3' : 'pt-4'}`}>{stack(phone)}</div>
       )}
 
       {showChangeModal && (
@@ -450,307 +723,12 @@ export default function GameDetail() {
           onSubmitted={refreshMyRequest}
         />
       )}
-
-      {/* ===== MATCH SHEET: captains + digital signatures of the טופס שיפוט ===== */}
-      <GameFormCard game={game} home={home} away={away} players={players} stats={stats} />
-
-      {/* ===== OPPONENT COACH: respond to a reschedule request (pick workable dates) ===== */}
-      <GameChangeOpponentCard game={game} coachTeamIds={coachTeamIds} onResponded={refreshMyRequest} />
-
-      {/* ===== ADD TO CALENDAR (upcoming games) ===== */}
-      <AddToCalendar game={game} teamsMap={teamsMap} />
-
-      {/* ===== FANS: each side's fans + "אני בא/ה לצפות" (upcoming) ===== */}
-      <GameFans game={game} home={home} away={away} />
-
-      {/* ===== OFFICIAL SELF-SUBMIT (judge/medic apply for an upcoming game) ===== */}
-      <OfficialSelfSubmit game={game} />
-
-      {/* ===== MATCH CENTRE: FIFA-style stats from the video — preview, devs + admins only for now ===== */}
-      {(isAdmin || isDeveloper) && MATCH_STATS_GAMES.has(game.id) && (
-        <Link to={`${entityPath('games', game)}/stats`} className="card p-4 flex items-center gap-3 hover:border-brand transition-colors">
-          <span className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0"><TrendingUp className="w-5 h-5" /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-bold text-sm">מרכז המשחק · סטטיסטיקות מהווידאו</span>
-            <span className="block text-xs text-fg-muted">אחזקה, בעיטות, מסירות, מפת חום ושחקנים — חושב אוטומטית מהצילום (תצוגה מקדימה)</span>
-          </span>
-          <ArrowLeft className="w-4 h-4 text-fg-muted shrink-0" />
-        </Link>
-      )}
-
-      {/* ===== VIDEO / VOD (the live stream is shown up top while in-progress) ===== */}
-      {!showLive && <GameVideo game={game} home={home} away={away} players={players} />}
-
-      {/* ===== HIGHLIGHTS & POSTS attached to this game (שייך למשחק) — hidden when none ===== */}
-      <GamePosts game={game} teamsMap={teamsMap} playersMap={playersMap} />
-
-      {/* ===== LOAN INVITE — a coach of another team asked this player for this game ===== */}
-      {game.status === "scheduled" && profile?.player_id && <LoanInvite gameId={game.id} />}
-
-      {/* ===== AVAILABILITY (upcoming games) ===== */}
-      {/* #availability is the target of shared sign-up links (/games/next, the coach's
-          copied link): it must exist for every viewer, so a guest arriving from WhatsApp
-          lands on a way in rather than on nothing. */}
-      {showAvailability ? (
-        <div id="availability" className="scroll-mt-20">
-          <GameAvailability game={game} myPlayerId={myAvailPlayerId} officialTeamIds={officialTeamIds} playerTeamId={playerTeamId} publicView={!!user} nudgeTeamIds={nudgeTeamIds} teamsMap={teamsMap} playersMap={playersMap} />
-        </div>
-      ) : game.status === "postponed" ? (
-        // Postponed with no new date: nothing to sign up for. When the manager sets a date
-        // the game is scheduled again and everyone is told (game-postpone-reconfirm.sql).
-        <div id="availability" className="card p-4 scroll-mt-20 flex items-center gap-3">
-          <CalendarCheck className="w-5 h-5 text-red-500 shrink-0" />
-          <p className="flex-1 text-sm text-slate-700 dark:text-slate-200">
-            המשחק נדחה. מועד חדש יפורסם, ונעדכן בהתראה כשייקבע — אז אפשר יהיה לאשר הגעה.
-          </p>
-        </div>
-      ) : game.status === "scheduled" && (!user || hash === "#availability") && (
-        <div id="availability" className="card p-4 scroll-mt-20 flex items-center gap-3 flex-wrap">
-          <CalendarCheck className="w-5 h-5 text-brand shrink-0" />
-          <p className="flex-1 min-w-[12rem] text-sm text-slate-700 dark:text-slate-200">
-            {!user ? "משחק בקבוצה שלך? התחברו כדי לאשר הגעה."
-              : !profile?.player_id ? "כדי לאשר הגעה יש לשייך את החשבון לכרטיס השחקן שלך."
-              : "אישור הגעה פתוח לשחקני שתי הקבוצות במשחק בלבד."}
-          </p>
-          {!user ? (
-            <button onClick={openAuth} className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-              <LogIn className="w-3.5 h-3.5" /> התחברות
-            </button>
-          ) : !profile?.player_id && (
-            <Link to="/me" className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-brand text-brand-fg hover:bg-brand-hover transition-colors">
-              <PersonClaim className="w-4 h-4" /> שיוך לשחקן
-            </Link>
-          )}
-        </div>
-      )}
-
-      {/* ===== LM broadcast (row 25) — renders only for admin / league manager ===== */}
-      <GameBroadcast game={game} />
-
-      {/* ============ STAT TILES ============ */}
-      {tiles.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 uppercase tracking-wide">סיכום המשחק</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
-            {tiles.map(({ val, label, color }) => (
-              <div key={label} className="card p-4 text-center">
-                <p className={`text-2xl font-extrabold ${color}`}>{val}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* MVP — picked by an official, shown to everyone once picked. */}
-      {done && (
-        <GameMvp game={game} stats={stats} playersMap={playersMap} teamsMap={teamsMap}
-          canPick={isAdmin || isLeagueManager || isJudgeRole}
-          onChanged={(pid) => setGame(g => ({ ...g, mvp_player_id: pid }))} />
-      )}
-
-      {/* ============ BOX SCORE ============ */}
-      {done && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-            <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-              <Squad className="w-4 h-4" /> הרכבים וסטטיסטיקות
-            </h2>
-          </div>
-          <div className="p-4 sm:p-5">
-            {stats.length === 0 && ownGoalTotal === 0 ? (
-              <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-6">לא הוזנו סטטיסטיקות למשחק זה</p>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                  {[game.home_team_id, game.away_team_id].map(tid => {
-                    const rows = teamStats(tid)
-                    return (
-                      <div key={tid}>
-                        <div className="flex items-center gap-2 mb-2.5">
-                          <TeamLogo team={teamsMap[tid]} size={6} />
-                          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{teamsMap[tid]?.name || '—'}</h3>
-                        </div>
-                        <div className="space-y-0.5">
-                          {rows.length === 0 && ownGoalsFor(tid) === 0 && <p className="text-xs text-slate-500 dark:text-slate-400 py-1">אין נתונים</p>}
-                          {rows.map(stat => {
-                            const p = playersMap[stat.player_id]
-                            return (
-                              <div key={stat.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <PlayerLink playerId={stat.player_id} className="text-sm text-slate-700 dark:text-slate-300 hover:text-brand transition-colors truncate min-w-0">
-                                  {p ? `${p.first_name} ${p.last_name}` : '—'}
-                                  {loanFrom(stat) && <span className="text-xs text-slate-400"> (בהשאלה מ{loanFrom(stat).name})</span>}
-                                </PlayerLink>
-                                <StatPills stat={stat} />
-                              </div>
-                            )
-                          })}
-                          {ownGoalsFor(tid) > 0 && (
-                            <div className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg">
-                              <span className="text-sm text-slate-500 dark:text-slate-400 truncate min-w-0">{ownGoalLabel(ownGoalsFor(tid))}</span>
-                              <div className="flex gap-1.5 shrink-0">
-                                <span className="stat-pill bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{ownGoalsFor(tid)}</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {guestStats.length > 0 && (
-                  <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
-                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2.5">אורחים</h3>
-                    <div className="space-y-0.5">
-                      {guestStats.map(stat => (
-                        <div key={stat.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg">
-                          {/* Guests have no player_id → PlayerLink degrades to inert text */}
-                          <PlayerLink playerId={stat.player_id} className="text-sm text-slate-700 dark:text-slate-300 truncate min-w-0">
-                            {stat.guest_player_name}
-                            {stat.guest_player_original_team && <span className="text-slate-400"> ({stat.guest_player_original_team})</span>}
-                          </PlayerLink>
-                          <StatPills stat={stat} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Who signed up for each side — kept on the page after the final whistle. */}
-      {done && user && <GameSquads game={game} teamsMap={teamsMap} playersMap={playersMap} />}
-
-      {/* ============ SCORERS ============ */}
-      {(scorers.length > 0 || ownGoalTotal > 0) && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="card overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-            <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-              <Flame className="w-4 h-4 text-brand" /> כובשי השערים
-            </h2>
-          </div>
-          <div className="p-3 sm:p-4 space-y-0.5">
-            {scorers.map(stat => {
-              const p = playersMap[stat.player_id]
-              const team = p ? teamsMap[sideOf(stat)] : null
-              const name = stat.is_guest_player ? stat.guest_player_name : (p ? `${p.first_name} ${p.last_name}` : '—')
-              return (
-                <div key={stat.id} className="flex items-center justify-between gap-3 py-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {team
-                      ? <TeamLogo team={team} size={6} />
-                      : <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-400 shrink-0">א</span>}
-                    <PlayerLink playerId={stat.player_id} className="font-medium text-sm text-slate-900 dark:text-white truncate hover:text-brand transition-colors">
-                      {name}
-                    </PlayerLink>
-                  </div>
-                  <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums shrink-0"><span>{stat.goals}</span><Ball className="w-5 h-5 -my-1" /></span>
-                </div>
-              )
-            })}
-            {[game.home_team_id, game.away_team_id].map(tid => ownGoalsFor(tid) > 0 && (
-              <div key={`og-${tid}`} className="flex items-center justify-between gap-3 py-2 px-2 rounded-lg">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <TeamLogo team={teamsMap[tid]} size={6} />
-                  <span className="font-medium text-sm text-slate-500 dark:text-slate-400 truncate">{ownGoalLabel(ownGoalsFor(tid))}</span>
-                </div>
-                <span dir="ltr" className="inline-flex items-center gap-0.5 font-bold text-slate-500 dark:text-slate-400 text-sm tabular-nums shrink-0"><span>{ownGoalsFor(tid)}</span><Ball className="w-5 h-5 -my-1" /></span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* ============ BEFORE THE GAME: recent form + head-to-head ============ */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} className="card overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-          <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
-            <TrendingUp className="w-4 h-4 text-brand" /> לפני המשחק
-          </h2>
-        </div>
-        <div className="p-4 space-y-4">
-          {/* Recent form: each team's last 5 results against anyone, newest first */}
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200">כושר אחרון</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">5 משחקים אחרונים · נ ניצחון · ת תיקו · ה הפסד</p>
-            </div>
-            {[{ team: home, form: homeForm, side: 'בית' }, { team: away, form: awayForm, side: 'חוץ' }].map(({ team, form, side }) => (
-              <div key={side} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <TeamLink team={team} className="flex items-center gap-2.5 min-w-0 group">
-                  <TeamLogo team={team} size={8} />
-                  <div className="min-w-0">
-                    <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{team?.name || '—'}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{side}</p>
-                  </div>
-                </TeamLink>
-                {form.length > 0 ? (
-                  <div className="flex gap-1 shrink-0">
-                    {form.map((r, i) => (
-                      <span key={i} title={resultLabel(r)}
-                        className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white ${r === 'win' ? 'bg-emerald-500' : r === 'loss' ? 'bg-red-500' : 'bg-slate-400 dark:bg-slate-600'}`}>
-                        {r === 'win' ? 'נ' : r === 'loss' ? 'ה' : 'ת'}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">אין משחקים קודמים</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Head-to-head: only when the two teams actually met before */}
-          {h2h.length > 0 && (
-            <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <Swords className="w-4 h-4 text-brand" /> מפגשים קודמים
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">מנקודת מבט {home?.name || 'הבית'}</p>
-              </div>
-              {h2h.map(g => {
-                const wasHome = g.home_team_id === game.home_team_id
-                const my = wasHome ? g.home_score : g.away_score
-                const opp = wasHome ? g.away_score : g.home_score
-                const result = my > opp ? 'win' : my < opp ? 'loss' : 'tie'
-                return (
-                  <Link key={g.id} to={entityPath('games', g)} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    <div className="flex items-center gap-2 min-w-0 text-xs text-slate-500 dark:text-slate-400">
-                      <Calendar className="w-4 h-4 shrink-0" />
-                      <span>{format(ilDate(g.game_date), "d/M/yyyy")}</span>
-                      <span className="text-slate-500 dark:text-slate-400">· {g.game_type}</span>
-                    </div>
-                    {/* dir=ltr isolates the standalone score so RTL can't split away:home
-                        and mispair digits (see hockey-league-rtl-score-gotcha). */}
-                    <span dir="ltr" className={`text-sm font-bold px-2 py-1 rounded-md tabular-nums shrink-0 ${resultCls(result)}`} title={resultLabel(result)}>
-                      {g.away_score}:{g.home_score}
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </motion.div>
-
-      {/* ============ סטופר מרקט: the players' predictions — public; predicting is 18+ (RPC `block`) ============ */}
-      <GameMarketCard game={game} teamsMap={teamsMap} />
-
-      {/* ============ TEAM PAGE LINKS ============ */}
-      <div className="grid grid-cols-2 gap-3">
-        {[home, away].map((team, i) => (
-          <TeamLink key={i} team={team} className="card-hover flex items-center justify-center gap-2 py-3.5 px-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-brand dark:hover:text-brand-light transition-colors">
-            <TeamLogo team={team} size={6} />
-            <span className="truncate">{team?.name || '—'}</span>
-            <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
-          </TeamLink>
-        ))}
-      </div>
     </div>
   )
+}
+
+/** A stack slot: keeps the section's own markup; empty children (a component that
+ * rendered nothing) collapse so they leave no gap. */
+function SectionSlot({ name, className = '', children }) {
+  return <div data-section={name} className={`empty:hidden min-w-0 ${className}`}>{children}</div>
 }
