@@ -38,15 +38,24 @@ function ItemIcon({ item, size = 30 }) {
   return <LineIcon name={item.line || 'more'} size={Math.round(size * 0.8)} />
 }
 
-/** Two crossed sticks; open = rotated into a crossed-sticks crest. */
+/** Two sticks laid as a "+" (blades bottom and right); open = turned 45° into a
+ *  crossed-sticks crest. Same drawing as iOS StickPlusGlyph. */
+function Stick({ d, grip, tape }) {
+  return (
+    <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} stroke="#11161D" strokeWidth="4.6" />
+      <path d={d} stroke="#E2C792" strokeWidth="2.8" />
+      <path d={grip} stroke="#11161D" strokeWidth="3.2" />
+      <path d={tape} stroke="#11161D" strokeWidth="0.9" />
+    </g>
+  )
+}
 function StickPlus({ open }) {
   return (
-    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"
+    <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"
       className="transition-transform duration-300 motion-reduce:transition-none" style={{ transform: open ? 'rotate(45deg)' : 'none' }}>
-      <g stroke="#11161D" strokeWidth="2.6" strokeLinecap="round" fill="none">
-        <path d="M9 6l11 17q1.6 2.4 4.4 1.6" />
-        <path d="M23 6L12 23q-1.6 2.4-4.4 1.6" />
-      </g>
+      <Stick d="M15 3.5V23.5q0 4-4 4H9.5" grip="M15 3.5v2.2" tape="M13.8 19.5l2.4-1M13.8 21.3l2.4-1" />
+      <Stick d="M3.5 15H23.5q4 0 4-4V9.5" grip="M3.5 15h2.2" tape="M19.5 13.8l-1 2.4M21.3 13.8l-1 2.4" />
     </svg>
   )
 }
@@ -117,11 +126,12 @@ function PlusFan({ auth, onClose, onMore }) {
   }, [onClose])
 
   const n = items.length
-  // Arc from 160° to 20° (left → right on screen), radius grows with the count.
-  const R = n > 5 ? 150 : 130
+  // Arc from 15° (right) to 165° (left): the first, most urgent item is on the RTL start.
+  // Lifted above the bar; narrow enough for a 360px phone.
+  const R = n > 5 ? 128 : 118
   const pos = items.map((_, i) => {
-    const a = (Math.PI / 180) * (160 - (140 * i) / Math.max(1, n - 1))
-    return { x: Math.cos(a) * R, y: -Math.sin(a) * R * 0.95 }
+    const a = (Math.PI / 180) * (15 + (150 * i) / Math.max(1, n - 1))
+    return { x: Math.cos(a) * R * 1.05, y: -Math.sin(a) * R - 52 }
   })
 
   const act = (it) => {
