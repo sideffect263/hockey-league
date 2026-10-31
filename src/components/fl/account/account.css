@@ -1,0 +1,19 @@
+/* Floodlight account area (web). Motion: transform/opacity only, <=300 ms, plays once,
+   off under prefers-reduced-motion (System board 13). */
+
+/* Welcome floodlights switch on one by one (Motion board "welcome floodlights"). */
+.fla-lit { opacity: 0; animation: fla-lit 280ms ease-out forwards; }
+.fla-rise { opacity: 0; transform: translateY(8px); animation: fla-rise 280ms ease-out forwards; }
+@keyframes fla-lit { to { opacity: 1; } }
+@keyframes fla-rise { to { opacity: 1; transform: none; } }
+
+/* Onboarding: a step slides in from the reading side (RTL = from the left). */
+.fla-step { animation: fla-step 220ms ease-out both; }
+@keyframes fla-step { from { opacity: 0; transform: translateX(-14px); } }
+.fla-step-back { animation: fla-step-back 220ms ease-out both; }
+@keyframes fla-step-back { from { opacity: 0; transform: translateX(14px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fla-lit, .fla-rise { animation: none; opacity: 1; transform: none; }
+  .fla-step, .fla-step-back { animation: none; }
+}

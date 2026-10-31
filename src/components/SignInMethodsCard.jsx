@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-import { Link2, Loader2 } from "lucide-react"
-import { ApprovedStatus as CheckCircle2, Warning as AlertTriangle } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { APPLE_WEB_ENABLED, linkAppleWeb, AppleIcon } from "@/lib/appleWeb"
+import { AccRow, AccButton, AccChip, Glyph, Spinner, Notice } from "@/components/fl/account/AccountKit"
+import { GoogleIcon } from "@/components/fl/account/SocialSignIn"
 
 /**
- * שיטות התחברות — which ways into THIS account exist, plus "connect Google".
+ * שיטות התחברות — which ways into THIS account exist, plus "connect Google" (a row of the
+ * החשבון group on /me, board MyPage).
  *
  * Why it exists: every sign-in method that isn't attached to your account quietly
  * makes a NEW account. The real case (2026-09-26): a player signed in with Apple
@@ -14,9 +15,8 @@ import { APPLE_WEB_ENABLED, linkAppleWeb, AppleIcon } from "@/lib/appleWeb"
  * here makes both roads lead to the same account.
  *
  * Uses Supabase manual identity linking (`linkIdentity`, needs "Manual linking" on
- * in the project's auth settings). The website has no Apple sign-in, so Apple can
- * only be attached from the app; until the apps can do that, a stray Apple account
- * is merged by an admin.
+ * in the project's auth settings). Apple is attachable here only when the website has
+ * Apple sign-in; otherwise a stray Apple account is merged by an admin.
  */
 
 const LABEL = { google: "Google", apple: "Apple", email: "אימייל וסיסמה" }
@@ -33,6 +33,7 @@ function readLinkError() {
 
 export default function SignInMethodsCard() {
   const [identities, setIdentities] = useState(null)
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
 
@@ -40,13 +41,14 @@ export default function SignInMethodsCard() {
     let alive = true
     supabase.auth.getUserIdentities().then(({ data }) => {
       if (alive) setIdentities(data?.identities || [])
-    })
+    }).catch(() => { if (alive) setIdentities([]) })
     const back = readLinkError()
     if (back) {
       const taken = /identity_already_exists|already linked|already exists/i.test(`${back.code} ${back.desc}`)
       setErr(taken
         ? "החשבון הזה (Google / Apple) כבר רשום אצלנו כמשתמש נפרד. פנו למנהל הליגה והוא יאחד את שני החשבונות."
         : "החיבור לא הושלם. נסו שוב.")
+      setOpen(true)
       // Drop the error params so a refresh doesn't show it again.
       window.history.replaceState(null, "", window.location.pathname)
     }
@@ -76,49 +78,34 @@ export default function SignInMethodsCard() {
     catch { setErr("החיבור נכשל. נסו שוב."); setBusy(false) }
   }
 
-  if (!identities) return null
-
+  const names = [...providers].map(p => LABEL[p] || p)
   return (
-    <div className="pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-3">
-      <div className="flex items-center gap-2">
-        <Link2 className="w-4 h-4 text-slate-400" />
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">שיטות התחברות</h3>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {[...providers].map(p => (
-          <span key={p} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-            <CheckCircle2 className="w-4 h-4" /> {LABEL[p] || p}
-          </span>
-        ))}
-      </div>
-
-      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-        היכנסו תמיד באותה דרך — באתר ובאפליקציה. כל דרך שלא מחוברת כאן יוצרת חשבון חדש ונפרד, בלי כרטיס השחקן שלכם.
-        {!providers.has("apple") && " נכנסתם פעם עם Apple באייפון ויש לכם שם חשבון נוסף? פנו למנהל הליגה לאיחוד — או חברו את Apple מתוך האפליקציה לפני שנרשמים שוב."}
-      </p>
-
-      {APPLE_WEB_ENABLED && !providers.has("apple") && (
-        <button onClick={linkApple} disabled={busy}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <AppleIcon />}
-          חיבור Apple
-        </button>
+    <AccRow line="key" label="שיטות התחברות"
+      sub={identities == null ? "טוען…" : `${names.length ? names.join(" · ") : "לא ידוע"}. התחברו תמיד באותה דרך`}
+      onClick={() => setOpen(v => !v)}
+      trailing={<Glyph d="chev" size={18} className={`text-fg-subtle transition-transform ${open ? "rotate-90" : "-rotate-90"}`} />}>
+      {open && identities && (
+        <div className="px-3.5 pb-3 -mt-1 flex flex-col gap-2.5">
+          {names.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {[...providers].map(p => <AccChip key={p} tone="ok"><Glyph d="check" size={13} stroke={2.6} /> {LABEL[p] || p}</AccChip>)}
+            </div>
+          )}
+          <p className="text-[12.5px] text-fg-muted leading-relaxed">
+            היכנסו תמיד באותה דרך, באתר ובאפליקציה. כל דרך שלא מחוברת כאן יוצרת חשבון חדש ונפרד, בלי כרטיס השחקן שלכם.
+            {!providers.has("apple") && " נכנסתם פעם עם Apple באייפון ויש לכם שם חשבון נוסף? פנו למנהל הליגה לאיחוד, או חברו את Apple מתוך האפליקציה לפני שנרשמים שוב."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {!providers.has("google") && (
+              <AccButton tone="outline" onClick={linkGoogle} disabled={busy}>{busy ? <Spinner /> : <GoogleIcon className="w-4 h-4" />} חיבור חשבון Google</AccButton>
+            )}
+            {APPLE_WEB_ENABLED && !providers.has("apple") && (
+              <AccButton tone="outline" onClick={linkApple} disabled={busy}>{busy ? <Spinner /> : <AppleIcon />} חיבור Apple</AccButton>
+            )}
+          </div>
+          {err && <Notice tone="err">{err}</Notice>}
+        </div>
       )}
-
-      {!providers.has("google") && (
-        <button onClick={linkGoogle} disabled={busy}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-          חיבור חשבון Google
-        </button>
-      )}
-
-      {err && (
-        <p className="flex items-start gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">
-          <AlertTriangle className="w-4 h-4 shrink-0" /> {err}
-        </p>
-      )}
-    </div>
+    </AccRow>
   )
 }

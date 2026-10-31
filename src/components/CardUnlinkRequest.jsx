@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react"
-import { Unlink, Loader2 } from "lucide-react"
-import { Hourglass } from "@/components/icons/BrandIcons"
 import { getMyCardUnlinkRequest, requestCardUnlink, cancelCardUnlinkRequest } from "@/lib/roleRequests"
+import { AccRow, AccButton, AccChip, Spinner, inputCls, errText } from "@/components/fl/account/AccountKit"
 
 /**
- * "זה לא הכרטיס שלי" on /me. A linked (= approved) card is no longer unlinked on the spot:
- * the account files a request with an optional reason and a league manager approves it
- * (supabase/card-unlink-requests.sql). While it waits: "הבקשה אצל מנהל הליגה" + cancel.
- * Before the migration is applied the request fails with a friendly line, nothing else.
+ * "זה לא הכרטיס שלי" on /me (a row of הכרטיס והקבוצה, board MyPage). A linked (= approved)
+ * card is not unlinked on the spot: the account files a request with an optional reason and
+ * a league manager approves it (supabase/card-unlink-requests.sql). While it waits:
+ * "הבקשה אצל מנהל הליגה" + cancel. Before the migration is applied the request fails with
+ * a friendly line, nothing else.
  */
 export default function CardUnlinkRequest({ playerId }) {
   const [pending, setPending] = useState(null)
@@ -42,47 +42,29 @@ export default function CardUnlinkRequest({ playerId }) {
 
   if (pending) {
     return (
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-          <Hourglass className="w-3.5 h-3.5" /> בקשת הניתוק מהכרטיס אצל מנהל הליגה
-        </span>
-        <button onClick={cancel} disabled={busy}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "ביטול הבקשה"}
-        </button>
-        {err && <p className="w-full text-xs text-red-600 dark:text-red-400">{err}</p>}
-      </div>
-    )
-  }
-
-  if (open) {
-    return (
-      <div className="space-y-2">
-        <p className="text-xs text-slate-600 dark:text-slate-300">
-          מנהל הליגה יבדוק ויאשר. אחרי האישור החשבון יתנתק מהכרטיס; הכרטיס, הסטטיסטיקות וההיסטוריה נשארים בליגה.
-        </p>
-        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} maxLength={300}
-          placeholder="סיבה (לא חובה), למשל: זה הכרטיס של אח שלי"
-          className="filter-input w-full text-sm" />
-        <div className="flex items-center gap-2">
-          <button onClick={send} disabled={busy}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors disabled:opacity-50">
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlink className="w-3.5 h-3.5" />} שליחה למנהל הליגה
-          </button>
-          <button onClick={() => { setOpen(false); setErr(null) }} disabled={busy}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-            ביטול
-          </button>
-        </div>
-        {err && <p className="text-xs text-red-600 dark:text-red-400">{err}</p>}
-      </div>
+      <AccRow line="unlink" label="זה לא הכרטיס שלי" sub="בקשת הניתוק מהכרטיס אצל מנהל הליגה"
+        trailing={<AccButton tone="outline" onClick={cancel} disabled={busy}>{busy ? <Spinner /> : "ביטול הבקשה"}</AccButton>}>
+        {err && <p role="alert" className={`px-3.5 pb-3 text-[12.5px] font-semibold ${errText}`}>{err}</p>}
+      </AccRow>
     )
   }
 
   return (
-    <button onClick={() => setOpen(true)}
-      className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-      <Unlink className="w-3.5 h-3.5" /> זה לא הכרטיס שלי
-    </button>
+    <AccRow line="unlink" label="זה לא הכרטיס שלי" tone="muted" sub="ניתוק השיוך: הכרטיס נשאר בליגה, החשבון מתנתק ממנו"
+      onClick={open ? undefined : () => setOpen(true)} trailing={open ? <AccChip tone="warn">בקשה</AccChip> : undefined}>
+      {open && (
+        <div className="px-3.5 pb-3 -mt-1 flex flex-col gap-2">
+          <p className="text-[13px] text-fg">מנהל הליגה יבדוק ויאשר. אחרי האישור החשבון יתנתק מהכרטיס; הכרטיס, הסטטיסטיקות וההיסטוריה נשארים בליגה.</p>
+          <label htmlFor="unlink-reason" className="sr-only">סיבה (לא חובה)</label>
+          <textarea id="unlink-reason" value={reason} onChange={e => setReason(e.target.value)} rows={2} maxLength={300}
+            placeholder="סיבה (לא חובה), למשל: זה הכרטיס של אח שלי" className={`${inputCls} h-auto py-2.5 resize-none`} />
+          <div className="flex flex-wrap items-center gap-2">
+            <AccButton tone="ink" onClick={send} disabled={busy}>{busy && <Spinner />} שליחה למנהל הליגה</AccButton>
+            <AccButton tone="ghost" onClick={() => { setOpen(false); setErr(null) }} disabled={busy}>ביטול</AccButton>
+          </div>
+          {err && <p role="alert" className={`text-[12.5px] font-semibold ${errText}`}>{err}</p>}
+        </div>
+      )}
+    </AccRow>
   )
 }
