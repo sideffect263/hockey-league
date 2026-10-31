@@ -82,11 +82,11 @@ export default function VideoRail({ feed, onShowAll }) {
   return (
     <section aria-label="סרטונים" className="-mx-4 sm:mx-0">
       <div className="flex items-center justify-between px-4 sm:px-0 mb-2">
-        <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-          <PlayCircle className="w-5 h-5 text-red-500" /> סרטונים
+        <h2 className="flex items-center gap-2 text-[17px] font-extrabold text-fg-strong">
+          <PlayCircle className="w-5 h-5" /> סרטונים
         </h2>
         {onShowAll && (
-          <button onClick={onShowAll} className="text-xs font-semibold text-brand hover:underline">
+          <button onClick={onShowAll} className="min-h-[44px] px-1 text-[13px] font-semibold text-fg-strong hover:underline underline-offset-4">
             לכל הסרטונים
           </button>
         )}
@@ -96,7 +96,7 @@ export default function VideoRail({ feed, onShowAll }) {
         {videos.map((v, i) => (
           <button key={v.key} onClick={() => start(i)}
             className="snap-start shrink-0 w-[62vw] max-w-[260px] sm:w-[240px] text-right group focus-visible:outline-none">
-            <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-900 ring-1 ring-black/5 group-focus-visible:ring-2 group-focus-visible:ring-brand">
+            <div className="relative aspect-video rounded-[14px] overflow-hidden bg-[#1B2532] group-focus-visible:ring-2 group-focus-visible:ring-fl-accent">
               <img src={v.poster} alt="" loading="lazy" draggable={false}
                    onError={e => { e.currentTarget.style.visibility = "hidden" }}
                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -106,8 +106,8 @@ export default function VideoRail({ feed, onShowAll }) {
               </span>
               <span className="absolute bottom-1.5 right-2 left-2 text-[10px] font-semibold text-white/90 truncate">{v.source}</span>
             </div>
-            <p className="mt-1.5 text-[13px] font-semibold leading-snug text-slate-800 dark:text-slate-100 line-clamp-2">{v.title}</p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">{ago(v.date)}</p>
+            <p className="mt-1.5 text-[13px] font-semibold leading-snug text-fg-strong line-clamp-2">{v.title}</p>
+            <p className="text-[12px] text-fg-subtle">{ago(v.date)}</p>
           </button>
         ))}
       </div>
@@ -142,7 +142,7 @@ function PlayerSheet({ videos, index, onIndex, onClose }) {
          role="dialog" aria-modal="true" aria-label={v.title} onClick={onClose}>
       <div className="w-full max-w-4xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-3 sm:px-0 mb-2 text-white">
-          <button onClick={onClose} aria-label="סגירה" className="p-2 -m-2 rounded-full hover:bg-white/10">
+          <button onClick={onClose} aria-label="סגירה" className="size-11 -m-2 flex items-center justify-center rounded-full hover:bg-white/10">
             <X className="w-6 h-6" />
           </button>
           <span className="text-xs text-white/70 tabular-nums" dir="ltr">{index + 1} / {videos.length}</span>

@@ -13,7 +13,7 @@ const MAX = 2000
 
 function translatePostError(msg = "") {
   const m = msg.toLowerCase()
-  if (m.includes("post_rate_limit")) return "אפשר לפרסם פוסט אחד ביום — נסו שוב מחר 🙂"
+  if (m.includes("post_rate_limit")) return "אפשר לפרסם פוסט אחד ביום — נסו שוב מחר"
   if (m.includes("row-level security") || m.includes("policy") || m.includes("permission")) return "אין לך הרשאה לפרסם"
   if (m.includes("not authenticated")) return "יש להתחבר כדי לפרסם"
   if (m.includes("not_video")) return "הקובץ אינו סרטון"
@@ -25,8 +25,13 @@ function translatePostError(msg = "") {
   return "הפרסום נכשל. נסו שוב"
 }
 
-export default function Composer({ onPosted, autoFocus = false }) {
-  const { user, canPost, openAuth, isAdmin, isContentEditor } = useAuth()
+/**
+ * The composer (Composer board). `onCancel` set = the bottom-sheet form (ComposerSheet):
+ * ביטול · פוסט חדש · פרסם on top, the amber upload bar under it. Without it, the inline
+ * card it always was (kept for any page that embeds it).
+ */
+export default function Composer({ onPosted, autoFocus = false, onCancel = null }) {
+  const { user, canPost, openAuth, isAdmin, isContentEditor, profile } = useAuth()
   const [body, setBody] = useState("")
   const [picks, setPicks] = useState([])          // @player tags chosen in this draft
   const [busy, setBusy] = useState(false)
@@ -70,7 +75,7 @@ export default function Composer({ onPosted, autoFocus = false }) {
   }
   const clearPhoto = () => { setPhoto(null); setPhotoPreview(null) }
 
-  const initial = user?.email?.charAt(0)?.toUpperCase() || null
+  const initial = (profile?.display_name || user?.email || "").trim().charAt(0).toUpperCase() || null
 
   // ---- Logged out: sign-in prompt ----
   if (!user) {
@@ -133,10 +138,38 @@ export default function Composer({ onPosted, autoFocus = false }) {
     }
   }
 
+  const sheet = !!onCancel
+  const publishLabel = busy && progress != null && progress < 1 ? `מעלה ${Math.round(progress * 100)}%` : "פרסם"
+  const publishBtn = (
+    <button
+      onClick={submit}
+      disabled={busy || !body.trim()}
+      className="h-11 px-[18px] rounded-full bg-brand text-brand-fg text-[14.5px] font-extrabold hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+    >
+      {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+      {publishLabel}
+    </button>
+  )
+
   return (
-    <div className="card p-4">
+    <div className={sheet ? "flex flex-col gap-3" : "card p-4"}>
+      {sheet && (
+        <>
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={onCancel} disabled={busy} className="min-h-[44px] px-1.5 text-[15px] font-semibold text-fg-muted disabled:opacity-50">ביטול</button>
+            <h2 className="text-[18px] font-extrabold text-fg-strong">פוסט חדש</h2>
+            {publishBtn}
+          </div>
+          {progress != null && (
+            <div className="h-1 rounded-full bg-surface-sunken overflow-hidden" role="progressbar" aria-label="העלאה"
+                 aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full bg-fl-accent transition-[width]" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+          )}
+        </>
+      )}
       <div className="flex gap-3">
-        <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold text-white bg-brand">
+        <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold text-brand-fg bg-brand">
           {initial || <User className="w-5 h-5" />}
         </div>
         <div className="flex-1 min-w-0">
@@ -148,14 +181,16 @@ export default function Composer({ onPosted, autoFocus = false }) {
             placeholder={file ? "כיתוב לסרטון (חובה)…" : photo ? "כיתוב לתמונה (חובה)…" : "מה קורה בליגה? (@ לתיוג שחקן)"}
             rows={3}
             autoFocus={autoFocus}
-            className="w-full resize-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"
+            className={sheet
+              ? "w-full resize-none bg-transparent border-0 px-0 py-1 text-[15.5px] leading-[1.5] text-fg-strong placeholder:text-fg-subtle focus:outline-none min-h-[90px]"
+              : "w-full resize-none bg-surface-inset border border-line rounded-xl px-3 py-2.5 text-[14px] text-fg-strong placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"}
           />
           {photo && (
-            <div className="mt-2 relative rounded-xl overflow-hidden bg-slate-900">
+            <div className="mt-2 relative rounded-2xl overflow-hidden bg-black">
               <img src={photoPreview} alt="" className="w-full max-h-80 object-contain" />
               {!busy && (
                 <button type="button" onClick={clearPhoto} aria-label="הסרת התמונה"
-                  className="absolute top-2 end-2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                  className="absolute top-2 left-2 size-11 rounded-full bg-black/55 hover:bg-black/80 text-white flex items-center justify-center">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -163,19 +198,19 @@ export default function Composer({ onPosted, autoFocus = false }) {
           )}
           {file && (
             <div className="mt-2 space-y-2">
-              <div className="relative rounded-xl overflow-hidden bg-black">
+              <div className="relative rounded-2xl overflow-hidden bg-black">
                 <video src={preview} controls muted playsInline className="w-full max-h-80 object-contain" />
                 {!busy && (
                   <button type="button" onClick={clearFile} aria-label="הסרת הסרטון"
-                    className="absolute top-2 end-2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center">
+                    className="absolute top-2 left-2 size-11 rounded-full bg-black/55 hover:bg-black/80 text-white flex items-center justify-center">
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
-              {progress != null && (
-                <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden" role="progressbar"
+              {progress != null && !sheet && (
+                <div className="h-1.5 rounded-full bg-surface-sunken overflow-hidden" role="progressbar"
                      aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-                  <div className="h-full bg-brand transition-[width]" style={{ width: `${Math.round(progress * 100)}%` }} />
+                  <div className="h-full bg-fl-accent transition-[width]" style={{ width: `${Math.round(progress * 100)}%` }} />
                 </div>
               )}
             </div>
@@ -183,30 +218,24 @@ export default function Composer({ onPosted, autoFocus = false }) {
           <div className="mt-2">
             <GamePicker value={gameId} onChange={id => setGameId(id)} disabled={busy} />
           </div>
+          <p className="mt-1.5 text-[12px] leading-[1.45] text-fg-muted">פוסט ששויך למשחק מופיע בתוך פוסט המשחק בפיד ובעמוד המשחק.</p>
           {canVideo && (
-            <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 select-none cursor-pointer">
+            <label className="mt-2 min-h-[44px] flex items-center gap-2 text-[13px] text-fg select-none cursor-pointer">
               <input type="checkbox" checked={asLeague} onChange={e => setAsLeague(e.target.checked)} disabled={busy}
                 className="w-4 h-4 rounded accent-brand" />
               פרסום בשם הליגה (ולא בשמך)
             </label>
           )}
-          {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-medium">{error}</p>}
+          {error && <p role="alert" className="mt-2 text-[13px] text-neg font-medium">{error}</p>}
           <div className="mt-2 flex items-center justify-between">
-            <button
-              onClick={submit}
-              disabled={busy || !body.trim()}
-              className="px-5 py-2 rounded-full bg-brand text-white text-sm font-bold hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-              {busy && progress != null && progress < 1 ? `מעלה ${Math.round(progress * 100)}%` : "פרסם"}
-            </button>
+            {sheet ? <span /> : publishBtn}
             <div className="flex items-center gap-1">
             {!file && !photo && (
               <>
                 <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
                 <button type="button" onClick={() => photoRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                  <ImagePlus className="w-4 h-4 text-emerald-500" /> תמונה
+                  className="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-full border border-line bg-surface text-[13.5px] font-bold text-fg-strong hover:bg-surface-inset transition-colors">
+                  <ImagePlus className="w-[18px] h-[18px]" /> תמונה
                 </button>
               </>
             )}
@@ -214,14 +243,14 @@ export default function Composer({ onPosted, autoFocus = false }) {
               <>
                 <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={pickFile} />
                 <button type="button" onClick={() => fileRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                  <Video className="w-4 h-4 text-red-500" /> וידאו
+                  className="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-full border border-line bg-surface text-[13.5px] font-bold text-fg-strong hover:bg-surface-inset transition-colors">
+                  <Video className="w-[22px] h-[22px]" /> וידאו
                 </button>
               </>
             )}
             </div>
             {body.length >= MAX - 100 && (
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">{body.length}/{MAX}</span>
+              <span className="text-[12px] text-fg-subtle tabular-nums" dir="ltr">{body.length} / {MAX}</span>
             )}
           </div>
         </div>

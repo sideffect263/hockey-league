@@ -28,7 +28,7 @@ function CommentAvatar({ url, name, className = "w-8 h-8" }) {
     : <div className={`${className} rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0`}>{initial}</div>
 }
 
-export default function ReactionBar({ itemKey, liked: likedInit = false, likeCount: likeInit = 0, commentCount: commentInit = 0, blockedIds, share }) {
+export default function ReactionBar({ itemKey, liked: likedInit = false, likeCount: likeInit = 0, commentCount: commentInit = 0, blockedIds, share, accessory = null, initialOpen = false }) {
   const { user, openAuth } = useAuth()
   const viewer = useMentionViewer()
   const [mentions, setMentionMap] = useState({})    // item comment id → active tags
@@ -54,6 +54,8 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
   const [likeCount, setLikeCount] = useState(likeInit)
   const [commentCount, setCommentCount] = useState(commentInit)
   const [showComments, setShowComments] = useState(false)
+  // Post page: the comments open on arrival (PostPage board).
+  useEffect(() => { if (initialOpen) toggleComments() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [comments, setComments] = useState([])
   const [loadedComments, setLoadedComments] = useState(false)
   const [loadingComments, setLoadingComments] = useState(false)
@@ -141,25 +143,27 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
 
   return (
     <div data-reactions className="mt-2">
-      {/* Actions — the same icon row as PostCard (FeedCardShell), counts on their own line. */}
-      <div className="flex items-center gap-4 py-1">
-        <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
-          className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
+      {/* Actions (GamePost board): ♥ 💬 ↗ as 44px targets on the start side, the post's own
+          button (e.g. "צפייה במשחק המלא") at the end; counts on their own line. */}
+      <div className="flex items-center -ms-2.5">
+        <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"} aria-pressed={liked}
+          className={`size-11 flex items-center justify-center transition-colors ${liked ? "text-fl-live" : "text-fg-strong hover:text-fl-live"}`}>
           {liked ? <LikeOn className="w-6 h-6" /> : <LikeOff className="w-6 h-6" />}
         </button>
-        <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+        <button onClick={toggleComments} aria-label="תגובות" aria-expanded={showComments} className="size-11 flex items-center justify-center text-fg-strong hover:opacity-70 transition-opacity">
           <MessageCircle className="w-6 h-6" />
         </button>
         {share && (
-          <button onClick={() => shareTarget(share)} aria-label="שיתוף" className="ms-auto text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
-            <Share2 className="w-5 h-5" />
+          <button onClick={() => shareTarget(share)} aria-label="שיתוף" className="size-11 flex items-center justify-center text-fg-strong hover:opacity-70 transition-opacity">
+            <Share2 className="w-[22px] h-[22px]" />
           </button>
         )}
+        {accessory && <span className="ms-auto">{accessory}</span>}
       </div>
       {(likeCount > 0 || commentCount > 0) && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-1.5">
-          {likeCount > 0 && <span className="font-bold text-slate-900 dark:text-white">{likeCount} אהבו</span>}
-          {commentCount > 0 && <>{likeCount > 0 && <span>·</span>}<button onClick={toggleComments} className="hover:text-brand">{commentCount} תגובות</button></>}
+        <p className="text-[13px] text-fg-muted flex flex-wrap items-center gap-x-1.5">
+          {likeCount > 0 && <span className="font-bold text-fg-strong"><span className="tabular-nums">{likeCount}</span> אהבו</span>}
+          {commentCount > 0 && <>{likeCount > 0 && <span aria-hidden="true">·</span>}<button onClick={toggleComments} className="min-h-[32px] hover:text-fg-strong"><span className="tabular-nums">{commentCount}</span> תגובות</button></>}
         </p>
       )}
 
@@ -175,9 +179,9 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
                   {visibleComments.map(c => (
                     <div key={c.id} className="flex items-start gap-2.5">
                       <CommentAvatar url={c.author?.avatar_url} name={c.author?.display_name} className="w-8 h-8" />
-                      <div className="min-w-0 flex-1 bg-slate-50 dark:bg-slate-800/60 rounded-xl px-3 py-2">
+                      <div className="min-w-0 flex-1 bg-surface-inset rounded-2xl px-3 py-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">{c.author?.display_name || "חבר/ת הליגה"}</p>
+                          <p className="text-[13px] font-bold text-fg-strong">{c.author?.display_name || "חבר/ת הליגה"}</p>
                           <CommentAuthorBadges authorId={c.author_id} playerId={c.author?.player_id} />
                         </div>
                         {editingCommentId === c.id ? (
@@ -203,7 +207,7 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
                             </div>
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words"><MentionText text={c.body} mentions={mentions[c.id]} /></p>
+                          <p className="text-[14px] leading-snug text-fg whitespace-pre-wrap break-words"><MentionText text={c.body} mentions={mentions[c.id]} /></p>
                         )}
                       </div>
                       <ModerationMenu
@@ -229,14 +233,14 @@ export default function ReactionBar({ itemKey, liked: likedInit = false, likeCou
                         onPick={p => setNewPicks(ps => [...ps, p])}
                         maxLength={1000}
                         placeholder="כתבו תגובה… (@ לתיוג שחקן)"
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                        className="w-full min-h-[44px] bg-surface-inset border border-line rounded-full px-4 text-[14px] text-fg-strong placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                       />
-                      <button type="submit" disabled={posting || !newComment.trim()} className="shrink-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center disabled:opacity-50">
+                      <button type="submit" disabled={posting || !newComment.trim()} aria-label="שליחה" className="shrink-0 size-11 rounded-full bg-brand text-brand-fg flex items-center justify-center disabled:opacity-50">
                         {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                       </button>
                     </form>
                   ) : (
-                    <button onClick={openAuth} className="text-xs text-brand dark:text-brand-light font-semibold hover:underline pt-1">התחברו כדי להגיב</button>
+                    <button onClick={openAuth} className="min-h-[44px] text-[13px] text-fg-strong font-semibold underline underline-offset-4">התחברו כדי להגיב</button>
                   )}
                 </>
               )}

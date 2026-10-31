@@ -97,6 +97,22 @@ export async function getPendingGameChangeRequests() {
   return data || []
 }
 
+// Coach's feed card ("מחכה לך"): requests on his team's games that wait for HIS answer —
+// the opponent asked, status pending_opponent. Additive (Floodlight feed, 2026-10-31).
+export async function getOpponentGameChangeRequests(teamIds = []) {
+  if (!teamIds.length) return []
+  const user = await sessionUser()
+  if (!user) return []
+  const { data, error } = await supabase
+    .from('game_change_requests')
+    .select('id, game_id, status, requested_by, created_at, games(id, game_date, home_team_id, away_team_id)')
+    .eq('status', 'pending_opponent')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data || []).filter(r => r.requested_by !== user.id && r.games
+    && (teamIds.includes(r.games.home_team_id) || teamIds.includes(r.games.away_team_id)))
+}
+
 export const GC_STATUS = {
   pending:          { label: 'ממתינה לאישור',        cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
   pending_opponent: { label: 'ממתינה לאישור המאמן היריב', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },

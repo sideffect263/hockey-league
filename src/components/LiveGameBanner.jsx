@@ -2,7 +2,8 @@ import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { ChevronLeft } from "lucide-react"
 import { clockString } from "@/lib/game/format"
-import TeamLogo from "@/components/TeamLogo"
+import { CrestDisc, FLScore, LiveChip } from "@/components/fl/Floodlight"
+import { teamBlend, BLEND_VIGNETTE } from "@/lib/flTeam"
 import { entityPath } from "@/lib/slugs"
 
 /**
@@ -15,7 +16,7 @@ import { entityPath } from "@/lib/slugs"
  * teams via gamesById + teamsMap (the same id-map pattern used across the app).
  */
 
-function remainingFrom(live) {
+export function remainingFrom(live) {
   if (!live) return 0
   if (live.is_running && live.clock_ends_at) {
     return Math.max(0, new Date(live.clock_ends_at).getTime() - Date.now())
@@ -23,68 +24,47 @@ function remainingFrom(live) {
   return Math.max(0, live.clock_remaining_ms ?? 0)
 }
 
-function LiveRow({ live, home, away }) {
+/** Remaining ms on a live row's clock, ticking against its deadline while it runs. */
+export function useLiveClock(live) {
   const [remaining, setRemaining] = useState(() => remainingFrom(live))
-
-  // Re-sync on every new row, then tick against the fixed deadline while running.
   useEffect(() => {
     setRemaining(remainingFrom(live))
     if (!live?.is_running || !live?.clock_ends_at) return
     const iv = setInterval(() => setRemaining(remainingFrom(live)), 250)
     return () => clearInterval(iv)
   }, [live])
+  return remaining
+}
 
-  const running = !!live.is_running
+/** One live game as a Floodlight strip: the two teams' blend, home RIGHT, score + clock. */
+function LiveRow({ live, home, away }) {
+  const remaining = useLiveClock(live)
   const ended = live.phase === "over"
 
   return (
     <Link
       to={entityPath('games', live.game_id)}
-      className="group card-hover relative flex items-center gap-2 sm:gap-3 p-3 sm:p-3.5 overflow-hidden ring-1 ring-red-500/30 hover:ring-red-500/50"
-      aria-label="צפו במשחק החי"
+      dir="rtl"
+      className="group relative isolate flex items-center gap-2 overflow-hidden rounded-card p-3 text-white"
+      style={{ backgroundImage: teamBlend(home, away) }}
+      aria-label={`${ended ? "הסתיים" : "שידור חי"}: ${home?.name || "בית"} ${live.home_score ?? 0}, ${away?.name || "חוץ"} ${live.away_score ?? 0}`}
     >
-      {/* red accent bar on the leading (right, RTL) edge */}
-      <span className="absolute inset-y-0 right-0 w-1 bg-red-500" aria-hidden="true" />
-
-      {/* LIVE pulse / final */}
-      <span className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-extrabold text-red-600 dark:text-red-400">
-        {ended ? (
-          <span className="text-slate-500 dark:text-slate-400">סיום</span>
-        ) : (
-          <>
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-            </span>
-            חי
-          </>
-        )}
-      </span>
-
-      {/* home (right in RTL) */}
-      <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
-        <span className="truncate font-bold text-xs sm:text-sm text-slate-900 dark:text-white">{home?.name || "בית"}</span>
-        <TeamLogo team={home} size={8} />
+      <span aria-hidden="true" className="absolute inset-0 -z-10" style={{ backgroundImage: BLEND_VIGNETTE }} />
+      <div className="flex flex-col items-center gap-1 min-w-0 flex-1 text-center">
+        <CrestDisc team={home} size={32} />
+        <span className="max-w-full font-bold text-[12px] leading-tight line-clamp-2">{home?.name || "בית"}</span>
       </div>
-
-      {/* score + clock. Score is dir=ltr away:home so RTL doesn't mispair digits
-          with teams (matches the feed/milestone convention). */}
-      <div className="shrink-0 flex flex-col items-center leading-none px-1">
-        <span dir="ltr" className="text-lg sm:text-xl font-black tabular-nums text-slate-900 dark:text-white">
-          {live.away_score ?? 0} : {live.home_score ?? 0}
-        </span>
-        <span className={`mt-1 font-mono text-[11px] font-bold tabular-nums ${running ? "text-red-600 dark:text-red-400" : "text-slate-500 dark:text-slate-400"}`}>
-          {ended ? (live.period || "תוצאה סופית") : clockString(remaining)}
-        </span>
+      <div className="shrink-0 flex flex-col items-center gap-1 px-1">
+        <FLScore home={live.home_score ?? 0} away={live.away_score ?? 0} size={26} />
+        {ended
+          ? <span className="text-[11px] font-bold opacity-85">{live.period || "תוצאה סופית"}</span>
+          : <span className="inline-flex items-center gap-1.5"><LiveChip className="!h-5 !px-2 !text-[10px]" /><span dir="ltr" className="fl-num text-[12px]">{clockString(remaining)}</span></span>}
       </div>
-
-      {/* away (left in RTL) */}
-      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-        <TeamLogo team={away} size={8} />
-        <span className="truncate font-bold text-xs sm:text-sm text-slate-900 dark:text-white">{away?.name || "חוץ"}</span>
+      <div className="flex flex-col items-center gap-1 min-w-0 flex-1 text-center">
+        <CrestDisc team={away} size={32} />
+        <span className="max-w-full font-bold text-[12px] leading-tight line-clamp-2">{away?.name || "חוץ"}</span>
       </div>
-
-      <ChevronLeft className="shrink-0 w-4 h-4 text-slate-400 group-hover:text-red-500 transition-colors" />
+      <ChevronLeft className="shrink-0 w-4 h-4 opacity-70" />
     </Link>
   )
 }

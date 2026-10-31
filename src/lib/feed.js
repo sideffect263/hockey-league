@@ -464,3 +464,166 @@ export function buildFeed({
 
   return posts
 }
+
+/*
+ * ---- Arranging the "all" feed: one post per game, new-to-you first ----
+ * Ariel, 2026-10-27 (research: hockey/reports/Social feed ordering patterns.md).
+ *
+ * buildFeed() above returns one item per thing. arrangeFeed() turns that into what a
+ * person scrolls:
+ *
+ *  1. ONE POST PER GAME. Everything the league account published about a game (goal
+ *     and highlight clips, the pre-game video, the full-game recording, the written
+ *     story) and its milestones fold into that game's result item as slides/extras.
+ *     Grouped by posts.game_id. A post someone else wrote about the game stays theirs
+ *     and is placed right under the game's post.
+ *  2. The Friday preview leaves the feed once a game after it has started.
+ *  3. All outside news becomes ONE "world" item.
+ *  4. Order (mode 'for_you'): pinned → the last game day's games, your team first →
+ *     everything else new to you, newest first → a "caught up" line → the world item →
+ *     what you already saw (or older than the fresh window), newest first.
+ *     Mode 'latest': the same items, newest change first, no line.
+ *
+ * Nothing here needs likes (~12 league-wide): seen/unseen, followed team, type, time.
+ */
+
+/** The league's own account (league_account_id() in the DB). Its game-tagged posts fold into the game. */
+export const LEAGUE_ACCOUNT_ID = 'b9d07542-479a-4c19-9ffd-f4c88a9f48d8'
+
+const ts = d => { const t = new Date(d).getTime(); return isNaN(t) ? 0 : t }
+
+/** The Friday preview post (weekly-preview edge function). */
+export function isPreviewPost(p) {
+  return (p?.external_guid || '').startsWith('weekly-preview:')
+}
+
+/** Is a feed item "new to you"? seen = feed_personalization().seen, item_key → last_seen_at. */
+function isNewTo(item, seen, changedAt) {
+  if (!seen) return true
+  const at = seen[item.id]
+  if (!at) return true
+  return changedAt > ts(at)   // seen, but something was added since (a new clip)
+}
+
+export function arrangeFeed(items, {
+  games = [],
+  personalization = null,
+  followedTeams = new Set(),
+  mode = 'for_you',
+  now = Date.now(),
+  ranking = null,
+  leagueAuthorIds = null,
+} = {}) {
+  const r = ranking && ranking.matchdayBoost != null ? ranking : parseRanking(ranking)
+  const league = leagueAuthorIds || new Set([LEAGUE_ACCOUNT_ID])
+  // Accounts that post birthdays / previews are league accounts too.
+  for (const it of items) {
+    const p = it.data?.post
+    if (p?.author_id && isLeagueSourced(p)) league.add(p.author_id)
+  }
+
+  // ---- 1. fold each game's league content into its result item ----
+  const gameItems = new Map()          // game id → the arranged game item
+  for (const it of items) {
+    if (it.type !== 'game_result') continue
+    gameItems.set(it.data.game.id, {
+      ...it,
+      type: 'game',
+      data: { ...it.data, slides: [], milestones: [], fullGame: null, story: null },
+      changedAt: ts(it.date),
+    })
+  }
+  const rest = []
+  const fanPostsByGame = new Map()
+  for (const it of items) {
+    if (it.type === 'game_result') continue
+    const p = it.data?.post
+    const gid = it.type === 'milestone' ? it.data?.game?.id : p?.game_id
+    const g = gid ? gameItems.get(gid) : null
+    if (g && it.type === 'milestone') { g.data.milestones.push(it.data); continue }
+    if (g && it.type === 'post') {
+      if (!league.has(p.author_id)) {
+        // someone's own post about the game: stays theirs, goes right under the game
+        if (!fanPostsByGame.has(gid)) fanPostsByGame.set(gid, [])
+        fanPostsByGame.get(gid).push(it)
+        continue
+      }
+      const at = ts(it.date)
+      if (at > g.changedAt) g.changedAt = at
+      if (p.video_uid && p.video_cf_code) g.data.slides.push(it)
+      else if (/המשחק המלא/.test(p.body || '')) g.data.fullGame = g.data.fullGame || it
+      else g.data.story = g.data.story || it
+      continue
+    }
+    rest.push(it)
+  }
+  for (const g of gameItems.values()) {
+    g.data.slides.sort((a, b) => ts(a.date) - ts(b.date))   // in the order they happened
+    g.date = new Date(Math.max(ts(g.date), g.changedAt)).toISOString()
+  }
+
+  // ---- 2. the preview leaves once its game day has started ----
+  const started = games
+    .map(g => ts(g.game_date))
+    .filter(t => t && t <= now)
+  const out = rest.filter(it => {
+    const p = it.data?.post
+    if (it.type !== 'post' || !isPreviewPost(p)) return true
+    const made = ts(p.created_at)
+    return !started.some(t => t > made)
+  })
+
+  // ---- 3. all outside news → one item ----
+  const world = out.filter(it => it.type === 'external').sort((a, b) => ts(b.date) - ts(a.date))
+  const local = [...gameItems.values(), ...out.filter(it => it.type !== 'external')]
+  const worldItem = world.length ? {
+    id: 'world',
+    type: 'world',
+    date: world[0].date,
+    changedAt: ts(world[0].date),
+    rank: 0,
+    tags: ['type:world', 'origin:world'],
+    data: { items: world.slice(0, 12), total: world.length },
+  } : null
+
+  const placeFans = list => list.flatMap(it =>
+    it.type === 'game' && fanPostsByGame.has(it.data.game.id)
+      ? [it, ...fanPostsByGame.get(it.data.game.id).sort((a, b) => ts(a.date) - ts(b.date))]
+      : [it])
+  const byChange = (a, b) => (b.changedAt ?? ts(b.date)) - (a.changedAt ?? ts(a.date))
+
+  // ---- 'latest': newest change first ----
+  if (mode === 'latest') {
+    const all = [...local, ...(worldItem ? [worldItem] : [])].sort(byChange)
+    return placeFans(all)
+  }
+
+  // ---- 4. 'for_you' ----
+  const seen = personalization?.seen || null
+  const fresh = now - r.matchdayFresh
+  const md = lastMatchday(games.filter(g => g.status === 'completed'), now, r)
+  const followedGame = g => followedTeams.has(g.data.game.home_team_id) || followedTeams.has(g.data.game.away_team_id)
+
+  const pinned = [], matchday = [], newer = [], older = []
+  for (const it of local) {
+    if (it.data?.post?.pinned) { pinned.push(it); continue }
+    const changedAt = it.changedAt ?? ts(it.date)
+    const isNew = isNewTo(it, seen, changedAt) && changedAt >= fresh
+    if (!isNew) older.push(it)
+    else if (it.type === 'game' && md?.gameIds.has(it.data.game.id)) matchday.push(it)
+    else newer.push(it)
+  }
+  matchday.sort((a, b) =>
+    (followedGame(b) - followedGame(a)) || (ts(a.data.game.game_date) - ts(b.data.game.game_date)))
+  newer.sort(byChange)
+  older.sort(byChange)
+
+  const top = [...pinned, ...matchday, ...newer]
+  const below = []
+  if (worldItem) below.push(worldItem)
+  below.push(...older)
+  const line = top.length && below.length
+    ? [{ id: 'caught-up', type: 'caught_up', date: null, data: { signedIn: !!seen } }]
+    : []
+  return placeFans([...top, ...line, ...below])
+}

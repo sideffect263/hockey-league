@@ -12,7 +12,9 @@ import { motion } from "framer-motion"
  *
  * On a phone the card runs edge to edge: the feed's p-4 gutter is undone with -mx-4
  * and anything that isn't media is put back with INSET. From sm up it is an ordinary
- * card in the column.
+ * card in the column. Floodlight (2026-10-31, FeedPosts / GamePost boards): paper card,
+ * no border or shadow on a phone, an 8px strip of page colour between posts (the feed
+ * list's gap), 36px round avatar, 14px bold name, 12px grey meta.
  */
 
 export const fade = {
@@ -26,7 +28,7 @@ export const INSET = "px-4 sm:px-0"
 export function FeedCard({ className = "", children, ...rest }) {
   return (
     <motion.div {...fade} {...rest}
-      className={`card -mx-4 sm:mx-0 py-3 sm:p-4 rounded-none sm:rounded-2xl border-x-0 sm:border-x shadow-none sm:shadow-sm ${className}`}>
+      className={`bg-surface text-fg -mx-4 sm:mx-0 pt-3 pb-3.5 sm:p-4 rounded-none sm:rounded-card sm:border sm:border-line ${className}`}>
       {children}
     </motion.div>
   )
@@ -34,7 +36,7 @@ export function FeedCard({ className = "", children, ...rest }) {
 
 /* Round badge in the avatar slot for automatic posts. `tone` is a Tailwind
    bg/text pair so each kind keeps its colour without a coloured card. */
-export function FeedIcon({ tone = "bg-brand/10 text-brand dark:text-brand-light", children }) {
+export function FeedIcon({ tone = "bg-surface-sunken text-fg-strong", children }) {
   return (
     <span className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-base leading-none ${tone}`}>
       {children}
@@ -45,13 +47,13 @@ export function FeedIcon({ tone = "bg-brand/10 text-brand dark:text-brand-light"
 /* avatar: a FeedIcon or an Avatar. title: bold line (may hold badges). meta: grey line. */
 export function FeedCardHeader({ avatar, title, meta, menu }) {
   return (
-    <div className={`flex items-center gap-3 mb-3 ${INSET}`}>
+    <div className={`flex items-center gap-2.5 mb-3 ${INSET}`}>
       {avatar}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5 min-w-0 text-sm font-bold text-slate-900 dark:text-white">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0 text-[14px] font-bold text-fg-strong">
           {title}
         </div>
-        {meta && <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1">{meta}</div>}
+        {meta && <div className="text-[12px] text-fg-muted flex flex-wrap items-center gap-1">{meta}</div>}
       </div>
       {menu}
     </div>

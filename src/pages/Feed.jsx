@@ -1,15 +1,13 @@
-import { useState, useEffect, useRef, useMemo } from "react"
-import { Link } from "react-router-dom"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { useSearchParams } from "react-router-dom"
 import { getGames, getTeams, getPlayers, getGameStats, getLeagueSetting, getPosts, getMyLikes, getRoleBadges } from "@/lib/api"
 import { getItemLikes, getItemCommentCounts } from "@/lib/reactions"
 import { getMyBlocks } from "@/lib/moderation"
 import { useAuth } from "@/lib/AuthContext"
-import { useHasNativeApp } from "@/lib/appUsers"
-import { RefreshCw, Smartphone } from "lucide-react"
-import { RinkIcon as Rink, BrandTile } from "@/components/icons/BrandIcons"
-import { motion } from "framer-motion"
+import { RefreshCw } from "lucide-react"
+import { RinkIcon as Rink } from "@/components/icons/BrandIcons"
 import { useSeasonMode, useSeasonName } from "@/App"
-import { buildFeed, parseRanking } from "@/lib/feed"
+import { buildFeed, arrangeFeed, parseRanking } from "@/lib/feed"
 import { getMyFollowSets } from "@/lib/follows"
 import { getMarketFeed } from "@/lib/market"
 import { setFeedTracking, observeFeedItem, getFeedPersonalization } from "@/lib/feedImpressions"
@@ -18,17 +16,26 @@ import { getPhotoIndex, getCachedPhotoIndex } from "@/lib/media"
 import { getPhotoOverrides } from "@/lib/photoOverrides"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import FeedPost from "@/components/feed/FeedPost"
-import Composer from "@/components/feed/Composer"
+import ComposerSheet, { ComposerPrompt } from "@/components/feed/ComposerSheet"
+import FeedStories from "@/components/feed/FeedStories"
+import FeedRoleCards from "@/components/feed/FeedRoleCards"
+import LiveStory from "@/components/feed/LiveStory"
+import { SeenHeader } from "@/components/feed/WorldPost"
+import { getMyApprovedGameIds } from "@/lib/officials"
+import { ilDay } from "@/lib/feedGamePost"
+import { feedDemoOn, demoJudgeIds } from "@/components/feed/feedHarnessDemo"
 import LiveGameBanner from "@/components/LiveGameBanner"
 import { useLiveGames } from "@/lib/useLiveGames"
 import FeedFilters, { matchesFilter } from "@/components/feed/FeedFilters"
 import QuickActions from "@/components/feed/QuickActions"
 import LoanInvite from "@/components/LoanInvite"
 import VideoRail from "@/components/feed/VideoRail"
-import { StandingsWidget, NextGameWidget, LeadersWidget } from "@/components/feed/Widgets"
+import { StandingsWidget, NextGameWidget, LeadersWidget, StandingsPost } from "@/components/feed/Widgets"
 import { FeedSkeleton, SkeletonFeedPosts } from "@/components/skeletons/PageSkeletons"
 
 const PAGE_SIZE = 25
+// ONE unified smart feed (Ariel 10-27): the בשבילך / הכי חדש toggle is gone, the ranking stays.
+const ORDER = "for_you"
 // Stable identity so the feed useMemo doesn't rebuild on every render for guests.
 const EMPTY_FOLLOWS = { teams: new Set(), players: new Set(), notify: new Set() }
 
@@ -38,7 +45,9 @@ function TrackedItem({ post, children }) {
   // Tags change only with the item's identity; joining keeps the effect from
   // re-subscribing on every feed rebuild.
   const tagKey = (post.tags || []).join('|')
-  useEffect(() => observeFeedItem(ref.current, post.id, post.tags), [post.id, tagKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The "caught up" line is not content — nothing to log.
+  const synthetic = post.type === "caught_up" || post.type === "seen_header" || post.type === "standings"
+  useEffect(() => synthetic ? undefined : observeFeedItem(ref.current, post.id, post.tags), [post.id, tagKey]) // eslint-disable-line react-hooks/exhaustive-deps
   return <div ref={ref} id={post.id} className="scroll-mt-24">{children}</div>
 }
 
@@ -54,8 +63,13 @@ function readCachedOverrides() {
 export default function Feed() {
   const { seasonMode } = useSeasonMode()
   const seasonName = useSeasonName()
-  const { user } = useAuth()
-  const hasApp = useHasNativeApp()
+  const { user, profile, coachTeamIds = [], isJudgeRole } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [liveStoryId, setLiveStoryId] = useState(null)   // the tapped live story's game id
+  const closeCompose = useCallback(() => setComposeOpen(false), [])
+  const closeLive = useCallback(() => setLiveStoryId(null), [])
+  const [judgeIds, setJudgeIds] = useState(null)       // games this referee is on → "שפטת" + his cards
   const [games, setGames] = useState([])
   const [teams, setTeams] = useState([])
   const [players, setPlayers] = useState([])
@@ -83,6 +97,24 @@ export default function Feed() {
   const sentinelRef = useRef(null)
 
   useEffect(() => { loadData() }, [])
+
+  // The + fan's "פוסט חדש" links here with ?compose=1: open the composer sheet, then drop
+  // the param so a reload or Back does not open it again.
+  useEffect(() => {
+    if (params.get("compose") !== "1") return
+    setComposeOpen(true)
+    const next = new URLSearchParams(params)
+    next.delete("compose")
+    setParams(next, { replace: true })
+  }, [params, setParams])
+
+  // A referee's games (approved / assigned): his action cards and the "שפטת" chip.
+  useEffect(() => {
+    if (!user || !isJudgeRole) { setJudgeIds(null); return }
+    let alive = true
+    getMyApprovedGameIds("judge").then(ids => { if (alive) setJudgeIds(ids?.size || !feedDemoOn() ? ids : demoJudgeIds(games)) }).catch(() => {})
+    return () => { alive = false }
+  }, [user, isJudgeRole, games])
 
   // Likes/comments for synthetic feed items (game results, milestones, …).
   // Loaded separately from loadData so it stays decoupled from other feed work.
@@ -194,14 +226,51 @@ export default function Feed() {
     photoOverrides
   ), [games, teams, players, gameStats, posts, championId, seasonName, seasonMode, photoIndex, blockedIds, photoOverrides, follows, personalization, marketItems, ranking])
 
+  // "הכל" is what people scroll: one post per game, new-to-you first, outside news as
+  // one post (arrangeFeed). The other filters keep the flat list, one item per thing.
+  // The viewer's own teams (plays for / coaches: the "הקבוצה שלך" chip) and every team that
+  // makes a game "yours" (own + followed: ordering and the stories row).
+  const playerTeamId = profile?.player?.team_id || null
+  const ownTeamIds = useMemo(() => new Set([playerTeamId, ...coachTeamIds].filter(Boolean)), [playerTeamId, coachTeamIds.join(",")]) // eslint-disable-line react-hooks/exhaustive-deps
+  const myTeamIds = useMemo(() => new Set([...ownTeamIds, ...follows.teams]), [ownTeamIds, follows])
+  const storyTeamIds = useMemo(() => {
+    const order = [...teams].sort((a, b) => (b.points || 0) - (a.points || 0)).map(t => t.id)
+    const own = [...ownTeamIds]
+    const followed = order.filter(id => follows.teams.has(id) && !ownTeamIds.has(id))
+    return [...own, ...followed]
+  }, [teams, ownTeamIds, follows])
+
+  const arranged = useMemo(() => {
+    const list = arrangeFeed(feed, { games, personalization, followedTeams: myTeamIds, mode: ORDER, ranking })
+    // The table as a post right after the game posts of the top section (FeedPlayer board),
+    // while the season has results; "כבר ראית" over what he already saw (FeedTail board).
+    const out = [...list]
+    const line = out.findIndex(it => it.type === "caught_up")
+    const topEnd = line < 0 ? out.length : line
+    let lastGame = -1
+    for (let i = 0; i < topEnd; i++) if (out[i].type === "game") lastGame = i
+    const done = games.filter(g => g.status === "completed" && g.game_type !== "ידידותי")
+    if (done.length && teams.length) {
+      const round = new Set(done.map(g => ilDay(g.game_date))).size
+      out.splice(lastGame + 1, 0, { id: "row-standings", type: "standings", data: { round } })
+    }
+    const w = out.findIndex(it => it.type === "world")
+    const afterLine = out.findIndex(it => it.type === "caught_up")
+    const seenAt = w >= 0 ? w + 1 : afterLine >= 0 ? afterLine + 1 : -1
+    if (seenAt > 0 && seenAt < out.length) out.splice(seenAt, 0, { id: "row-seen", type: "seen_header" })
+    return out
+  }, [feed, games, teams, personalization, myTeamIds, ranking])
+  const firstGameId = useMemo(() => arranged.find(it => it.type === "game")?.id, [arranged])
+  const showPredict = !!user && (!!profile?.player_id || coachTeamIds.length > 0)
+
   const counts = useMemo(() => ({
-    all: feed.length,
+    all: arranged.filter(p => !["caught_up", "seen_header", "standings"].includes(p.type)).length,
     posts: feed.filter(p => matchesFilter(p, "posts")).length,
     results: feed.filter(p => matchesFilter(p, "results")).length,
     highlights: feed.filter(p => matchesFilter(p, "highlights")).length,
     world: feed.filter(p => matchesFilter(p, "world")).length,
     video: feed.filter(p => matchesFilter(p, "video")).length,
-  }), [feed])
+  }), [feed, arranged])
 
   const handlePosted = (newPost, tags = []) => {
     if (!newPost) return
@@ -215,7 +284,7 @@ export default function Feed() {
     setPhotoOverrides(prev => ({ ...prev, [itemKey]: photo?.photo_id ?? null }))
   }
 
-  const filtered = feed.filter(p => matchesFilter(p, filter))
+  const filtered = filter === "all" ? arranged : feed.filter(p => matchesFilter(p, filter))
   const visible = filtered.slice(0, visibleCount)
   const hasMore = visibleCount < filtered.length
 
@@ -247,100 +316,97 @@ export default function Feed() {
     )
   }
 
+  const liveStory = liveStoryId ? liveGames.find(l => l.game_id === liveStoryId) : null
+  const liveGame = liveStory ? gamesById[liveStory.game_id] : null
+  const renderItem = (post, i) => {
+    if (post.type === "standings") return <StandingsPost teams={teams} round={post.data.round} myTeamIds={myTeamIds} />
+    if (post.type === "seen_header") return <SeenHeader />
+    const g = post.type === "game" || post.type === "game_result" ? post.data.game : null
+    const chip = g && (ownTeamIds.has(g.home_team_id) || ownTeamIds.has(g.away_team_id)) ? "mine"
+      : g && judgeIds?.has(g.id) ? "refereed" : null
+    return (
+      <FeedPost priority={i < 2} post={post} playersMap={playersMap} teamsMap={teamsMap} roleBadges={roleBadges} likedPostIds={likedPostIds}
+        likedItems={likedItems} itemLikeCounts={itemLikeCounts} itemCommentCounts={itemCommentCounts} blockedIds={blockedIds}
+        onPhotoRefreshed={handlePhotoRefreshed} mentions={postMentions[post.data?.post?.id]}
+        large={post.id === firstGameId} chip={chip} showPredict={showPredict} />
+    )
+  }
+
   return (
-    <div className="max-w-[1500px] mx-auto p-4 sm:p-6 lg:p-8">
-      <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)_300px] lg:gap-6 lg:items-start">
-        {/* (1) Filter rail — right-most in RTL */}
+    // Floodlight feed (FeedFan / FeedCoach / FeedLM / FeedRef boards). The shell header IS the
+    // feed header (brand, search, bell, avatar), so the page starts with the stories row.
+    // Phone: stories → the role's action cards (coach / LM / referee only; fan + player feeds
+    // are clean) → posts edge to edge with an 8px page strip between them. Desktop: the same
+    // ~600px column, centred, with the filters + quick actions and the widgets in side rails.
+    <div className="mx-auto max-w-[1240px] px-4 pt-1 pb-6 sm:px-6 lg:px-8 lg:pt-6">
+      <div className="lg:grid lg:grid-cols-[240px_minmax(0,600px)_300px] lg:justify-center lg:gap-8 lg:items-start">
+        {/* (1) Filter rail — right in RTL (desktop) */}
         <aside className="hidden lg:block lg:sticky lg:top-20 self-start space-y-4">
           <FeedFilters active={filter} onChange={setFilter} counts={counts} />
           <QuickActions games={games} teamsMap={teamsMap} />
+          {user && <LoanInvite compact />}
         </aside>
 
-        {/* (2) Center column — feed */}
-        <div className="space-y-5 min-w-0">
-          {/* Page header — title on the right (RTL), "download the app" banner on the left */}
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="page-title flex items-center gap-2.5">
-                <BrandTile name="rink" className="w-10 h-10 -my-1.5" /> המגרש
-              </h1>
-              <p className="page-subtitle mt-1">כל מה שקורה בליגה</p>
-            </div>
+        {/* (2) The feed column */}
+        <div className="min-w-0 sm:max-w-[600px] sm:mx-auto lg:max-w-none lg:mx-0">
+          <FeedStories liveGames={liveGames} gamesById={gamesById} teamsMap={teamsMap} feed={feed}
+            ownTeamId={playerTeamId || coachTeamIds[0] || null} teamIds={storyTeamIds} signedIn={!!user}
+            onLive={(l) => setLiveStoryId(l.game_id)}
+            onLeague={() => { setFilter("all"); document.getElementById("feed-list")?.scrollIntoView({ behavior: "smooth", block: "start" }) }} />
 
-            {/* Already signed in on the app → nothing to download. */}
-            {!hasApp && <Link
-              to="/app"
-              className="group shrink-0 hidden sm:inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-brand to-brand-hover px-3.5 py-2.5 text-white shadow-sm ring-1 ring-brand/20 hover:shadow-md hover:brightness-105 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              aria-label="הורידו את האפליקציה"
-            >
-              <Smartphone className="w-5 h-5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
-              <span className="leading-tight text-right">
-                <span className="block text-[13px] font-black">הורידו את האפליקציה!</span>
-                <span className="block text-[11px] font-medium text-white/85">iPhone · Android</span>
-              </span>
-            </Link>}
-          </motion.div>
+          <FeedRoleCards games={games} teamsMap={teamsMap} players={players} liveGames={liveGames} judgeIds={judgeIds} />
 
-          {/* Live now — pinned above the composer when a game is being officiated */}
-          <LiveGameBanner liveGames={liveGames} gamesById={gamesById} teamsMap={teamsMap} />
+          <div className="mt-3 empty:hidden"><ComposerPrompt onOpen={() => setComposeOpen(true)} /></div>
 
-          {/* A pending loan invite needs an answer before kick-off — it goes where he looks first. */}
-          {user && <LoanInvite compact />}
-
-          <Composer onPosted={handlePosted} />
-
-          {/* Mobile-only filters + compact widgets */}
-          <div className="lg:hidden space-y-5">
-            <FeedFilters orientation="horizontal" active={filter} onChange={setFilter} counts={counts} />
-            <QuickActions games={games} teamsMap={teamsMap} />
-            <StandingsWidget teams={teams} />
-            <NextGameWidget games={games} teams={teams} />
-          </div>
-
-          {/* Newest videos first — they hold attention ~2x articles (ניתוח פיד). */}
-          {filter === "all" && <VideoRail feed={feed} onShowAll={() => { setFilter("video"); window.scrollTo({ top: 0, behavior: "smooth" }) }} />}
+          {/* Desktop: the newest videos (our clips only — outside news has its one post). */}
+          {filter === "all" && <div className="hidden lg:block mt-4"><VideoRail feed={feed.filter(p => p.type !== "external")} onShowAll={() => { setFilter("video"); window.scrollTo({ top: 0, behavior: "smooth" }) }} /></div>}
 
           {/* Feed list */}
-          {filtered.length === 0 ? (
-            <div className="card p-10 text-center">
-              <Rink className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <h3 className="text-lg font-semibold text-slate-500 dark:text-slate-400">אין עדכונים להצגה</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">נסו סינון אחר</p>
-            </div>
-          ) : (
-            <div className="space-y-2 sm:space-y-5">
-              {visible.map((post, i) => (
-                // Anchor for deep links into the feed (/#game-…, /#ms-…). Old /#post-<id>
-                // links are redirected to the permalink /posts/<id> (App.jsx).
-                <TrackedItem key={post.id} post={post}>
-                <FeedPost key={post.id} priority={i < 2} post={post} playersMap={playersMap} teamsMap={teamsMap} roleBadges={roleBadges} likedPostIds={likedPostIds} likedItems={likedItems} itemLikeCounts={itemLikeCounts} itemCommentCounts={itemCommentCounts} blockedIds={blockedIds} onPhotoRefreshed={handlePhotoRefreshed} mentions={postMentions[post.data?.post?.id]} />
-                </TrackedItem>
-              ))}
-            </div>
-          )}
+          <div id="feed-list" className="scroll-mt-24 mt-3">
+            {filtered.length === 0 ? (
+              <div className="fl-card p-10 text-center">
+                <Rink className="w-12 h-12 mx-auto text-fg-faint mb-3" />
+                <h3 className="text-[17px] font-bold text-fg-strong">אין עדכונים להצגה</h3>
+                {filter !== "all" && <p className="text-[14px] text-fg-muted mt-1">נסו סינון אחר</p>}
+              </div>
+            ) : (
+              <div className="space-y-2 sm:space-y-4">
+                {visible.map((post, i) => (
+                  // Anchor for deep links into the feed (/#game-…, /#ms-…). Old /#post-<id>
+                  // links are redirected to the permalink /posts/<id> (App.jsx).
+                  <TrackedItem key={post.id} post={post}>{renderItem(post, i)}</TrackedItem>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Infinite-scroll sentinel + status */}
           {filtered.length > 0 && (
-            <div className="flex flex-col items-center gap-2 pt-2">
+            <div className="flex flex-col items-center gap-2 pt-3">
               {hasMore && (
                 <div ref={sentinelRef} className="w-full pt-2">
                   <SkeletonFeedPosts count={1} />
                 </div>
               )}
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                מציג {visible.length} מתוך {filtered.length}
-              </p>
+              {!hasMore && <p className="text-[12px] text-fg-subtle">זה הכל לעכשיו</p>}
             </div>
           )}
         </div>
 
-        {/* (3) Widget rail — left-most in RTL, own scroll */}
-        <aside className="hidden lg:block lg:sticky lg:top-20 self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-5">
+        {/* (3) Widget rail — left in RTL (desktop), own scroll */}
+        <aside className="hidden lg:block lg:sticky lg:top-20 self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-4">
+          <LiveGameBanner liveGames={liveGames} gamesById={gamesById} teamsMap={teamsMap} />
           <StandingsWidget teams={teams} />
           <NextGameWidget games={games} teams={teams} />
           <LeadersWidget players={players} teams={teams} />
         </aside>
       </div>
+
+      <ComposerSheet open={composeOpen} onClose={closeCompose} onPosted={handlePosted} />
+      {liveStory && (
+        <LiveStory live={liveStory} game={liveGame} home={teamsMap[liveGame?.home_team_id]} away={teamsMap[liveGame?.away_team_id]}
+          onClose={closeLive} />
+      )}
     </div>
   )
 }

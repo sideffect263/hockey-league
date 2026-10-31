@@ -11,6 +11,8 @@ import { setPhotoOverride } from "@/lib/photoOverrides"
 import { parseYouTubeId, youTubeInText, withoutUrl } from "@/lib/video"
 import FeedVideo, { streamPoster } from "@/components/feed/FeedVideo"
 import ExperimentalVideo from "@/components/feed/ExperimentalVideo"
+import GamePost from "@/components/feed/GamePost"
+import { WorldPost, CaughtUpLine } from "@/components/feed/WorldPost"
 import ReactionBar from "@/components/feed/ReactionBar"
 import MarketFeedCard from "@/components/feed/MarketFeedCard"
 import ModerationMenu from "@/components/feed/ModerationMenu"
@@ -248,41 +250,6 @@ function PhotoFrame({ to, children }) {
   return to ? <Link to={to} className={cls}>{children}</Link> : <div className={cls}>{children}</div>
 }
 
-/* ---- Score (respects RTL gotcha: away first, home last) ---- */
-function ScoreBlock({ away, home, awayWin, homeWin }) {
-  const decisive = awayWin || homeWin
-  const cls = (win) => win
-    ? "text-emerald-600 dark:text-emerald-400"
-    : decisive ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-white"
-  return (
-    <div className="text-4xl sm:text-5xl font-black tracking-tighter tabular-nums leading-none">
-      <span className={cls(awayWin)}>{away}</span>
-      <span className="mx-1.5 align-middle text-2xl sm:text-3xl font-bold text-slate-300 dark:text-slate-600">:</span>
-      <span className={cls(homeWin)}>{home}</span>
-    </div>
-  )
-}
-
-/* One team on the result row. side="home" flows normally (right in RTL);
-   side="away" mirrors to the left. Winner is emerald + trophy, loser muted.
-   Not a team link: the whole result card opens the game, and a team name that
-   went somewhere else was the thing people tapped and landed on the wrong page. */
-function ResultTeam({ team, side, isWin, isLoss, label }) {
-  const reverse = side === "away"
-  return (
-    <div className={`group flex items-center gap-2.5 flex-1 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${reverse ? "flex-row-reverse" : ""} ${isWin ? "bg-emerald-50 dark:bg-emerald-900/20" : ""}`}>
-      <TeamLogo team={team} size={12} />
-      <div className={`min-w-0 ${reverse ? "text-left" : ""}`}>
-        <p className={`text-sm sm:text-[15px] truncate flex items-center gap-1 group-hover:text-brand transition-colors ${reverse ? "flex-row-reverse" : ""} ${isWin ? "font-extrabold text-emerald-700 dark:text-emerald-300" : isLoss ? "font-semibold text-slate-500 dark:text-slate-400" : "font-bold text-slate-900 dark:text-white"}`}>
-          {isWin && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
-          <span className="truncate">{team?.name}</span>
-        </p>
-        <p className={`text-[11px] ${isWin ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-slate-500 dark:text-slate-400"}`}>{label}</p>
-      </div>
-    </div>
-  )
-}
-
 /* ============ CHAMPION ============ */
 function ChampionPost({ post, onPhotoRefreshed, ...rx }) {
   const { team, seasonName } = post.data
@@ -331,132 +298,6 @@ function TopScorerPost({ post, onPhotoRefreshed, ...rx }) {
         </div>
       </div>
       <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} />
-      <ItemReactions post={post} {...rx} />
-    </FeedCard>
-  )
-}
-
-/* ============ GAME RESULT ============ */
-function GameResultPost({ post, playersMap, teamsMap, onPhotoRefreshed, ...rx }) {
-  const [open, setOpen] = useState(false)
-  const { game, home, away, stats } = post.data
-  const teamName = (id) => teamsMap[id]?.name || '—'
-  const homeWin = game.home_score > game.away_score
-  const awayWin = game.away_score > game.home_score
-  const tie = game.home_score === game.away_score
-  const navigate = useNavigate()
-  const gamePath = entityPath('games', game)
-  // Tap anywhere on the card → the game page. Its own controls (details, likes,
-  // comments, player links, photo tools) keep their behaviour, and a text
-  // selection isn't a tap. The "לעמוד המשחק" link stays as the keyboard path.
-  const openGame = (e) => {
-    if (e.target.closest('a, button, input, textarea, select, label, [role="button"], [data-no-card-nav]')) return
-    if (window.getSelection?.()?.toString()) return
-    navigate(gamePath)
-  }
-
-  return (
-    <FeedCard layout onClick={openGame} className="cursor-pointer">
-      <FeedCardHeader
-        avatar={<FeedIcon tone="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"><Trophy className="w-5 h-5" /></FeedIcon>}
-        title={<>
-          <span>תוצאת משחק</span>
-          {game.game_type === 'פלייאוף' && <span className="stat-pill badge-warning !py-0.5">פלייאוף</span>}
-          {game.game_type === FRIENDLY_GAME_TYPE && <span className="stat-pill badge-neutral !py-0.5">ידידותי</span>}
-          {game.series_game && <span className="stat-pill badge-info !py-0.5">משחק {game.series_game}</span>}
-        </>}
-        meta={<><span>{fmtDate(post.date)}</span>{game.venue && <><span>·</span><span className="inline-flex items-center gap-0.5"><MapPin className="w-4 h-4" />{game.venue}</span></>}</>}
-      />
-
-      {/* Match row — the score is the hero; winning side tinted + trophy-marked.
-         RTL gotcha: home team renders first (right); ScoreBlock stays away:home. */}
-      <div className={`flex items-center gap-1 sm:gap-2 ${INSET}`}>
-        <ResultTeam team={home} side="home" isWin={homeWin} isLoss={awayWin}
-          label={tie ? 'תיקו' : homeWin ? 'מנצחת' : 'בית'} />
-        <div className="px-1 sm:px-2 text-center shrink-0">
-          <ScoreBlock away={game.away_score} home={game.home_score} awayWin={awayWin} homeWin={homeWin} />
-        </div>
-        <ResultTeam team={away} side="away" isWin={awayWin} isLoss={homeWin}
-          label={tie ? 'תיקו' : awayWin ? 'מנצחת' : 'חוץ'} />
-      </div>
-
-      <EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={game} />
-
-      {/* Links — one small line, like "למשחק המלא" under a video post. */}
-      <div className={`mt-2 flex items-center gap-4 text-xs font-semibold ${INSET}`}>
-        <Link to={gamePath} className="inline-flex items-center gap-1 text-brand dark:text-brand-light hover:text-brand-hover">
-          לעמוד המשחק <ArrowLeft className="w-3 h-3" />
-        </Link>
-        {stats.length > 0 && (
-          <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
-            <FileText className="w-4 h-4" />
-            {open ? 'סגור פרטים' : 'פרטים'}
-            <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
-          </button>
-        )}
-      </div>
-
-      {/* Expanded box score */}
-      <AnimatePresence>
-        {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className={`pt-3 cursor-auto ${INSET}`} data-no-card-nav>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3">סטטיסטיקות שחקנים</h4>
-                {stats.length === 0 ? (
-                  <p className="text-center text-xs text-slate-500 dark:text-slate-400 py-4">לא הוזנו סטטיסטיקות למשחק זה</p>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-6">
-                      {[game.home_team_id, game.away_team_id].map(tid => (
-                        <div key={tid}>
-                          <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">{teamName(tid)}</h5>
-                          <div className="space-y-1">
-                            {stats.filter(s => playersMap[s.player_id]?.team_id === tid).map(stat => {
-                              const p = playersMap[stat.player_id]
-                              return (
-                                <div key={stat.id} className="flex items-center justify-between py-1 text-xs">
-                                  <PlayerLink playerId={stat.player_id} className="text-slate-700 dark:text-slate-300 hover:text-brand transition-colors">{p?.first_name} {p?.last_name}</PlayerLink>
-                                  <div className="flex gap-1.5">
-                                    {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{stat.goals}</span>}
-                                    {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{stat.blue_cards}</span>}
-                                    {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{stat.red_cards}</span>}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {stats.some(s => s.is_guest_player) && (
-                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
-                        <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">אורחים</h5>
-                        <div className="space-y-1">
-                          {stats.filter(s => s.is_guest_player).map(stat => (
-                            <div key={stat.id} className="flex items-center justify-between py-1 text-xs">
-                              <span className="text-slate-700 dark:text-slate-300">
-                                {stat.guest_player_name}
-                                {stat.guest_player_original_team && <span className="text-slate-500 dark:text-slate-400"> ({stat.guest_player_original_team})</span>}
-                              </span>
-                              <div className="flex gap-1.5">
-                                {stat.goals > 0 && <span className="stat-pill bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 !py-0 !px-1.5 inline-flex items-center gap-1"><Ball className="w-5 h-5 -my-1" />{stat.goals}</span>}
-                                {stat.blue_cards > 0 && <span className="stat-pill bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 !py-0 !px-1.5"><BlueCard className="w-5 h-5 -my-1" />{stat.blue_cards}</span>}
-                                {stat.red_cards > 0 && <span className="stat-pill bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 !py-0 !px-1.5"><RedCard className="w-5 h-5 -my-1" />{stat.red_cards}</span>}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <ItemReactions post={post} {...rx} />
     </FeedCard>
   )
@@ -909,24 +750,25 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 
       {/* Actions: icons, then the counts on their own line (and the link out). */}
       <div data-reactions className={`mt-2 ${INSET}`}>
-        <div className="flex items-center gap-4 py-1">
-          <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"}
-            className={`transition-colors ${liked ? "text-red-500" : "text-slate-700 dark:text-slate-200 hover:text-red-500"}`}>
+        {/* ♥ 💬 ↗ as 44px targets, the same row as the game post (GamePost / PostPage boards). */}
+        <div className="flex items-center -ms-2.5">
+          <button onClick={toggleLike} aria-label={liked ? "ביטול אהבתי" : "אהבתי"} aria-pressed={liked}
+            className={`size-11 flex items-center justify-center transition-colors ${liked ? "text-fl-live" : "text-fg-strong hover:text-fl-live"}`}>
             {liked ? <LikeOn className="w-6 h-6" /> : <LikeOff className="w-6 h-6" />}
           </button>
-          <button onClick={toggleComments} aria-label="תגובות" className="text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
+          <button onClick={toggleComments} aria-label="תגובות" aria-expanded={showComments} className="size-11 flex items-center justify-center text-fg-strong hover:opacity-70 transition-opacity">
             <MessageCircle className="w-6 h-6" />
           </button>
-          <button onClick={sharePost} disabled={!share} aria-label="שיתוף" className="ms-auto text-slate-700 dark:text-slate-200 hover:text-brand transition-colors">
-            <Share2 className="w-5 h-5" />
+          <button onClick={sharePost} disabled={!share} aria-label="שיתוף" className="size-11 flex items-center justify-center text-fg-strong hover:opacity-70 transition-opacity disabled:opacity-40">
+            <Share2 className="w-[22px] h-[22px]" />
           </button>
         </div>
         {(likeCount > 0 || commentCount > 0 || ext?.link) && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-1.5">
-            {likeCount > 0 && <span className="font-bold text-slate-900 dark:text-white">{likeCount} אהבו</span>}
-            {commentCount > 0 && <>{likeCount > 0 && <span>·</span>}<button onClick={toggleComments} className="hover:text-brand">{commentCount} תגובות</button></>}
-            {ext?.link && <>{(likeCount > 0 || commentCount > 0) && <span>·</span>}
-              <a href={ext.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand hover:text-brand-hover">
+          <p className="text-[13px] text-fg-muted flex flex-wrap items-center gap-x-1.5">
+            {likeCount > 0 && <span className="font-bold text-fg-strong"><span className="tabular-nums">{likeCount}</span> אהבו</span>}
+            {commentCount > 0 && <>{likeCount > 0 && <span aria-hidden="true">·</span>}<button onClick={toggleComments} className="min-h-[32px] hover:text-fg-strong"><span className="tabular-nums">{commentCount}</span> תגובות</button></>}
+            {ext?.link && <>{(likeCount > 0 || commentCount > 0) && <span aria-hidden="true">·</span>}
+              <a href={ext.link} target="_blank" rel="noopener noreferrer" className="min-h-[32px] inline-flex items-center gap-1 font-semibold text-fg-strong underline-offset-4 hover:underline">
                 <ExternalLink className="w-3 h-3" /> {extVideoId ? "פתיחה ביוטיוב" : "צפייה במקור"}
               </a></>}
           </p>
@@ -1023,20 +865,31 @@ function PostCard({ post, likedPostIds, blockedIds, roleBadges, playersMap, team
 
 /* ============ Dispatcher ============ */
 export default function FeedPost({ priority = false, ...props }) {
-  return <ImagePriority.Provider value={priority}><FeedPostCard {...props} /></ImagePriority.Provider>
+  return <ImagePriority.Provider value={priority}><FeedPostCard priority={priority} {...props} /></ImagePriority.Provider>
 }
 
-function FeedPostCard({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt }) {
+function FeedPostCard({ post, playersMap, teamsMap, roleBadges, likedPostIds, likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, mentions, initialShowComments, hideGameChip, startAt, large = false, chip = null, showPredict = false, priority = false }) {
   // Every card but סטופר מרקט gets a share target — see lib/shareLinks.js.
-  const share = buildShare(post, { playersMap })
+  // A folded game (arrangeFeed) shares, likes and comments as its result card did.
+  const share = post.type === 'world' || post.type === 'caught_up' ? null
+    : buildShare(post.type === 'game' ? { ...post, type: 'game_result' } : post, { playersMap })
   const rx = { likedItems, itemLikeCounts, itemCommentCounts, blockedIds, onPhotoRefreshed, share }
   switch (post.type) {
+    case 'game':
+    case 'game_result':
+      // ONE carousel post per game (GamePost board). The filtered lists pass a plain
+      // game_result (no clips): the same post, one slide.
+      return <GamePost post={post} playersMap={playersMap} teamsMap={teamsMap} large={large} chip={chip} showPredict={showPredict}
+        priority={priority} {...rx}
+        adminPhoto={<EventPhoto photo={post.data.photo} itemKey={post.id} candidates={post.data.photoCandidates} onRefreshed={onPhotoRefreshed} game={post.data.game} />} />
+    case 'world':
+      return <WorldPost post={post} />
+    case 'caught_up':
+      return <CaughtUpLine signedIn={post.data?.signedIn} />
     case 'champion':
       return <ChampionPost post={post} {...rx} />
     case 'top_scorer':
       return <TopScorerPost post={post} {...rx} />
-    case 'game_result':
-      return <GameResultPost post={post} playersMap={playersMap} teamsMap={teamsMap} {...rx} />
     case 'milestone':
       return <MilestonePost post={post} {...rx} />
     case 'market':

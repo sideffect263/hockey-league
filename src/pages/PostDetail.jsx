@@ -94,23 +94,25 @@ export default function PostDetail() {
   }), [post, teamsMap, isBirthday, game])
 
   return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4">
-      <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
-        <ArrowRight className="w-4 h-4" /> לפיד
+    // PostPage board: ← לפיד, the post as in the feed with its comments open, then the game's
+    // other clips. Phone: the card runs edge to edge (FeedCard); desktop: a 600px column.
+    <div className="max-w-[600px] mx-auto px-4 pt-1 pb-6 sm:px-0 sm:pt-6 space-y-3">
+      <Link to="/" className="inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-fg-strong hover:underline underline-offset-4">
+        <ArrowRight className="w-5 h-5" /> לפיד
       </Link>
 
       {state === "loading" && <SkeletonFeedPosts count={1} />}
 
       {(state === "missing" || state === "error" || (state === "ready" && blocked.has(post?.author_id))) && (
-        <div className="card p-10 text-center">
-          <MessageSquareOff className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-          <h1 className="text-lg font-bold text-slate-700 dark:text-slate-200">
+        <div className="fl-card p-10 text-center">
+          <MessageSquareOff className="w-10 h-10 mx-auto text-fg-faint mb-3" />
+          <h1 className="text-[18px] font-extrabold text-fg-strong">
             {state === "error" ? "שגיאה בטעינת הפוסט" : "הפוסט לא נמצא"}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-[14px] text-fg-muted mt-1">
             {state === "error" ? "נסו לרענן את הדף" : "ייתכן שהפוסט נמחק"}
           </p>
-          <Link to="/" className="inline-block mt-4 px-4 py-2 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition-colors">
+          <Link to="/" className="btn-primary inline-flex mt-4 min-h-[44px]">
             לפיד הליגה
           </Link>
         </div>
@@ -132,15 +134,15 @@ export default function PostDetail() {
       )}
 
       {state === "ready" && related.length > 0 && (
-        <section className="card p-4">
-          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-3">עוד סרטונים מהמשחק</h2>
-          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <section className="-mx-4 sm:mx-0 bg-surface sm:rounded-card sm:border sm:border-line p-4">
+          <h2 className="text-[17px] font-extrabold text-fg-strong mb-3">עוד סרטונים מהמשחק</h2>
+          <ul className="grid grid-cols-2 gap-3">
             {related.map(r => (
               <li key={r.id}>
                 <Link to={`/posts/${r.id}`} className="block group">
                   <img src={streamPoster(r.video_cf_code, r.video_uid)} alt={postTitle(r.body, 60)} loading="lazy"
-                       className="w-full aspect-video object-cover rounded-lg bg-slate-200 dark:bg-slate-800" />
-                  <span className="mt-1 block text-xs font-semibold text-slate-600 dark:text-slate-300 group-hover:text-brand line-clamp-2">
+                       className="w-full aspect-video object-cover rounded-[12px] bg-[#1B2532]" />
+                  <span className="mt-1.5 block text-[13px] font-semibold text-fg-strong group-hover:underline line-clamp-2">
                     {postTitle(r.body, 60)}
                   </span>
                 </Link>

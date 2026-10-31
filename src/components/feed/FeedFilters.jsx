@@ -44,8 +44,8 @@ export default function FeedFilters({ active, onChange, counts = {}, orientation
   }
 
   return (
-    <nav className="card p-2 space-y-0.5">
-      <p className="px-3 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <nav aria-label="סינון הפיד" className="card p-2 space-y-0.5">
+      <p className="px-3 pt-1.5 pb-1 text-[12px] font-bold text-fg-muted">
         סינון
       </p>
       {FEED_FILTERS.map((f) => {
@@ -54,16 +54,15 @@ export default function FeedFilters({ active, onChange, counts = {}, orientation
           <button
             key={f.key}
             onClick={() => onChange(f.key)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-              on
-                ? "bg-brand text-white shadow-sm shadow-brand/25"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:text-slate-900 dark:hover:text-white"
+            aria-pressed={on}
+            className={`w-full min-h-[44px] flex items-center gap-3 px-3 rounded-control text-[14px] font-semibold transition-colors ${
+              on ? "bg-brand text-brand-fg" : "text-fg hover:bg-surface-inset hover:text-fg-strong"
             }`}
           >
-            <f.icon size={18} className={on ? "" : "text-slate-500 dark:text-slate-400"} />
+            <f.icon size={18} className={on ? "" : "text-fg-muted"} />
             <span className="flex-1 text-right">{f.label}</span>
             {counts[f.key] != null && (
-              <span className={`text-[11px] font-bold ${on ? "text-brand-fg" : "text-slate-500 dark:text-slate-400"}`}>
+              <span className={`fl-num text-[12px] ${on ? "text-brand-fg" : "text-fg-muted"}`}>
                 {counts[f.key]}
               </span>
             )}
