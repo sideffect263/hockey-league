@@ -19,7 +19,7 @@ import { entityPath } from "@/lib/slugs"
 import { ProfileSkeleton } from "@/components/skeletons/PageSkeletons"
 import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
 import { sizedImage } from "@/lib/imageSize"
-import { teamBanner, deep, onColor } from "@/lib/flTeam"
+import { teamBanner, deep, teamIsLight } from "@/lib/flTeam"
 import { useSeo } from "@/lib/seo"
 import { signInWithAppleWeb } from "@/lib/appleWeb"
 import TeamLogo from "@/components/TeamLogo"
@@ -358,10 +358,15 @@ export default function Profile() {
   const initial = (displayName || "?").trim().charAt(0).toUpperCase()
 
   // Header colours: the player's team; a fan gets the league blue (board MyPageStates).
+  // A light team (קריית מוצקין white/grey) gets its grey into a dark slate so the white
+  // text keeps 4.5:1 on the whole header.
+  const light = myTeam && teamIsLight(myTeam)
   const [b1] = myTeam ? teamBanner(myTeam) : ["#1550D8"]
-  const headBg = myTeam ? `linear-gradient(160deg, ${b1}, ${deep(myTeam)})` : "linear-gradient(160deg, #1550D8, #0E2A6E)"
-  const headInk = myTeam ? onColor(myTeam) : "#FFFFFF"
-  const chipInk = myTeam ? (onColor(myTeam) === "#FFFFFF" ? b1 : "#11161D") : "#0E3394"
+  const headBg = !myTeam ? "linear-gradient(160deg, #1550D8, #0E2A6E)"
+    : light ? "linear-gradient(160deg, #6B7079, #1E2329)"
+    : `linear-gradient(160deg, ${b1}, ${deep(myTeam)})`
+  const headInk = "#FFFFFF"
+  const chipInk = !myTeam ? "#0E3394" : light ? "#11161D" : deep(myTeam)
 
   // Urgent banner: medical missing / expiring / expired (board "מה מחכה לך").
   const days = medicalDaysLeft(medical)
@@ -443,6 +448,7 @@ export default function Profile() {
 
   const colA = (
     <>
+      {linkCard}
       {isPlayer && (
         <AccGroup title="הכרטיס והקבוצה">
           <div className="relative">
@@ -471,7 +477,6 @@ export default function Profile() {
         </AccGroup>
       )}
       <FollowsGroup follows={follows} viewer={viewer} />
-      <NotificationsGroup follows={follows} isPlayer={isPlayer} />
     </>
   )
 
@@ -483,6 +488,7 @@ export default function Profile() {
           {isAdmin && <AccRow brand="table" label="ניהול הליגה" sub="משחקים, שחקנים ובקשות" to="/admin" />}
         </AccGroup>
       )}
+      <NotificationsGroup follows={follows} isPlayer={isPlayer} />
       <AppearanceGroup />
       <CalendarRow team={myTeam || fanTeam} />
       <AccGroup title="פרטיות">
@@ -526,7 +532,6 @@ export default function Profile() {
           <Glyph d="chev" size={18} className="text-[#7A5200] dark:text-amber-200" />
         </a>
       )}
-      {linkCard && <div className="mt-3 lg:max-w-[calc(50%-10px)]">{linkCard}</div>}
       <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:gap-5 lg:items-start">
         <div className="flex flex-col gap-4 min-w-0">{colA}</div>
         <div className="flex flex-col gap-4 min-w-0">{colB}</div>

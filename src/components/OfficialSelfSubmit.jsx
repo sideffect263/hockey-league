@@ -83,36 +83,36 @@ export default function OfficialSelfSubmit({ game }) {
   // the game read "ממתין לאישור מנהל הליגה" indefinitely, with no way to make it change.
   // Nothing writes 'assigned' any more, but old rows still carry it.
   const statusOf = (s) => s === "approved" || s === "assigned"
-    ? { t: "שובצת ✓", c: "text-emerald-600 dark:text-emerald-400" }
-    : s === "rejected" ? { t: "המועמדות נדחתה", c: "text-red-500" }
-    : { t: "ממתין לאישור מנהל הליגה", c: "text-amber-600 dark:text-amber-400" }
+    ? { t: "שובצת", c: "text-[#1B5E2A] dark:text-emerald-300" }
+    : s === "rejected" ? { t: "המועמדות נדחתה", c: "text-[#B4231A] dark:text-[#FF8A7A]" }
+    : { t: "ממתין לאישור מנהל הליגה", c: "text-[#7A5200] dark:text-amber-200" }
 
   return (
-    <div className="card p-4 space-y-3">
-      <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-        <Gavel className="w-4 h-4 text-brand" /> הגשת מועמדות לשיבוץ
+    <div className="bg-surface rounded-card p-4 space-y-3">
+      <p className="text-[16px] font-extrabold text-fg-strong flex items-center gap-2">
+        <Gavel className="w-5 h-5" /> הגשת מועמדות לשיבוץ
       </p>
 
       {showForm ? (
-        <form onSubmit={saveContact} className="space-y-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-          <p className="text-[11px] text-slate-600 dark:text-slate-300">
+        <form onSubmit={saveContact} className="space-y-2.5 p-3 rounded-[16px] bg-surface-page">
+          <p className="text-[12.5px] text-fg">
             {needsPhone
               ? "חובש חייב להזין מספר טלפון — הוא מופיע בטופס המשחק"
               : "פרטי הקשר שלך (השם נלקח מהחשבון; אפשר לדייק אותו כאן)"}
           </p>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="שם מלא" aria-label="שם מלא"
-            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            className="w-full h-11 bg-surface border border-line rounded-[12px] px-3 text-[14px] text-fg-strong placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-fl-accent/60" />
           {/* dir=ltr so a phone number reads left-to-right inside the RTL card */}
           <input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" dir="ltr"
             placeholder={isMedic ? "טלפון (חובה לחובש)" : "טלפון (רשות)"} aria-label="טלפון"
-            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            className="w-full h-11 bg-surface border border-line rounded-[12px] px-3 text-[14px] text-fg-strong placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-fl-accent/60" />
           <button type="submit" disabled={savingContact}
-            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-brand-fg hover:bg-brand-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            className="w-full h-11 flex items-center justify-center gap-1.5 text-[14px] font-bold px-3 rounded-[12px] bg-brand text-brand-fg hover:bg-brand-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             {savingContact ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} שמירת פרטים
           </button>
         </form>
       ) : (
-        <p className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+        <p className="flex items-center gap-2 text-[12.5px] text-fg-muted">
           {/* contact may be null — a judge is no longer forced to fill anything in, so
               this branch is now reachable with no row at all. */}
           <span className="truncate">
@@ -120,7 +120,7 @@ export default function OfficialSelfSubmit({ game }) {
             {contact?.phone ? <> · <span dir="ltr">{contact.phone}</span></> : null}
           </span>
           <button onClick={() => setEditing(true)} aria-label="עריכת פרטי קשר"
-            className="shrink-0 text-slate-400 hover:text-brand transition-colors">
+            className="shrink-0 size-11 -my-3 flex items-center justify-center text-fg-muted hover:text-fg-strong transition-colors">
             <Pencil className="w-4 h-4" />
           </button>
         </p>
@@ -133,7 +133,7 @@ export default function OfficialSelfSubmit({ game }) {
           if (m) {
             const st = statusOf(m.status)
             return (
-              <span key={role} className={`inline-flex items-center gap-1.5 text-xs font-semibold ${st.c}`}>
+              <span key={role} className={`inline-flex items-center gap-1.5 text-[13px] font-bold ${st.c}`}>
                 <RIcon className="w-3.5 h-3.5" /> {OFFICIAL_ROLE_LABEL[role]}: {st.t}
               </span>
             )
@@ -144,7 +144,7 @@ export default function OfficialSelfSubmit({ game }) {
           return (
             <button key={role} onClick={() => apply(role)} disabled={busy === role || blocked}
               title={blocked ? "חובש חייב להזין טלפון תחילה" : undefined}
-              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-brand text-brand-fg hover:bg-brand-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              className="inline-flex items-center gap-1.5 h-11 text-[14px] font-bold px-4 rounded-[12px] bg-brand text-brand-fg hover:bg-brand-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               {busy === role ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RIcon className="w-3.5 h-3.5" />}
               הגש מועמדות כ{OFFICIAL_ROLE_LABEL[role]}
             </button>

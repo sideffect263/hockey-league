@@ -1,29 +1,32 @@
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { useState, useEffect, useMemo } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "@/lib/AuthContext"
-import {
-  getNotifications, markAllRead, markRead,
-  notificationText, notificationIcon, notificationBrandIcon, notificationHref, notificationPreview,
-} from "@/lib/notifications"
+import { getNotifications, markAllRead, markRead } from "@/lib/notifications"
+import { pushSupported, pushStatus, enablePush } from "@/lib/push"
 import { useSeo } from "@/lib/seo"
-import { CheckCheck, ArrowRight, RefreshCw } from "lucide-react"
-import { BrandIcon, BrandTile } from "@/components/icons/BrandIcons"
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
-import { sizedImage } from "@/lib/imageSize"
+import { Glyph, Spinner, Notice } from "@/components/fl/account/AccountKit"
+import { NotifRow, FilterChips, EmptyNotifs, FILTERS, groupByAge } from "@/components/fl/account/NotifKit"
+import { useLeagueTeams } from "@/components/fl/account/MyPageParts"
 
 /**
- * Full notifications list.
+ * Full notifications list (board NotifBell): today / this week / earlier, filter chips,
+ * answer buttons on the rows that need one, brand icons + the team's crest.
  *
- * The bell dropdown is a glance — narrow, and on a phone it is cramped. Some
- * notifications carry real content that exists NOWHERE else: a league-manager broadcast
- * is up to 500 characters and is not stored on the game page, so a message that can't be
- * read in the dropdown is simply lost. Here each one gets the full width of the screen
- * and wraps rather than being squeezed.
+ * Some notifications carry content that exists NOWHERE else: a league-manager broadcast
+ * is up to 500 characters and is not stored on the game page, so here every row wraps in
+ * full rather than being clamped. On phones the header bell opens this page.
  */
 export default function Notifications() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, openAuth } = useAuth()
+  const navigate = useNavigate()
   const [rows, setRows] = useState(null)
   const [error, setError] = useState(null)
+  const [filter, setFilter] = useState("all")
+  const [push, setPush] = useState(null)
+  const [pushBusy, setPushBusy] = useState(false)
+  const teams = useLeagueTeams()
+  const teamsByName = useMemo(() => Object.fromEntries(teams.map(t => [t.name, t])), [teams])
 
   useSeo({ title: "התראות", path: "/notifications", noindex: true })
 
@@ -31,92 +34,95 @@ export default function Notifications() {
     try { setError(null); setRows(await getNotifications(100)) }
     catch { setError("שגיאה בטעינת ההתראות"); setRows([]) }
   }
-  useEffect(() => { if (user) load() }, [user])
+  useEffect(() => { if (user) load() }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!user) return
+    if (!pushSupported()) { setPush("unsupported"); return }
+    pushStatus().then(setPush).catch(() => {})
+  }, [user])
 
   const readAll = async () => {
-    try { await markAllRead(); await load() } catch { /* best-effort */ }
+    try { await markAllRead(); setRows(rs => (rs || []).map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() }))) } catch { /* best-effort */ }
   }
+  const turnOnPush = async () => {
+    setPushBusy(true)
+    try { const r = await enablePush(); setPush(r.ok ? "on" : r.reason === "denied" ? "denied" : "default") }
+    finally { setPushBusy(false) }
+  }
+  const back = () => (window.history.length > 1 ? navigate(-1) : navigate("/"))
 
   if (authLoading) return null
   if (!user) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto">
-        <div className="card p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-          יש להתחבר כדי לראות התראות
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-8">
+        <div className="bg-surface rounded-[22px] p-8 text-center flex flex-col items-center gap-3">
+          <h1 className="text-[22px] font-extrabold text-fg-strong">התראות</h1>
+          <p className="text-[14px] text-fg-muted">מתחברים כדי לקבל התראות על המשחקים של הקבוצה שלך</p>
+          <button type="button" onClick={openAuth} className="btn-primary h-11 px-5">התחברות</button>
         </div>
       </div>
     )
   }
 
-  const unread = (rows || []).filter(n => !n.read_at).length
+  const all = rows || []
+  const unread = all.filter(n => !n.read_at).length
+  const f = FILTERS.find(x => x.id === filter) || FILTERS[0]
+  const shown = all.filter(f.test)
+  const groups = groupByAge(shown)
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto space-y-4">
-      <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
-        <ArrowRight className="w-4 h-4" /> חזרה למגרש
-      </Link>
-
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="page-title flex items-center gap-2">
-          <BrandTile name="bell" className="w-10 h-10 -my-1.5" /> התראות
+    <div className="max-w-2xl mx-auto pb-8">
+      <header className="flex items-center justify-between gap-2 px-3 sm:px-4 pt-3 sm:pt-6 pb-2">
+        <div className="flex items-center gap-1 min-w-0">
+          <button type="button" onClick={back} aria-label="חזרה" className="size-11 rounded-full flex items-center justify-center text-fg-strong hover:bg-surface">
+            <Glyph d="back" size={22} stroke={2.1} />
+          </button>
+          <h1 className="text-[26px] font-extrabold text-fg-strong">התראות</h1>
+          {unread > 0 && <span className="ms-1 min-w-6 h-6 px-1.5 rounded-full bg-fl-accent text-fl-inkOnLight text-[12px] font-extrabold flex items-center justify-center tabular-nums">{unread}</span>}
+        </div>
+        <div className="flex items-center">
           {unread > 0 && (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand text-brand-fg tabular-nums">{unread}</span>
+            <button type="button" onClick={readAll} className="h-11 px-2.5 rounded-xl text-[13.5px] font-semibold text-fg-muted hover:text-fg-strong hover:bg-surface">סימון הכל כנקרא</button>
           )}
-        </h1>
-        <div className="flex items-center gap-2">
-          {unread > 0 && (
-            <button onClick={readAll}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-              <CheckCheck className="w-3.5 h-3.5" /> סמן הכל כנקרא
-            </button>
-          )}
-          <button onClick={load}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" /> רענון
+          <button type="button" onClick={load} aria-label="רענון" className="size-11 rounded-full flex items-center justify-center text-fg-muted hover:text-fg-strong hover:bg-surface">
+            <Glyph d="refresh" size={19} />
           </button>
         </div>
-      </div>
+      </header>
 
-      {error && <div className="card p-3 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-400">{error}</div>}
+      <div className="px-4 pt-1 pb-3"><FilterChips value={filter} onChange={setFilter} rows={all} /></div>
+
+      {push === "default" && (
+        <div className="mx-3 sm:mx-4 mb-3 rounded-[18px] bg-surface p-3.5 flex items-center gap-3">
+          <Glyph d="bell" size={22} className="text-fg-strong" />
+          <p className="flex-1 text-[13px] text-fg-strong">לקבל התראות גם כשהאתר סגור, במכשיר הזה</p>
+          <button type="button" onClick={turnOnPush} disabled={pushBusy} className="btn-primary h-11 px-4 shrink-0">{pushBusy ? <Spinner /> : "הפעלה"}</button>
+        </div>
+      )}
+      {push === "denied" && <Notice tone="info" className="mx-3 sm:mx-4 mb-3">ההתראות חסומות בדפדפן. מאפשרים אותן בהגדרות האתר כדי לקבל עדכונים.</Notice>}
+      {error && <Notice tone="err" className="mx-3 sm:mx-4 mb-3">{error}</Notice>}
 
       {rows === null ? (
-        <SkeletonNotificationRows />
-      ) : rows.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-slate-500 dark:text-slate-400">אין התראות</div>
+        <div className="px-3 sm:px-4"><SkeletonNotificationRows /></div>
+      ) : shown.length === 0 ? (
+        <div className="mx-3 sm:mx-4 bg-surface rounded-[22px]"><EmptyNotifs filtered={filter !== "all"} /></div>
       ) : (
-        <ul className="space-y-2">
-          {rows.map(n => (
-            <li key={n.id}>
-              <Link to={notificationHref(n)} onClick={() => !n.read_at && markRead(n.id).catch(() => {})}
-                className={`card p-4 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
-                  n.read_at ? "" : "border-brand/30 bg-brand/[0.04] dark:bg-brand/5"}`}>
-                {n.actor?.avatar_url && n.type !== 'announcement' ? (
-                  <img src={sizedImage(n.actor.avatar_url, 36)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                ) : (
-                  <span className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
-                    {notificationBrandIcon(n) ? <BrandIcon name={notificationBrandIcon(n)} className="w-6 h-6" /> : notificationIcon(n)}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  {/* break-words, not truncate — the whole point of this page is that a
-                      long message is readable in full. */}
-                  <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed break-words whitespace-pre-line">
-                    {notificationText(n)}
-                  </p>
-                  {notificationPreview(n) && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-words whitespace-pre-line">{n.type === "announcement" ? notificationPreview(n) : `“${notificationPreview(n)}”`}</p>
-                  )}
-                  <p className="text-xs text-slate-400 mt-1">
-                    {new Date(n.created_at).toLocaleString("he-IL", {
-                      day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </div>
-                {!n.read_at && <span className="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5" />}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        groups.map(([title, list]) => (
+          <section key={title} aria-label={title} className="mb-2">
+            <h2 className="px-5 pt-2.5 pb-2 text-[13px] font-extrabold text-fg-muted">{title}</h2>
+            <ul className="bg-surface sm:mx-4 sm:rounded-[20px] overflow-hidden divide-y divide-line">
+              {list.map(n => (
+                <li key={n.id}>
+                  <NotifRow n={n} teamsByName={teamsByName} wrap
+                    onOpen={(x) => { if (!x.read_at) markRead(x.id).catch(() => {}) }}
+                    onAnswered={(x) => { if (!x.read_at) markRead(x.id).catch(() => {}) }} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
       )}
+      <p className="mt-4 text-center text-[12px] text-fg-muted">ההגדרות: <Link to="/me" className="font-bold text-fg-strong underline underline-offset-4">הדף שלי ← התראות</Link></p>
     </div>
   )
 }

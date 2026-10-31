@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { KeyRound, Lock, Loader2 } from "lucide-react"
-import { ApprovedStatus as CheckCircle2, Warning as AlertTriangle } from "@/components/icons/BrandIcons"
+import { BrandIcon } from "@/components/icons/BrandIcons"
+import { CTA, Field, Spinner, Notice, inputCls } from "@/components/fl/account/AccountKit"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/AuthContext"
 import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
@@ -65,85 +65,59 @@ export default function ResetPassword() {
     }
   }
 
-  const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"
+  const Badge = ({ icon }) => (
+    <span className="mx-auto mb-4 w-[72px] h-[72px] rounded-[22px] bg-surface flex items-center justify-center">
+      <BrandIcon name={icon} variant="large" className="w-11 h-11" />
+    </span>
+  )
 
+  // Floodlight: one centred card on the page colour; Rubik, 52px CTA, labelled fields.
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-10" dir="rtl">
-      <div className="card w-full max-w-sm p-6 shadow-xl text-center">
+      <div className="w-full max-w-sm bg-surface-page sm:bg-surface rounded-[26px] p-2 sm:p-6 text-center">
         {status === "checking" && (
-          <div className="py-6">
-            <Loader2 className="w-8 h-8 text-brand animate-spin mx-auto" />
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-4">מאמתים את הקישור…</p>
+          <div className="py-8 flex flex-col items-center gap-4 text-fg-muted" role="status">
+            <Spinner className="w-8 h-8" />
+            <p className="text-[14px]">מאמתים את הקישור…</p>
           </div>
         )}
 
         {status === "invalid" && (
           <div className="py-4">
-            <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-7 h-7 text-amber-600 dark:text-amber-400" />
-            </div>
-            <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">הקישור אינו תקף</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+            <Badge icon="waiting" />
+            <h1 className="text-[24px] font-black text-fg-strong">הקישור אינו תקף</h1>
+            <p className="text-[14.5px] text-fg-muted mt-2 leading-relaxed">
               ייתכן שהקישור פג תוקף או שכבר נעשה בו שימוש. אפשר לבקש קישור חדש דרך "שכחתי סיסמה".
             </p>
-            <button
-              onClick={() => { navigate("/"); openAuth() }}
-              className="mt-5 w-full py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors"
-            >
-              בקשת קישור חדש
-            </button>
+            <CTA className="mt-6" onClick={() => { navigate("/"); openAuth() }}>בקשת קישור חדש</CTA>
           </div>
         )}
 
         {status === "done" && (
-          <div className="py-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">הסיסמה עודכנה! 🎉</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">מעבירים אתכם לחשבון…</p>
+          <div className="py-4" role="status">
+            <Badge icon="verified" />
+            <h1 className="text-[24px] font-black text-fg-strong">הסיסמה עודכנה</h1>
+            <p className="text-[14.5px] text-fg-muted mt-2">מעבירים אתכם לחשבון…</p>
           </div>
         )}
 
         {status === "ready" && (
           <>
-            <div className="w-14 h-14 rounded-full bg-brand/10 dark:bg-brand/20 flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="w-7 h-7 text-brand dark:text-brand-light" />
-            </div>
-            <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">בחירת סיסמה חדשה</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">הזינו סיסמה חדשה לחשבון שלכם</p>
+            <Badge icon="profile" />
+            <h1 className="text-[24px] font-black text-fg-strong">בחירת סיסמה חדשה</h1>
+            <p className="text-[14.5px] text-fg-muted mt-1">סיסמה חדשה לחשבון שלכם</p>
 
-            <form onSubmit={submit} className="mt-5 space-y-3 text-right">
-              <div className="relative">
-                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="password" autoComplete="new-password" required minLength={6}
-                  placeholder="סיסמה חדשה (לפחות 6 תווים)"
-                  value={password} onChange={e => setPassword(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="password" autoComplete="new-password" required minLength={6}
-                  placeholder="אימות סיסמה חדשה"
-                  value={confirm} onChange={e => setConfirm(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-
-              {error && (
-                <p className="text-xs text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">{error}</p>
-              )}
-
-              <button
-                type="submit" disabled={busy}
-                className="w-full py-2.5 rounded-xl bg-brand text-white font-bold hover:bg-brand-hover transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-                עדכון סיסמה
-              </button>
+            <form onSubmit={submit} className="mt-6 flex flex-col gap-4 text-right">
+              <Field label="סיסמה חדשה" htmlFor="rp-new" hint="לפחות 6 תווים">
+                <input id="rp-new" type="password" dir="ltr" autoComplete="new-password" required minLength={6} autoFocus
+                  value={password} onChange={e => setPassword(e.target.value)} className={inputCls} />
+              </Field>
+              <Field label="אימות סיסמה חדשה" htmlFor="rp-confirm">
+                <input id="rp-confirm" type="password" dir="ltr" autoComplete="new-password" required minLength={6}
+                  value={confirm} onChange={e => setConfirm(e.target.value)} className={inputCls} />
+              </Field>
+              {error && <Notice tone="err">{error}</Notice>}
+              <CTA type="submit" disabled={busy}>{busy && <Spinner />} עדכון סיסמה</CTA>
             </form>
           </>
         )}
