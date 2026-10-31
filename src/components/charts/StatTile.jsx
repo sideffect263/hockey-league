@@ -8,20 +8,24 @@ import Sparkline from './Sparkline'
  *
  * `accent`: 'brand' colours the value orange; otherwise it inherits ink.
  */
-export default function StatTile({ icon, value, label, sub, accent = 'default', to, spark, sparkColor }) {
-  const valueCls = accent === 'brand' ? 'text-brand' : 'text-slate-900 dark:text-white'
+// Floodlight: card tile (radius 18), big .fl-num value; `accent="ink"` = the inverted ink tile
+// (the season's goals on the Stats board), `className` for grid spans.
+export default function StatTile({ icon, value, label, sub, accent = 'default', to, spark, sparkColor, className = '' }) {
+  const inkTile = accent === 'brand' || accent === 'ink'
+  const valueCls = inkTile ? 'text-surface' : 'text-fg-strong'
+  const subCls = inkTile ? 'text-surface/80' : 'text-fg-muted'
 
   const inner = (
     <>
       <div className="flex items-center justify-between gap-2">
-        <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${valueCls}`}>{value}</p>
-        {icon && <span className="text-slate-300 dark:text-slate-600 shrink-0">{icon}</span>}
+        <p className={`fl-num text-[30px] leading-none ${valueCls}`}>{value}</p>
+        {icon && <span className={`shrink-0 ${inkTile ? 'text-surface/70' : 'text-fg-muted'}`}>{icon}</span>}
       </div>
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{label}</p>
-      {sub && <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{sub}</p>}
+      <p className={`text-[12.5px] font-medium mt-1.5 ${subCls}`}>{label}</p>
+      {sub && <p className={`text-[12px] mt-0.5 truncate ${subCls}`}>{sub}</p>}
       {spark && spark.length > 0 && (
         <div className="h-6 mt-2 -mb-0.5" dir="ltr">
-          <Sparkline values={spark} color={sparkColor} />
+          <Sparkline values={spark} color={sparkColor || (inkTile ? '#F2B233' : undefined)} />
         </div>
       )}
     </>
@@ -29,10 +33,10 @@ export default function StatTile({ icon, value, label, sub, accent = 'default', 
 
   if (to) {
     return (
-      <Link to={to} className="card-hover p-4 flex flex-col group focus:outline-none focus:ring-2 focus:ring-brand/30">
+      <Link to={to} className={`rounded-[18px] p-3.5 flex flex-col group hover:brightness-[.98] dark:hover:brightness-110 transition ${inkTile ? 'bg-fg-strong' : 'bg-surface'} ${className}`}>
         {inner}
       </Link>
     )
   }
-  return <div className="card p-4 flex flex-col">{inner}</div>
+  return <div className={`rounded-[18px] p-3.5 flex flex-col ${inkTile ? 'bg-fg-strong' : 'bg-surface'} ${className}`}>{inner}</div>
 }

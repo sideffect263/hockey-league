@@ -3,11 +3,12 @@ import { X, Loader2, Image as ImageIcon } from "lucide-react"
 import { EditIcon as Pencil } from "@/components/icons/BrandIcons"
 import { updateTeamDetails, uploadTeamLogo } from "@/lib/api"
 import { isSafeImage, IMAGE_TYPE_MESSAGE, IMAGE_TYPE_ERROR } from "@/lib/imageType"
+import { heroPalette, heroGradient } from "@/components/fl/teams/FLTeamsKit"
 import TeamLogo from "@/components/TeamLogo"
 import { REGISTER_LEAD_OPTIONS, setTeamRegisterLeadDays } from "@/lib/availability"
 
-const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-const labelCls = "block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5"
+const inputCls = "w-full min-h-[44px] bg-surface-page border border-line rounded-control px-3.5 text-[15px] text-fg-strong placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-fg-strong/20 focus:border-fg-muted"
+const labelCls = "block text-[12px] font-bold text-fg-muted mb-1.5"
 
 /**
  * Coach/admin edits their team's descriptive fields + crest. Writes go through
@@ -70,31 +71,47 @@ export default function TeamEditModal({ team, onClose, onSaved }) {
   }
 
   // Live preview of the crest with the chosen file + color.
-  const previewTeam = { ...team, name, primary_color: primary, logo_url: logoPreview || team.logo_url }
+  const previewTeam = { ...team, name, primary_color: primary, secondary_color: secondary, logo_url: logoPreview || team.logo_url }
+  // Live hero preview in the chosen colours (board CoachTools): a light pick (white /
+  // grey) keeps its white → grey and flips the text to ink, exactly like the team page.
+  const previewPal = heroPalette(previewTeam)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl relative max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} aria-label="סגור" className="absolute top-4 left-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="עריכת קבוצה"
+        className="w-full sm:max-w-md bg-surface rounded-t-[28px] sm:rounded-[24px] shadow-xl relative max-h-[92vh] overflow-y-auto fl-sheet-in pb-[env(safe-area-inset-bottom)]" onClick={e => e.stopPropagation()}>
+        <span aria-hidden="true" className="sm:hidden block mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-line" />
+        <button onClick={onClose} aria-label="סגור" className="absolute top-3 left-3 size-11 inline-flex items-center justify-center rounded-full text-fg-muted hover:bg-surface-sunken transition-colors">
           <X className="w-5 h-5" />
         </button>
 
         <div className="p-6">
           <div className="flex items-center gap-2 mb-5">
-            <Pencil className="w-5 h-5 text-brand" />
-            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">עריכת קבוצה</h3>
+            <Pencil className="w-6 h-6" />
+            <h3 className="text-[22px] font-extrabold text-fg-strong">עריכת קבוצה</h3>
           </div>
+
+          <div className="relative overflow-hidden rounded-[20px] mb-4 px-4 py-4 flex items-center gap-3" style={{ backgroundImage: heroGradient(previewPal), color: previewPal.ink }}>
+            <TeamLogo team={previewTeam} px={56} disc={false} shadow />
+            <div className="min-w-0">
+              <p className="text-[20px] font-extrabold leading-tight truncate">{name || team.name}</p>
+              <p className="text-[12px] opacity-80">{[city, founded ? `נוסדה ${founded}` : null].filter(Boolean).join(' · ') || 'תצוגה מקדימה'}</p>
+            </div>
+          </div>
+          {previewPal.light && (
+            <p className="-mt-2 mb-4 text-[12px] text-fg-muted">צבע בהיר: הטקסט על הקבוצה יופיע בכהה כדי שייקרא.</p>
+          )}
 
           {/* Crest */}
           <div className="flex items-center gap-4 mb-4">
-            <TeamLogo team={previewTeam} size={14} />
+            <TeamLogo team={previewTeam} px={56} />
             <div>
               <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={pickLogo} className="hidden" />
               <button type="button" onClick={() => fileRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                className="inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-control bg-surface-sunken text-fg-strong text-[13px] font-bold hover:brightness-95 transition">
                 <ImageIcon className="w-3.5 h-3.5" /> {team.logo_url || logoFile ? "החלפת סמל" : "העלאת סמל"}
               </button>
-              <p className="text-[11px] text-slate-400 mt-1.5">PNG/JPG · עד 3MB</p>
+              <p className="text-[12px] text-fg-muted mt-1.5">PNG/JPG · עד 3MB</p>
             </div>
           </div>
 
@@ -123,16 +140,16 @@ export default function TeamEditModal({ team, onClose, onSaved }) {
                 <label className={labelCls}>צבע ראשי</label>
                 <div className="flex items-center gap-2">
                   <input type="color" value={primary} onChange={e => setPrimary(e.target.value)}
-                    className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent cursor-pointer" />
-                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{primary}</span>
+                    aria-label="צבע ראשי" className="size-11 rounded-control border border-line bg-transparent cursor-pointer" />
+                  <span dir="ltr" className="text-[12px] font-mono text-fg-muted">{primary}</span>
                 </div>
               </div>
               <div>
                 <label className={labelCls}>צבע משני</label>
                 <div className="flex items-center gap-2">
                   <input type="color" value={secondary} onChange={e => setSecondary(e.target.value)}
-                    className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent cursor-pointer" />
-                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{secondary}</span>
+                    aria-label="צבע משני" className="size-11 rounded-control border border-line bg-transparent cursor-pointer" />
+                  <span dir="ltr" className="text-[12px] font-mono text-fg-muted">{secondary}</span>
                 </div>
               </div>
             </div>
@@ -142,25 +159,25 @@ export default function TeamEditModal({ team, onClose, onSaved }) {
                 {REGISTER_LEAD_OPTIONS.map(o => (
                   <button key={o.days ?? 'default'} type="button" onClick={() => setLeadDays(o.days)}
                     aria-pressed={leadDays === o.days}
-                    className={`px-2 py-2 rounded-lg text-xs font-semibold border transition-colors ${leadDays === o.days
-                      ? 'bg-brand text-white border-brand'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-brand'}`}>
+                    className={`min-h-[44px] px-2 rounded-control text-[13px] font-bold border transition-colors ${leadDays === o.days
+                      ? 'bg-fg-strong text-surface border-fg-strong'
+                      : 'bg-surface-page text-fg-strong border-line hover:border-fg-muted'}`}>
                     {o.label}
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">
+              <p className="text-[12px] text-fg-muted mt-1.5">
                 {leadDays ? 'מי שלא ענה יקבל תזכורת נוספת ביום ראשון של שבוע המשחק.' : 'השחקנים מקבלים את ההתראה ביום ראשון של שבוע המשחק.'}
               </p>
             </div>
           </div>
 
-          {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="mt-3 text-sm font-semibold text-fl-red">{error}</p>}
 
           <div className="mt-5 flex gap-2">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">ביטול</button>
+            <button onClick={onClose} className="flex-1 min-h-[48px] rounded-control bg-surface-sunken text-fg-strong font-bold hover:brightness-95 transition">ביטול</button>
             <button onClick={save} disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              className="btn-primary flex-1 min-h-[48px] disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               שמירה
             </button>

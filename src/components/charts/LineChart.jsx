@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
-import { chrome } from '@/lib/chartPalette'
+import { flChrome } from '@/components/fl/teams/flChart'
 import { axisTicks, scale, valueAt } from './chartUtils'
 
 /**
@@ -28,7 +28,9 @@ const M = { top: 12, right: 62, bottom: 22, left: 26 }
 // `endLabels={false}` drops the end-of-line labels (and their gutter) — for series that
 // end at different x, where the leader lines would cut across the plot; the caller's
 // legend then carries the identity.
-export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 250, endLabels = true }) {
+// `rtl` runs time RIGHT → LEFT (Floodlight board: the newest match day on the left), with
+// the y labels on the right and the end labels in a left gutter. Geometry stays physical.
+export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 250, endLabels = true, rtl = false }) {
   const VB_H = vbH
   const RIGHT = endLabels ? M.right : 10
   const { dark } = useTheme()
@@ -42,8 +44,8 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
   const drawable = series.filter((s) => s.points && s.points.length)
   if (!drawable.length) return null
 
-  const c = chrome(dark)
-  const ink = dark ? '#d2d8e8' : '#2d3752'
+  const c = flChrome(dark)
+  const ink = flChrome(dark).ink
   const surface = c.surface
 
   const allX = drawable.flatMap((s) => s.points.map((p) => p.x))
@@ -55,14 +57,16 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
   const maxY = Math.max(...drawable.flatMap((s) => s.points.map((p) => p.y)), 1)
   const { yMax, ticks } = axisTicks(maxY)
 
-  const sx = scale(minX, maxX, M.left, VB_W - RIGHT)
+  const plotL = rtl ? RIGHT : M.left
+  const plotR = rtl ? VB_W - M.left : VB_W - RIGHT
+  const sx = rtl ? scale(minX, maxX, plotR, plotL) : scale(minX, maxX, plotL, plotR)
   const sy = scale(0, yMax, VB_H - M.bottom, M.top)
 
   // Unique, sorted match-day x-values for crosshair snapping.
   const snapXs = Array.from(new Set(allX)).sort((a, b) => a - b)
 
   // End-of-line labels, de-collided vertically in the right gutter.
-  const labelX = VB_W - RIGHT + 6
+  const labelX = rtl ? plotL - 20 : plotR + 6
   const ends = drawable
     .map((s) => {
       const lp = s.points[s.points.length - 1]
@@ -83,7 +87,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
     if (!rect) return
     const clientX = e.touches ? e.touches[0].clientX : e.clientX
     const fx = (clientX - rect.left) / rect.width
-    const vbX = Math.max(M.left, Math.min(VB_W - RIGHT, fx * VB_W))
+    const vbX = Math.max(plotL, Math.min(plotR, fx * VB_W))
     // nearest match-day
     let best = snapXs[0]
     let bestD = Infinity
@@ -111,8 +115,8 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
           const y = sy(t)
           return (
             <g key={`y${i}`}>
-              <line x1={M.left} y1={y} x2={VB_W - RIGHT} y2={y} stroke={c.grid} strokeWidth="1" />
-              <text x={M.left - 4} y={y + 3} textAnchor="end" fontSize="9" fill={c.muted}>{t}</text>
+              <line x1={plotL} y1={y} x2={plotR} y2={y} stroke={c.grid} strokeWidth="1" />
+              <text x={rtl ? plotR + 4 : plotL - 4} y={y + 3} textAnchor={rtl ? 'start' : 'end'} fontSize="9" fill={c.muted}>{t}</text>
             </g>
           )
         })}
@@ -120,7 +124,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
         {/* vertical month gridlines + x labels */}
         {xTicks.map((t, i) => {
           const x = sx(t.x)
-          if (x < M.left - 0.5 || x > VB_W - RIGHT + 0.5) return null
+          if (x < plotL - 0.5 || x > plotR + 0.5) return null
           return (
             <g key={`x${i}`}>
               <line x1={x} y1={M.top} x2={x} y2={bottom} stroke={c.grid} strokeWidth="1" opacity="0.6" />
@@ -130,7 +134,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
         })}
 
         {/* baseline axis */}
-        <line x1={M.left} y1={bottom} x2={VB_W - RIGHT} y2={bottom} stroke={c.axis} strokeWidth="1" />
+        <line x1={plotL} y1={bottom} x2={plotR} y2={bottom} stroke={c.axis} strokeWidth="1" />
 
         {/* series lines */}
         {drawable.map((s) => (
@@ -162,7 +166,7 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
           const cx = labelX + 7
           return (
             <g key={`end-${s.id}`} pointerEvents="none">
-              <line x1={ex} y1={sy(s.points[s.points.length - 1].y)} x2={labelX - 2} y2={cy} stroke={s.color} strokeWidth="1" opacity="0.5" />
+              <line x1={ex} y1={sy(s.points[s.points.length - 1].y)} x2={rtl ? labelX + 16 : labelX - 2} y2={cy} stroke={s.color} strokeWidth="1" opacity="0.5" />
               <clipPath id={`lc-${s.id}`}><circle cx={cx} cy={cy} r="7" /></clipPath>
               {s.team?.logo_url && !crestFailed[s.id] ? (
                 <>
@@ -177,16 +181,16 @@ export default function LineChart({ series = [], xTicks = [], unit = '', vbH = 2
                 </>
               )}
               <circle cx={cx} cy={cy} r="7" fill="none" stroke={surface} strokeWidth="1.5" />
-              <text x={labelX + 17} y={cy + 3} fontSize="9" fontWeight="700" fill={ink}>{s.total}</text>
+              <text x={rtl ? labelX - 3 : labelX + 17} y={cy + 3} textAnchor={rtl ? 'end' : 'start'} fontSize="9" fontWeight="700" fill={ink}>{s.total}</text>
             </g>
           )
         })}
 
         {/* hover capture over the plot */}
         <rect
-          x={M.left}
+          x={plotL}
           y={M.top}
-          width={VB_W - RIGHT - M.left}
+          width={plotR - plotL}
           height={bottom - M.top}
           fill="transparent"
           onMouseMove={handleMove}

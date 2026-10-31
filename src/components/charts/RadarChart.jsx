@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
-import { chrome } from '@/lib/chartPalette'
+import { flChrome } from '@/components/fl/teams/flChart'
 
 /**
  * Radar / spider chart — one or more series plotted over a shared set of axes
@@ -28,8 +28,8 @@ export default function RadarChart({ axes = [], series = [], max = 1, rings = []
 
   if (!axes.length || !series.length) return null
 
-  const c = chrome(dark)
-  const ink = dark ? '#d2d8e8' : '#2d3752'
+  const c = flChrome(dark)
+  const ink = flChrome(dark).ink
   const surface = c.surface
   const N = axes.length
 

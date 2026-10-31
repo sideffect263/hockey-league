@@ -6,13 +6,14 @@ import { ChevronLeft, RefreshCw } from "lucide-react"
 import { Trophy, Calendar, BrandTile } from "@/components/icons/BrandIcons"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
+import { FLTPills } from "@/components/fl/teams/FLTeamsKit"
 import { entityPath } from "@/lib/slugs"
 import { TournamentsSkeleton } from "@/components/skeletons/PageSkeletons"
 
 export const TOURNAMENT_STATUS = {
-  upcoming: { label: "מתקרב", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  active: { label: "פעיל", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  completed: { label: "הסתיים", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400" },
+  upcoming: { label: "מתקרב", cls: "bg-[#2F6FD6] text-white" },
+  active: { label: "פעיל", cls: "bg-fl-accent text-[#11161D]" },
+  completed: { label: "הסתיים", cls: "bg-surface-sunken text-fg-muted" },
 }
 
 const fmtDate = (d) => (d ? format(new Date(d), "d/M/yyyy") : null)
@@ -27,6 +28,7 @@ export default function Tournaments() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  const [filter, setFilter] = useState("all")
   useEffect(() => { load() }, [])
 
   const load = async () => {
@@ -56,40 +58,48 @@ export default function Tournaments() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="page-title flex items-center gap-2.5">
-          <BrandTile name="trophy" className="w-10 h-10 -my-1.5" /> טורנירים
-        </h1>
-        <p className="page-subtitle mt-1">טורנירים לקבוצות הנוער</p>
-      </motion.div>
+    <div className="px-3 pt-4 pb-8 sm:px-6 lg:px-8 max-w-4xl mx-auto space-y-3">
+      <header className="flex items-center gap-2.5 px-1">
+        <BrandTile name="trophy" className="w-11 h-11" />
+        <div>
+          <h1 className="text-[28px] font-extrabold leading-tight text-fg-strong">טורנירים</h1>
+          <p className="text-[13px] text-fg-muted">טורנירים לקבוצות הנוער</p>
+        </div>
+      </header>
+
+      {items.length > 0 && (
+        <FLTPills label="סטטוס" value={filter} onChange={setFilter} items={[
+          { value: "all", label: "הכל", count: items.length },
+          ...["active", "upcoming", "completed"].map(k => ({ value: k, label: TOURNAMENT_STATUS[k].label, count: items.filter(t => (t.status || "active") === k).length })).filter(x => x.count > 0),
+        ]} />
+      )}
 
       {items.length === 0 ? (
-        <div className="card p-10 flex flex-col items-center text-center gap-2">
-          <Trophy className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">אין טורנירים עדיין</p>
-          <p className="text-xs text-slate-400">טורנירים לנוער יתווספו כאן בהמשך</p>
+        <div className="rounded-card bg-surface p-10 flex flex-col items-center text-center gap-2">
+          <Trophy className="w-10 h-10" />
+          <p className="text-[15px] font-bold text-fg-strong">אין טורנירים עדיין</p>
+          <p className="text-[13px] text-fg-muted">טורנירים לנוער יתווספו כאן בהמשך</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map((t, i) => {
+          {items.filter(t => filter === "all" || (t.status || "active") === filter).map((t, i) => {
             const st = TOURNAMENT_STATUS[t.status] || TOURNAMENT_STATUS.active
             const range = dateRange(t)
             return (
               <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <Link to={entityPath('tournaments', t)} className="card card-hover p-4 sm:p-5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-brand/10 flex items-center justify-center shrink-0">
-                    <Trophy className="w-6 h-6 text-brand" />
+                <Link to={entityPath('tournaments', t)} className="rounded-[18px] bg-surface p-4 flex items-center gap-4 hover:brightness-[.98] dark:hover:brightness-110 transition">
+                  <div className="size-12 rounded-[14px] bg-fl-accent/25 flex items-center justify-center shrink-0">
+                    <Trophy className="w-8 h-8" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="font-bold text-base text-slate-900 dark:text-white truncate">{t.name}</h2>
-                      <span className="stat-pill bg-brand/10 text-brand-strong dark:bg-brand/20 dark:text-brand-light">{AGE_LABEL[t.age_group] || t.age_group}</span>
-                      <span className={`stat-pill ${st.cls}`}>{st.label}</span>
+                      <h2 className="text-[16px] font-extrabold text-fg-strong truncate">{t.name}</h2>
+                      <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-surface-sunken text-fg-strong">{AGE_LABEL[t.age_group] || t.age_group}</span>
+                      <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-md ${st.cls}`}>{st.label}</span>
                     </div>
-                    {range && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1"><Calendar className="w-4 h-4" /> <span dir="ltr">{range}</span></p>}
+                    {range && <p className="text-[12.5px] text-fg-muted mt-1 flex items-center gap-1"><Calendar className="w-4 h-4" /> <span dir="ltr">{range}</span></p>}
                   </div>
-                  <ChevronLeft className="w-5 h-5 text-slate-300 dark:text-slate-600 shrink-0" />
+                  <ChevronLeft className="w-5 h-5 text-fg-muted shrink-0" aria-hidden="true" />
                 </Link>
               </motion.div>
             )

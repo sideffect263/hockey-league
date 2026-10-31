@@ -94,20 +94,21 @@ export default function SeasonPicker() {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={`עונת ${season.name} — בחירת עונה`}
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+        // The badge stays small under the wordmark; the ::after pad makes its target ≥ 44px.
+        className={`relative inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-colors after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
           isPast
             ? "bg-brand text-brand-fg hover:bg-brand-hover"
-            : "bg-brand/10 text-brand-strong dark:text-brand-light hover:bg-brand/20"
+            : "bg-surface-sunken text-fg-strong hover:brightness-95"
         }`}
       >
         {isPast && <History className="w-4 h-4" aria-hidden="true" />}
-        עונת {season.name}
+        עונת <bdi dir="ltr">{season.name}</bdi>
         {hasPast && <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />}
       </button>
 
       {open && (
-        <div className="absolute start-0 mt-2 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-line bg-surface-nav shadow-xl z-50">
-          <p className="px-3.5 pt-3 pb-1.5 text-[11px] font-bold text-fg-subtle">בחירת עונה</p>
+        <div className="absolute start-0 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-[18px] border border-line bg-surface shadow-xl z-50 fl-fade-in">
+          <p className="px-4 pt-3.5 pb-1.5 text-[12px] font-bold text-fg-muted">בחירת עונה</p>
           <ul className="pb-1">
             {seasons.map(s => {
               const live = s.status === "active"
@@ -118,21 +119,21 @@ export default function SeasonPicker() {
                     to={live ? "/standings" : `/archive/${encodeURIComponent(s.slug || s.id)}`}
                     onClick={() => setOpen(false)}
                     aria-current={selected ? "true" : undefined}
-                    className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${selected ? "bg-brand/10" : "hover:bg-surface-sunken"}`}
+                    className={`flex items-center gap-3 min-h-[56px] px-4 py-2 transition-colors ${selected ? "bg-surface-sunken" : "hover:bg-surface-sunken"}`}
                   >
                     <span className="size-3 rounded-full shrink-0 ring-2 ring-white/70 dark:ring-black/30" style={{ background: PALETTE_SWATCH[s.palette] || PALETTE_SWATCH.rink }} aria-hidden="true" />
                     <span className="flex-1 min-w-0">
-                      <span className="block text-sm font-bold text-fg-strong">עונת {s.name}</span>
+                      <span className="block text-[15px] font-bold text-fg-strong">עונת <bdi dir="ltr">{s.name}</bdi></span>
                       <span className="block text-[11px] text-fg-muted">{live ? "העונה הנוכחית" : "עונה שהסתיימה · טבלה, שחקנים ומשחקים"}</span>
                     </span>
-                    {selected && <Check className="w-4 h-4 text-brand-strong dark:text-brand-light shrink-0" aria-hidden="true" />}
+                    {selected && <Check className="w-5 h-5 text-fg-strong shrink-0" aria-hidden="true" />}
                   </Link>
                 </li>
               )
             })}
           </ul>
           {hasPast && (
-            <Link to="/archive" onClick={() => setOpen(false)} className="block border-t border-line px-3.5 py-2.5 text-xs font-semibold text-brand-strong dark:text-brand-light hover:bg-surface-sunken">
+            <Link to="/archive" onClick={() => setOpen(false)} className="flex items-center min-h-[48px] border-t border-line px-4 text-[13px] font-bold text-fg-strong hover:bg-surface-sunken">
               ארכיון כל העונות ←
             </Link>
           )}

@@ -30,15 +30,15 @@ export default function ChartCard({
   const [view, setView] = useState(defaultView)
 
   return (
-    <div className={`card p-4 sm:p-5 flex flex-col ${className}`}>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="min-w-0">
-          <h3 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
+    <div className={`rounded-[22px] bg-surface p-4 sm:p-5 flex flex-col min-w-0 ${className}`}>
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 mb-3">
+        <div className="min-w-0 flex-1 basis-48">
+          <h3 className="flex items-center gap-2 text-[17px] font-extrabold text-fg-strong">
             {icon}
             <span className="truncate">{title}</span>
           </h3>
           {subtitle && (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
+            <p className="text-[12.5px] text-fg-muted mt-0.5">{subtitle}</p>
           )}
         </div>
 
@@ -48,7 +48,7 @@ export default function ChartCard({
         {toolbar ? (
           <div className="shrink-0">{toolbar}</div>
         ) : table ? (
-          <div className="flex shrink-0 rounded-lg bg-slate-100 dark:bg-slate-700/50 p-0.5" role="tablist" aria-label="תצוגה">
+          <div className="flex shrink-0 rounded-control bg-surface-sunken p-[3px]" role="tablist" aria-label="תצוגה">
             <ToggleBtn active={view === 'chart'} onClick={() => setView('chart')} icon={<BarChart3 className="w-4 h-4" />} label="תרשים" />
             <ToggleBtn active={view === 'table'} onClick={() => setView('table')} icon={<Table2 className="w-3 h-3" />} label="טבלה" />
           </div>
@@ -64,7 +64,7 @@ export default function ChartCard({
       {legend}
 
       {footnote && (
-        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-3 leading-relaxed">{footnote}</p>
+        <p className="text-[11.5px] text-fg-muted mt-3 leading-relaxed">{footnote}</p>
       )}
     </div>
   )
@@ -78,7 +78,7 @@ export default function ChartCard({
  */
 export function SegToggle({ options = [], value, onChange, label = 'תצוגה' }) {
   return (
-    <div className="flex shrink-0 rounded-lg bg-slate-100 dark:bg-slate-700/50 p-0.5" role="tablist" aria-label={label}>
+    <div className="flex shrink-0 rounded-control bg-surface-sunken p-[3px]" role="tablist" aria-label={label}>
       {options.map((o) => (
         <ToggleBtn key={o.id} active={value === o.id} onClick={() => onChange(o.id)} icon={o.icon} label={o.label} />
       ))}
@@ -93,10 +93,10 @@ function ToggleBtn({ active, onClick, icon, label }) {
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`px-2 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 transition-colors ${
+      className={`min-h-[40px] px-3 rounded-[11px] text-[13px] flex items-center justify-center gap-1.5 transition-colors ${
         active
-          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
-          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+          ? 'bg-surface text-fg-strong font-bold shadow-sm'
+          : 'text-fg-muted font-medium hover:text-fg-strong'
       }`}
     >
       {icon}
@@ -113,17 +113,17 @@ function ChartTable({ table }) {
     <div className="overflow-x-auto -mx-1">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-100 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
+          <tr className="border-b border-line text-[11px] text-fg-muted">
             {head.map((h, i) => (
               <th key={i} className={`py-2 px-2 font-semibold ${alignCls(i)}`}>{h}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+        <tbody className="divide-y divide-line">
           {rows.map((row, r) => (
-            <tr key={r} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <tr key={r}>
               {row.map((cell, c) => (
-                <td key={c} className={`py-2 px-2 ${alignCls(c)} ${c === 0 ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-300'}`}>
+                <td key={c} className={`py-2 px-2 ${alignCls(c)} ${c === 0 ? 'font-medium text-fg-strong' : 'text-fg-muted tabular-nums'}`}>
                   {cell}
                 </td>
               ))}

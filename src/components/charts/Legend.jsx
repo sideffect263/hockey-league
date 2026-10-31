@@ -12,9 +12,9 @@ export default function Legend({ items = [] }) {
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-3">
       {items.map((it) => (
-        <span key={it.id} className="inline-flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-          <span className="w-3.5 h-1 rounded-full shrink-0" style={{ background: it.color }} aria-hidden="true" />
-          <TeamLogo team={it.team} size={5} />
+        <span key={it.id} className="inline-flex items-center gap-1.5 text-[12px] text-fg-muted">
+          <span className="w-3.5 h-1.5 rounded-full shrink-0" style={{ background: it.color }} aria-hidden="true" />
+          {it.team && <TeamLogo team={it.team} px={20} />}
           <span className="whitespace-nowrap">{it.name}</span>
         </span>
       ))}

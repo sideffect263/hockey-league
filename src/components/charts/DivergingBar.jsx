@@ -1,5 +1,6 @@
 import { useTheme } from '@/lib/ThemeContext'
-import { diverging, chrome } from '@/lib/chartPalette'
+import { diverging } from '@/lib/chartPalette'
+import { flChrome } from '@/components/fl/teams/flChart'
 import TeamLogo from '@/components/TeamLogo'
 
 /**
@@ -24,7 +25,7 @@ export default function DivergingBar({ data = [] }) {
   if (!data.length) return null
 
   const div = diverging(dark)
-  const axis = chrome(dark).axis
+  const axis = flChrome(dark).axis
   const maxAbs = Math.max(1, ...data.map((d) => Math.abs(d.gd)))
 
   return (

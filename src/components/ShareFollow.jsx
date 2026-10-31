@@ -33,9 +33,11 @@ export function ShareFollowButton({ targetType, name, onDark = false }) {
   }
   return (
     <button onClick={share}
-      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors ${onDark
-        ? "border-white/25 bg-white/10 text-white hover:bg-white/20"
-        : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+      className={`inline-flex items-center gap-1.5 min-h-[44px] px-3.5 text-[13px] font-bold rounded-control transition-colors ${onDark === "light"
+        ? "bg-[#11161D]/[0.07] text-[#11161D] hover:bg-[#11161D]/[0.12]"
+        : onDark
+          ? "bg-[#080C12]/35 text-white hover:bg-[#080C12]/50"
+          : "bg-surface-sunken text-fg-strong hover:brightness-95"}`}>
       {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Share2 className="w-4 h-4" />} שיתוף לחברים
     </button>
   )
@@ -73,8 +75,8 @@ export function FollowInvite({ targetType, targetId, name }) {
   }
 
   return (
-    <div className="card p-4 flex items-center gap-3 border-brand/30 bg-brand/5">
-      <BellRing className="w-5 h-5 text-brand shrink-0" />
+    <div className="rounded-card bg-surface p-4 flex items-center gap-3 ring-2 ring-fl-accent/60">
+      <BellRing className="w-5 h-5 text-fg-strong shrink-0" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         {state === "done" ? (
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -90,12 +92,12 @@ export function FollowInvite({ targetType, targetId, name }) {
       </div>
       {state !== "done" && (
         <button onClick={accept} disabled={state === "busy"}
-          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-brand text-white hover:opacity-90 transition-opacity disabled:opacity-50">
+          className="btn-primary shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3.5 text-[13px] disabled:opacity-50">
           {state === "busy" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-4 h-4" />}
           אוהד/ת + התראות
         </button>
       )}
-      <button onClick={dismiss} aria-label="סגירה" className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+      <button onClick={dismiss} aria-label="סגירה" className="shrink-0 size-11 inline-flex items-center justify-center rounded-full text-fg-muted hover:text-fg-strong hover:bg-surface-sunken">
         <X className="w-4 h-4" />
       </button>
     </div>
