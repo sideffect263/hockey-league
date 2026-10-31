@@ -116,6 +116,22 @@ export default {
         // Podium third place — a full scale like success/danger/warning, because the
         // medal call-sites need a light fill, a dark fill and readable ink on each.
         bronze: ramp(bronze),
+        // ─── Floodlight (2026-10-31) — same values as iOS FL.* / Android FL.* ──
+        // bg-fl-accent (the ONE amber accent, never body text), text-fl-live, the
+        // three card colours, the crest disc, ink for text on a light team colour.
+        fl: {
+          accent: 'rgb(var(--fl-accent) / <alpha-value>)',
+          live: 'rgb(var(--fl-live) / <alpha-value>)',
+          blue: 'rgb(var(--fl-blue) / <alpha-value>)',
+          yellow: 'rgb(var(--fl-yellow) / <alpha-value>)',
+          red: 'rgb(var(--fl-red) / <alpha-value>)',
+          disc: 'rgb(var(--fl-disc) / <alpha-value>)',
+          inkOnLight: 'rgb(var(--fl-ink-on-light) / <alpha-value>)',
+          night: 'rgb(var(--fl-night) / <alpha-value>)',
+        },
+      },
+      fontFamily: {
+        sans: ['Rubik', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       // Non-color primitives, aliased to today's exact values so a restyle can round
       // corners / soften shadows / retune type from one place. (Additive — nothing
@@ -125,8 +141,8 @@ export default {
         '2xs': ['11px', { lineHeight: '1' }],
       },
       borderRadius: {
-        card: '1rem',      // rounded-2xl — cards
-        control: '0.75rem',// rounded-xl — buttons/panels
+        card: '1.25rem',   // Floodlight card radius 20px
+        control: '0.875rem',// Floodlight button radius 14px
         item: '0.5rem',    // rounded-lg — small controls
         chip: '0.375rem',  // rounded-md — chips
       },

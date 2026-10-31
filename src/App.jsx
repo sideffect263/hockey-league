@@ -45,6 +45,7 @@ const MobileApp = lazy(() => import('./pages/MobileApp'))
 const Features = lazy(() => import('./pages/Features'))
 const Career = lazy(() => import('./pages/Career'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+const Search = lazy(() => import('./pages/Search'))
 
 const SeasonModeContext = createContext()
 export const useSeasonMode = () => useContext(SeasonModeContext)
@@ -267,6 +268,7 @@ function App() {
             <Route path="/stream-debug" element={<StreamDebug />} />
             <Route path="/archive" element={<ArchivePage />} />
             <Route path="/archive/:seasonId" element={<ArchivePage />} />
+            <Route path="/search" element={<Search />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>

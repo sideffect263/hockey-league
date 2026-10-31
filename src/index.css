@@ -1,33 +1,54 @@
-/* Heebo is self-hosted (public/fonts, the variable font: one file per script covers 400–800).
-   Google Fonts' stylesheet was render-blocking (~230 ms on PageSpeed, a second origin before
-   first paint); index.html preloads the Hebrew file. Re-download: fonts.googleapis.com/css2?
-   family=Heebo:wght@400..800 with a Chrome UA, keep hebrew/latin/latin-ext.
-   Served "immutable" (vercel.json), so a changed file needs a new name. */
-/* hebrew */
+/* Floodlight (2026-10-31): Rubik only, self-hosted like Heebo was (public/fonts, variable
+   files: one per script covers 400–900; the italic files carry the 800-italic number style).
+   index.html preloads the Hebrew upright file. Re-download: fonts.googleapis.com/css2?
+   family=Rubik:ital,wght@0,400..900;1,400..900 with a Chrome UA, keep hebrew/latin/latin-ext.
+   Served "immutable" (vercel.json), so a changed file needs a new name. Licence: SIL OFL 1.1. */
 @font-face {
-  font-family: 'Heebo';
+  font-family: 'Rubik';
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 400 900;
   font-display: swap;
-  src: url(/fonts/heebo-hebrew.woff2) format('woff2');
+  src: url(/fonts/rubik-hebrew.woff2) format('woff2');
   unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
 }
-/* latin-ext */
 @font-face {
-  font-family: 'Heebo';
+  font-family: 'Rubik';
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 400 900;
   font-display: swap;
-  src: url(/fonts/heebo-latin-ext.woff2) format('woff2');
+  src: url(/fonts/rubik-latin-ext.woff2) format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
-/* latin */
 @font-face {
-  font-family: 'Heebo';
+  font-family: 'Rubik';
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 400 900;
   font-display: swap;
-  src: url(/fonts/heebo-latin.woff2) format('woff2');
+  src: url(/fonts/rubik-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url(/fonts/rubik-hebrew-italic.woff2) format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url(/fonts/rubik-latin-ext-italic.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url(/fonts/rubik-latin-italic.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @tailwind base;
@@ -54,116 +75,128 @@
      slate/orange values, so a full restyle later is a one-place edit here.
      Light values live on :root; dark overrides live in the html.dark block. */
   :root {
-    /* ── "Rink" palette · LIGHT (1A) ──  navy neutrals + royal-blue primary,
-       gold / green / red support. Everything reads off these vars. */
-    /* Brand (primary) */
-    --brand: 59 79 196;         /* #3B4FC4 royal blue */
-    --brand-hover: 46 62 168;   /* darker press */
-    --brand-strong: 59 79 196;  /* accent text on light */
-    --brand-light: 138 160 255; /* accent text on dark */
-    --brand-fg: 255 255 255;    /* text on a brand-filled surface */
-    --brand-deep: 30 42 120;    /* #1E2A78 deep navy — hero/emphasis */
+    /* ── Floodlight · LIGHT (System board, 2026-10-28; web 2026-10-31) ──
+       Warm paper neutrals, ink as the primary, ONE amber accent (--fl-accent) for
+       indicators / "your team" / the + button — never body text. Team colours carry
+       the rest. Same values as iOS FL.* (Floodlight.swift) and Android FL.* */
+    /* Brand (primary) = ink: the main button is an ink fill with paper text. */
+    --brand: 17 22 29;          /* #11161D ink */
+    --brand-hover: 42 50 61;    /* #2A323D */
+    --brand-strong: 17 22 29;   /* accent text on light */
+    --brand-light: 236 234 228; /* accent text on dark */
+    --brand-fg: 244 242 236;    /* #F4F2EC on an ink fill */
+    --brand-deep: 11 15 20;     /* #0B0F14 night — hero/emphasis */
 
     /* Surfaces (backgrounds) */
-    --surface: 255 255 255;         /* card fill                    (white) */
-    --surface-page: 246 247 251;    /* page background              (faint navy-white) */
-    --surface-nav: 255 255 255;     /* sticky header + mobile menu  (white) */
-    --surface-inset: 246 247 251;   /* inputs, comment bubbles */
-    --surface-sunken: 236 238 245;  /* tab track, ghost hover */
-    --surface-raised: 255 255 255;  /* active tab                   (white) */
-    --surface-chip: 223 227 238;    /* neutral chip / VS pill */
+    --surface: 250 249 246;         /* card #FAF9F6 */
+    --surface-page: 236 234 228;    /* page #ECEAE4 */
+    --surface-nav: 236 234 228;     /* header = page (blurred) */
+    --surface-inset: 244 242 236;   /* inputs, comment bubbles */
+    --surface-sunken: 222 219 211;  /* raised track #DEDBD3 (segments, skeletons) */
+    --surface-raised: 250 249 246;  /* the selected segment */
+    --surface-chip: 222 219 211;    /* neutral chip */
 
-    /* Foreground (text) — navy-ink */
-    --fg: 45 55 82;             /* body */
-    --fg-strong: 15 23 41;      /* #0F1729 ink — headings / names */
-    --fg-soft: 45 55 82;        /* body (differs in dark) */
-    --fg-muted: 100 110 140;    /* secondary */
-    --fg-subtle: 148 156 182;   /* meta / timestamps */
-    --fg-faint: 200 205 222;    /* empty-state hints */
-    --fg-inverse: 255 255 255;  /* text on colored fills (white, no flip) */
+    /* Foreground (text) */
+    --fg: 42 50 61;             /* body */
+    --fg-strong: 17 22 29;      /* #11161D ink — headings / names */
+    --fg-soft: 42 50 61;
+    --fg-muted: 91 97 107;      /* #5B616B sub */
+    --fg-subtle: 107 113 122;   /* meta / timestamps (4.5:1 on paper) */
+    --fg-faint: 185 179 167;    /* empty-state hints */
+    --fg-inverse: 255 255 255;  /* text on coloured fills */
 
     /* Borders + dividers */
-    --line: 223 227 238;        /* default border */
-    --line-strong: 210 215 230; /* btn-secondary border */
-    --line-subtle: 236 238 245; /* faint border */
-    --line-header: 223 227 238;  /* header border */
-    --divider: 236 238 245;     /* divide-y */
+    --line: 228 224 216;        /* #E4E0D8 */
+    --line-strong: 207 202 192; /* #CFCAC0 */
+    --line-subtle: 236 234 228;
+    --line-header: 217 213 204; /* #D9D5CC */
+    --divider: 228 224 216;
 
-    /* Chrome */
-    --scrollbar: 200 205 222;
+    --scrollbar: 207 202 192;
 
-    /* Harmonized supporting palette — few hues, one family:
-       pos = wins/positive, neg = losses/negative, gold = champion/leader mark.
-       Qualification zones + secondary emphasis reuse the brand accent + neutrals. */
-    --pos: 76 160 90;     /* #4CA05A win green */
-    --neg: 215 84 80;     /* #D75450 danger red */
-    --gold: 229 184 67;   /* #E5B843 champion gold */
+    --pos: 31 138 76;     /* win green */
+    --neg: 215 38 28;     /* #D7261C */
+    --gold: 242 178 51;   /* #F2B233 amber */
+
+    /* Floodlight accents (same in both modes) */
+    --fl-accent: 242 178 51;    /* #F2B233 amber */
+    --fl-live: 224 54 44;       /* #E0362C */
+    --fl-blue: 47 111 214;      /* blue card #2F6FD6 */
+    --fl-yellow: 242 194 48;    /* yellow card #F2C230 */
+    --fl-red: 215 38 28;        /* red card #D7261C */
+    --fl-disc: 250 249 246;     /* the light disc behind every crest */
+    --fl-ink-on-light: 17 22 29;/* text on a light team colour (קריית מוצקין) */
+    --fl-rink-boards: 237 227 204;
+    --fl-rink-cap: 217 130 43;
+    --fl-rink-lines: 156 194 255;
+    --fl-night: 11 15 20;       /* the dark middle of game heroes / the + fan backdrop */
 
     /* Raw-scale ramps behind `slate-*` / `orange-*` (tailwind.config.js varRamp).
-       A season palette re-points these, so the ~3,000 raw-scale call-sites follow. */
-    --ramp-neutral-50: 246 247 251;
-    --ramp-neutral-100: 236 238 245;
-    --ramp-neutral-200: 223 227 238;
-    --ramp-neutral-300: 200 205 222;
-    --ramp-neutral-400: 148 156 182;
-    --ramp-neutral-500: 100 110 140;
-    --ramp-neutral-600: 71 82 112;
-    --ramp-neutral-700: 45 55 82;
-    --ramp-neutral-800: 20 27 46;
-    --ramp-neutral-900: 15 23 41;
-    --ramp-neutral-950: 13 19 34;
-    --ramp-primary-50: 236 240 252;
-    --ramp-primary-100: 223 230 250;
-    --ramp-primary-200: 197 209 247;
-    --ramp-primary-300: 150 172 250;
-    --ramp-primary-400: 124 147 255;
-    --ramp-primary-500: 59 79 196;
-    --ramp-primary-600: 46 62 168;
-    --ramp-primary-700: 38 52 140;
-    --ramp-primary-800: 30 42 120;
-    --ramp-primary-900: 26 36 100;
-    --ramp-primary-950: 20 28 78;
+       Neutral = warm paper → night (dark: utilities land on the FL dark tokens:
+       800 = card #151B23, 950 = page #0B0F14). Primary = ink-blue greys, so the
+       ~3,000 old `orange-*` accents read as ink on paper and stay legible on night. */
+    --ramp-neutral-50: 244 242 236;
+    --ramp-neutral-100: 236 234 228;
+    --ramp-neutral-200: 228 224 216;
+    --ramp-neutral-300: 207 202 192;
+    --ramp-neutral-400: 154 150 141;
+    --ramp-neutral-500: 107 113 122;
+    --ramp-neutral-600: 91 97 107;
+    --ramp-neutral-700: 42 50 61;
+    --ramp-neutral-800: 21 27 35;
+    --ramp-neutral-900: 17 22 29;
+    --ramp-neutral-950: 11 15 20;
+    --ramp-primary-50: 240 242 245;
+    --ramp-primary-100: 226 230 236;
+    --ramp-primary-200: 200 207 217;
+    --ramp-primary-300: 164 175 190;
+    --ramp-primary-400: 130 143 162;
+    --ramp-primary-500: 58 69 84;
+    --ramp-primary-600: 42 50 61;
+    --ramp-primary-700: 30 38 48;
+    --ramp-primary-800: 21 27 35;
+    --ramp-primary-900: 17 22 29;
+    --ramp-primary-950: 11 15 20;
   }
 
   html.dark {
-    /* ── "Rink" palette · DARK (1B) ──  deep-navy bg + navy cards, brighter
-       periwinkle-blue primary, white text. */
+    /* ── Floodlight · DARK ──  night page, slate cards, paper ink. */
     color-scheme: dark;
 
-    --brand: 78 109 240;       /* #4E6DF0 brighter blue */
-    --brand-hover: 108 136 248;/* lighter press on dark */
-    --brand-strong: 59 79 196;
-    --brand-light: 138 160 255;
-    --brand-fg: 255 255 255;
-    --brand-deep: 40 54 140;
+    --brand: 236 234 228;      /* ink flips to paper */
+    --brand-hover: 212 209 201;
+    --brand-strong: 236 234 228;
+    --brand-light: 236 234 228;
+    --brand-fg: 17 22 29;
+    --brand-deep: 11 15 20;
 
-    --surface: 20 27 46;            /* #141B2E card */
-    --surface-page: 13 19 34;       /* #0D1322 page bg */
-    --surface-nav: 16 23 40;        /* header */
-    --surface-inset: 20 27 46;
-    --surface-sunken: 26 34 56;
-    --surface-raised: 32 42 66;
-    --surface-chip: 36 46 72;
+    --surface: 21 27 35;            /* card #151B23 */
+    --surface-page: 11 15 20;       /* page #0B0F14 */
+    --surface-nav: 11 15 20;
+    --surface-inset: 30 38 48;      /* #1E2630 */
+    --surface-sunken: 30 38 48;     /* raised track #1E2630 */
+    --surface-raised: 58 69 84;     /* selected segment #3A4554 */
+    --surface-chip: 30 38 48;
 
-    --fg: 210 216 232;         /* body */
-    --fg-strong: 255 255 255;  /* white */
-    --fg-soft: 190 198 218;
-    --fg-muted: 140 150 178;
-    --fg-subtle: 105 116 146;
-    --fg-faint: 66 78 106;
+    --fg: 213 216 221;
+    --fg-strong: 236 234 228;  /* #ECEAE4 */
+    --fg-soft: 200 205 212;
+    --fg-muted: 154 163 174;   /* #9AA3AE */
+    --fg-subtle: 128 137 149;
+    --fg-faint: 58 69 84;
     --fg-inverse: 255 255 255;
 
-    --line: 36 46 72;
-    --line-strong: 50 62 92;
-    --line-subtle: 26 34 56;
-    --line-header: 26 34 56;
-    --divider: 36 46 72;
+    --line: 42 50 61;          /* #2A323D */
+    --line-strong: 58 69 84;
+    --line-subtle: 30 38 48;
+    --line-header: 30 38 48;
+    --divider: 42 50 61;
 
-    --scrollbar: 50 62 92;
+    --scrollbar: 58 69 84;
 
-    --pos: 79 186 104;    /* #4FBA68 */
-    --neg: 232 87 79;     /* #E8574F */
-    --gold: 235 190 80;   /* #EBBE50 */
+    --pos: 74 196 118;
+    --neg: 240 90 80;
+    --gold: 242 178 51;
   }
 
   /* ─── סטופר מרקט skin ─────────────────────────────────────────────────────
@@ -344,7 +377,7 @@
   }
 
   html {
-    font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -386,7 +419,7 @@
 
   /* Button system — use these instead of hand-rolling the orange CTA per screen. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-control min-h-[40px] text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
@@ -394,7 +427,7 @@
   }
 
   .btn-secondary {
-    @apply btn border border-line-strong text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700;
+    @apply btn border border-line-strong bg-surface text-fg-strong hover:bg-surface-inset;
   }
 
   .btn-ghost {
@@ -402,16 +435,16 @@
   }
 
   .btn-sm {
-    @apply px-3 py-1.5 rounded-lg text-xs;
+    @apply px-3 py-1.5 min-h-[32px] rounded-[10px] text-xs;
   }
 
   /* Card system */
   .card {
-    @apply bg-surface border border-line rounded-2xl shadow-sm;
+    @apply bg-surface border border-line rounded-card;
   }
 
   .card-hover {
-    @apply card transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600;
+    @apply card transition-colors duration-200 hover:border-line-strong;
   }
 
   /* Stat badge */
@@ -431,14 +464,27 @@
 
   /* Page header — commanding, broadcast-weight */
   .page-title {
-    @apply text-3xl sm:text-4xl font-black tracking-tight text-balance text-fg-strong;
+    @apply text-[28px] sm:text-4xl font-extrabold leading-[1.05] text-balance text-fg-strong;
   }
 
   /* Big data figure — scores, points, stat tiles. Tabular + heavy for a
      scoreboard read. Pair with a size utility (text-2xl/3xl/...). */
   .stat-num {
-    @apply font-black tabular-nums tracking-tight text-fg-strong;
+    @apply fl-num text-fg-strong;
   }
+
+  /* Floodlight number style: Rubik 800 italic, tabular. Scores, clocks, ranks, stat
+     values — ONE numeric style everywhere (System board 02). */
+  .fl-num {
+    font-weight: 800;
+    font-style: italic;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  /* Floodlight surfaces. */
+  .fl-card { @apply bg-surface rounded-card; }
+  .fl-eyebrow { @apply text-[12px] font-bold text-fg-muted; }
 
   /* Section eyebrow/header used above card groups (e.g. "טבלה", "המשחק הבא").
      Bold, uppercase-ish weight with the brand accent icon. */
@@ -470,11 +516,11 @@
 
   /* Tab system */
   .tab-bar {
-    @apply flex bg-surface-sunken rounded-xl p-1 gap-1;
+    @apply flex bg-surface-sunken rounded-control p-1 gap-1;
   }
 
   .tab-item {
-    @apply flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all cursor-pointer;
+    @apply flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] text-sm font-bold transition-colors cursor-pointer;
   }
 
   .tab-active {
@@ -664,3 +710,28 @@
 @media (prefers-reduced-motion: reduce) {
   .ball-out { animation: none; }
 }
+
+/* ─── Floodlight motion (System board 13) ─────────────────────────────────────
+   transform/opacity only, ≤300 ms, nothing loops forever, all off with reduced motion. */
+/* A live dot / action dot pulses twice, then rests. */
+.fl-pulse-2 { animation: fl-pulse 0.9s ease-in-out 2; }
+@keyframes fl-pulse { 50% { opacity: .35; transform: scale(.7); } }
+/* + fan bubbles fly out of the + (35 ms stagger set inline). */
+.fl-fan-in { animation: fl-fan-in 260ms cubic-bezier(.2,1.2,.4,1) both; }
+@keyframes fl-fan-in { from { opacity: 0; transform: translate(var(--fx, 0), var(--fy, 40px)) scale(.4); } }
+.fl-fade-in { animation: fl-fade-in 200ms ease-out both; }
+@keyframes fl-fade-in { from { opacity: 0; } }
+.fl-sheet-in { animation: fl-sheet-in 260ms cubic-bezier(.2,.9,.3,1) both; }
+@keyframes fl-sheet-in { from { transform: translateY(100%); } }
+.fl-pop { animation: fl-pop 260ms cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes fl-pop { from { transform: scale(.6); } }
+@media (prefers-reduced-motion: reduce) {
+  .fl-pulse-2, .fl-fan-in, .fl-fade-in, .fl-sheet-in, .fl-pop { animation: none; }
+}
+/* Light/dark switch from the user's pick: ThemeContext cross-fades via View Transitions (350 ms).
+   (Motion board #19). System flips stay instant; reduced motion = instant. */
+/* Bottom tab bar room on phones: every scrolling page ends above the bar. */
+.fl-tabbar-pad { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) { .fl-tabbar-pad { padding-bottom: 0; } }
+html.fl-theme-xfade::view-transition-old(root),
+html.fl-theme-xfade::view-transition-new(root) { animation-duration: 350ms; }

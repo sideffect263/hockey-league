@@ -3,18 +3,10 @@ import { Link, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import SeasonPicker, { SeasonPaletteSync } from "./components/SeasonPicker"
 import {
-  Menu,
-  X,
   LogOut,
   UserCircle,
-  Swords,
-  BookOpen,
-  Coins,
   ChevronDown,
   MoreHorizontal,
-  Gamepad2,
-  ClipboardCheck,
-  Handshake,
   Code2
 } from "lucide-react"
 import { RinkIcon, Trophy as BrandTrophy, MatchFallback, TeamsIcon, PlayerIcon, Referee, VideoLibrary, Person, Table, StatsIcon, EditIcon, Manage, Loan, DocumentIcon, PlayerPose, Market, GameForm } from "@/components/icons/BrandIcons"
@@ -26,6 +18,8 @@ import NotificationBell from "./components/NotificationBell"
 import ChatDrawer from "./components/ChatDrawer"
 import LiveEditPanel from "./components/liveedit/LiveEditPanel"
 import { sizedImage } from "@/lib/imageSize"
+import { FLTabBar, LineIcon } from "@/components/fl/shell/FLShell"
+import { isFullscreen, desktopPrimary } from "@/components/fl/shell/navModel"
 
 // Nav uses the league's own icons (BrandIcons) where a meaning has one. Their accents
 // (orange ball, brand-blue/white fills) stay readable on the active tab's tint and on
@@ -83,7 +77,7 @@ function DevsButton({ active }) {
 /** Shared panel chrome for the header menus (matches NotificationBell). */
 function MenuPanel({ children, className = "" }) {
   return (
-    <div className={`absolute mt-2 min-w-[12rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50 py-1 ${className}`}>
+    <div className={`absolute mt-2 min-w-[12rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-control border border-line bg-surface shadow-[0_12px_32px_rgba(0,0,0,.14)] z-50 py-1 ${className}`}>
       {children}
     </div>
   )
@@ -97,8 +91,8 @@ function MenuItem({ item, active, onClick }) {
       onClick={onClick}
       className={`flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-semibold transition-colors ${
         active
-          ? "bg-brand/10 text-brand-strong dark:text-brand-light"
-          : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+          ? "bg-surface-sunken text-fg-strong"
+          : "text-fg hover:bg-surface-inset hover:text-fg-strong"
       }`}
     >
       <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -128,8 +122,8 @@ function NavDropdown({ label, icon: Icon, items, isActivePage }) {
         aria-haspopup="true"
         className={`inline-flex items-center gap-1.5 px-2 xl:px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
           anyActive || open
-            ? "bg-brand/10 text-brand-strong dark:text-brand-light"
-            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+            ? "bg-surface text-fg-strong"
+            : "text-fg-muted hover:bg-surface hover:text-fg-strong"
         }`}
       >
         <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -235,7 +229,7 @@ function AvatarMenu({ user, profile, roleNav, isActivePage, signOut }) {
 
 export default function Layout({ children }) {
   const location = useLocation()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const fullscreen = isFullscreen(location.pathname)
   const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isDeveloper, profile, signOut, openAuth } = useAuth()
 
 
@@ -243,18 +237,6 @@ export default function Layout({ children }) {
   // many roles you hold: six public destinations always visible, everything else
   // folded into "עוד", and the role tools kept next to the avatar (where people
   // already look for "my stuff"). The mobile sheet re-flattens all three.
-  const primaryNav = [
-    { title: "המגרש", url: "/", icon: NavRink },
-    { title: "טבלה", url: "/standings", icon: NavStandings },
-    { title: "משחקים", url: "/games", icon: NavGames },
-    { title: "סטטיסטיקות", url: "/statistics", icon: NavStats },
-    { title: "קבוצות", url: "/teams", icon: NavTeams },
-    { title: "שחקנים", url: "/players", icon: NavPlayers },
-    // Shown to everyone — the page itself tells a visitor who it is for.
-    // Short label: the header row has to fit a 1024px laptop next to a signed-in avatar cluster.
-    { title: "השאלות", url: "/loans", icon: NavLoans },
-  ]
-
   const moreNav = [
     { title: "טורנירים", url: "/tournaments", icon: NavTournaments },
     // Shown to everyone again: the face-naming tool left /creators for /devs (2026-10-15),
@@ -281,175 +263,84 @@ export default function Layout({ children }) {
     ...((isContentEditor || isAdmin) ? [{ title: "יוצרי תוכן", url: "/creators", icon: NavEdit }] : []),
   ]
 
-  // Flat list for the mobile sheet, which has the vertical room for everything.
-  const navItems = [...primaryNav, ...moreNav, ...roleNav]
-
   const isActivePage = (url) =>
     url === "/"
       ? location.pathname === "/"
       : location.pathname === url || location.pathname.startsWith(url + "/")
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950" dir="rtl">
+    <div className="min-h-screen bg-surface-page" dir="rtl">
       <SeasonPaletteSync />
-      {/* Top header bar */}
-      <header className="sticky top-0 z-50 bg-surface-nav/80 backdrop-blur-lg border-b border-line-header">
-        <div className="flex items-center gap-3 px-4 sm:px-6 h-16">
-          {/* RTL start (right): logo + wordmark */}
+      {/* Top header bar — Floodlight: page-coloured and blurred, brand on the RTL start,
+          search · bell · avatar on the end (FeedFan board). Phones navigate with the
+          bottom tab bar + the "עוד" sheet (FLTabBar); lg+ keep the inline nav row. */}
+      {!fullscreen && (
+      <header className="sticky top-0 z-50 bg-surface-nav/85 backdrop-blur-lg border-b border-line-header/70">
+        <div className="flex items-center gap-3 px-3 sm:px-6 h-16">
           {/* The season badge is a button (the season picker), so it sits beside the
               home link rather than inside it — a control nested in a link is invalid. */}
           <div className="flex items-center gap-2.5 shrink-0">
             <Link to="/" className="shrink-0">
-              <img src="/logos/mark-256.png" alt="ליגת הוקי" data-header-logo className="size-10 object-contain" />
+              <img src="/logos/mark-256.png" alt="ליגת הוקי" data-header-logo className="size-[34px] rounded-[10px] object-contain" />
             </Link>
             <div className="leading-none">
-              {/* Not an <h1>: the site wordmark repeats on every route, so tagging it
-                  as a heading gave each page two h1s and made "ליגת הוקי" — rather than
-                  the page's own title — its primary heading for crawlers and screen
-                  readers. `block` keeps the exact layout the <h1> had. */}
-              <Link to="/" className="block text-xl font-black text-fg-strong tracking-tight">ליגת הוקי</Link>
+              {/* Not an <h1>: the wordmark repeats on every route (one h1 per page). */}
+              <Link to="/" className="block text-[22px] font-extrabold text-fg-strong leading-[1.05]">ליגת הוקי</Link>
               <SeasonPicker />
             </div>
           </div>
 
-          {/* Inline nav (lg+). Grouping the tail into "עוד" and the role tools into
-              the avatar menu caps the row at seven slots for every visitor, which
-              is what lets it start at lg (1024px) instead of xl — laptops used to
-              fall back to the hamburger. NOTE: no `overflow-x-auto` here, unlike
-              the old 13-item row — a scroll container clips the "עוד" panel, which
-              is absolutely positioned. The row is a fixed seven slots now, so it
-              has nothing left to scroll. */}
-          <nav className="hidden lg:flex flex-1 min-w-0 justify-center">
-            {/* Tighter padding/gap below xl so the seven slots fit a 1024px laptop
-                without overlapping the logo or the avatar cluster. */}
+          {/* Inline nav (lg+). No overflow-x-auto: a scroll container clips the "עוד" panel. */}
+          <nav className="hidden lg:flex flex-1 min-w-0 justify-center" aria-label="ניווט ראשי">
             <div className="flex items-center gap-0.5 xl:gap-1">
-              {primaryNav.map((item) => (
-                <Link
-                  key={item.title}
-                  to={item.url}
-                  className={`inline-flex items-center gap-1.5 px-2 xl:px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-                    isActivePage(item.url)
-                      ? "bg-brand/10 text-brand-strong dark:text-brand-light"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  {/* Icons only from xl: with eight slots, the labels alone are what fits a
-                      1024px laptop beside the signed-in avatar cluster. */}
-                  <item.icon className="w-4 h-4 shrink-0 hidden xl:block" aria-hidden="true" />
-                  {item.title}
-                </Link>
-              ))}
+              {desktopPrimary.map((item) => {
+                const on = isActivePage(item.url)
+                return (
+                  <Link key={item.title} to={item.url} aria-current={on ? "page" : undefined}
+                    className={`relative inline-flex items-center px-2.5 xl:px-3 h-10 rounded-[10px] text-[14px] whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent ${
+                      on ? "text-fg-strong font-bold" : "text-fg-muted font-medium hover:text-fg-strong hover:bg-surface"}`}>
+                    {item.title}
+                    <span aria-hidden="true" className={`absolute inset-x-3 -bottom-[9px] h-[3px] rounded-full bg-fl-accent transition-opacity ${on ? "opacity-100" : "opacity-0"}`} />
+                  </Link>
+                )
+              })}
               <NavDropdown label="עוד" icon={MoreHorizontal} items={moreNav} isActivePage={isActivePage} />
             </div>
           </nav>
 
-          {/* RTL end (left): auth (desktop) / hamburger (mobile).
-              Dark-mode toggle lives on the profile page (/me), not here. */}
-          <div className="flex items-center gap-1.5 ms-auto lg:ms-0">
+          <div className="flex items-center gap-0.5 ms-auto lg:ms-0">
             {/* Dev lab — the only role tool with a header button; it is not repeated in the menus. */}
             {(isDeveloper || isAdmin) && <DevsButton active={isActivePage("/devs")} />}
-            {/* Notifications bell — visible on all sizes for signed-in users, next to the avatar */}
+            <Link to="/search" aria-label="חיפוש" className="size-11 rounded-full flex items-center justify-center text-fg-strong hover:bg-surface">
+              <LineIcon name="search" size={23} stroke={1.9} />
+            </Link>
             {user && <NotificationBell />}
-
-            {/* Auth (lg+) — signed-in users get the avatar menu, which also carries
-                the role tools that used to sit in the nav row. */}
-            <div className="hidden lg:flex items-center gap-2">
-              {user ? (
-                <AvatarMenu
-                  user={user}
-                  profile={profile}
-                  roleNav={roleNav}
-                  isActivePage={isActivePage}
-                  signOut={signOut}
-                />
-              ) : (
-                <button
-                  onClick={openAuth}
-                  className="btn-primary btn-sm"
-                >
-                  התחבר
-                </button>
-              )}
-            </div>
-
-            {/* Hamburger (below lg) */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-              aria-label="תפריט"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile menu overlay */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-white dark:bg-slate-900 pt-16 flex flex-col" dir="rtl">
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="absolute top-4 end-4 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-            aria-label="סגור"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.title}
-                to={item.url}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors ${
-                  isActivePage(item.url)
-                    ? "bg-brand text-white shadow-md shadow-brand/25"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span className="font-semibold">{item.title}</span>
-              </Link>
-            ))}
-          </nav>
-
-          {/* Footer actions */}
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
             {user ? (
               <>
-                <Link
-                  to="/me"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="btn-primary w-full py-2.5"
-                >
-                  <NavAvatar profile={profile} email={user.email} className="w-6 h-6 ring-2 ring-white/50" /> הדף שלי
+                <div className="hidden lg:flex items-center">
+                  <AvatarMenu user={user} profile={profile} roleNav={roleNav} isActivePage={isActivePage} signOut={signOut} />
+                </div>
+                <Link to="/me" aria-label="הדף שלי" className="lg:hidden size-11 flex items-center justify-center">
+                  <NavAvatar profile={profile} email={user.email} className="w-9 h-9" />
                 </Link>
-                <button
-                  onClick={() => { signOut(); setMobileMenuOpen(false) }}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" /> התנתק
-                </button>
               </>
             ) : (
-              <button
-                onClick={() => { openAuth(); setMobileMenuOpen(false) }}
-                className="btn-primary w-full py-2.5"
-              >
-                התחבר
-              </button>
+              <button onClick={openAuth} className="btn-primary btn-sm ms-1">התחברות</button>
             )}
           </div>
         </div>
+      </header>
       )}
 
       {/* Main content. min-h-[calc(100vh-4rem)], not min-h-screen: the sticky
           header above (h-16 = 4rem) already takes up its own space in flow, so
           "main also wants a full 100vh" forced a scrollbar on every page, even
           ones with no content to scroll. */}
-      <main className="min-h-[calc(100vh-4rem)]">
+      <main className={fullscreen ? "" : "min-h-[calc(100vh-4rem)] fl-tabbar-pad"}>
         {children}
       </main>
+
+      {!fullscreen && <FLTabBar />}
 
       {/* Auth (login / signup) modal */}
       <AuthModal />

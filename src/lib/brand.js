@@ -2,8 +2,12 @@
 // Anything that needs a literal hex (canvas poster rendering, inline `style`
 // fallbacks, SVG icon fills) imports from here instead of retyping the value.
 // Keep in sync with --brand / --brand-hover in src/index.css.
-export const BRAND_COLOR = '#3B4FC4'        // royal blue — matches --brand
-export const BRAND_COLOR_HOVER = '#2E3EA8'  // darker press — matches --brand-hover
+export const BRAND_COLOR = '#11161D'        // Floodlight ink — matches --brand (light)
+export const BRAND_COLOR_HOVER = '#2A323D'  // matches --brand-hover
+// The one Floodlight accent (amber): indicators, "your team", the + button. Never body text.
+export const FL_ACCENT = '#F2B233'
+export const FL_LIVE = '#E0362C'
+export const FL_NIGHT = '#0B0F14'
 
 // Back-compat aliases: the constants keep their historical "ORANGE" name so the
 // ~6 importers don't churn, but both now resolve to the current royal-blue brand

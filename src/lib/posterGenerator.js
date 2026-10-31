@@ -4,7 +4,7 @@ import { getAiBackground } from './posterAiBackground'
 import { format } from 'date-fns'
 
 const W = 1080, H = 1080
-const FONT = 'Heebo'
+const FONT = 'Rubik'
 const LEAGUE_LOGO_PATH = '/logos/main-logo.png'
 
 // ─── Helpers ──────────────────────────────────────────────
