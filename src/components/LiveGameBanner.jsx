@@ -50,19 +50,19 @@ function LiveRow({ live, home, away }) {
       aria-label={`${ended ? "הסתיים" : "שידור חי"}: ${home?.name || "בית"} ${live.home_score ?? 0}, ${away?.name || "חוץ"} ${live.away_score ?? 0}`}
     >
       <span aria-hidden="true" className="absolute inset-0 -z-10" style={{ backgroundImage: BLEND_VIGNETTE }} />
-      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-        <CrestDisc team={home} size={30} />
-        <span className="truncate font-bold text-[13px]">{home?.name || "בית"}</span>
+      <div className="flex flex-col items-center gap-1 min-w-0 flex-1 text-center">
+        <CrestDisc team={home} size={32} />
+        <span className="max-w-full font-bold text-[12px] leading-tight line-clamp-2">{home?.name || "בית"}</span>
       </div>
       <div className="shrink-0 flex flex-col items-center gap-1 px-1">
-        <FLScore home={live.home_score ?? 0} away={live.away_score ?? 0} size={22} />
+        <FLScore home={live.home_score ?? 0} away={live.away_score ?? 0} size={26} />
         {ended
           ? <span className="text-[11px] font-bold opacity-85">{live.period || "תוצאה סופית"}</span>
           : <span className="inline-flex items-center gap-1.5"><LiveChip className="!h-5 !px-2 !text-[10px]" /><span dir="ltr" className="fl-num text-[12px]">{clockString(remaining)}</span></span>}
       </div>
-      <div className="flex items-center justify-end gap-1.5 min-w-0 flex-1">
-        <span className="truncate font-bold text-[13px] text-left">{away?.name || "חוץ"}</span>
-        <CrestDisc team={away} size={30} />
+      <div className="flex flex-col items-center gap-1 min-w-0 flex-1 text-center">
+        <CrestDisc team={away} size={32} />
+        <span className="max-w-full font-bold text-[12px] leading-tight line-clamp-2">{away?.name || "חוץ"}</span>
       </div>
       <ChevronLeft className="shrink-0 w-4 h-4 opacity-70" />
     </Link>

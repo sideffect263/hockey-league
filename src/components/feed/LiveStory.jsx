@@ -58,18 +58,16 @@ export default function LiveStory({ live, game, home, away, onClose }) {
         </div>
 
         {/* score band — home RIGHT */}
-        <div dir="rtl" className="mt-3 flex h-[60px] items-center gap-2 rounded-[18px] px-3" style={{ backgroundImage: blend }}>
+        <div dir="rtl" className="mt-3 flex min-h-[64px] items-center gap-2 rounded-[18px] px-3 py-2" style={{ backgroundImage: blend }}>
           <CrestDisc team={home} size={38} />
-          <span className="min-w-0 truncate text-[14px] font-bold">{home?.name}</span>
-          <span className="flex-1" />
-          <span className="flex flex-col items-center gap-0.5">
+          <span className="min-w-0 flex-1 text-[13px] font-bold leading-tight line-clamp-2">{home?.name}</span>
+          <span className="flex shrink-0 flex-col items-center gap-0.5 px-1">
             <FLScore home={live?.home_score ?? 0} away={live?.away_score ?? 0} size={30} />
-            <span className="text-[11px] opacity-85">
+            <span className="whitespace-nowrap text-[11px] opacity-85">
               {live?.period ? `${live.period} · ` : ""}<span dir="ltr" className="tabular-nums">{ended ? "" : clockString(remaining)}</span>
             </span>
           </span>
-          <span className="flex-1" />
-          <span className="min-w-0 truncate text-[14px] font-bold text-left">{away?.name}</span>
+          <span className="min-w-0 flex-1 text-[13px] font-bold leading-tight text-left line-clamp-2">{away?.name}</span>
           <CrestDisc team={away} size={38} />
         </div>
 
