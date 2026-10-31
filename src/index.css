@@ -199,94 +199,11 @@
     --gold: 242 178 51;
   }
 
-  /* ─── סטופר מרקט skin ─────────────────────────────────────────────────────
-     The market is a room of its own inside the league, so it re-points the very
-     same tokens at a different palette: warm stone neutrals instead of navy, an
-     emerald primary instead of royal blue, and coin-gold for money. Every
-     existing component (.card, .btn-primary, .stat-pill, the sticky header)
-     re-skins from this alone — which is the whole reason the tokens exist.
-
-     Applied to <html> by /market so the header changes with the page. The
-     selectors carry the `html` tag deliberately: a bare `.market-theme` scores
-     below `html.dark` and the dark values would win over the light ones. */
-  html.market-theme {
-    --brand: 16 150 105;        /* #109669 emerald */
-    --brand-hover: 12 124 87;
-    --brand-strong: 12 110 78;
-    --brand-light: 52 211 153;
-    --brand-fg: 255 255 255;
-    --brand-deep: 6 78 59;
-
-    --surface: 255 255 255;
-    --surface-page: 250 250 249;    /* warm paper, not blue-white */
-    --surface-nav: 255 255 255;
-    --surface-inset: 245 245 244;
-    --surface-sunken: 241 241 239;
-    --surface-raised: 255 255 255;
-    --surface-chip: 231 231 228;
-
-    --fg: 41 41 40;
-    --fg-strong: 12 12 11;
-    --fg-soft: 41 41 40;
-    --fg-muted: 110 110 105;
-    --fg-subtle: 150 150 145;
-    --fg-faint: 200 200 195;
-    --fg-inverse: 255 255 255;
-
-    --line: 228 228 224;
-    --line-strong: 214 214 209;
-    --line-subtle: 240 240 237;
-    --line-header: 228 228 224;
-    --divider: 240 240 237;
-    --scrollbar: 200 200 195;
-
-    --pos: 16 150 105;
-    --neg: 220 68 68;
-    --gold: 202 138 4;
-  }
-
-  html.dark.market-theme {
-    --brand: 52 211 153;        /* #34D399 — bright enough to carry on black */
-    --brand-hover: 110 231 183;
-    --brand-strong: 52 211 153;
-    --brand-light: 110 231 183;
-    --brand-fg: 4 24 18;        /* dark ink ON the bright emerald fill */
-    --brand-deep: 6 60 45;
-
-    --surface: 22 23 26;
-    --surface-page: 12 13 15;       /* near-black, no navy cast */
-    --surface-nav: 16 17 20;
-    --surface-inset: 26 27 31;
-    --surface-sunken: 30 32 36;
-    --surface-raised: 38 40 45;
-    --surface-chip: 42 44 50;
-
-    --fg: 226 226 224;
-    --fg-strong: 255 255 255;
-    --fg-soft: 205 205 203;
-    --fg-muted: 150 152 158;
-    --fg-subtle: 112 114 120;
-    --fg-faint: 70 72 78;
-    --fg-inverse: 255 255 255;
-
-    --line: 42 44 50;
-    --line-strong: 56 58 65;
-    --line-subtle: 30 32 36;
-    --line-header: 30 32 36;
-    --divider: 42 44 50;
-    --scrollbar: 56 58 65;
-
-    --pos: 52 211 153;
-    --neg: 248 113 113;
-    --gold: 251 191 36;
-  }
-
-
   /* ─── Season palette: "classic" (slate + orange) ─────────────────────────
      What the site wore before the 2026-07 "Rink" reskin — and so what the
      2025-26 season looked like. seasons.palette = 'classic' puts this class on
      <html> while that season is the one being viewed (the nav-bar season picker),
-     so browsing last season visibly IS last season. Like market-theme, it only
+     so browsing last season visibly IS last season. It only
      re-points tokens; the `html` tag in the selector is what lets it beat
      `html.dark` for specificity. */
   html.season-classic {
@@ -677,11 +594,6 @@
   .skeleton::after { animation: none; opacity: 0; }
 }
 
-/* The market's own chrome, outside @layer so it reliably wins over component
-   defaults without an !important. */
-.market-theme .card {
-  border-radius: 0.75rem; /* squarer than the league's 1rem */
-}
 
 /* Career mode (/career) — the season recap cards enter as they land, so a two-
    or three-season step reads as a sequence rather than appearing all at once.

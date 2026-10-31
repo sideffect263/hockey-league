@@ -244,7 +244,7 @@ function App() {
             <Route path="/players" element={<Players />} />
             <Route path="/players/:id" element={<PlayerDetail />} />
             {/* סטופר מרקט — play-money prediction market, 18+ league players only.
-                Both routes re-skin the whole shell (see useMarketTheme). */}
+                Floodlight palette like the rest of the site (the emerald skin is gone). */}
             <Route path="/loans" element={<Loans />} />
             <Route path="/market" element={<Market />} />
             <Route path="/market/:id" element={<MarketDetail />} />

@@ -62,8 +62,8 @@ export function multiplier(price) {
 export function resolvedHeadline(winnerLabel, winnerPrice, isDraw) {
   const w = Number(winnerPrice) || 0
   const p = `${Math.round(w * 100)}%`
-  if (w < 0.34) return { tone: 'upset', text: isDraw ? `🔥 הפתעה! השוק נתן לתיקו רק ${p}` : `🔥 הפתעה! השוק נתן ל${winnerLabel} רק ${p}` }
-  if (w >= 0.5) return { tone: 'called', text: isDraw ? `השוק צדק — תיקו היה הפייבוריט (${p})` : `השוק צדק — ${winnerLabel} היו הפייבוריטים (${p})` }
+  if (w < 0.34) return { tone: 'upset', text: isDraw ? `הפתעה! התחזיות נתנו לתיקו רק ${p}` : `הפתעה! התחזיות נתנו ל${winnerLabel} רק ${p}` }
+  if (w >= 0.5) return { tone: 'called', text: isDraw ? `התחזיות צדקו — תיקו הוביל (${p})` : `התחזיות צדקו — ${winnerLabel} הובילו (${p})` }
   return { tone: 'plain', text: isDraw ? `תיקו — ${p} לפני המשחק` : `${winnerLabel} ניצחו עם ${p} לפני המשחק` }
 }
 

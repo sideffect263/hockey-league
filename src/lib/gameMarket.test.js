@@ -52,10 +52,10 @@ describe('gameMarket', () => {
   })
 
   it('resolved headline tones', () => {
-    expect(resolvedHeadline('רמת ישי', 0.3016, false)).toEqual({ tone: 'upset', text: '🔥 הפתעה! השוק נתן לרמת ישי רק 30%' })
+    expect(resolvedHeadline('רמת ישי', 0.3016, false)).toEqual({ tone: 'upset', text: 'הפתעה! התחזיות נתנו לרמת ישי רק 30%' })
     expect(resolvedHeadline('גבעת עדה', 0.87, false).tone).toBe('called')
     expect(resolvedHeadline('גבעת עדה נוער', 0.3968, false)).toEqual({ tone: 'plain', text: 'גבעת עדה נוער ניצחו עם 40% לפני המשחק' })
-    expect(resolvedHeadline('', 0.2, true).text).toBe('🔥 הפתעה! השוק נתן לתיקו רק 20%')
+    expect(resolvedHeadline('', 0.2, true).text).toBe('הפתעה! התחזיות נתנו לתיקו רק 20%')
   })
 
   it('closes label', () => {
