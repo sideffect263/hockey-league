@@ -93,7 +93,7 @@ export default function MarketCard({ market, myShares = {}, conflict = null, act
   const winner = market.resolved_outcome_id
     ? market.outcomes.find(o => o.id === market.resolved_outcome_id)
     : null
-  const icon = market.outcomes.some(o => o.player) ? 'goal' : 'trophy'
+  const icon = market.kind === 'game' ? 'calendar' : market.outcomes.some(o => o.player) ? 'goal' : 'trophy'
 
   const body = (
     <>
@@ -102,12 +102,12 @@ export default function MarketCard({ market, myShares = {}, conflict = null, act
         <div className="min-w-0 flex-1">
           <h3 className="font-extrabold text-fg-strong leading-snug text-base">{market.title}</h3>
           {market.subtitle && <p className="text-xs text-fg-muted mt-0.5">{market.subtitle}</p>}
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <StatusChip market={market} />
-          {activity?.traders > 0 && (
-            <span className="text-[12px] text-fg-muted"><span className="fl-num">{activity.traders}</span> חזו</span>
-          )}
+          <div className="flex items-center gap-2 flex-wrap mt-1.5">
+            <StatusChip market={market} />
+            {activity?.traders > 0 && (
+              <span className="text-[12px] text-fg-muted"><span className="fl-num">{activity.traders}</span> חזו</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -123,7 +123,7 @@ export default function MarketCard({ market, myShares = {}, conflict = null, act
           const p = Math.round(o.price * 100)
           return (
             <div key={o.id} className="flex items-center gap-2.5 min-h-[30px]">
-              <span className="w-[30px] h-[30px] rounded-full bg-fl-disc flex items-center justify-center shrink-0 overflow-hidden">
+              <span className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 overflow-hidden ${o.team || o.player || o.markTeam ? 'bg-fl-disc' : ''}`}>
                 <OutcomeFace outcome={o} size={6} />
               </span>
               <span className="w-[110px] sm:w-[140px] text-[13.5px] font-semibold text-fg-strong truncate shrink-0">

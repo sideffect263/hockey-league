@@ -11,7 +11,8 @@
 }
 html.dark .fl-mkt { --mkt-coin-ink: #F2B233; }
 
-.fl-mkt .mkt-num {
+.fl-mkt .mkt-num,
+.fl-mkt .mkt-coin {
   font-family: inherit;
   font-weight: 800;
   font-style: italic;
