@@ -57,3 +57,28 @@ export function teamForm(games, teamId, n = 5) {
       return my > op ? 1 : my < op ? -1 : 0
     })
 }
+
+/**
+ * Multi-goal games (Ariel 10-28): ONLY games where one player scored 3, 4 or 5+ goals
+ * count; a 2-goal game is not counted anywhere. From `game_stats` (caller shows the
+ * coverage caveat). → { players: Map(id → {three,four,five}), teams: Map(id → {…}) }
+ * `three` / `four` are exact, `five` = 5 or more.
+ */
+export function multiGoalCounts(gameStats = [], players = []) {
+  const teamOf = new Map(players.map((p) => [p.id, p.team_id]))
+  const P = new Map(), T = new Map()
+  const bump = (m, k, key) => {
+    if (k == null) return
+    if (!m.has(k)) m.set(k, { three: 0, four: 0, five: 0 })
+    m.get(k)[key] += 1
+  }
+  for (const s of gameStats) {
+    if (!s.player_id) continue
+    const g = s.goals || 0
+    const key = g >= 5 ? 'five' : g === 4 ? 'four' : g === 3 ? 'three' : null
+    if (!key) continue
+    bump(P, s.player_id, key)
+    bump(T, s.played_for_team_id || teamOf.get(s.player_id), key)
+  }
+  return { players: P, teams: T }
+}

@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { getTeams, getPlayers, getGames, getReferees, getGameStats, getSeasonStatisticsData } from "@/lib/api"
-import { Shield, ChevronDown, ChevronUp, RefreshCw, Zap, Target } from "lucide-react"
-import { TrendUp as TrendingUp, Crown, Trophy, Flame, PlayerIcon as Player, Goalkeeper as Glove, Cards, Referee as Whistle, BlueCard, RedCard, GoalIcon as Goal, MatchFallback as Crossed, HatTrick, Mvp, TeamsIcon, BrandTile, PlayerPose } from "@/components/icons/BrandIcons"
-import { StickBall, Stats } from "@/components/icons/HockeyIcons"
-import { motion } from "framer-motion"
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react"
+import { TrendUp as TrendingUp, Crown, Trophy, Flame, Goalkeeper as Glove, Referee as Whistle, BlueCard, RedCard, GoalIcon as Goal, MatchFallback as Crossed, HatTrick, Mvp, TeamsIcon, PlayerPose } from "@/components/icons/BrandIcons"
 import TeamLogo from "@/components/TeamLogo"
 import { PlayerLink } from "@/components/EntityLinks"
 import { useTheme } from "@/lib/ThemeContext"
 import { useSeasonName } from "@/App"
-import { seriesColors, teamColorIndex, diverging } from "@/lib/chartPalette"
+import { seriesColors } from "@/lib/chartPalette"
+import { teamSeriesColors, flPair } from "@/components/fl/teams/flChart"
+import { multiGoalCounts } from "@/components/fl/teams/teamsData"
+import { FLTPills } from "@/components/fl/teams/FLTeamsKit"
+import { TeamBlend, FLScore } from "@/components/fl/Floodlight"
 import {
   leagueSummary, monthlyGoals, cumulativeTeamGoals, cumulativePlayerGoals,
   teamGoalDiff, teamAchievements, playerAchievements, goalkeeperCleanSheets,
@@ -148,10 +150,9 @@ export default function Statistics({ season = null }) {
 
   // Team race series — colour follows the ENTITY via the fixed team→slot map, never rank.
   const { raceSeries, legendItems } = useMemo(() => {
-    const idx = teamColorIndex(teams)
-    const palette = seriesColors(dark)
+    const colors = teamSeriesColors(teams, dark)
     const series = cumulativeTeamGoals(statGames, teams)
-      .map(s => ({ ...s, id: s.teamId, color: palette[idx[s.teamId]] }))
+      .map(s => ({ ...s, id: s.teamId, color: colors[s.teamId] }))
       .sort((a, b) => b.total - a.total)
     return {
       raceSeries: series,
@@ -180,7 +181,11 @@ export default function Statistics({ season = null }) {
   // ---- Awards (derived) ----
   const awardHat = achievements.players.filter(p => p.hatTricks > 0).sort((a, b) => b.hatTricks - a.hatTricks || b.gamesWithGoal - a.gamesWithGoal)
   const awardBig = achievements.players.filter(p => p.bigGames > 0).sort((a, b) => b.bigGames - a.bigGames)
-  const awardBrace = achievements.players.filter(p => p.braces > 0).sort((a, b) => b.braces - a.braces)
+  // Multi-goal games count ONLY 3 / 4 / 5+ goals (Ariel 10-28) — no דאבל anywhere.
+  const multi = useMemo(() => multiGoalCounts(statGameStats, players), [statGameStats, players])
+  const awardQuad = achievements.players
+    .map(p => ({ ...p, quads: multi.players.get(p.id)?.four || 0 }))
+    .filter(p => p.quads > 0).sort((a, b) => b.quads - a.quads)
   const awardClean = cleanSheetLeaders
   const awardBlue = bluePlayers
   // MVP picks by the officials, counted over the same competitive games as everything else.
@@ -192,9 +197,8 @@ export default function Statistics({ season = null }) {
 
   // Entity colour follows the fixed team→slot map (same hues as the goal race).
   const teamColor = useMemo(() => {
-    const idx = teamColorIndex(teams)
-    const pal = seriesColors(dark)
-    return (id) => pal[idx[id]] || pal[0]
+    const colors = teamSeriesColors(teams, dark)
+    return (id) => colors[id] || seriesColors(dark)[0]
   }, [teams, dark])
 
   const playersById = useMemo(() => new Map(players.map(p => [p.id, p])), [players])
@@ -204,7 +208,10 @@ export default function Statistics({ season = null }) {
   const shortTeam = (nm = '') => nm.replace('גבעת עדה', 'גב״ע').replace('קריית', 'ק״')
   const intTicks = (m) => Array.from({ length: Math.max(1, m) }, (_, i) => i + 1)
   const radarScale = (vals) => {
-    const { yMax, ticks } = axisTicks(Math.max(1, ...vals))
+    const m = Math.max(1, ...vals)
+    // Counts of games are whole numbers: small maxima get integer rings (no 0.3 / 0.6).
+    if (m <= 5) return { max: m, rings: intTicks(m) }
+    const { yMax, ticks } = axisTicks(m)
     return { max: yMax, rings: ticks.filter(v => v > 0) }
   }
 
@@ -216,7 +223,7 @@ export default function Statistics({ season = null }) {
     const n = goalDiff.length || 1
     const meanGf = goalDiff.reduce((s, d) => s + d.gf, 0) / n
     const meanGa = goalDiff.reduce((s, d) => s + d.ga, 0) / n
-    const div = diverging(dark)
+    const div = flPair(dark)
     return {
       scatter: {
         points: goalDiff.map(d => ({
@@ -288,37 +295,39 @@ export default function Statistics({ season = null }) {
       yThreshold: trows.reduce((s, t) => s + t.hatTricks, 0) / tn,
     }
 
-    // radar — scoring profile (doubles / hat-tricks / 5+)
+    // radar — scoring profile: games with exactly 3, exactly 4 and 5+ goals (no 2-goal axis)
     const pal = seriesColors(dark)
-    const AXES = ['דאבלים (2)', 'שלישיות (3+)', 'משחקי-על (5+)']
-    const topPlayers = [...enriched].sort((x, y) => y.goals - x.goals).slice(0, 4)
+    const AXES = ['3 שערים', '4 שערים', '5+ שערים']
+    const mv = (m) => [m?.three || 0, m?.four || 0, m?.five || 0]
+    const topPlayers = [...enriched].filter(a => a.hatTricks > 0).sort((x, y) => y.goals - x.goals).slice(0, 4)
     const radarPlayers = {
       axes: AXES,
-      series: topPlayers.map((a, i) => ({ id: a.id, name: `${a.first_name} ${a.last_name}`, color: pal[i % pal.length], values: [a.braces, a.hatTricks, a.bigGames] })),
-      ...radarScale(topPlayers.flatMap(a => [a.braces, a.hatTricks, a.bigGames])),
+      series: topPlayers.map((a, i) => ({ id: a.id, name: `${a.first_name} ${a.last_name}`, color: pal[i % pal.length], values: mv(multi.players.get(a.id)) })),
+      ...radarScale(topPlayers.flatMap(a => mv(multi.players.get(a.id)))),
     }
-    const topTeams = [...teamAch].sort((x, y) => y.hatTricks - x.hatTricks).slice(0, 4)
+    const topTeams = [...teamAch].filter(t => t.hatTricks > 0).sort((x, y) => y.hatTricks - x.hatTricks).slice(0, 4)
     const radarTeams = {
       axes: AXES,
-      series: topTeams.map((t, i) => ({ id: t.teamId, name: t.name, color: pal[i % pal.length], values: [t.braces, t.hatTricks, t.bigGames] })),
-      ...radarScale(topTeams.flatMap(t => [t.braces, t.hatTricks, t.bigGames])),
+      series: topTeams.map(t => ({ id: t.teamId, name: t.name, color: teamColor(t.teamId), values: mv(multi.teams.get(t.teamId)) })),
+      ...radarScale(topTeams.flatMap(t => mv(multi.teams.get(t.teamId)))),
     }
 
     return { scatterPlayers, scatterTeams, radarPlayers, radarTeams }
-  }, [achievements, playersById, teams, teamAch, goalDiff, dark, teamColor])
+  }, [achievements, playersById, teams, teamAch, goalDiff, dark, teamColor, multi])
 
   const tabs = [
-    { id: "scorers", label: "מבקיעים", icon: Player },
-    { id: "goalkeepers", label: "שוערים", icon: Glove },
-    { id: "cards", label: "כרטיסים", icon: Cards },
-    { id: "referees", label: "שופטים", icon: Whistle },
+    { value: "scorers", label: "מבקיעים" },
+    { value: "goalkeepers", label: "שוערים" },
+    { value: "cards", label: "כרטיסים" },
+    { value: "referees", label: "שופטים" },
   ]
+  const teamById = (id) => teams.find(t => t.id === id)
 
   // Swatch+name legend for the radar views (series aren't teams, so no crest).
   const MiniLegend = ({ items = [] }) => (
     <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-3">
       {items.map(it => (
-        <span key={it.id} className="inline-flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+        <span key={it.id} className="inline-flex items-center gap-1.5 text-[12px] text-fg-muted">
           <span className="w-3.5 h-1.5 rounded-full shrink-0" style={{ background: it.color }} aria-hidden="true" />
           <span className="whitespace-nowrap">{it.name}</span>
         </span>
@@ -326,66 +335,63 @@ export default function Statistics({ season = null }) {
     </div>
   )
 
+  // Board medals: amber, silver, bronze, then the raised track (all with ink numbers).
   const medal = (i) =>
-    i === 0 ? 'bg-amber-400 text-amber-950' :
-    i === 1 ? 'bg-slate-300 dark:bg-slate-500 text-slate-800 dark:text-white' :
-    i === 2 ? 'bg-bronze-300 dark:bg-bronze-700 text-bronze-900 dark:text-white' :
-    'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+    i === 0 ? 'bg-fl-accent text-[#11161D]' :
+    i === 1 ? 'bg-[#C9CDD2] text-[#11161D]' :
+    i === 2 ? 'bg-[#D9A066] text-[#11161D]' :
+    'bg-surface-sunken text-fg-muted'
 
   const List = ({ title, icon, data, render, tKey, empty }) => {
     const exp = expanded[tKey]
     const show = exp ? data : data.slice(0, 5)
     return (
-      <div className="card overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">{icon} {title}</h3>
-        </div>
-        <div className="p-4 space-y-2">
+      <section className="rounded-card bg-surface px-3.5 pt-2 pb-2">
+        <h3 className="flex items-center gap-2 my-2 text-[15px] font-extrabold text-fg-strong">{icon} {title}</h3>
+        <div className="divide-y divide-line">
           {show.map((item, i) => render(item, i))}
-          {data.length === 0 && <p className="text-center text-slate-500 dark:text-slate-400 py-6 text-sm">{empty}</p>}
-          {data.length > 5 && (
-            <button onClick={() => toggle(tKey)} className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 py-2 mt-1 border border-slate-100 dark:border-slate-700 rounded-lg transition-colors">
-              {exp ? <><ChevronUp className="w-3.5 h-3.5" /> הצג פחות</> : <><ChevronDown className="w-3.5 h-3.5" /> הצג הכל ({data.length})</>}
-            </button>
-          )}
         </div>
-      </div>
+        {data.length === 0 && <p className="text-center text-fg-muted py-6 text-sm">{empty}</p>}
+        {data.length > 5 && (
+          <button onClick={() => toggle(tKey)} className="w-full min-h-[44px] flex items-center justify-center gap-1.5 text-[13px] font-bold text-fg-strong mt-1 rounded-control hover:bg-surface-sunken transition-colors">
+            {exp ? <><ChevronUp className="w-4 h-4" aria-hidden="true" /> הצג פחות</> : <><ChevronDown className="w-4 h-4" aria-hidden="true" /> הצג הכל ({data.length})</>}
+          </button>
+        )}
+      </section>
     )
   }
 
-  const PlayerRow = ({ player, index, value, color = "bg-slate-900 dark:bg-brand" }) => (
-    <Link to={entityPath('players', player)} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors group">
-      <div className="flex items-center gap-2.5">
-        <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${medal(index)}`}>{index + 1}</span>
-        <div>
-          <p className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors">{player.first_name} {player.last_name}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">{teamName(player.team_id)}</p>
-        </div>
-      </div>
-      <span className={`${color} text-white text-xs font-bold px-2.5 py-1 rounded-md`}>{value}</span>
+  const Num = ({ children, className = "bg-surface-sunken text-fg-strong" }) => (
+    <span className={`fl-num text-[15px] min-w-[2rem] text-center px-2 py-1 rounded-lg shrink-0 ${className}`}>{children}</span>
+  )
+
+  const PlayerRow = ({ player, index, value, unit, badge }) => (
+    <Link to={entityPath('players', player)} className="flex items-center gap-2.5 min-h-[50px] py-1 group">
+      <span className={`size-6 rounded-[7px] flex items-center justify-center text-[12px] font-extrabold shrink-0 ${medal(index)}`}>{index + 1}</span>
+      <TeamLogo team={teamById(player.team_id)} px={26} disc={false} />
+      <span className="flex-1 min-w-0">
+        <span className="block truncate text-[14px] font-semibold text-fg-strong group-hover:underline underline-offset-2">{player.first_name} {player.last_name}</span>
+        <span className="block truncate text-[12px] text-fg-muted">{teamName(player.team_id)}</span>
+      </span>
+      {badge ? <Num className={badge}>{value}</Num> : <span className="text-[13px] font-bold text-fg-strong shrink-0"><span className="fl-num text-[15px]">{value}</span>{unit ? ` ${unit}` : ''}</span>}
     </Link>
   )
 
-  // Compact award card: top-5 players, medal styling, links to the player page.
-  const AwardCard = ({ title, icon, data, valueOf, unit, badge = "bg-slate-900 dark:bg-brand", empty = "אין נתונים", note }) => (
-    <div className="card p-4">
-      <h3 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white mb-3">{icon} {title}</h3>
-      <div className="space-y-2">
-        {data.slice(0, 5).map((p, i) => (
-          <PlayerLink key={p.id} playerId={p.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors group">
-            <span className="flex items-center gap-2 min-w-0">
-              <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${medal(i)}`}>{i + 1}</span>
-              <span className="min-w-0">
-                <span className="block font-semibold text-[13px] text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{p.first_name} {p.last_name}</span>
-                <span className="block text-[10px] text-slate-500 dark:text-slate-400 truncate">{teamName(p.team_id)}</span>
-              </span>
-            </span>
-            <span className={`${badge} text-white text-[11px] font-bold px-2 py-0.5 rounded-md shrink-0`}>{valueOf(p)}{unit ? ` ${unit}` : ''}</span>
+  // Compact award card: top-5 players, crest + name + value badge, links to the player page.
+  const AwardCard = ({ title, icon, data, valueOf, unit, badge = "bg-fg-strong text-surface", empty = "אין נתונים", note }) => (
+    <div className="rounded-[18px] bg-surface p-3 flex flex-col gap-2 min-h-[150px] min-w-0">
+      <h3 className="flex items-center gap-2 text-[13px] font-extrabold leading-tight text-fg-strong">{icon} <span className="min-w-0">{title}</span></h3>
+      <div className="flex flex-col gap-1">
+        {data.slice(0, 5).map((p) => (
+          <PlayerLink key={p.id} playerId={p.id} className="flex items-center gap-1.5 min-h-[32px] text-[12.5px] group">
+            <TeamLogo team={teamById(p.team_id)} px={18} disc={false} />
+            <span className="flex-1 min-w-0 truncate font-semibold text-fg-strong group-hover:underline underline-offset-2">{p.first_name} {p.last_name}</span>
+            <span className={`fl-num text-[14px] px-[7px] py-0.5 rounded-[7px] shrink-0 ${badge}`}>{valueOf(p)}{unit ? <span className="font-sans not-italic font-bold text-[11px]"> {unit}</span> : null}</span>
           </PlayerLink>
         ))}
-        {data.length === 0 && <p className="text-center text-slate-500 dark:text-slate-400 py-4 text-xs">{empty}</p>}
+        {data.length === 0 && <p className="text-[12.5px] text-fg-muted leading-snug">{empty}</p>}
       </div>
-      {note && <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2.5">{note}</p>}
+      {note && <p className="text-[11px] text-fg-muted mt-auto pt-1">{note}</p>}
     </div>
   )
 
@@ -394,10 +400,10 @@ export default function Statistics({ season = null }) {
   if (error) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-        <div className="card p-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
-          <span className="text-red-700 dark:text-red-400 text-sm font-medium">{error}</span>
-          <button onClick={loadData} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" /> נסה שוב
+        <div className="card p-6 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
+          <span className="text-fl-red text-sm font-semibold">{error}</span>
+          <button onClick={loadData} className="btn-primary min-h-[44px] inline-flex items-center gap-1.5 px-4 text-sm">
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> נסה שוב
           </button>
         </div>
       </div>
@@ -405,45 +411,47 @@ export default function Statistics({ season = null }) {
   }
 
   const biggest = summary.highestScoringGame
+  const bigHome = biggest ? teamById(biggest.home_team_id) : null
+  const bigAway = biggest ? teamById(biggest.away_team_id) : null
+  const ddmm = (d) => new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', timeZone: 'Asia/Jerusalem' }).replace('/', '.')
 
   return (
-    <div className={season ? "space-y-6" : "p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6"}>
+    <div className={season ? "space-y-6" : "px-3 pt-4 pb-8 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-5"}>
       {!season && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="page-title flex items-center gap-2.5">
-            <BrandTile name="stats" className="w-10 h-10 -my-1.5" /> סטטיסטיקות
-          </h1>
-          <p className="page-subtitle mt-1">נתוני ביצועים{seasonName && ` עונת ${seasonName}`}</p>
-        </motion.div>
+        <header className="px-1">
+          <h1 className="text-[28px] sm:text-[36px] font-extrabold leading-tight text-fg-strong">סטטיסטיקות</h1>
+          <p className="text-[13px] text-fg-muted mt-0.5">נתוני ביצועים{seasonName && <> עונת <bdi dir="ltr">{seasonName}</bdi></>}</p>
+        </header>
       )}
 
       {/* Overview tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatTile icon={<Crossed className="w-5 h-5" mono />} value={summary.completedGames} label="משחקים" />
-        <StatTile icon={<Goal className="w-5 h-5" mono />} value={summary.totalGoals} label="שערים" accent="brand" spark={monthly.map(m => m.goals)} />
-        <StatTile icon={<TrendingUp className="w-5 h-5" />} value={summary.avgPerGame.toFixed(1)} label="ממוצע למשחק" />
-        <StatTile icon={<Glove className="w-5 h-5" mono />} value={summary.shutouts} label="בלימות" sub="משחקים ללא ספיגה" />
+      <section aria-label="העונה במספרים" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+        <StatTile icon={<Crossed className="w-7 h-7" />} value={summary.completedGames} label="משחקים" />
+        <StatTile icon={<Goal className="w-7 h-7" />} value={summary.totalGoals} label="שערים" accent="ink" spark={monthly.map(m => m.goals)} />
+        <StatTile icon={<TrendingUp className="w-7 h-7" />} value={summary.avgPerGame.toFixed(1)} label="ממוצע למשחק" />
+        <StatTile icon={<Glove className="w-7 h-7" />} value={summary.shutouts} label="בלימות · משחקים ללא ספיגה" />
         {biggest && (
-          <StatTile
-            icon={<Flame className="w-5 h-5" />}
-            value={summary.highestTotal}
-            label="משחק שיא"
-            sub={`${teamName(biggest.home_team_id)} נגד ${teamName(biggest.away_team_id)}`}
-            to={entityPath('games', biggest)}
-          />
+          <TeamBlend as={Link} to={entityPath('games', biggest)} home={bigHome} away={bigAway}
+            className="col-span-2 sm:col-span-4 lg:col-span-2 rounded-[18px] p-3.5 flex items-center gap-3 hover:brightness-110 transition">
+            <Flame className="w-9 h-9 shrink-0" />
+            <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <span className="text-[12px] font-bold text-fl-accent">משחק השיא</span>
+              <span className="text-[14.5px] font-bold leading-snug">{teamName(biggest.home_team_id)} נגד {teamName(biggest.away_team_id)} · <bdi dir="ltr">{ddmm(biggest.game_date)}</bdi></span>
+            </span>
+            <FLScore home={biggest.home_score} away={biggest.away_score} size={26} />
+          </TeamBlend>
         )}
-      </div>
+      </section>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Main chart — the goal race, full width, with a לפי קבוצה / לפי שחקן toggle. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+        {/* Main chart — the goal race, full width, with a קבוצה / שחקן toggle. Time runs right → left. */}
         <ChartCard
           className="lg:col-span-2"
           title="מרוץ השערים"
           subtitle={raceMode === 'team'
             ? 'שערים מצטברים לאורך העונה, לפי קבוצה'
             : 'שערים מצטברים לאורך העונה · 8 המבקיעים המובילים'}
-          icon={<TrendingUp className="w-4 h-4 text-brand" />}
           footnote={raceMode === 'player' ? STATS_NOTE : undefined}
           toolbar={
             <SegToggle
@@ -457,16 +465,16 @@ export default function Statistics({ season = null }) {
           }
           legend={<Legend items={raceMode === 'team' ? legendItems : playerLegend} />}
         >
-          <LineChart series={raceMode === 'team' ? raceSeries : playerRaceSeries} xTicks={xTicks} vbH={200} />
+          <div className="mx-auto w-full max-w-3xl">
+            <LineChart series={raceMode === 'team' ? raceSeries : playerRaceSeries} xTicks={xTicks} vbH={200} rtl />
+          </div>
         </ChartCard>
 
         <ChartCard
-          className="lg:col-span-2"
           title="הפרש שערים"
           subtitle={gdView === 'scatter'
-            ? 'מתקפה מול הגנה — כל קבוצה על המפה'
-            : 'זכות מול חובה — מכ״ם קבוצתי'}
-          icon={<Target className="w-4 h-4 text-brand" />}
+            ? 'התקפה מול הגנה: כל קבוצה על המפה'
+            : 'זכות מול חובה: מכ״ם קבוצתי'}
           toolbar={
             <SegToggle
               value={gdView}
@@ -496,15 +504,13 @@ export default function Statistics({ season = null }) {
         </ChartCard>
 
         <ChartCard
-          className="lg:col-span-2"
           title="שלישיות"
           subtitle={hatView === 'radar'
-            ? 'פרופיל הבקעה: דאבלים · שלישיות · משחקי-על'
+            ? 'פרופיל הבקעה: משחקים עם 3, 4 ו־5+ שערים'
             : hatMode === 'player'
-              ? 'נפח מול נפיצות — שערים מול שלישיות'
+              ? 'נפח מול נפיצות: שערים מול שלישיות'
               : 'שערי קבוצה מול שלישיות'}
-          icon={<Flame className="w-4 h-4 text-brand" />}
-          footnote={STATS_NOTE}
+          footnote={`סופרים רק משחקים שבהם שחקן אחד הבקיע 3, 4 או 5 ומעלה. 2 שערים לא נספרים. ${STATS_NOTE}`}
           toolbar={
             <div className="flex flex-wrap items-center gap-1.5">
               <SegToggle
@@ -548,117 +554,105 @@ export default function Statistics({ season = null }) {
       </div>
 
       {/* Awards */}
-      <div>
-        <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-900 dark:text-white mb-3">
-          <Trophy className="w-5 h-5 text-amber-500" /> הישגים ותארים
+      <section aria-label="הישגים ותארים">
+        <h2 className="flex items-center gap-2 px-1.5 mb-2.5 text-[19px] font-extrabold text-fg-strong">
+          <Trophy className="w-6 h-6" /> הישגים ותארים
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <AwardCard title="MVP של המשחק" icon={<Mvp className="w-5 h-5" />} data={awardMvp} valueOf={p => p.mvps} badge="bg-amber-500" empty="טרם נבחרו MVP העונה" />
-          <AwardCard title="מלכי השלישיות" icon={<HatTrick className="w-4 h-4" />} data={awardHat} valueOf={p => p.hatTricks} badge="bg-brand" empty="אין שלישיות" note={STATS_NOTE} />
-          <AwardCard title="משחקי-על (5+ שערים)" icon={<Flame className="w-4 h-4" />} data={awardBig} valueOf={p => p.bigGames} badge="bg-amber-500" empty="אין" note={STATS_NOTE} />
-          <AwardCard title="דאבלים (2 שערים)" icon={<Target className="w-4 h-4 text-slate-500" />} data={awardBrace} valueOf={p => p.braces} badge="bg-slate-700 dark:bg-slate-500" empty="אין" note={STATS_NOTE} />
-          <AwardCard title="שוערי הברזל" icon={<Glove className="w-4 h-4 text-blue-500" />} data={awardClean} valueOf={p => p.clean_sheets} unit="נקיות" badge="bg-blue-500" empty="אין" />
-          <AwardCard title="כרטיסים כחולים" icon={<BlueCard className="w-5 h-5 -my-1" />} data={awardBlue} valueOf={p => p.blue_cards} badge="bg-blue-500" empty="אין" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+          <AwardCard title="MVP של המשחק" icon={<Mvp className="w-7 h-7" />} data={awardMvp} valueOf={p => p.mvps} badge="bg-[#8A5E08] text-white" empty="טרם נבחרו MVP העונה" />
+          <AwardCard title="מלכי השלישיות" icon={<HatTrick className="w-7 h-7" />} data={awardHat} valueOf={p => p.hatTricks} empty="אין שלישיות" note={STATS_NOTE} />
+          <AwardCard title="משחקי־על (5+ שערים)" icon={<Flame className="w-7 h-7" />} data={awardBig} valueOf={p => p.bigGames} badge="bg-[#B23F08] text-white" empty="אין" note={STATS_NOTE} />
+          <AwardCard title="רביעיות (4 שערים)" icon={<Goal className="w-7 h-7" />} data={awardQuad} valueOf={p => p.quads} badge="bg-[#5B616B] text-white" empty="אין" note={STATS_NOTE} />
+          <AwardCard title="שוערי הברזל" icon={<Glove className="w-7 h-7" />} data={awardClean} valueOf={p => p.clean_sheets} unit="נקיות" badge="bg-[#1550D8] text-white" empty="טרם נרשמו משחקים ללא ספיגה" />
+          <AwardCard title="כרטיסים כחולים" icon={<BlueCard className="w-7 h-7" />} data={awardBlue} valueOf={p => p.blue_cards} badge="bg-[#2560C4] text-white" empty="אין" />
         </div>
-      </div>
+      </section>
 
       {/* Detailed tabbed lists */}
-      <div className="space-y-5 pt-1">
-        <div className="tab-bar overflow-x-auto">
-          {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={activeTab === tab.id ? "tab-active" : "tab-inactive"}>
-              <tab.icon className="w-4 h-4" /> {tab.label}
-            </button>
-          ))}
-        </div>
+      <section aria-label="רשימות" className="space-y-3 pt-1">
+        <FLTPills label="רשימות" items={tabs} value={activeTab} onChange={setActiveTab} />
 
         {activeTab === "scorers" && (
-          <div className="space-y-4">
-            <List title="מלכי השערים" icon={<Crown className="w-4 h-4" />} data={topScorers} tKey="top" empty="טרם נרשמו שערים העונה"
-              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={`${p.goals || 0} שערים`} />} />
-            <List title="מצטיין מכל קבוצה" icon={<Crown className="w-4 h-4 text-amber-500" />} data={topPerTeam} tKey="perTeam" empty="טרם נרשמו שערים העונה"
-              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={`${p.goals || 0}`} color="bg-amber-500" />} />
+          <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+            <List title="מלכי השערים" icon={<Crown className="w-5 h-5" />} data={topScorers} tKey="top" empty="טרם נרשמו שערים העונה"
+              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.goals || 0} unit="שערים" />} />
+            <List title="מצטיין מכל קבוצה" icon={<Crown className="w-5 h-5" />} data={topPerTeam} tKey="perTeam" empty="טרם נרשמו שערים העונה"
+              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.goals || 0} badge="bg-fl-accent text-[#11161D]" />} />
           </div>
         )}
 
         {activeTab === "goalkeepers" && (
-          <List title="שוערי הברזל" icon={<Glove className="w-4 h-4 text-blue-500" />} data={cleanSheetLeaders} tKey="gk" empty="טרם נרשמו משחקים ללא ספיגה"
+          <List title="שוערי הברזל" icon={<Glove className="w-5 h-5" />} data={cleanSheetLeaders} tKey="gk" empty="טרם נרשמו משחקים ללא ספיגה"
             render={(gk, i) => (
-              <Link key={gk.id} to={entityPath('players', gk)} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors group">
-                <div className="flex items-center gap-2.5">
-                  <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${medal(i)}`}>{i + 1}</span>
-                  <div>
-                    <p className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors">{gk.first_name} {gk.last_name}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{teamName(gk.team_id)} • {gk.total_games} משחקים</p>
-                  </div>
-                </div>
-                <span className="bg-blue-500 text-white text-xs font-bold px-2.5 py-1 rounded-md">{gk.clean_sheets} נקיות</span>
+              <Link key={gk.id} to={entityPath('players', gk)} className="flex items-center gap-2.5 min-h-[50px] py-1 group">
+                <span className={`size-6 rounded-[7px] flex items-center justify-center text-[12px] font-extrabold shrink-0 ${medal(i)}`}>{i + 1}</span>
+                <TeamLogo team={teamById(gk.team_id)} px={26} disc={false} />
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate text-[14px] font-semibold text-fg-strong group-hover:underline underline-offset-2">{gk.first_name} {gk.last_name}</span>
+                  <span className="block truncate text-[12px] text-fg-muted">{teamName(gk.team_id)} · <span className="tabular-nums">{gk.total_games}</span> משחקים</span>
+                </span>
+                <Num className="bg-[#1550D8] text-white">{gk.clean_sheets}</Num>
+                <span className="text-[12px] text-fg-muted">נקיות</span>
               </Link>
             )} />
         )}
 
         {activeTab === "cards" && (
-          <div className="space-y-4">
-            <List title="כרטיסים כחולים" icon={<BlueCard className="w-5 h-5 -my-1" />} data={bluePlayers} tKey="blue" empty="אין"
-              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.blue_cards} color="bg-blue-500" />} />
-            <List title="כחולים לפי קבוצה" icon={<TeamsIcon className="w-4 h-4 text-blue-500" />} data={blueTeams} tKey="blueT" empty="אין"
-              render={(t, i) => (
-                <Link key={t.id} to={entityPath('teams', t)} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors group">
-                  <div className="flex items-center gap-2.5">
-                    <TeamLogo team={t} size={6} />
-                    <span className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors">{t.name}</span>
-                  </div>
-                  <span className="bg-blue-500 text-white text-xs font-bold px-2.5 py-1 rounded-md">{t.total_blue}</span>
+          <div className="grid gap-3 lg:grid-cols-3 lg:items-start">
+            <List title="כרטיסים כחולים" icon={<BlueCard className="w-6 h-6 -my-1" />} data={bluePlayers} tKey="blue" empty="אין"
+              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.blue_cards} badge="bg-[#2560C4] text-white" />} />
+            <List title="כחולים לפי קבוצה" icon={<TeamsIcon className="w-5 h-5" />} data={blueTeams} tKey="blueT" empty="אין"
+              render={(t) => (
+                <Link key={t.id} to={entityPath('teams', t)} className="flex items-center gap-2.5 min-h-[50px] py-1 group">
+                  <TeamLogo team={t} px={28} />
+                  <span className="flex-1 min-w-0 truncate text-[14px] font-semibold text-fg-strong group-hover:underline underline-offset-2">{t.name}</span>
+                  <Num className="bg-[#2560C4] text-white">{t.total_blue}</Num>
                 </Link>
               )} />
-            <List title="כרטיסים אדומים" icon={<RedCard className="w-5 h-5 -my-1" />} data={redPlayers} tKey="red" empty="אין"
-              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.red_cards} color="bg-red-500" />} />
+            <List title="כרטיסים אדומים" icon={<RedCard className="w-6 h-6 -my-1" />} data={redPlayers} tKey="red" empty="אין"
+              render={(p, i) => <PlayerRow key={p.id} player={p} index={i} value={p.red_cards} badge="bg-fl-red text-white" />} />
           </div>
         )}
 
         {activeTab === "referees" && (
-          <div className="card overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white"><Whistle className="w-4 h-4 text-purple-500" /> שופטים</h3>
-            </div>
+          <section className="rounded-card bg-surface overflow-hidden">
+            <h3 className="flex items-center gap-2 px-4 pt-3 pb-2 text-[15px] font-extrabold text-fg-strong"><Whistle className="w-5 h-5" /> שופטים</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    <th className="text-right py-3 px-4 font-semibold">שופט</th>
-                    <th className="text-center py-3 px-4 font-semibold">בוצעו</th>
-                    <th className="text-center py-3 px-4 font-semibold">מתוכננים</th>
-                    <th className="text-center py-3 px-4 font-semibold">סה״כ</th>
+                  <tr className="border-b border-line text-[11px] text-fg-muted">
+                    <th scope="col" className="text-right py-2.5 px-4 font-semibold">שופט</th>
+                    <th scope="col" className="text-center py-2.5 px-3 font-semibold">בוצעו</th>
+                    <th scope="col" className="text-center py-2.5 px-3 font-semibold">מתוכננים</th>
+                    <th scope="col" className="text-center py-2.5 px-4 font-semibold">סה״כ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="divide-y divide-line">
                   {refStats.map((ref, i) => (
-                    <tr key={`${ref.type}-${ref.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="py-3 px-4">
+                    <tr key={`${ref.type}-${ref.id}`}>
+                      <td className="py-2.5 px-4">
                         <div className="flex items-center gap-2.5">
-                          <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${medal(i)}`}>{i + 1}</span>
-                          <div>
-                            <p className="font-semibold text-sm text-slate-900 dark:text-white">{ref.first_name} {ref.last_name}</p>
-                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ref.type === 'player' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300'}`}>
+                          <span className={`size-6 rounded-[7px] flex items-center justify-center text-[12px] font-extrabold shrink-0 ${medal(i)}`}>{i + 1}</span>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-[14px] text-fg-strong truncate">{ref.first_name} {ref.last_name}</p>
+                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-surface-sunken text-fg-muted">
                               {ref.type === 'player' ? 'שחקן-שופט' : 'חיצוני'}
                             </span>
                           </div>
                         </div>
                       </td>
-                      <td className="text-center py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">{ref.completed}</td>
-                      <td className="text-center py-3 px-4 text-slate-500 dark:text-slate-400">{ref.scheduled}</td>
-                      <td className="text-center py-3 px-4">
-                        <span className="bg-purple-500 text-white text-xs font-bold px-2.5 py-1 rounded-md">{ref.total}</span>
-                      </td>
+                      <td className="text-center py-2.5 px-3 font-semibold tabular-nums text-fg-strong">{ref.completed}</td>
+                      <td className="text-center py-2.5 px-3 tabular-nums text-fg-muted">{ref.scheduled}</td>
+                      <td className="text-center py-2.5 px-4"><Num className="bg-fg-strong text-surface">{ref.total}</Num></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {refStats.length === 0 && <p className="text-center text-slate-400 py-8 text-sm">אין נתוני שיפוט</p>}
+              {refStats.length === 0 && <p className="text-center text-fg-muted py-8 text-sm">אין נתוני שיפוט</p>}
             </div>
-          </div>
+          </section>
         )}
-      </div>
+      </section>
     </div>
   )
 }

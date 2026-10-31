@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
-import { chrome } from '@/lib/chartPalette'
+import { flChrome } from '@/components/fl/teams/flChart'
 import TeamLogo from '@/components/TeamLogo'
 
 /**
@@ -45,8 +45,8 @@ export default function ScatterChart({
 
   if (!points.length) return null
 
-  const c = chrome(dark)
-  const ink = dark ? '#d2d8e8' : '#2d3752'
+  const c = flChrome(dark)
+  const ink = flChrome(dark).ink
   const surface = c.surface
 
   const L = M.left

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
-import { chrome, singleColor } from '@/lib/chartPalette'
+import { singleColor } from '@/lib/chartPalette'
+import { flChrome } from '@/components/fl/teams/flChart'
 import { axisTicks, barPathTop, scale } from './chartUtils'
 
 /**
@@ -27,9 +28,9 @@ export default function BarChart({ data = [], unit = '', color }) {
 
   if (!data.length) return null
 
-  const c = chrome(dark)
+  const c = flChrome(dark)
   const barColor = color || singleColor(dark)
-  const ink = dark ? '#d2d8e8' : '#2d3752'
+  const ink = flChrome(dark).ink
 
   const plotW = VB_W - M.left - M.right
   const plotH = VB_H - M.top - M.bottom
