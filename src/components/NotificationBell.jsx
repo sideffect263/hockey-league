@@ -1,33 +1,42 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
-import { Bell, Bell as BellRing, BrandIcon } from "@/components/icons/BrandIcons"
-import { formatDistanceToNow } from 'date-fns'
-import { he } from 'date-fns/locale'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import {
-  getNotifications, getUnreadCount, markAllRead,
-  subscribeToNotifications, notificationText, notificationIcon, notificationBrandIcon, notificationHref, notificationPreview,
-} from '../lib/notifications'
+import { getNotifications, getUnreadCount, markAllRead, subscribeToNotifications } from '../lib/notifications'
 import { pushSupported, pushStatus, enablePush } from '../lib/push'
 import { SkeletonNotificationRows } from "@/components/skeletons/PageSkeletons"
-import { sizedImage } from "@/lib/imageSize"
+import { Spinner } from "@/components/fl/account/AccountKit"
+import { NotifRow, FilterChips, EmptyNotifs, FILTERS, groupByAge } from "@/components/fl/account/NotifKit"
+import { useLeagueTeams } from "@/components/fl/account/MyPageParts"
 
-function timeAgo(iso) {
-  try { return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: he }) }
-  catch { return '' }
+/** The bell drawn like the shell's other header icons (search): 23px line, 1.9 stroke. */
+function BellGlyph() {
+  return (
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.6 2H4.4zM10 20.5a2 2 0 0 0 4 0" />
+    </svg>
+  )
 }
 
+/**
+ * Header bell (board NotifBell). Phones: opens /notifications, the full page. Desktop: a
+ * dropdown with the same rows (today / this week / earlier, filter chips, answer
+ * buttons). The unread badge stays live over the private Broadcast topic and refreshes
+ * on focus; opening the dropdown marks everything read, as before.
+ */
 export default function NotificationBell() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([])
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [filter, setFilter] = useState("all")
   const [push, setPush] = useState('default') // 'on' | 'default' | 'denied' | 'unsupported'
   const [pushBusy, setPushBusy] = useState(false)
   const wrapRef = useRef(null)
+  const teams = useLeagueTeams()
+  const teamsByName = useMemo(() => Object.fromEntries(teams.map(t => [t.name, t])), [teams])
 
-  // Reflect this browser's push state (used to show the "enable" prompt).
   useEffect(() => {
     if (!user || !pushSupported()) { setPush('unsupported'); return }
     pushStatus().then(setPush).catch(() => {})
@@ -66,6 +75,8 @@ export default function NotificationBell() {
   }, [open])
 
   const toggle = async () => {
+    // Phones get the full page (board NotifBell is a page, and a dropdown is cramped there).
+    if (window.matchMedia('(max-width: 1023px)').matches) { navigate('/notifications'); return }
     const next = !open
     setOpen(next)
     if (next) {
@@ -81,89 +92,59 @@ export default function NotificationBell() {
 
   if (!user) return null
 
+  const f = FILTERS.find(x => x.id === filter) || FILTERS[0]
+  const shown = items.filter(f.test)
+
   return (
     <div ref={wrapRef} className="relative">
-      <button
-        onClick={toggle}
-        className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
-        aria-label="התראות"
-      >
-        <Bell className="w-4 h-4" />
+      <button onClick={toggle} aria-haspopup="dialog" aria-expanded={open}
+        className="relative size-11 rounded-full flex items-center justify-center text-fg-strong hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent"
+        aria-label={unread > 0 ? `התראות, ${unread} חדשות` : "התראות"}>
+        <BellGlyph />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -left-0.5 min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center">
+          <span className="absolute top-1 left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-fl-accent text-fl-inkOnLight text-[10.5px] font-extrabold flex items-center justify-center ring-2 ring-surface-page tabular-nums">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute left-0 mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50">
-          <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
+        <div role="dialog" aria-label="התראות"
+          className="absolute left-0 mt-2 w-[420px] max-w-[calc(100vw-2rem)] max-h-[min(78vh,720px)] flex flex-col rounded-[22px] bg-surface-page shadow-[0_18px_50px_rgba(0,0,0,.22)] ring-1 ring-line z-50 overflow-hidden fl-fade-in">
+          <div className="px-4 pt-3.5 pb-2 shrink-0">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">התראות</h3>
-              {push === 'on' && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                  <BellRing className="w-4 h-4" /> התראות דחיפה פעילות
-                </span>
-              )}
+              <h3 className="text-[20px] font-extrabold text-fg-strong">התראות</h3>
+              {push === 'on' && <span className="text-[12px] font-semibold text-[#1B5E2A] dark:text-emerald-300">פוש פעיל במכשיר הזה</span>}
             </div>
             {push === 'default' && (
-              <button
-                onClick={handleEnablePush}
-                disabled={pushBusy}
-                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand hover:bg-brand-hover disabled:opacity-60 text-white text-xs font-semibold py-1.5 transition-colors"
-              >
-                <BellRing className="w-4 h-4" />
-                {pushBusy ? 'מפעיל…' : 'הפעל התראות דחיפה במכשיר הזה'}
+              <button onClick={handleEnablePush} disabled={pushBusy}
+                className="mt-2.5 w-full h-11 rounded-xl bg-brand text-brand-fg text-[13.5px] font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60">
+                {pushBusy ? <Spinner /> : null}{pushBusy ? 'מפעיל…' : 'הפעלת התראות במכשיר הזה'}
               </button>
             )}
-            {push === 'denied' && (
-              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                התראות חסומות בדפדפן. יש לאפשר אותן בהגדרות האתר כדי לקבל עדכונים.
-              </p>
-            )}
+            {push === 'denied' && <p className="mt-2 text-[12px] text-fg-muted leading-snug">ההתראות חסומות בדפדפן. מאפשרים אותן בהגדרות האתר כדי לקבל עדכונים.</p>}
+            <div className="mt-2.5"><FilterChips value={filter} onChange={setFilter} rows={items} /></div>
           </div>
 
-          {loading ? (
-            <div className="p-3">
-              <SkeletonNotificationRows count={3} compact />
-            </div>
-          ) : items.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">אין התראות עדיין</div>
-          ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {items.map((n) => (
-                <li key={n.id}>
-                  <Link
-                    to={notificationHref(n)}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
-                      n.read_at ? '' : 'bg-brand/[0.06] dark:bg-brand/5'
-                    }`}
-                  >
-                    {n.actor?.avatar_url && n.type !== 'announcement' ? (
-                      <img src={sizedImage(n.actor.avatar_url, 32)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
-                        {notificationBrandIcon(n) ? <BrandIcon name={notificationBrandIcon(n)} className="w-5 h-5" /> : notificationIcon(n)}
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-slate-700 dark:text-slate-200 leading-snug">{notificationText(n)}</p>
-                      {notificationPreview(n) && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.type === 'announcement' ? notificationPreview(n) : `“${notificationPreview(n)}”`}</p>}
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
-                    </div>
-                    {!n.read_at && <span className="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5" />}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            {loading ? (
+              <div className="p-3"><SkeletonNotificationRows count={3} compact /></div>
+            ) : shown.length === 0 ? (
+              <EmptyNotifs filtered={filter !== "all"} />
+            ) : groupByAge(shown).map(([title, list]) => (
+              <section key={title} aria-label={title}>
+                <h4 className="px-4 pt-2 pb-1.5 text-[12.5px] font-extrabold text-fg-muted">{title}</h4>
+                <ul className="bg-surface divide-y divide-line">
+                  {list.map(n => <li key={n.id}><NotifRow n={n} teamsByName={teamsByName} onOpen={() => setOpen(false)} /></li>)}
+                </ul>
+              </section>
+            ))}
+          </div>
           {/* Long messages (a league-manager broadcast runs to 500 chars) don't fit a
               dropdown, and they exist nowhere else — so always offer the full list. */}
           <Link to="/notifications" onClick={() => setOpen(false)}
-            className="block px-4 py-2.5 text-center text-xs font-semibold text-brand hover:bg-slate-50 dark:hover:bg-slate-800/60 border-t border-slate-100 dark:border-slate-700 transition-colors">
-            הצגת כל ההתראות
+            className="shrink-0 h-12 flex items-center justify-center text-[13.5px] font-bold text-fg-strong hover:bg-surface border-t border-line transition-colors">
+            כל ההתראות
           </Link>
         </div>
       )}

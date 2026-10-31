@@ -5,7 +5,6 @@ import { Comment as MessageCircle } from "@/components/icons/BrandIcons"
 import { formatDistanceToNow, format } from 'date-fns'
 import { he } from 'date-fns/locale'
 import { useAuth } from '../lib/AuthContext'
-import { BRAND_ORANGE } from '../lib/brand'
 import {
   listConversations, getThread, sendMessage, markThreadRead,
   getTotalUnread, getMessageableMembers, subscribeToMessages,
@@ -16,7 +15,7 @@ function Avatar({ p, size = 'w-9 h-9' }) {
   const initial = (p?.display_name || '').trim().charAt(0).toUpperCase()
   if (p?.avatar_url) return <img src={sizedImage(p.avatar_url, 48)} alt="" className={`${size} rounded-full object-cover shrink-0`} />
   return (
-    <div className={`${size} rounded-full shrink-0 flex items-center justify-center text-white text-sm font-bold`} style={{ backgroundColor: BRAND_ORANGE }}>
+    <div className={`${size} rounded-full shrink-0 flex items-center justify-center bg-surface-sunken text-fg-strong text-sm font-bold`}>
       {initial || '?'}
     </div>
   )
@@ -151,9 +150,9 @@ export default function ChatDrawer() {
         {!open && (
           <motion.button
             onClick={openDrawer}
-            // Fixed element: keep it clear of the home indicator on iOS.
-            style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
-            className="fixed left-6 z-40 size-14 rounded-full bg-brand hover:bg-brand-hover text-white shadow-lg shadow-brand/30 flex items-center justify-center transition-colors"
+            // Fixed element: phones keep it above the Floodlight tab bar (76px + the home
+            // indicator); desktop has no tab bar.
+            className="fixed left-4 lg:left-6 bottom-[calc(76px+env(safe-area-inset-bottom)+12px)] lg:bottom-6 z-40 size-14 rounded-full bg-brand hover:bg-brand-hover text-brand-fg shadow-[0_8px_22px_rgba(0,0,0,.25)] flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent"
             aria-label="הודעות"
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
             animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
@@ -168,7 +167,7 @@ export default function ChatDrawer() {
                   // `key` on the count so an incoming message re-pops the badge — the one
                   // moment the number changing is worth noticing.
                   key={unread}
-                  className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold tabular-nums flex items-center justify-center border-2 border-white dark:border-slate-900"
+                  className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-fl-accent text-fl-inkOnLight text-xs font-extrabold tabular-nums flex items-center justify-center border-2 border-surface-page"
                   initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.5 }}
                   animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
@@ -187,13 +186,13 @@ export default function ChatDrawer() {
         {open && (
         <motion.div
           dir="rtl"
-          className="fixed left-0 top-16 bottom-0 z-40 w-full sm:w-[380px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col"
+          className="fixed left-0 top-16 bottom-0 z-[55] w-full sm:w-[400px] bg-surface-page text-fg-strong sm:border-r border-line shadow-2xl flex flex-col sm:rounded-tr-[22px] overflow-hidden"
           {...drawerMotion(reduced)}
         >
           {/* Header */}
-          <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="flex items-center gap-2 px-3 h-[60px] border-b border-line bg-surface shrink-0">
             {view !== 'inbox' && (
-              <button onClick={() => setView('inbox')} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500" aria-label="חזרה">
+              <button onClick={() => setView('inbox')} className="size-11 rounded-full flex items-center justify-center hover:bg-surface-page text-fg-muted" aria-label="חזרה">
                 <ArrowRight className="w-5 h-5" />
               </button>
             )}
@@ -203,14 +202,14 @@ export default function ChatDrawer() {
                 <span className="font-bold text-slate-900 dark:text-white truncate">{active.display_name || 'משתמש'}</span>
               </div>
             ) : (
-              <h3 className="font-bold text-slate-900 dark:text-white flex-1">{view === 'new' ? 'הודעה חדשה' : 'הודעות'}</h3>
+              <h3 className="text-[19px] font-extrabold text-fg-strong flex-1">{view === 'new' ? 'הודעה חדשה' : 'הודעות'}</h3>
             )}
             {view === 'inbox' && (
-              <button onClick={openNew} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-brand dark:text-brand-light" aria-label="שיחה חדשה" title="שיחה חדשה">
+              <button onClick={openNew} className="size-11 rounded-full flex items-center justify-center hover:bg-surface-page text-fg-strong" aria-label="שיחה חדשה" title="שיחה חדשה">
                 <Plus className="w-5 h-5" />
               </button>
             )}
-            <button onClick={close} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500" aria-label="סגור">
+            <button onClick={close} className="size-11 rounded-full flex items-center justify-center hover:bg-surface-page text-fg-muted" aria-label="סגור">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -239,10 +238,10 @@ export default function ChatDrawer() {
                 <button onClick={openNew} className="btn-primary btn-sm">התחל שיחה חדשה</button>
               </motion.div>
             ) : (
-              <motion.ul key="inbox" className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800" {...viewMotion(reduced)}>
+              <motion.ul key="inbox" className="flex-1 overflow-y-auto divide-y divide-line" {...viewMotion(reduced)}>
                 {convs.map((c) => (
                   <li key={c.other_id}>
-                    <button onClick={() => openThread(c.profile || { id: c.other_id })} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-right transition-colors">
+                    <button onClick={() => openThread(c.profile || { id: c.other_id })} className="w-full min-h-[64px] flex items-center gap-3 px-4 py-3 bg-surface hover:bg-surface/70 text-right transition-colors">
                       <Avatar p={c.profile} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
@@ -251,7 +250,7 @@ export default function ChatDrawer() {
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{c.last.body}</p>
                       </div>
-                      {c.unread > 0 && <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center shrink-0">{c.unread}</span>}
+                      {c.unread > 0 && <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-fl-accent text-fl-inkOnLight text-[10.5px] font-extrabold flex items-center justify-center shrink-0">{c.unread}</span>}
                     </button>
                   </li>
                 ))}
@@ -266,16 +265,16 @@ export default function ChatDrawer() {
                     value={memberQuery}
                     onChange={(e) => setMemberQuery(e.target.value)}
                     placeholder="חיפוש חבר/ה בליגה"
-                    className="w-full pr-9 pl-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/40"
+                    className="w-full h-11 pr-9 pl-3 rounded-[14px] bg-surface text-[15px] text-fg-strong placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-fl-accent/60"
                   />
                 </div>
               </div>
-              <ul className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+              <ul className="flex-1 overflow-y-auto divide-y divide-line">
                 {filteredMembers.length === 0 ? (
                   <li className="p-6 text-center text-sm text-slate-400">לא נמצאו חברים</li>
                 ) : filteredMembers.map((m) => (
                   <li key={m.id}>
-                    <button onClick={() => openThread(m)} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-right transition-colors">
+                    <button onClick={() => openThread(m)} className="w-full min-h-[64px] flex items-center gap-3 px-4 py-3 bg-surface hover:bg-surface/70 text-right transition-colors">
                       <Avatar p={m} />
                       <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">{m.display_name || 'משתמש'}</span>
                     </button>
@@ -307,7 +306,7 @@ export default function ChatDrawer() {
                       {/* Logical corners, not rounded-bl/br: alignment above uses self-start/end,
                           which flip under RTL — physical corners don't, so the tail ended up
                           pointing at the opposite speaker. */}
-                      <div className={`px-3 py-2 rounded-2xl text-sm break-words ${mine ? 'bg-brand text-white rounded-es-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-ee-sm'}`}>
+                      <div className={`px-3.5 py-2 rounded-[18px] text-[14.5px] break-words ${mine ? 'bg-brand text-brand-fg rounded-es-md' : 'bg-surface text-fg-strong rounded-ee-md'}`}>
                         {m.body}
                       </div>
                       <div className={`text-[10px] text-slate-400 tabular-nums mt-0.5 ${mine ? 'text-start' : 'text-end'}`}>{clockTime(m.created_at)}</div>
@@ -318,19 +317,19 @@ export default function ChatDrawer() {
                 )}
                 <div ref={bottomRef} />
               </div>
-              <div className="p-3 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-end gap-2">
+              <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-line bg-surface shrink-0 flex items-end gap-2">
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={onKeyDown}
                   rows={1}
                   placeholder="הקלד/י הודעה…"
-                  className="flex-1 resize-none max-h-28 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/40"
+                  className="flex-1 resize-none max-h-28 min-h-11 px-3.5 py-2.5 rounded-[14px] bg-surface-page text-[15px] text-fg-strong placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-fl-accent/60"
                 />
                 <motion.button
                   onClick={send}
                   disabled={sending || !draft.trim()}
-                  className="size-10 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-40 text-white flex items-center justify-center shrink-0 transition-colors"
+                  className="size-11 rounded-[14px] bg-brand hover:bg-brand-hover disabled:opacity-40 text-brand-fg flex items-center justify-center shrink-0 transition-colors"
                   aria-label="שלח"
                   whileTap={reduced ? undefined : { scale: 0.92 }}
                   transition={{ duration: 0.1, ease: EASE_OUT }}

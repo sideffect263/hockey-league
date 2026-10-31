@@ -145,3 +145,34 @@ export async function getAdminFanOverview() {
 
 /** "אוהד אחד" / "12 אוהדים" — Hebrew does not pluralise like English. */
 export const fansLabel = (n) => (Number(n) === 1 ? "אוהד אחד" : `${Number(n) || 0} אוהדים`)
+
+/*
+ * Game-day morning reminder for followed teams (supabase/fan-game-day-push.sql:
+ * follows.game_day, default on). Account page (Floodlight /me, 2026-10-31) — additive.
+ */
+
+/** My team follows with their switches: [{ target_id, notify, game_day }]. */
+export async function getMyTeamFollowRows() {
+  const user = await sessionUser()
+  if (!user) return []
+  const { data, error } = await supabase
+    .from('follows')
+    .select('target_id,notify,game_day,created_at')
+    .eq('user_id', user.id)
+    .eq('target_type', 'team')
+    .order('created_at', { ascending: true })
+  if (error) return []
+  return data || []
+}
+
+/** Turn the "plays today" reminder on/off for every team I follow. */
+export async function setTeamFollowsGameDay(on) {
+  const user = await sessionUser()
+  if (!user) throw new Error('not-authenticated')
+  const { error } = await supabase
+    .from('follows')
+    .update({ game_day: !!on })
+    .eq('user_id', user.id)
+    .eq('target_type', 'team')
+  if (error) throw error
+}

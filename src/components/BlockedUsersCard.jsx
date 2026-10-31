@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react"
-import { Loader2 } from "lucide-react"
-import { PersonRemove as UserX } from "@/components/icons/BrandIcons"
 import { getBlockedProfiles, unblockUser } from "@/lib/moderation"
+import { AccRow, AccButton, Glyph, Spinner } from "@/components/fl/account/AccountKit"
 
 /**
- * "Blocked users" manager for the /me page. Closes the web parity gap with iOS
- * (AccountView.blockedUsersSection): before this, a web user who blocked someone
- * had no way to see or undo it. Self-loads; renders nothing when the list is empty.
+ * "משתמשים חסומים" row of the פרטיות group on /me (board MyPage). Closes the web parity
+ * gap with iOS (AccountView.blockedUsersSection): a web user who blocked someone can see
+ * and undo it. Self-loads; "אין חסומים" when the list is empty, the list opens in place.
  */
 export default function BlockedUsersCard() {
   const [blocked, setBlocked] = useState([])
   const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false)
   const [busyId, setBusyId] = useState(null)
 
   useEffect(() => {
@@ -31,36 +31,32 @@ export default function BlockedUsersCard() {
     finally { setBusyId(null) }
   }
 
-  if (loading || blocked.length === 0) return null
-
+  const n = blocked.length
+  const sub = loading ? "טוען…" : n === 0 ? "אין חסומים" : n === 1 ? "משתמש אחד חסום · התוכן שלו מוסתר ממך" : `${n} משתמשים חסומים · התוכן שלהם מוסתר ממך`
   return (
-    <div className="card p-5 space-y-3">
-      <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">
-        <UserX className="w-4 h-4 text-brand" /> משתמשים חסומים
-      </h2>
-      <p className="text-[11px] text-slate-500 dark:text-slate-400">התוכן של משתמשים חסומים מוסתר ממך. אפשר לבטל חסימה בכל עת.</p>
-      <div className="space-y-2">
-        {blocked.map(u => {
-          const nm = u.display_name || "משתמש"
-          const initial = nm.trim().charAt(0).toUpperCase()
-          return (
-            <div key={u.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2.5 min-w-0">
+    <AccRow line="block" label="משתמשים חסומים" sub={sub}
+      onClick={n ? () => setOpen(v => !v) : undefined}
+      trailing={n ? <Glyph d="chev" size={18} className={`text-fg-subtle transition-transform ${open ? "rotate-90" : "-rotate-90"}`} /> : undefined}>
+      {open && n > 0 && (
+        <ul className="mx-3.5 mb-3 rounded-[14px] bg-surface-page divide-y divide-line">
+          {blocked.map(u => {
+            const nm = u.display_name || "משתמש"
+            return (
+              <li key={u.id} className="flex items-center gap-2.5 px-3 py-1.5 min-h-[56px]">
                 {u.avatar_url ? (
-                  <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 bg-slate-200 dark:bg-slate-700" />
+                  <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 bg-surface-sunken" />
                 ) : (
-                  <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center bg-slate-300 dark:bg-slate-600 text-white text-xs font-bold">{initial}</div>
+                  <span className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center bg-surface-sunken text-fg-strong text-xs font-bold">{nm.trim().charAt(0)}</span>
                 )}
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{nm}</span>
-              </div>
-              <button onClick={() => doUnblock(u.id)} disabled={busyId === u.id}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 transition-colors disabled:opacity-50 shrink-0">
-                {busyId === u.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />} ביטול חסימה
-              </button>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+                <span className="flex-1 min-w-0 text-[14px] font-semibold text-fg-strong truncate">{nm}</span>
+                <AccButton tone="outline" onClick={() => doUnblock(u.id)} disabled={busyId === u.id} aria-label={`ביטול חסימה: ${nm}`}>
+                  {busyId === u.id && <Spinner />} ביטול חסימה
+                </AccButton>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </AccRow>
   )
 }

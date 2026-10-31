@@ -1,57 +1,110 @@
 import { useState, useEffect } from "react"
-import { X, Loader2 } from "lucide-react"
-import { ApprovedStatus as CheckCircle2, PersonAdd } from "@/components/icons/BrandIcons"
 import { getTeams } from "@/lib/api"
 import { createPlayerSubmission } from "@/lib/playerSubmissions"
 import { linkRequestErrorMessage } from "@/lib/linkRequests"
+import { BrandIcon } from "@/components/icons/BrandIcons"
+import { Sheet, CTA, Field, Spinner, Notice, inputCls } from "@/components/fl/account/AccountKit"
 
-const inputCls = "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+export const emptyCard = (initialName) => ({
+  teamId: "", firstName: initialName?.firstName || "", lastName: initialName?.lastName || "",
+  jerseyNumber: "", position: "Field Player", birthDate: "", note: "",
+})
 
-function Field({ label, children }) {
+export const cardComplete = (f) => !!(f.teamId && f.firstName.trim() && f.lastName.trim() && f.birthDate)
+
+/** Exactly what the server has always received for a new card. */
+export function submitCard(form) {
+  return createPlayerSubmission({
+    teamId: form.teamId === "__free__" ? null : form.teamId,
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    jerseyNumber: form.jerseyNumber ? parseInt(form.jerseyNumber, 10) : null,
+    position: form.position.trim() || null,
+    birthDate: form.birthDate,
+    note: form.note.trim() || null,
+  })
+}
+
+/**
+ * The new-card fields (board OnbNewCard): team or free agent, first/last name, number,
+ * position (two big choices), birth date (required, not public), a note to the coach.
+ * Controlled: `form` + `onChange(next)`. Shared by the /me sheet and onboarding.
+ */
+export function NewCardFields({ form, onChange, idPrefix = "nc" }) {
+  const [teams, setTeams] = useState([])
+  useEffect(() => { getTeams("name", true).then(setTeams).catch(() => setTeams([])) }, [])
+  const set = (k, v) => onChange({ ...form, [k]: v })
+  const id = (k) => `${idPrefix}-${k}`
   return (
-    <div>
-      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{label}</label>
-      {children}
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="שם פרטי" htmlFor={id("first")}>
+          <input id={id("first")} value={form.firstName} onChange={e => set("firstName", e.target.value.slice(0, 40))} autoComplete="given-name" className={inputCls} />
+        </Field>
+        <Field label="שם משפחה" htmlFor={id("last")}>
+          <input id={id("last")} value={form.lastName} onChange={e => set("lastName", e.target.value.slice(0, 40))} autoComplete="family-name" className={inputCls} />
+        </Field>
+      </div>
+      <Field label="קבוצה" htmlFor={id("team")} hint="בחירת קבוצה נשלחת לאישור המאמן שלה; בלי קבוצה, לאישור מנהל הליגה.">
+        <select id={id("team")} value={form.teamId} onChange={e => set("teamId", e.target.value)} className={`${inputCls} appearance-none`}>
+          <option value="">בחירת קבוצה…</option>
+          <option value="__free__">שחקן/ית חופשי/ה, בלי קבוצה</option>
+          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      </Field>
+      <div className="grid grid-cols-[96px_1fr] gap-3">
+        <Field label="מספר" htmlFor={id("num")}>
+          <input id={id("num")} value={form.jerseyNumber} onChange={e => set("jerseyNumber", e.target.value.replace(/\D/g, "").slice(0, 2))}
+            inputMode="numeric" dir="ltr" className={`${inputCls} fl-num text-center text-[18px]`} />
+        </Field>
+        <fieldset className="flex flex-col gap-1.5 min-w-0">
+          <legend className="text-[13px] font-bold text-fg-strong mb-1.5">עמדה</legend>
+          <div role="radiogroup" className="grid grid-cols-2 gap-2">
+            {[["Field Player", "שחקן שדה", "squad"], ["Goalkeeper", "שוער", "goalkeeper"]].map(([v, l, ic]) => {
+              const on = form.position === v
+              return (
+                <button key={v} type="button" role="radio" aria-checked={on} onClick={() => set("position", v)}
+                  className={`h-12 rounded-[14px] inline-flex items-center justify-center gap-1.5 text-[14px] font-bold border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent ${
+                    on ? "border-fg-strong bg-surface text-fg-strong" : "border-transparent bg-surface text-fg-muted hover:text-fg-strong"}`}>
+                  <BrandIcon name={ic} className="w-5 h-5" /> {l}
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+      </div>
+      <Field label="תאריך לידה" htmlFor={id("dob")} hint="משמש לכללי ההשאלה (עד גיל 18, או שוער/ת). לא מוצג בפומבי.">
+        <input id={id("dob")} type="date" dir="ltr" value={form.birthDate} max={new Date().toLocaleDateString("en-CA")} min="1930-01-02"
+          onChange={e => set("birthDate", e.target.value)} className={`${inputCls} tabular-nums text-start`} />
+      </Field>
+      <Field label="הערה למאמן (לא חובה)" htmlFor={id("note")}>
+        <textarea id={id("note")} value={form.note} onChange={e => set("note", e.target.value.slice(0, 200))} rows={2}
+          className={`${inputCls} h-auto py-2.5 resize-none`} placeholder="למשל: שיחקתי בעונה שעברה בקבוצה אחרת" />
+      </Field>
     </div>
   )
 }
 
 /**
- * Modal: a logged-in user proposes their own player card for a team. On submit it
- * files a PENDING player_submission; the team's coach (or an admin) approves it in
- * the admin "בקשות" tab, which creates the real players row and links this account.
- * Calls onSubmitted() so the caller can refresh its pending-submission state.
- * `initialName` ({ firstName, lastName }) prefills the form — onboarding passes what
- * the user just searched for and didn't find.
+ * Sheet (phones) / dialog (desktop): a logged-in user proposes their own player card for
+ * a team. On submit it files a PENDING player_submission; the team's coach (or an admin)
+ * approves it in the admin "בקשות" tab, which creates the real players row and links this
+ * account. Calls onSubmitted() so the caller can refresh its pending-submission state.
+ * `initialName` ({ firstName, lastName }) prefills the form.
  */
 export default function PlayerCardSubmission({ onClose, onSubmitted, initialName }) {
-  const [teams, setTeams] = useState([])
-  const [form, setForm] = useState({
-    teamId: "", firstName: initialName?.firstName || "", lastName: initialName?.lastName || "",
-    jerseyNumber: "", position: "Field Player", birthDate: "", note: "",
-  })
+  const [form, setForm] = useState(() => emptyCard(initialName))
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState(null)
 
-  useEffect(() => { getTeams("name", true).then(setTeams).catch(() => setTeams([])) }, [])
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const canSubmit = form.teamId && form.firstName.trim() && form.lastName.trim() && form.birthDate && !saving
+  const canSubmit = cardComplete(form) && !saving
 
   const submit = async () => {
     if (!canSubmit) return
     setSaving(true); setError(null)
     try {
-      await createPlayerSubmission({
-        teamId: form.teamId === "__free__" ? null : form.teamId,
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        jerseyNumber: form.jerseyNumber ? parseInt(form.jerseyNumber, 10) : null,
-        position: form.position.trim() || null,
-        birthDate: form.birthDate,
-        note: form.note.trim() || null,
-      })
+      await submitCard(form)
       setDone(true)
       onSubmitted?.()
     } catch (e) {
@@ -59,83 +112,26 @@ export default function PlayerCardSubmission({ onClose, onSubmitted, initialName
     } finally { setSaving(false) }
   }
 
+  if (done) {
+    return (
+      <Sheet onClose={onClose} title="הבקשה נשלחה" hideTitle footer={<CTA onClick={onClose} data-autofocus>סגירה</CTA>}>
+        <div className="text-center py-6">
+          <span className="mx-auto mb-4 w-[72px] h-[72px] rounded-[22px] bg-surface flex items-center justify-center"><BrandIcon name="verified" variant="large" className="w-11 h-11" /></span>
+          <h3 className="text-[24px] font-black text-fg-strong">הבקשה נשלחה</h3>
+          <p className="mt-2 text-[15px] text-fg-muted">כרטיס השחקן שלך נשלח לאישור. תופיע/י בליגה מרגע שהבקשה תאושר.</p>
+        </div>
+      </Sheet>
+    )
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl relative max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} aria-label="סגור" className="absolute top-4 left-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-          <X className="w-5 h-5" />
-        </button>
-
-        {done ? (
-          <div className="text-center px-6 py-8">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">הבקשה נשלחה 🛼</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              כרטיס השחקן שלך נשלח לאישור. תופיע/י בליגה מרגע שהבקשה תאושר.
-            </p>
-            <button onClick={onClose} className="mt-5 w-full py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors">
-              סגירה
-            </button>
-          </div>
-        ) : (
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-1">
-              <PersonAdd className="w-5 h-5 text-brand" />
-              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">צור כרטיס שחקן</h3>
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-              מלא/י את הפרטים. בחירת קבוצה תישלח לאישור המאמן שלה; ללא קבוצה — לאישור מנהל הליגה.
-            </p>
-
-            <div className="space-y-3.5">
-              <Field label="קבוצה">
-                <select value={form.teamId} onChange={e => set("teamId", e.target.value)} className={inputCls}>
-                  <option value="">בחר/י קבוצה…</option>
-                  <option value="__free__">שחקן/ית חופשי/ה — ללא קבוצה</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="שם פרטי">
-                  <input value={form.firstName} onChange={e => set("firstName", e.target.value.slice(0, 40))} className={inputCls} />
-                </Field>
-                <Field label="שם משפחה">
-                  <input value={form.lastName} onChange={e => set("lastName", e.target.value.slice(0, 40))} className={inputCls} />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="מספר">
-                  <input value={form.jerseyNumber} onChange={e => set("jerseyNumber", e.target.value.replace(/\D/g, "").slice(0, 2))} inputMode="numeric" className={inputCls} />
-                </Field>
-                <Field label="עמדה">
-                  <select value={form.position} onChange={e => set("position", e.target.value)} className={inputCls}>
-                    <option value="Field Player">שחקן שדה</option>
-                    <option value="Goalkeeper">שוער</option>
-                  </select>
-                </Field>
-              </div>
-              <Field label="תאריך לידה">
-                <input type="date" dir="ltr" value={form.birthDate} max={new Date().toLocaleDateString("en-CA")} min="1930-01-02"
-                  onChange={e => set("birthDate", e.target.value)} className={`${inputCls} tabular-nums`} />
-                <p className="text-[11px] text-slate-400 mt-1">משמש לכללי ההשאלה (עד גיל 18, או שוער/ת). לא מוצג בפומבי.</p>
-              </Field>
-              <Field label="הערה למאמן (לא חובה)">
-                <textarea value={form.note} onChange={e => set("note", e.target.value.slice(0, 200))} rows={2} className={inputCls} />
-              </Field>
-            </div>
-
-            {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-            <button onClick={submit} disabled={!canSubmit}
-              className="mt-5 w-full py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <PersonAdd className="w-4 h-4" />}
-              שליחה לאישור
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+    <Sheet onClose={onClose} title="כרטיס שחקן חדש" wide
+      footer={<>
+        {error && <Notice tone="err" className="mb-2">{error}</Notice>}
+        <CTA onClick={submit} disabled={!canSubmit}>{saving && <Spinner />} שליחה לאישור</CTA>
+      </>}>
+      <p className="text-[14px] text-fg-muted mb-4">ממלאים פעם אחת. המאמן מאשר, ואז הכרטיס מופיע בליגה ומשויך לחשבון שלך.</p>
+      <NewCardFields form={form} onChange={setForm} idPrefix="pcs" />
+    </Sheet>
   )
 }

@@ -3,9 +3,8 @@ import {
   getMyMedicalHistory, effectiveMedical, isValidMedical, isOpenMedical,
   uploadMedical, withdrawMedical, openMedical,
 } from "@/lib/medical"
-import { Upload, Loader2, History, ChevronDown, XCircle as XIcon, FileText } from "lucide-react"
-import { ApprovedStatus as CheckCircle2, Rejected as XCircle, Clock, Medical } from "@/components/icons/BrandIcons"
 import { format } from "date-fns"
+import { AccRow, AccChip, AccButton, Glyph, Spinner, Notice, errText } from "@/components/fl/account/AccountKit"
 
 const day = (v) => (v ? format(new Date(v), "d/M/yyyy") : null)
 const isPdf = (c) => /\.pdf$/i.test(c?.file_path || "")
@@ -13,13 +12,11 @@ const isPdf = (c) => /\.pdf$/i.test(c?.file_path || "")
 /** History row chip: status incl. בוטל (a replaced or withdrawn upload — never deleted). */
 function chip(c) {
   const expired = c.status === "approved" && c.expires_at && !isValidMedical(c)
-  if (c.status === "approved") return expired
-    ? { label: "פג", cls: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" }
-    : { label: "אושר", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" }
-  if (isOpenMedical(c)) return { label: "ממתין", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" }
-  if (c.status === "rejected") return { label: "נדחה", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" }
-  if (c.status === "withdrawn") return { label: "בוטל", cls: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" }
-  return { label: c.status, cls: "bg-slate-200 text-slate-600" }
+  if (c.status === "approved") return expired ? { label: "פג", tone: "quiet" } : { label: "אושר", tone: "ok" }
+  if (isOpenMedical(c)) return { label: "ממתין", tone: "warn" }
+  if (c.status === "rejected") return { label: "נדחה", tone: "err" }
+  if (c.status === "withdrawn") return { label: "בוטל", tone: "quiet" }
+  return { label: c.status, tone: "quiet" }
 }
 
 function detail(c) {
@@ -32,15 +29,23 @@ function detail(c) {
   return parts.join(" · ")
 }
 
+/** Days until an approved certificate expires (null = no date / not approved). */
+export function medicalDaysLeft(cert) {
+  if (cert?.status !== "approved" || !cert.expires_at) return null
+  const ms = new Date(cert.expires_at).setHours(23, 59, 59) - Date.now()
+  return Math.ceil(ms / 86400000)
+}
+
 /**
- * The player's medical-certificate card (#2). Uploads a photo/PDF of the yearly
- * physical to the private bucket for coach approval, and shows the current status.
- * A new upload replaces one still waiting ("החלפת קובץ"); "ביטול / הסרה" withdraws the
- * waiting one after a confirm; "היסטוריה" lists every upload ever made. Nothing is
+ * The player's medical certificate, as rows of the "בריאות וזמינות" group on /me (board
+ * MyPage). Uploads a photo/PDF of the yearly physical to the private bucket for coach
+ * approval, and shows the current status. A new upload replaces one still waiting
+ * ("החלפת קובץ"); "ביטול / הסרה" withdraws the waiting one after a confirm; "היסטוריה"
+ * lists every upload ever made, each opens with a short-lived signed link. Nothing is
  * deleted — a replaced or withdrawn upload stays in the history as "בוטל".
- * Renders for a linked player only.
+ * `onStatus(cert, history)` lets the page show the urgent banner. Linked player only.
  */
-export default function MedicalCertificateCard({ playerId }) {
+export default function MedicalCertificateCard({ playerId, onStatus }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -48,15 +53,19 @@ export default function MedicalCertificateCard({ playerId }) {
   const [confirming, setConfirming] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [opening, setOpening] = useState(null)
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
 
   const load = async () => {
-    try { setHistory(await getMyMedicalHistory(playerId)); setLoadFailed(false) }
-    catch { setLoadFailed(true) }
+    try {
+      const h = await getMyMedicalHistory(playerId)
+      setHistory(h); setLoadFailed(false)
+      onStatus?.(effectiveMedical(h), h)
+    } catch { setLoadFailed(true) }
     setLoading(false)
   }
-  useEffect(() => { load() }, [playerId])
+  useEffect(() => { load() }, [playerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onFile = async (e) => {
     const file = e.target.files?.[0]
@@ -76,6 +85,7 @@ export default function MedicalCertificateCard({ playerId }) {
   const cert = effectiveMedical(history)
   const open = history.find(isOpenMedical) || null
   const validNow = isValidMedical(cert)
+  const latest = history.find(c => c.status !== "withdrawn") || null
 
   const onWithdraw = async () => {
     if (!open) return
@@ -86,112 +96,98 @@ export default function MedicalCertificateCard({ playerId }) {
   }
 
   const onOpen = async (c) => {
+    setOpening(c.id); setError(null)
     if (!(await openMedical(c.file_path))) setError("פתיחת הקובץ נכשלה")
+    setOpening(null)
   }
 
-  if (loading) return null
+  if (loading) {
+    return <AccRow brand="medical" label="אישור רפואי" sub="טוען…" />
+  }
   const isExpired = cert?.status === "approved" && cert.expires_at && !validNow
-  // Status line — approved shows validity/expiry; an expired cert reads as "renew".
-  let st = null
-  if (cert?.status === "pending") st = { label: "ממתין לאישור המאמן", cls: "text-amber-600 dark:text-amber-400", Icon: Clock }
-  // Stage 2 — say who is holding it and that he still cannot play, otherwise this
-  // reads as "approved" and the first blocked game registration is a support call.
-  else if (cert?.status === "pending_manager") st = { label: "המאמן אישר · ממתין לאישור המנהלת", cls: "text-amber-600 dark:text-amber-400", Icon: Clock }
-  else if (cert?.status === "approved" && !isExpired) st = { label: cert.expires_at ? `אושר · בתוקף עד ${day(cert.expires_at)}` : "אושר", cls: "text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 }
-  else if (cert?.status === "approved" && isExpired) st = { label: "פג תוקף — יש לחדש", cls: "text-red-600 dark:text-red-400", Icon: XCircle }
-  else if (cert?.status === "rejected") st = { label: "נדחה — יש להעלות מחדש", cls: "text-red-600 dark:text-red-400", Icon: XCircle }
+  // Status: approved shows validity; an expired cert reads as "renew"; stage 2 says who
+  // is holding it and that he still cannot play (else the first blocked sign-up is a support call).
+  let st = { chip: null, sub: "עוד לא הועלה. בלי אישור בתוקף אי אפשר להירשם למשחקים" }
+  if (cert?.status === "pending") st = { chip: { t: "ממתין", tone: "warn" }, sub: "ממתין לאישור המאמן" }
+  else if (cert?.status === "pending_manager") st = { chip: { t: "ממתין", tone: "warn" }, sub: "המאמן אישר · ממתין לאישור המנהלת. עד אז אי אפשר להירשם" }
+  else if (cert?.status === "approved" && !isExpired) st = { chip: { t: "בתוקף", tone: "ok" }, sub: cert.expires_at ? `אושר · בתוקף עד ${day(cert.expires_at)}` : "אושר" }
+  else if (isExpired) st = { chip: { t: "פג תוקף", tone: "err" }, sub: "פג תוקף. יש להעלות אישור חדש" }
+  else if (cert?.status === "rejected") st = { chip: { t: "נדחה", tone: "err" }, sub: "נדחה. יש להעלות מחדש" }
 
   const uploadLabel = !cert ? "העלאת אישור" : open ? "החלפת קובץ" : (cert.status === "rejected" || isExpired) ? "העלאה מחדש" : "העלאת אישור חדש"
 
   return (
-    <div className="card p-4 space-y-3">
-      <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
-        <Medical className="w-4 h-4" /> אישור רפואי
-      </h3>
-      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-        העלו צילום של הבדיקה הרפואית השנתית לאישור המאמן. הקובץ פרטי — נראה רק לך, למאמן ולמנהל.
-      </p>
-
-      {st && (
-        <div className={`flex items-center gap-2 text-sm font-semibold ${st.cls}`}>
-          <st.Icon className="w-4 h-4" /> {st.label}
-        </div>
-      )}
-      {open && validNow && (
-        <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
-          <Clock className="w-3.5 h-3.5" />
-          קובץ חדש ממתין לאישור (הועלה ב־{day(open.created_at)}) — האישור הנוכחי נשאר בתוקף עד שהחדש יאושר
-        </div>
-      )}
-      {loadFailed && <p className="text-xs text-red-600 dark:text-red-400">טעינת הסטטוס נכשלה — <button className="underline" onClick={load}>נסו שוב</button></p>}
-
-      {!loadFailed && (
-        <div className="flex flex-wrap items-center gap-2">
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={onFile} className="hidden" id="medical-file" />
-          <label htmlFor="medical-file"
-            className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors cursor-pointer">
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            {uploadLabel}
-          </label>
-          {open && (
-            <button type="button" onClick={() => setConfirming(true)} disabled={withdrawing}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <XIcon className="w-3.5 h-3.5" /> ביטול / הסרה
-            </button>
+    <>
+      <AccRow brand="medical" label="אישור רפואי"
+        sub={<>{st.sub}<span className="block">הקובץ פרטי: נראה רק לך, למאמן ולמנהל הליגה</span></>}
+        trailing={st.chip && <AccChip tone={st.chip.tone}>{st.chip.t}</AccChip>}>
+        <div className="px-3.5 pb-3 -mt-1 flex flex-col gap-2.5">
+          {open && validNow && (
+            <Notice tone="warn">קובץ חדש ממתין לאישור (הועלה ב־<span dir="ltr">{day(open.created_at)}</span>). האישור הנוכחי נשאר בתוקף עד שהחדש יאושר.</Notice>
           )}
-          {history.length > 0 && (
-            <button type="button" onClick={() => setShowHistory(v => !v)} aria-expanded={showHistory}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <History className="w-3.5 h-3.5" /> היסטוריה ({history.length})
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHistory ? "rotate-180" : ""}`} />
-            </button>
+          {loadFailed ? (
+            <p className={`text-[13px] ${errText}`}>טעינת הסטטוס נכשלה. <button className="underline font-bold h-11" onClick={load}>נסו שוב</button></p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={onFile} className="sr-only" id="medical-file" tabIndex={-1} />
+              <AccButton tone="ink" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                {uploading ? <Spinner /> : <Glyph d="upload" size={17} />} {uploading ? "מעלה…" : uploadLabel}
+              </AccButton>
+              {open && (
+                <AccButton tone="outline" onClick={() => setConfirming(true)} disabled={withdrawing}>ביטול / הסרה</AccButton>
+              )}
+            </div>
           )}
+          {open && <p className="text-[12px] text-fg-muted">העלאה חדשה תחליף את הקובץ הממתין. הקובץ הקודם יישמר בהיסטוריה.</p>}
+
+          {confirming && open && (
+            <div role="alertdialog" aria-labelledby="med-withdraw-title" className="rounded-[14px] bg-red-50 dark:bg-red-950/30 p-3.5 flex flex-col gap-2">
+              <p id="med-withdraw-title" className="text-[14px] font-extrabold text-fg-strong">לבטל את הקובץ הממתין?</p>
+              <p className="text-[13px] text-fg">
+                המאמן לא יבדוק אותו. {validNow ? "האישור הקיים שלך נשאר בתוקף." : "בלי אישור בתוקף אי אפשר להירשם למשחקים."} הקובץ לא נמחק, הוא נשאר בהיסטוריה כ״בוטל״.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <AccButton tone="danger" onClick={onWithdraw} disabled={withdrawing}>{withdrawing && <Spinner />} ביטול הקובץ</AccButton>
+                <AccButton tone="ghost" onClick={() => setConfirming(false)} disabled={withdrawing}>השארת הקובץ</AccButton>
+              </div>
+            </div>
+          )}
+          {error && <p role="alert" className={`text-[13px] font-semibold ${errText}`}>{error}</p>}
         </div>
-      )}
-      {open && <p className="text-[11px] text-slate-500 dark:text-slate-400">העלאה חדשה תחליף את הקובץ הממתין. הקובץ הקודם יישמר בהיסטוריה.</p>}
+      </AccRow>
 
-      {confirming && open && (
-        <div role="alertdialog" aria-labelledby="med-withdraw-title"
-          className="rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 p-3 space-y-2">
-          <p id="med-withdraw-title" className="text-sm font-bold text-slate-900 dark:text-white">לבטל את הקובץ הממתין?</p>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
-            המאמן לא יבדוק אותו. {validNow ? "האישור הקיים שלך נשאר בתוקף." : "בלי אישור בתוקף אי אפשר להירשם למשחקים."} הקובץ לא נמחק — הוא נשאר בהיסטוריה כ״בוטל״.
-          </p>
-          <div className="flex gap-2">
-            <button type="button" onClick={onWithdraw} disabled={withdrawing}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">
-              {withdrawing && <Loader2 className="w-3.5 h-3.5 animate-spin" />} ביטול הקובץ
-            </button>
-            <button type="button" onClick={() => setConfirming(false)} disabled={withdrawing}
-              className="text-xs font-semibold px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
-              השארת הקובץ
-            </button>
-          </div>
-        </div>
+      {latest && (
+        <AccRow line="doc" label="לצפות בקובץ שהעליתי"
+          sub={`הועלה ב־${day(latest.created_at)} · ${isPdf(latest) ? "PDF" : "תמונה"} · קישור פרטי לשתי דקות`}
+          onClick={() => onOpen(latest)} trailing={opening === latest.id ? <Spinner /> : undefined} chevron={opening !== latest.id} />
       )}
 
-      {showHistory && history.length > 0 && (
-        <ul className="divide-y divide-slate-200 dark:divide-slate-700 rounded-xl border border-slate-200 dark:border-slate-700">
-          {history.map(c => {
-            const ch = chip(c)
-            return (
-              <li key={c.id}>
-                <button type="button" onClick={() => onOpen(c)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-start hover:bg-slate-50 dark:hover:bg-slate-800/60">
-                  <FileText className="w-4 h-4 shrink-0 text-slate-500" />
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-slate-900 dark:text-white">הועלה ב־<span dir="ltr">{day(c.created_at)}</span></span>
-                    <span className="block text-[11px] text-slate-500 dark:text-slate-400">{detail(c)}</span>
-                  </span>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${ch.cls}`}>{ch.label}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+      {history.length > 0 && (
+        <AccRow line="history" label={`היסטוריית העלאות (${history.length})`} sub="כל קובץ שהעלית, גם אלה שבוטלו"
+          onClick={() => setShowHistory(v => !v)}
+          trailing={<Glyph d="chev" size={18} className={`text-fg-subtle transition-transform ${showHistory ? "rotate-90" : "-rotate-90"}`} />}>
+          {showHistory && (
+            <ul className="mx-3.5 mb-3 rounded-[14px] bg-surface-page divide-y divide-line overflow-hidden">
+              {history.map(c => {
+                const ch = chip(c)
+                return (
+                  <li key={c.id}>
+                    <button type="button" onClick={() => onOpen(c)}
+                      className="w-full min-h-[52px] flex items-center gap-3 px-3 py-2 text-start hover:bg-surface/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fl-accent">
+                      <Glyph d="doc" size={18} className="text-fg-muted" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13.5px] font-bold text-fg-strong">הועלה ב־<span dir="ltr">{day(c.created_at)}</span></span>
+                        <span className="block text-[12px] text-fg-muted">{detail(c)}</span>
+                      </span>
+                      {opening === c.id ? <Spinner /> : <AccChip tone={ch.tone}>{ch.label}</AccChip>}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </AccRow>
       )}
-
-      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-    </div>
+    </>
   )
 }

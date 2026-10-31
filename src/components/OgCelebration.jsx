@@ -14,7 +14,8 @@ import { BrandIcon, Celebrate } from "@/components/icons/BrandIcons"
  * UNlinked accounts only, so the two never collide).
  */
 
-const COLORS = ["#fbbf24", "#f59e0b", "#fde68a", "#3b82f6", "#ffffff", "#1e3a8a"]
+// Floodlight: the amber accent, paper and the league blue.
+const COLORS = ["#F2B233", "#F2C230", "#FFE7A8", "#2F6FD6", "#FAF9F6", "#1550D8"]
 
 export default function OgCelebration() {
   const { user, profile, loading } = useAuth()
@@ -60,7 +61,7 @@ export default function OgCelebration() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" dir="rtl" role="dialog" aria-modal="true" aria-labelledby="og-title">
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={close} />
+      <div className="absolute inset-0 bg-black/65" onClick={close} />
 
       {!reduce && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -81,47 +82,47 @@ export default function OgCelebration() {
         initial={reduce ? false : { scale: 0.8, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="relative w-full max-w-sm rounded-3xl p-7 text-center shadow-2xl bg-gradient-to-b from-slate-900 to-slate-950 ring-1 ring-amber-400/50"
+        className="relative w-full max-w-sm rounded-[28px] p-7 text-center shadow-2xl bg-[#070B10] text-white ring-1 ring-fl-accent/50"
       >
         <button
           onClick={close}
-          className="absolute top-4 left-4 p-1.5 rounded-lg text-slate-400 hover:bg-white/10 transition-colors"
+          className="absolute top-3 left-3 size-11 rounded-full flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors"
           aria-label="סגור"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <p className="text-sm font-bold text-amber-300/80"><Celebrate className="w-4 h-4 inline-block align-[-3px]" /> הפתעה!</p>
+        <p className="text-[13px] font-extrabold text-fl-accent"><Celebrate className="w-4 h-4 inline-block align-[-3px]" /> הפתעה!</p>
         <motion.div
           initial={reduce ? false : { scale: 0.3, rotate: -12 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.25 }}
-          className="mx-auto mt-4 mb-5 w-36 h-36 rounded-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 shadow-[0_0_60px_rgba(251,191,36,0.45)] ring-4 ring-amber-200/40"
+          className="mx-auto mt-4 mb-5 w-36 h-36 rounded-full flex flex-col items-center justify-center bg-fl-accent shadow-[0_0_60px_rgba(242,178,51,0.45)] ring-4 ring-white/15"
         >
           <BrandIcon name="og-badge" className="w-20 h-20" title="OG" />
-          <span dir="ltr" className="text-2xl font-extrabold text-slate-900/80 mt-1">#{number}</span>
+          <span dir="ltr" className="fl-num text-[26px] text-[#11161D] mt-1">#{number}</span>
         </motion.div>
 
-        <h2 id="og-title" className="text-2xl font-black text-white">
-          <span dir="ltr">OG #{number}</span> מתוך 25
+        <h2 id="og-title" className="text-[26px] font-black text-white">
+          <span dir="ltr">OG <span className="fl-num">#{number}</span></span> מתוך 25
         </h2>
-        <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+        <p className="text-[14.5px] text-[#D5DAE1] mt-2 leading-relaxed">
           היית בין 25 השחקנים הראשונים שחיברו את החשבון לכרטיס השחקן.
-          המספר שלך קבוע לתמיד — ותג ה־OG יופיע ליד השם שלך בכל מקום באתר.
+          המספר שלך קבוע לתמיד, ותג ה־OG יופיע ליד השם שלך בכל מקום באתר.
         </p>
 
         <button
           onClick={close}
-          className="mt-6 w-full py-3 rounded-xl bg-amber-400 text-slate-900 font-extrabold hover:bg-amber-300 transition-colors"
+          className="mt-6 w-full h-[52px] rounded-2xl bg-fl-accent text-[#11161D] text-[16px] font-extrabold hover:brightness-105 transition"
         >
           יאללה! <Celebrate className="w-5 h-5 inline-block align-[-3px]" />
         </button>
         <Link
           to={`/players/${playerSlug}`}
           onClick={close}
-          className="mt-3 inline-block text-xs font-semibold text-amber-300/90 hover:text-amber-200"
+          className="mt-2 min-h-11 inline-flex items-center text-[13px] font-bold text-white/85 hover:text-white"
         >
-          לכרטיס השחקן שלי ←
+          לכרטיס השחקן שלי
         </Link>
       </motion.div>
     </div>

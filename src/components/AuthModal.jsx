@@ -1,9 +1,24 @@
-import { useState, useEffect } from "react"
-import { APPLE_WEB_ENABLED, signInWithAppleWeb, AppleIcon } from "@/lib/appleWeb"
-import { X, Mail, Lock, Loader2, KeyRound } from "lucide-react"
-import { Person as User, Timeout } from "@/components/icons/BrandIcons"
+import { useState, useEffect, useRef } from "react"
+import { signInWithAppleWeb } from "@/lib/appleWeb"
 import { useAuth } from "@/lib/AuthContext"
 import { isPwnedPasswordError, PWNED_PASSWORD_MSG } from "@/lib/passwordErrors"
+import { getTeams } from "@/lib/api"
+import TeamLogo from "@/components/TeamLogo"
+import { BrandIcon } from "@/components/icons/BrandIcons"
+import WelcomeScene from "@/components/fl/account/WelcomeScene"
+import SocialSignIn from "@/components/fl/account/SocialSignIn"
+import { Glyph, Spinner } from "@/components/fl/account/AccountKit"
+
+/**
+ * Sign-in dialog in the Floodlight welcome look (board OnbWelcome, variant F "squad"):
+ * the floodlit rink with the three traced players, "כל הליגה / בכיס שלך", the league's
+ * crests, then Google first and e-mail under it (Apple only when the website has it).
+ * Phones get the whole screen; desktop a centred night dialog.
+ *
+ * The auth logic is unchanged: Google / Apple OAuth, and e-mail + password sign-in,
+ * sign-up (confirmation mail) and reset, with the same error mapping and the calm
+ * "rate limit" state for the mailer's 429.
+ */
 
 function translateAuthError(msg = "") {
   const m = msg.toLowerCase()
@@ -16,39 +31,42 @@ function translateAuthError(msg = "") {
   return msg || "אירעה שגיאה. נסו שוב"
 }
 
-function Field({ icon: Icon, value, onChange, ...props }) {
+const nightInput = "w-full h-12 rounded-[14px] bg-[#161D27] border border-[#2C3644] px-3.5 text-[15px] text-white placeholder:text-[#8B95A3] focus:outline-none focus:border-white/60 focus:ring-2 focus:ring-fl-accent/60 transition-colors"
+
+function NightField({ id, label, value, onChange, ...props }) {
   return (
-    <div className="relative">
-      <Icon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-      <input
-        {...props}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"
-      />
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-[13px] font-bold text-[#D5DAE1]">{label}</label>
+      <input id={id} {...props} value={value} onChange={(e) => onChange(e.target.value)} className={nightInput} />
     </div>
   )
 }
 
-function GoogleIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 48 48" aria-hidden="true">
-      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.6 2.4 30.1 0 24 0 14.6 0 6.4 5.4 2.6 13.2l7.9 6.2C12.3 13.3 17.7 9.5 24 9.5z" />
-      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7C43.8 37.5 46.5 31.5 46.5 24.5z" />
-      <path fill="#FBBC05" d="M10.5 28.4c-.5-1.5-.8-3.1-.8-4.9s.3-3.4.8-4.9l-7.9-6.2C1 15.6 0 19.6 0 23.5s1 7.9 2.6 11.1l7.9-6.2z" />
-      <path fill="#34A853" d="M24 47c6.1 0 11.3-2 15-5.5l-7.3-5.7c-2 1.4-4.7 2.3-7.7 2.3-6.3 0-11.7-3.8-13.5-9.4l-7.9 6.2C6.4 42.6 14.6 47 24 47z" />
-    </svg>
-  )
+const TITLES = {
+  signin: { h: "כניסה עם אימייל", sub: "האימייל והסיסמה של החשבון שלכם" },
+  signup: { h: "הרשמה עם אימייל", sub: "חשבון חדש בליגה. נשלח מייל לאימות" },
+  forgot: { h: "איפוס סיסמה", sub: "נשלח אליכם קישור לבחירת סיסמה חדשה" },
 }
 
-const TITLES = {
-  signin: { h: "התחברות", sub: "התחברו לחשבון שלכם" },
-  signup: { h: "הרשמה", sub: "הצטרפו לקהילת הליגה" },
-  forgot: { h: "איפוס סיסמה", sub: "נשלח אליכם קישור לבחירת סיסמה חדשה" },
+const pressCls = "w-full h-[52px] rounded-2xl bg-white text-[#11161D] font-bold text-[15.5px] inline-flex items-center justify-center gap-2 hover:bg-[#F1F1F1] transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#070B10]"
+const linkCls = "font-bold text-white underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent rounded"
+
+function Message({ icon, title, children, cta, onCta }) {
+  return (
+    <div className="flex-1 flex flex-col justify-center px-6 py-10 text-center">
+      <span className="mx-auto mb-5 w-[76px] h-[76px] rounded-[22px] bg-[#FAF9F6] flex items-center justify-center">
+        <BrandIcon name={icon} variant="large" className="w-12 h-12" />
+      </span>
+      <h2 id="auth-modal-title" className="text-[26px] font-black leading-tight">{title}</h2>
+      <div className="mt-3 text-[15px] leading-relaxed text-[#D5DAE1] space-y-2">{children}</div>
+      <button type="button" onClick={onCta} className={`${pressCls} mt-7`}>{cta}</button>
+    </div>
+  )
 }
 
 export default function AuthModal() {
   const { authOpen, closeAuth, signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } = useAuth()
+  const [view, setView] = useState("welcome") // 'welcome' | 'email'
   const [mode, setMode] = useState("signin") // 'signin' | 'signup' | 'forgot'
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -56,27 +74,51 @@ export default function AuthModal() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [sent, setSent] = useState(null) // null | 'confirm' | 'ratelimit' | 'reset'
+  const [teams, setTeams] = useState([])
+  const [vh, setVh] = useState(() => (typeof window !== "undefined" ? window.innerHeight : 844))
+  const panel = useRef(null)
 
-  // Reset to sign-in too: the trigger in the header says "התחבר", so reopening
-  // after a close from the signup/forgot form must not show that other form.
+  // Reset to the welcome view too: the trigger in the header says "התחברות", so
+  // reopening after a close from the e-mail form must not land in that form.
   const close = () => {
     closeAuth()
-    setMode("signin"); setError(null); setSent(null); setPassword("")
+    setView("welcome"); setMode("signin"); setError(null); setSent(null); setPassword("")
   }
   const switchMode = (m) => { setMode(m); setError(null); setSent(null) }
+  const openEmail = () => { setView("email"); setError(null) }
 
-  // Dialog behaviour: Esc closes it, and the page behind it stops scrolling.
+  // Dialog behaviour: Esc closes (or steps back from the form), the page behind stops
+  // scrolling, focus moves in and returns.
   useEffect(() => {
     if (!authOpen) return
+    const prev = document.activeElement
     const onKey = (e) => { if (e.key === "Escape") close() }
+    const onResize = () => setVh(window.innerHeight)
     const prevOverflow = document.body.style.overflow
     document.addEventListener("keydown", onKey)
+    window.addEventListener("resize", onResize)
     document.body.style.overflow = "hidden"
+    setVh(window.innerHeight)
+    const t = setTimeout(() => panel.current?.focus({ preventScroll: true }), 30)
     return () => {
+      clearTimeout(t)
       document.removeEventListener("keydown", onKey)
+      window.removeEventListener("resize", onResize)
       document.body.style.overflow = prevOverflow
+      prev?.focus?.({ preventScroll: true })
     }
   }, [authOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The crest row: the league's real teams (public read), once.
+  useEffect(() => {
+    if (!authOpen || teams.length) return
+    getTeams("name", true).then(t => setTeams((t || []).slice(0, 7))).catch(() => {})
+  }, [authOpen, teams.length])
+
+  // Move focus to the first field when the e-mail form opens.
+  useEffect(() => {
+    if (authOpen && view === "email") setTimeout(() => panel.current?.querySelector("input")?.focus(), 40)
+  }, [authOpen, view, mode])
 
   if (!authOpen) return null
 
@@ -107,148 +149,109 @@ export default function AuthModal() {
     }
   }
 
+  // Phones: the scene shrinks on short screens so the buttons stay in view (iOS lesson #9).
+  const sceneH = Math.max(250, Math.min(430, vh - 420))
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={close} />
-      <div className="relative card w-full max-w-sm p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-        <button
-          onClick={close}
-          className="absolute top-4 left-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-          aria-label="סגור"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center sm:p-6" dir="rtl">
+      <div className="hidden sm:block absolute inset-0 bg-black/60 fl-fade-in" onClick={close} aria-hidden="true" />
+      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="auth-modal-title"
+        className="relative w-full sm:max-w-[430px] sm:max-h-[min(92dvh,860px)] sm:rounded-[28px] overflow-y-auto overscroll-contain bg-[#070B10] text-white shadow-2xl outline-none flex flex-col fl-fade-in">
+
+        <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          {view === "email" && !sent ? (
+            <button type="button" onClick={() => { setView("welcome"); setError(null) }} aria-label="חזרה"
+              className="size-11 rounded-full flex items-center justify-center text-white/85 hover:bg-white/10">
+              <Glyph d="back" size={21} stroke={2.1} />
+            </button>
+          ) : <span />}
+          <button type="button" onClick={close} aria-label="סגירה"
+            className="size-11 rounded-full flex items-center justify-center text-white/75 hover:bg-white/10">
+            <Glyph d="close" size={17} stroke={2.3} />
+          </button>
+        </div>
 
         {sent === 'confirm' ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h3 id="auth-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">כמעט על המגרש 🛼</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              שלחנו קישור אימות ל־<span className="font-semibold text-slate-700 dark:text-slate-300">{email}</span>. לחצו עליו — ואתם בהרכב.
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-              לא הגיע? הציצו בתיקיית הספאם — לפעמים המייל נתקע ליד הבמה.
-            </p>
-            <button onClick={close} className="mt-5 w-full py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors">
-              אלופים, הבנתי
-            </button>
-          </div>
+          <Message icon="profile" title="כמעט על המגרש" cta="הבנתי" onCta={close}>
+            <p>שלחנו קישור אימות ל־<bdi className="font-bold text-white">{email}</bdi>. לוחצים עליו, ואתם בהרכב.</p>
+            <p className="text-[13px] text-[#8B95A3]">לא הגיע? הציצו בתיקיית הספאם.</p>
+          </Message>
         ) : sent === 'ratelimit' ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mx-auto mb-4">
-              <Timeout className="w-7 h-7 text-amber-600 dark:text-amber-400" />
-            </div>
-            <h3 id="auth-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">רגע, טיים־אאוט</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              שלחנו כבר כמה מיילים בזמן קצר, והשרת ביקש חילוף. שבו על הספסל דקה־שתיים ונסו שוב.
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-              כבר קיבלתם מייל קודם? הקישור עדיין תקף — פשוט אשרו אותו.
-            </p>
-            <button onClick={close} className="mt-5 w-full py-2.5 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-colors">
-              סבבה, אחכה
-            </button>
-          </div>
+          <Message icon="waiting" title="רגע, טיים־אאוט" cta="סבבה, אחכה" onCta={close}>
+            <p>שלחנו כבר כמה מיילים בזמן קצר, והשרת ביקש חילוף. שבו על הספסל דקה־שתיים ונסו שוב.</p>
+            <p className="text-[13px] text-[#8B95A3]">כבר קיבלתם מייל קודם? הקישור עדיין תקף, פשוט אשרו אותו.</p>
+          </Message>
         ) : sent === 'reset' ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 rounded-full bg-brand/10 dark:bg-brand/20 flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="w-7 h-7 text-brand dark:text-brand-light" />
-            </div>
-            <h3 id="auth-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">בדקו את המייל 📩</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              אם קיים חשבון עבור <span className="font-semibold text-slate-700 dark:text-slate-300">{email}</span>, שלחנו אליו קישור לאיפוס הסיסמה. לחצו עליו ובחרו סיסמה חדשה.
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-              לא הגיע? הציצו בתיקיית הספאם — לפעמים המייל נתקע ליד הבמה.
-            </p>
-            <button onClick={close} className="mt-5 w-full py-2.5 rounded-xl bg-brand text-white font-semibold hover:bg-brand-hover transition-colors">
-              הבנתי
-            </button>
-          </div>
-        ) : (
+          <Message icon="reminder" title="בדקו את המייל" cta="הבנתי" onCta={close}>
+            <p>אם קיים חשבון עבור <bdi className="font-bold text-white">{email}</bdi>, שלחנו אליו קישור לאיפוס הסיסמה. לוחצים עליו ובוחרים סיסמה חדשה.</p>
+            <p className="text-[13px] text-[#8B95A3]">לא הגיע? הציצו בתיקיית הספאם.</p>
+          </Message>
+        ) : view === "welcome" ? (
           <>
-            <h2 id="auth-modal-title" className="text-xl font-extrabold text-slate-900 dark:text-white text-center">
-              {TITLES[mode].h}
-            </h2>
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {TITLES[mode].sub}
-            </p>
-
-            <form onSubmit={submit} className="mt-5 space-y-3">
-              {mode === "signup" && (
-                <Field icon={User} type="text" placeholder="שם תצוגה" value={name} onChange={setName} autoComplete="name" />
-              )}
-              <Field icon={Mail} type="email" placeholder="אימייל" value={email} onChange={setEmail} required autoComplete="email" />
-              {mode !== "forgot" && (
-                <Field icon={Lock} type="password" placeholder="סיסמה (לפחות 6 תווים)" value={password} onChange={setPassword} required minLength={6} autoComplete={mode === "signin" ? "current-password" : "new-password"} />
-              )}
-
-              {mode === "signin" && (
-                <div className="text-left -mt-1">
-                  <button type="button" onClick={() => switchMode("forgot")} className="text-xs font-semibold text-brand dark:text-brand-light hover:underline">
-                    שכחתי סיסמה
-                  </button>
+            <WelcomeScene height={sceneH} offsetY={Math.max(0, 430 - sceneH) * 0.35} className="shrink-0" />
+            <div className="relative -mt-14 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col gap-3">
+              <h2 id="auth-modal-title" className="text-[42px] sm:text-[44px] font-black leading-[0.98] tracking-[-0.5px]">
+                כל הליגה<br /><span className="text-fl-accent">בכיס שלך</span>
+              </h2>
+              <p className="text-[15.5px] leading-[1.45] text-[#D5DAE1]">ליגת הוקי גלגיליות: משחקים בשידור חי, כל הגולים, הטבלה והקבוצה שלך.</p>
+              {teams.length > 0 && (
+                <div aria-hidden="true" className="flex gap-1.5 mt-0.5 mb-2">
+                  {teams.map(t => <TeamLogo key={t.id} team={t} px={40} className="ring-2 ring-[#070B10]" />)}
                 </div>
               )}
+              <SocialSignIn
+                onGoogle={() => signInWithGoogle()}
+                onApple={() => signInWithAppleWeb().catch(() => setError("ההתחברות עם Apple נכשלה. נסו שוב."))}
+                onEmail={openEmail}
+              />
+              {error && <p role="alert" className="text-[13px] font-semibold text-[#FF8A7A] text-center">{error}</p>}
+              {/* Each sign-in method is its own account unless linked: the Apple-in-the-app +
+                  Google-here split is how a player ends up with two accounts. */}
+              <p className="text-[12px] leading-relaxed text-[#8B95A3] text-center">כבר נרשמתם באפליקציה? היכנסו באותה דרך, אחרת ייפתח חשבון נפרד.</p>
+              <button type="button" onClick={close}
+                className="h-11 inline-flex items-center justify-center gap-1.5 text-[14.5px] font-bold text-white/85 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent rounded-xl">
+                להציץ בלי חשבון <Glyph d="chev" size={16} stroke={2.2} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="px-5 pt-16 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col">
+            <h2 id="auth-modal-title" className="text-[30px] font-black leading-tight">{TITLES[mode].h}</h2>
+            <p className="mt-1.5 text-[15px] text-[#D5DAE1]">{TITLES[mode].sub}</p>
 
-              {error && (
-                <p className="text-xs text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">{error}</p>
+            <form onSubmit={submit} className="mt-6 flex flex-col gap-3.5">
+              {mode === "signup" && (
+                <NightField id="auth-name" label="שם תצוגה" type="text" value={name} onChange={setName} autoComplete="name" placeholder="איך שיופיע בפוסטים ובתגובות" />
               )}
-
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2.5 rounded-xl bg-brand text-white font-bold hover:bg-brand-hover transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-                {mode === "signin" ? "התחברות" : mode === "signup" ? "יצירת חשבון" : "שליחת קישור לאיפוס"}
+              <NightField id="auth-email" label="אימייל" type="email" dir="ltr" value={email} onChange={setEmail} required autoComplete="email" inputMode="email" />
+              {mode !== "forgot" && (
+                <NightField id="auth-pass" label="סיסמה" type="password" dir="ltr" value={password} onChange={setPassword} required minLength={6}
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"} placeholder="לפחות 6 תווים" />
+              )}
+              {mode === "signin" && (
+                <button type="button" onClick={() => switchMode("forgot")} className="self-start -mt-1 h-9 text-[13px] font-semibold text-[#D5DAE1] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fl-accent rounded">
+                  שכחתי סיסמה
+                </button>
+              )}
+              {error && (
+                <p role="alert" className="text-[13px] font-semibold text-[#FFB4A8] bg-[#3A1512] rounded-xl px-3.5 py-2.5">{error}</p>
+              )}
+              <button type="submit" disabled={busy} className={`${pressCls} mt-1`}>
+                {busy && <Spinner />}
+                {mode === "signin" ? "כניסה" : mode === "signup" ? "יצירת חשבון" : "שליחת קישור לאיפוס"}
               </button>
             </form>
 
-            {mode !== "forgot" && (
-              <>
-                <div className="flex items-center gap-3 my-4">
-                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                  <span className="text-[11px] text-slate-400">או</span>
-                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                </div>
-
-                <button
-                  onClick={() => signInWithGoogle()}
-                  className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors flex items-center justify-center gap-2"
-                >
-                  <GoogleIcon /> המשך עם Google
-                </button>
-
-                {APPLE_WEB_ENABLED && (
-                  <button
-                    onClick={() => signInWithAppleWeb().catch(() => setError("ההתחברות עם Apple נכשלה. נסו שוב."))}
-                    className="mt-2 w-full py-2.5 rounded-xl bg-black text-white font-semibold hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <AppleIcon /> המשך עם Apple
-                  </button>
-                )}
-
-                {/* Each sign-in method is its own account unless linked — the Apple-in-the-
-                    app + Google-here split is how a player ends up with two accounts. */}
-                <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-3 leading-relaxed">
-                  כבר נרשמתם באפליקציה? היכנסו כאן באותה דרך ({APPLE_WEB_ENABLED ? "Google / Apple / אימייל" : "Google / אימייל"}) — דרך אחרת תיצור חשבון נפרד.
-                </p>
-              </>
-            )}
-
-            <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-5">
+            <p className="text-center text-[13.5px] text-[#D5DAE1] mt-6">
               {mode === "signin" ? (
-                <>אין לכם חשבון? <button type="button" onClick={() => switchMode("signup")} className="font-bold text-brand dark:text-brand-light hover:underline">הרשמה</button></>
+                <>אין לכם חשבון? <button type="button" onClick={() => switchMode("signup")} className={linkCls}>הרשמה</button></>
               ) : mode === "signup" ? (
-                <>כבר יש לכם חשבון? <button type="button" onClick={() => switchMode("signin")} className="font-bold text-brand dark:text-brand-light hover:underline">התחברות</button></>
+                <>כבר יש לכם חשבון? <button type="button" onClick={() => switchMode("signin")} className={linkCls}>כניסה</button></>
               ) : (
-                <>נזכרתם בסיסמה? <button type="button" onClick={() => switchMode("signin")} className="font-bold text-brand dark:text-brand-light hover:underline">חזרה להתחברות</button></>
+                <>נזכרתם בסיסמה? <button type="button" onClick={() => switchMode("signin")} className={linkCls}>חזרה לכניסה</button></>
               )}
             </p>
-          </>
+          </div>
         )}
       </div>
     </div>
