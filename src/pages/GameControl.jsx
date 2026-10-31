@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { TeamBlend, CrestDisc, FLScore } from "@/components/fl/Floodlight"
 import { Link, useParams } from "react-router-dom"
 import { ArrowRight, Eye, EyeOff, Lock, LockOpen, Check, Minus, Plus, LayoutGrid, Hand, X, Trash2, Settings2, ChevronDown, Wifi, WifiOff } from "lucide-react"
 import { EditIcon as Pencil, Sparkle as Wand2, Warning as AlertTriangle, MonitorPlay, Live as Radio, Film, Broadcast, Hourglass } from "@/components/icons/BrandIcons"
@@ -177,12 +178,12 @@ export default function GameControl() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
-      <div className="flex items-center gap-3">
-        <Link to={`/games/${routeKey}`} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="חזרה למשחק">
+      <div className="flex items-center gap-2">
+        <Link to={`/games/${routeKey}`} className="w-11 h-11 rounded-control flex items-center justify-center hover:bg-surface-sunken" aria-label="חזרה למשחק">
           <ArrowRight className="w-5 h-5" />
         </Link>
-        <h1 className="flex-1 min-w-0 flex items-center gap-2 font-extrabold text-lg text-slate-900 dark:text-white">
-          <MonitorPlay className="w-5 h-5 text-brand" /> חדר שידור
+        <h1 className="flex-1 min-w-0 flex items-center gap-2 font-extrabold text-[26px] leading-none text-fg-strong">
+          <MonitorPlay className="w-6 h-6" /> חדר שידור
         </h1>
       </div>
 
@@ -325,21 +326,22 @@ function StatusStrip({ home, away, liveState, game, liveCount, viewers, health, 
     : running ? `חצי ${liveState.period || ""} · רץ` : `חצי ${liveState.period || ""} · עצור`
   const bad = liveCams.filter((c) => health[c.no] === "slow" || health[c.no] === "stalled")
   return (
-    <section className="card p-3 space-y-2">
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 font-extrabold text-slate-900 dark:text-white">
-          <span className="truncate max-w-[8rem]">{home?.name || "…"}</span>
-          <span className="tabular-nums" dir="ltr">{liveState?.home_score ?? game?.home_score ?? "–"}</span>
-          <span className="text-slate-400">:</span>
-          <span className="tabular-nums" dir="ltr">{liveState?.away_score ?? game?.away_score ?? "–"}</span>
-          <span className="truncate max-w-[8rem]">{away?.name || "…"}</span>
+    <section className="space-y-2">
+      {/* home on the RIGHT, team-colour blend, score as separate spans */}
+      <TeamBlend home={home} away={away} className="rounded-card px-4 py-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+          <span className="flex items-center gap-2 min-w-0"><CrestDisc team={home} size={36} /><span className="font-extrabold text-[14px] leading-tight line-clamp-2">{home?.name || "…"}</span></span>
+          <span className="flex flex-col items-center gap-0.5">
+            <FLScore home={liveState?.home_score ?? game?.home_score ?? null} away={liveState?.away_score ?? game?.away_score ?? null} size={30} />
+            <span className="text-[11px] text-white/80 whitespace-nowrap">{phase}</span>
+          </span>
+          <span className="flex items-center gap-2 min-w-0 flex-row-reverse"><CrestDisc team={away} size={36} /><span className="font-extrabold text-[14px] leading-tight line-clamp-2 text-left">{away?.name || "…"}</span></span>
         </div>
-        <span className="text-xs text-slate-500">{phase}</span>
-        <div className="flex items-center gap-3 mr-auto text-sm font-semibold text-slate-600 dark:text-slate-300">
-          <span className="flex items-center gap-1" title="מצלמות משדרות"><span className="w-2 h-2 rounded-full bg-red-500" /> {liveCount}</span>
-          <span className="flex items-center gap-1" title="צופים באתר עכשיו"><Eye className="w-4 h-4" /> {viewers}</span>
+        <div className="flex items-center justify-center gap-4 mt-2 text-[13px] font-semibold text-white/90">
+          <span className="flex items-center gap-1.5" title="מצלמות משדרות"><span className="w-2 h-2 rounded-full bg-fl-live" /> <span className="fl-num">{liveCount}</span> מצלמות</span>
+          <span className="flex items-center gap-1.5" title="צופים באתר עכשיו"><Eye className="w-4 h-4" /> <span className="fl-num">{viewers}</span> צופים</span>
         </div>
-      </div>
+      </TeamBlend>
       {noCamera && (
         <Alert tone="red">אין מצלמה משדרת והמשחק רץ — הצופים לא רואים כלום ושום דבר לא מוקלט.</Alert>
       )}

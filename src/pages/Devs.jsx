@@ -64,12 +64,12 @@ export default function Devs() {
   const myStages = new Set((members || []).filter(m => m.user_id === user?.id).map(m => m.topic_id))
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-5">
+    <div className="px-4 py-5 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-5">
       {view !== "stage" && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           <div>
-            <h1 className="page-title flex items-center gap-2.5"><Code2 className="w-7 h-7 text-brand" /> מפתחים</h1>
-            <p className="page-subtitle mt-1">
+            <h1 className="text-[34px] sm:text-[40px] font-extrabold leading-none text-fg-strong flex items-center gap-2.5"><Code2 className="w-8 h-8" aria-hidden="true" /> מפתחים</h1>
+            <p className="text-[14px] text-fg-muted mt-2 max-w-3xl">
               כל מה שאנחנו בונים לליגה — ניתוח וידאו, מודלים, תלת-ממד, מצלמות, האתר, האפליקציות והנתונים. בוחרים שלב, קוראים
               איך הגענו לכאן, ועושים משהו אמיתי ממש מכאן: מתייגים, סוקרים, מריצים ניסוי, מציעים פתרון.
             </p>
@@ -79,7 +79,7 @@ export default function Devs() {
             <Stat icon={MessageSquare} label="הודעות שלי" value={members ? noteStats.mine : null} />
             <Stat icon={Star} label="מחפשים עזרה" value={HELP_WANTED} />
           </div>
-          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 w-fit max-w-full overflow-x-auto [scrollbar-width:none]" role="tablist">
+          <div className="flex gap-1 p-1 rounded-control bg-surface-sunken w-fit max-w-full overflow-x-auto [scrollbar-width:none]" role="tablist">
             <TabBtn active={view === "map"} onClick={() => go({})} icon={Workflow}>מפת המערכת</TabBtn>
             <TabBtn active={view === "exp"} onClick={() => go({ tab: "exp" })} icon={FlaskConical}>ניסויים</TabBtn>
             <TabBtn active={view === "tools"} onClick={() => go({ tab: "tools" })} icon={Wrench}>כלים</TabBtn>
@@ -113,9 +113,9 @@ export default function Devs() {
 function Stat({ icon: Icon, label, value }) {
   return (
     <div className="card p-3 flex items-center gap-2.5 min-w-0">
-      <Icon className="w-5 h-5 text-brand shrink-0" />
+      <Icon className="w-5 h-5 shrink-0" />
       <div className="min-w-0">
-        {value === null ? <Skeleton className="h-5 w-6" /> : <div className="text-lg font-black text-slate-900 dark:text-white leading-none" dir="ltr">{value}</div>}
+        {value === null ? <Skeleton className="h-5 w-6" /> : <div className="text-xl fl-num text-fg-strong leading-none" dir="ltr">{value}</div>}
         <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{label}</div>
       </div>
     </div>
@@ -125,7 +125,7 @@ function Stat({ icon: Icon, label, value }) {
 function TabBtn({ active, onClick, icon: Icon, children }) {
   return (
     <button role="tab" aria-selected={active} onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${active ? "bg-white dark:bg-slate-900 text-brand shadow-sm" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"}`}>
+      className={`inline-flex items-center gap-1.5 min-h-[40px] px-3 sm:px-4 rounded-[10px] text-sm font-semibold whitespace-nowrap transition-colors ${active ? "bg-surface text-fg-strong shadow-sm" : "text-fg-muted hover:text-fg-strong"}`}>
       <Icon className="w-4 h-4" /> {children}
     </button>
   )
