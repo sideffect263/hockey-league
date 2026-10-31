@@ -5,10 +5,11 @@ import { standingsComparator } from "@/lib/utils"
 import { AGE_GROUPS, DEFAULT_AGE, AGE_LABEL, ageOf, ageGroupsOf } from "@/lib/ageGroups"
 import { useAuth } from "@/lib/AuthContext"
 import CreateTeamModal from "@/components/CreateTeamModal"
-import { RefreshCw, ArrowLeft, Plus } from "lucide-react"
+import { RefreshCw, ChevronLeft, Plus } from "lucide-react"
 import { LikeOn as Heart, Hourglass, TeamsIcon, BrandTile } from "@/components/icons/BrandIcons"
 import { getFollowerCounts, fansLabel } from "@/lib/follows"
-import { motion } from "framer-motion"
+import { teamTint } from "@/lib/flTeam"
+import { FLTPills, FLTTag, rowWash } from "@/components/fl/teams/FLTeamsKit"
 import TeamLogo from "@/components/TeamLogo"
 import { useSeasonName } from "@/App"
 import { entityPath } from "@/lib/slugs"
@@ -75,133 +76,116 @@ export default function Teams() {
     .slice(0, 5)
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="page-title flex items-center gap-2.5">
-              <BrandTile name="team" className="w-10 h-10 -my-1.5" /> קבוצות
-            </h1>
-            <p className="page-subtitle mt-1">
+    <div className="px-3 pt-4 pb-8 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-3">
+      <header className="flex items-center justify-between gap-2.5 px-1">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <BrandTile name="team" className="w-11 h-11 shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-[28px] font-extrabold leading-tight text-fg-strong">קבוצות</h1>
+            <p className="text-[13px] text-fg-muted">
               {isSenior
-                ? `${visible.length} קבוצות בליגה${seasonName ? ` • עונת ${seasonName}` : ''}`
-                : `${visible.length} קבוצות • ${AGE_LABEL[ageTab]}`}
+                ? <>{visible.length} קבוצות בליגה{seasonName && <> · עונת <bdi dir="ltr">{seasonName}</bdi></>}</>
+                : `${visible.length} קבוצות · ${AGE_LABEL[ageTab]}`}
             </p>
           </div>
-          {isLinkedPlayer && (
-            <button onClick={() => setShowCreate(true)}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition-colors">
-              <Plus className="w-4 h-4" /> צור קבוצה
-            </button>
-          )}
         </div>
-        {myPending.length > 0 && (
-          <div className="mt-3 card p-3 flex items-center gap-2.5 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
-            <Hourglass className="w-4 h-4 text-amber-500 shrink-0" />
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-              הקבוצה "{myPending[0].name}" ממתינה לאישור מנהל הליגה
-            </p>
-          </div>
+        {isLinkedPlayer && (
+          <button onClick={() => setShowCreate(true)}
+            className="btn-primary shrink-0 min-h-[44px] inline-flex items-center gap-1.5 px-3.5 text-[14px]">
+            <Plus className="w-4 h-4" aria-hidden="true" /> צור קבוצה
+          </button>
         )}
-      </motion.div>
+      </header>
+
+      {myPending.length > 0 && (
+        <div className="rounded-2xl px-3.5 py-3 flex items-center gap-2.5 bg-[#F6EBD3] dark:bg-[#3A2E14]">
+          <Hourglass className="w-7 h-7 shrink-0" />
+          <p className="text-[13px] font-semibold text-[#7A5200] dark:text-[#F2D08A]">
+            הקבוצה "{myPending[0].name}" ממתינה לאישור מנהל הליגה
+          </p>
+        </div>
+      )}
 
       {showCreate && (
         <CreateTeamModal onClose={() => setShowCreate(false)} onCreated={refreshMyRequests} />
       )}
 
       {/* age-group tabs: the senior league + youth-tournament age categories */}
-      <div className="flex items-center gap-2 overflow-x-auto nav-scroll -mx-1 px-1">
-        {AGE_GROUPS.map(a => {
-          const on = ageTab === a.value
-          return (
-            <button key={a.value} onClick={() => setAgeTab(a.value)}
-              className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-bold transition-colors ${on ? "bg-brand text-white shadow-sm shadow-brand/25" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
-              {a.label}
-              <span className={`text-[11px] tabular-nums ${on ? "text-white/80" : "text-slate-400"}`}>{countByAge[a.value] || 0}</span>
-            </button>
-          )
-        })}
-      </div>
+      <FLTPills label="גיל" value={ageTab} onChange={setAgeTab}
+        items={AGE_GROUPS.map(a => ({ value: a.value, label: a.label, count: countByAge[a.value] || 0 }))} />
 
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-4 lg:items-start space-y-3 lg:space-y-0">
       {fanBoard.length > 0 && (
-        <div className="card p-4">
-          <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white mb-3">
-            <Heart className="w-4 h-4 text-rose-500" /> הכי הרבה אוהדים
+        <section aria-label="הכי הרבה אוהדים" className="rounded-[18px] bg-surface p-3.5 lg:order-2 lg:sticky lg:top-20">
+          <h2 className="flex items-center gap-2 mb-2.5 text-[15px] font-extrabold text-fg-strong">
+            <Heart className="w-6 h-6" /> הכי הרבה אוהדים
           </h2>
-          <ol className="flex gap-2 overflow-x-auto nav-scroll -mx-1 px-1">
+          <ol className="flex gap-1.5 overflow-x-auto nav-scroll -mx-1 px-1 lg:flex-col lg:overflow-visible">
             {fanBoard.map((r, i) => (
               <li key={r.team.id} className="shrink-0">
                 <Link to={entityPath('teams', r.team)}
-                  className="flex items-center gap-2 ps-2 pe-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors">
-                  <span className="text-[11px] font-extrabold text-slate-400 tabular-nums w-3 text-center">{i + 1}</span>
-                  <TeamLogo team={r.team} size={6} />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 max-w-[9rem] truncate">{r.team.name}</span>
-                  <span className="text-xs font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">{r.n}</span>
+                  className="flex items-center gap-1.5 min-h-[44px] ps-2 pe-3 rounded-control bg-surface-page hover:bg-surface-sunken transition-colors">
+                  <span className="fl-num text-[12px] text-fg-muted w-3 text-center">{i + 1}</span>
+                  <TeamLogo team={r.team} px={24} disc={false} />
+                  <span className="text-[12.5px] font-bold text-fg-strong max-w-[9rem] truncate lg:max-w-none lg:flex-1">{r.team.name}</span>
+                  <span className="text-[12.5px] font-extrabold text-[#C2185B] dark:text-[#F06292] tabular-nums">{r.n}</span>
                 </Link>
               </li>
             ))}
           </ol>
-        </div>
+        </section>
       )}
 
       {sorted.length === 0 ? (
-        <div className="card p-10 flex flex-col items-center text-center gap-2">
-          <TeamsIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">אין קבוצות בקטגוריה זו עדיין</p>
-          {!isSenior && <p className="text-xs text-slate-400">קבוצות {AGE_LABEL[ageTab]} מתווספות דרך מסך הניהול</p>}
+        <div className="rounded-card bg-surface p-10 flex flex-col items-center text-center gap-2 lg:order-1">
+          <TeamsIcon className="w-9 h-9" />
+          <p className="text-sm font-semibold text-fg-muted">אין קבוצות בקטגוריה זו עדיין</p>
+          {!isSenior && <p className="text-xs text-fg-muted">קבוצות {AGE_LABEL[ageTab]} מתווספות דרך מסך הניהול</p>}
         </div>
       ) : (
-      <div className="space-y-3">
+      <ol className="flex flex-col gap-2 lg:order-1" aria-label="קבוצות">
         {sorted.map((team, index) => {
+          const tint = teamTint(team)
           return (
-            <motion.div key={team.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>
-              <div className="card-hover overflow-hidden">
-                {/* One tap opens the team page — the row used to expand inline first. */}
-                <Link to={entityPath('teams', team)} className="block w-full p-4 sm:p-5 text-right">
-                  <div className="flex items-center gap-4">
-                    <TeamLogo team={team} size={12} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h2 className="font-bold text-base text-slate-900 dark:text-white">{team.name}</h2>
-                        {isSenior && <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">#{index + 1}</span>}
-                        {!isSenior && <span className="text-[10px] font-bold text-brand dark:text-brand-light bg-brand/10 dark:bg-brand/20 px-1.5 py-0.5 rounded">{AGE_LABEL[ageTab]}</span>}
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {team.city}{team.founded_year ? ` • ${team.founded_year}` : ''}
-                        {fans[team.id] > 0 && (
-                          <span className="inline-flex items-center gap-0.5 ms-2 text-rose-600 dark:text-rose-400 font-semibold">
-                            <Heart className="w-4 h-4" /> <span className="tabular-nums">{fansLabel(fans[team.id])}</span>
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    {isSenior && <div className="hidden sm:flex items-center gap-5 text-center">
-                      <div>
-                        <p className="text-xl font-extrabold text-slate-900 dark:text-white">{team.points || 0}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">נקודות</p>
-                      </div>
-                      <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
-                      <div className="flex gap-3">
-                        <div><p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{team.wins || 0}</p><p className="text-[10px] text-slate-400">נ</p></div>
-                        <div><p className="text-sm font-bold text-slate-500">{team.ties || 0}</p><p className="text-[10px] text-slate-400">ת</p></div>
-                        <div><p className="text-sm font-bold text-red-500">{team.losses || 0}</p><p className="text-[10px] text-slate-400">ה</p></div>
-                      </div>
-                    </div>}
-                    <ArrowLeft className="w-5 h-5 text-slate-400 shrink-0" />
-                  </div>
+            <li key={team.id}>
+              {/* One tap opens the team page — the row used to expand inline first. */}
+              <Link to={entityPath('teams', team)}
+                className="flex items-center gap-3 rounded-[18px] bg-surface px-3.5 py-3 hover:brightness-[.98] dark:hover:brightness-110 transition"
+                style={rowWash(tint, 0.19, 42)}>
+                <span className="shrink-0 rounded-full" style={{ boxShadow: `0 0 0 2px ${tint}` }}>
+                  <TeamLogo team={team} px={56} />
+                </span>
+                <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[16px] font-extrabold text-fg-strong truncate">{team.name}</span>
+                    {isSenior && <FLTTag className="text-fg-muted">#{index + 1}</FLTTag>}
+                    {!isSenior && <FLTTag>{AGE_LABEL[ageTab]}</FLTTag>}
+                  </span>
+                  <span className="text-[12.5px] text-fg-muted truncate">
+                    {[team.city, team.founded_year].filter(Boolean).join(' · ')}
+                    {fans[team.id] > 0 && (
+                      <span className="inline-flex items-center gap-0.5 ms-1.5 align-middle font-bold text-[#C2185B] dark:text-[#F06292]">
+                        <Heart className="w-4 h-4" /> <span className="tabular-nums">{fansLabel(fans[team.id])}</span>
+                      </span>
+                    )}
+                  </span>
                   {isSenior && (
-                    <div className="sm:hidden flex gap-3 mt-2">
-                      <span className="stat-pill bg-slate-900 dark:bg-brand text-white">{team.points} נק׳</span>
-                      <span className="text-xs text-slate-400">{team.wins}נ {team.ties}ת {team.losses}ה</span>
-                    </div>
+                    <span className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[12px] font-extrabold px-2.5 py-[3px] rounded-full bg-fg-strong text-surface"><span className="tabular-nums">{team.points || 0}</span> נק׳</span>
+                      <span className="text-[12px] text-fg-muted tabular-nums">
+                        <b className="text-[#1B7A2A] dark:text-[#4CC765]">{team.wins || 0}</b>נ <b className="text-fg-strong">{team.ties || 0}</b>ת <b className="text-fl-red dark:text-[#FF6B60]">{team.losses || 0}</b>ה
+                      </span>
+                    </span>
                   )}
-                </Link>
-              </div>
-            </motion.div>
+                </span>
+                <ChevronLeft className="w-5 h-5 text-fg-muted shrink-0" aria-hidden="true" />
+              </Link>
+            </li>
           )
         })}
-      </div>
+      </ol>
       )}
+      </div>
     </div>
   )
 }
