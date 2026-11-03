@@ -41,7 +41,7 @@ import UnavailabilityAdmin from "@/components/admin/UnavailabilityAdmin"
 import { getVenues } from "@/lib/venues"
 import { getGameAvailability } from "@/lib/availability"
 import { entityPath } from "@/lib/slugs"
-import OfficialsAdmin from "@/components/admin/OfficialsAdmin"
+import OfficialsAdmin, { OfficialsPayAdmin } from "@/components/admin/OfficialsAdmin"
 import { getGameJudges, getGameJudgeOptions, setGameJudge } from "@/lib/officials"
 import VenuesAdmin from "@/components/admin/VenuesAdmin"
 import SeasonCalendar from "@/components/admin/SeasonCalendar"
@@ -64,7 +64,7 @@ import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import SurveysAdmin from "@/components/admin/SurveysAdmin"
 import HoneypotAdmin from "@/components/admin/HoneypotAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart, Radio } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart, Radio, Ambulance } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { ilDate } from "@/lib/ilTime"
@@ -87,7 +87,11 @@ const tabs = [
   { id: "suspensions", label: "הרחקות", icon: Ban },
   { id: "unavailability", label: "היעדרויות", icon: CalendarOff },
   { id: "birthdates", label: "תאריכי לידה", icon: Cake },
-  { id: "officials", label: "בעלי תפקיד", icon: Gavel },
+  // Was one "בעלי תפקיד" tab; split 2026-11-04 so a medic manager / referee manager each
+  // gets only their own role, and nobody but the LM / admin sees the money.
+  { id: "referees", label: "שופטים", icon: Gavel },
+  { id: "medics", label: "חובשים", icon: Ambulance },
+  { id: "official_pay", label: "תעריפים ותשלומים", icon: Wallet },
   { id: "venues", label: "מגרשים", icon: MapPin },
   { id: "reports", label: "דיווחים", icon: Flag },
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
@@ -110,13 +114,13 @@ const tabs = [
 ]
 
 export default function Admin() {
-  const { user, isAdmin, coachTeamIds, isJudgeRole, isLeagueManager, loading: authLoading, signOut } = useAuth()
+  const { user, isAdmin, coachTeamIds, isJudgeRole, isLeagueManager, isMedicManager, isRefereeManager, loading: authLoading, signOut } = useAuth()
   const navigate = useNavigate()
   // Each non-admin role unlocks a subset of tabs, and one person may hold
   // several (a coach who is also a judge sees games + players + claims).
   // Branch on isAdmin FIRST — an admin has coachTeamIds === [] but full access.
   const isCoach = coachTeamIds.length > 0
-  const canManage = isAdmin || isCoach || isJudgeRole || isLeagueManager
+  const canManage = isAdmin || isCoach || isJudgeRole || isLeagueManager || isMedicManager || isRefereeManager
   // A league manager is GLOBAL even if he also coaches a team (Itai: coach of רמת ישי
   // + manager) — his coach role must not shrink the manager's view to one team.
   const coachScoped = !isAdmin && !isLeagueManager && isCoach  // team-scope the players/claims tabs
@@ -138,7 +142,10 @@ export default function Admin() {
     // to approve players, and approve_player_submission already permits him.
     // "calendar" is the league manager's — laying out the season's fixtures,
     // including a season that has not started yet, is their job.
-    ...(isLeagueManager ? ["fans", "tournaments", "teams", "claims", "game_requests", "medical", "payments", "notifications", "suspensions", "officials", "venues", "calendar", "birthdates", "unavailability"] : []),
+    ...(isLeagueManager ? ["fans", "tournaments", "teams", "claims", "game_requests", "medical", "payments", "notifications", "suspensions", "referees", "medics", "official_pay", "venues", "calendar", "birthdates", "unavailability"] : []),
+    // Medic / referee managers: their own officials tab only — never official_pay.
+    ...(isMedicManager ? ["medics"] : []),
+    ...(isRefereeManager ? ["referees"] : []),
   ])
   // Full tournament management (create/edit/delete + approve requests) vs. the
   // coach's request-only view of the same tab.
@@ -151,7 +158,12 @@ export default function Admin() {
   // Landing on the default tab and making the manager hunt is the whole complaint.
   const [searchParams, setSearchParams] = useSearchParams()
   // ?tab=readiness predates the התראות tab that absorbed it — keep old links landing.
-  const requestedTab = searchParams.get('tab') === 'readiness' ? 'notifications' : searchParams.get('tab')
+  // ?tab=officials is the old combined tab (and what send-push + the apps still link to):
+  // land a medic-only manager on חובשים, everyone else on שופטים.
+  const rawTab = searchParams.get('tab')
+  const requestedTab = rawTab === 'readiness' ? 'notifications'
+    : rawTab === 'officials' ? (isMedicManager && !isRefereeManager && !isAdmin && !isLeagueManager ? 'medics' : 'referees')
+    : rawTab
   // Floodlight (board Manage): /admin with no ?tab is the INDEX (summary + tool tiles);
   // ?tab=<id> opens that tool. The URL is the state, so a notification link still lands
   // on its tool and the phone's back button returns to the index.
@@ -191,7 +203,7 @@ export default function Admin() {
   }, [authLoading, user, isAdmin, coachTeamIds.length, isJudgeRole])
   // Open-item badges for the index / rail (same pending reads the queues make).
   const counts = useAdminCounts({ enabled: !authLoading && !!user && canManage, manager: isAdmin || isLeagueManager,
-    coachTeamIds: coachScoped ? coachTeamIds : null, reloadKey: currentTab ? 0 : 1 })
+    refereeManager: isRefereeManager, coachTeamIds: coachScoped ? coachTeamIds : null, reloadKey: currentTab ? 0 : 1 })
 
   const loadData = async () => {
     try {
@@ -215,7 +227,8 @@ export default function Admin() {
   const teamsMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const { byTeam: membersByTeam, byPlayer: membersByPlayer } = buildMemberMaps(playerTeams, players)
 
-  const roleName = isAdmin ? "מנהל" : isLeagueManager ? "מנהלת ליגה" : isCoach ? "מאמן" : isJudgeRole ? "שופט" : ""
+  const roleName = isAdmin ? "מנהל" : isLeagueManager ? "מנהלת ליגה" : isCoach ? "מאמן"
+    : isRefereeManager ? "מנהל שופטים" : isMedicManager ? "מנהל חובשים" : isJudgeRole ? "שופט" : ""
   const tabObj = visibleTabs.find(t => t.id === currentTab)
   // A coach-only account: his games list is read-only and his tournaments tab is requests;
   // medical / suspensions / notifications are READ views of his squad (see scopedTabIds).
@@ -280,7 +293,9 @@ export default function Admin() {
               {currentTab === "suspensions" && <SuspensionsAdmin players={players} teamsMap={teamsMap} canManage={isAdmin || isLeagueManager || isJudgeRole} />}
               {currentTab === "unavailability" && <UnavailabilityAdmin players={players} teamsMap={teamsMap} membersByPlayer={membersByPlayer} coachTeamIds={coachScoped ? coachTeamIds : null} />}
               {currentTab === "birthdates" && <BirthDatesAdmin players={players} teamsMap={teamsMap} membersByPlayer={membersByPlayer} coachTeamIds={coachScoped ? coachTeamIds : null} />}
-              {currentTab === "officials" && <OfficialsAdmin games={games} teamsMap={teamsMap} />}
+              {currentTab === "referees" && <><OfficialsAdmin games={games} teamsMap={teamsMap} role="judge" /><div id="review-officials" className="scroll-mt-20 mt-8"><OfficialRoleRequestsReview /></div></>}
+              {currentTab === "medics" && <OfficialsAdmin games={games} teamsMap={teamsMap} role="medic" />}
+              {currentTab === "official_pay" && (isAdmin || isLeagueManager) && <OfficialsPayAdmin />}
               {currentTab === "venues" && <VenuesAdmin />}
               {currentTab === "reports" && <ReportsReview />}
               {currentTab === "clusters" && <ClustersAdmin players={players} />}

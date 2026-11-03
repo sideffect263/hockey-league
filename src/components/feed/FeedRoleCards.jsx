@@ -342,7 +342,7 @@ function LeagueQueues({ q }) {
     { n: q.cl?.length, label: "בקשות בעלות על כרטיס", Icon: Verified, bg: "bg-[#E4ECFB]", to: "/admin?tab=claims" },
     { n: q.tj?.length, label: "שיוך שחקנים לקבוצות", Icon: PersonAdd, bg: "bg-[#DDE9DF]", to: "/admin?tab=claims" },
     { n: q.co?.length, label: "בקשות מאמנים", Icon: PersonAdd, bg: "bg-[#DDE9DF]", to: "/admin?tab=coaches" },
-    { n: q.ro?.length, label: "בקשות שיפוט ומזכירות", Icon: Gavel, bg: "bg-[#F3E3E3]", to: "/admin?tab=officials" },
+    { n: q.ro?.length, label: "בקשות שיפוט ומזכירות", Icon: Gavel, bg: "bg-[#F3E3E3]", to: "/admin?tab=referees" },
     { n: q.me?.length, label: "אישורים רפואיים", Icon: Medical, bg: "bg-[#F3E3E3]", to: "/admin?tab=medical" },
   ].filter(i => i.n > 0)
   if (!items.length) return null

@@ -37,7 +37,9 @@ export const TOOL_META = {
   suspensions: { icon: 'referee-red', sub: 'כרטיסים אדומים וחסימות' },
   unavailability: { icon: 'injury', sub: 'מי לא זמין למשחק' },
   birthdates: { icon: 'birthday', sub: 'השלמת תאריכי לידה' },
-  officials: { icon: 'referee', sub: 'שיבוץ שופטים וחובשים' },
+  referees: { icon: 'referee', sub: 'שיבוץ שופטים ובקשות שיפוט' },
+  medics: { icon: 'medic', sub: 'שיבוץ חובשים למשחקים' },
+  official_pay: { icon: 'coin', sub: 'תעריפי שופטים וחובשים · תשלומים' },
   venues: { icon: 'location', sub: 'רשימת האולמות' },
   reports: { icon: 'report', sub: 'דיווחים על תוכן' },
   clusters: { icon: 'highlights', sub: 'זיהוי שחקנים בתמונות' },
@@ -58,7 +60,7 @@ export const TOOL_META = {
 
 /** Index groups (board Manage). Every tab id appears in exactly one group. */
 export const TOOL_GROUPS = [
-  { title: 'לוח המשחקים', ids: ['games', 'calendar', 'game_requests', 'officials', 'venues'] },
+  { title: 'לוח המשחקים', ids: ['games', 'calendar', 'game_requests', 'referees', 'medics', 'official_pay', 'venues'] },
   { title: 'סגל וקבוצות', ids: ['players', 'teams', 'coaches', 'tournaments', 'birthdates', 'season'] },
   { title: 'רפואה וזמינות', ids: ['medical', 'unavailability', 'suspensions', 'notifications', 'payments'] },
   { title: 'תוכן וקהילה', ids: ['claims', 'fans', 'reports', 'clusters', 'surveys'] },
@@ -78,7 +80,7 @@ const sumKnown = (...xs) => (xs.every((x) => x == null) ? null : xs.reduce((a, x
  * `manager` = admin or league manager (the queues only they review); `coachTeamIds` =
  * the coach's teams when the view is coach-scoped (same client guard as the queues).
  */
-export function useAdminCounts({ enabled, manager, coachTeamIds, reloadKey = 0 }) {
+export function useAdminCounts({ enabled, manager, refereeManager = false, coachTeamIds, reloadKey = 0 }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     if (!enabled) return
@@ -88,7 +90,7 @@ export function useAdminCounts({ enabled, manager, coachTeamIds, reloadKey = 0 }
     Promise.all([
       n(getPendingClaims()), n(getPendingPlayerSubmissions()), n(getPendingTeamJoins()), n(getPendingMedical()),
       manager ? n(getPendingCoachRequests()) : null,
-      manager ? n(getPendingOfficialRoleRequests()) : null,
+      (manager || refereeManager) ? n(getPendingOfficialRoleRequests()) : null,
       manager ? n(getPendingCardUnlinkRequests()) : null,
       manager ? n(getPendingGameChangeRequests()) : null,
       manager ? n(getPendingTeams()) : null,
@@ -100,7 +102,7 @@ export function useAdminCounts({ enabled, manager, coachTeamIds, reloadKey = 0 }
         len(subs && subs.filter((s) => mine(s.team_id))),
         len(joins && joins.filter((r) => mine(r.team_id))),
         len(med && med.filter((i) => mine(i.players?.team_id))),
-        len(coach), len(officials), len(unlinks),
+        len(coach), manager ? len(officials) : null, len(unlinks),
       )
       setCounts({
         claims: claimsN,
@@ -112,12 +114,14 @@ export function useAdminCounts({ enabled, manager, coachTeamIds, reloadKey = 0 }
           medical: len(med && med.filter((i) => mine(i.players?.team_id))),
         },
         game_requests: len(gameReq),
+        // the referee / secretary role requests also sit at the bottom of שופטים
+        referees: len(officials),
         teams: len(teams),
         medical: len(mgrMed),
       })
     })
     return () => { alive = false }
-  }, [enabled, manager, (coachTeamIds || []).join(','), reloadKey])
+  }, [enabled, manager, refereeManager, (coachTeamIds || []).join(','), reloadKey])
   return counts
 }
 

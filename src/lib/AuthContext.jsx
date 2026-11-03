@@ -172,6 +172,10 @@ export function AuthProvider({ children }) {
 
   // Holds an actual medic role (RAW, does NOT pass for admins) — assignable to games.
   const isMedic = roles.some(r => r.role === 'medic')
+  // Raw medic / referee manager roles (supabase/medic-referee-managers.sql): each runs
+  // its own officials tab (חובשים / שופטים) and nothing else — no rates, no pay log.
+  const isMedicManager = roles.some(r => r.role === 'medic_manager')
+  const isRefereeManager = roles.some(r => r.role === 'referee_manager')
   // Raw 'developer' role (volunteer devs, /devs). Admins pass the page gate separately.
   const isDeveloper = roles.some(r => r.role === 'developer')
 
@@ -266,7 +270,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, isAdmin, roles, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isMedic, isDeveloper, canPost, profile, refreshProfile, loading, authOpen,
+      user, isAdmin, roles, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isMedic, isMedicManager, isRefereeManager, isDeveloper, canPost, profile, refreshProfile, loading, authOpen,
       signInWithGoogle, signUpWithEmail, signInWithEmail, resetPassword, updatePassword, signOut,
       openAuth, closeAuth,
     }}>

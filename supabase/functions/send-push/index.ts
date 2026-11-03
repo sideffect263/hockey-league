@@ -100,6 +100,9 @@ function movedSummary(d: Record<string, any>): string {
 }
 
 function officialsSummary(d: Record<string, any>): string {
+  // A medic / referee manager's copy carries only their role (scope) — say just that.
+  if (d.scope === "medic") return "חסר חובש";
+  if (d.scope === "judge") return "חסר שופט";
   const missing: string[] = [];
   if (!(d.judges > 0)) missing.push("שופט");
   if (!(d.medics > 0)) missing.push("חובש");
