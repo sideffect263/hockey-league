@@ -233,7 +233,10 @@ export default function GameDetail() {
   const inThisGame = (tid) => tid === game.home_team_id || tid === game.away_team_id
   const myPlayer = profile?.player_id ? playersMap[profile.player_id] : null
   const myAvailPlayerId = (myPlayer && inThisGame(myPlayer.team_id)) ? myPlayer.id : null
-  const officialTeamIds = isAdmin ? [game.home_team_id, game.away_team_id] : (coachTeamIds || []).filter(inThisGame)
+  // The viewer's own team first: the מגיע/לא מגיע buttons sit right above the first list,
+  // so an admin who plays for the away side must not see them over the home team.
+  const officialTeamIds = (isAdmin ? [game.home_team_id, game.away_team_id] : (coachTeamIds || []).filter(inThisGame))
+    .sort((a, b) => (b === myPlayer?.team_id) - (a === myPlayer?.team_id))
   const playerTeamId = (myPlayer && inThisGame(myPlayer.team_id) && !officialTeamIds.includes(myPlayer.team_id)) ? myPlayer.team_id : null
   // Any signed-in viewer sees both squads' answers (status only); a coach — or an admin /
   // league manager, for either side — can also push a reminder to the silent ones.
