@@ -445,7 +445,7 @@ export function notificationHref(n) {
     case 'team_join_rejected':     return n.entity_id ? `/teams/${n.entity_id}` : '/me'
     case 'coach_request':          return '/admin?tab=claims&section=coaches'
     case 'coach_request_rejected': return n.entity_id ? `/teams/${n.entity_id}` : '/me'
-    case 'official_role_request':  return '/admin?tab=claims&section=officials'
+    case 'official_role_request':  return '/admin?tab=referees&section=officials'
     case 'card_unlink_request':    return '/admin?tab=claims&section=unlinks'
     case 'official_role_approved':
     case 'official_role_rejected':

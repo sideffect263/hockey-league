@@ -260,7 +260,7 @@ function notificationHref(n: NotificationRow): string {
     case "content_report":         return "/admin?tab=reports";
     case "game_change_request":    return "/admin?tab=game_requests";
     case "coach_request":          return "/admin?tab=claims&section=coaches";
-    case "official_role_request":  return "/admin?tab=claims&section=officials";
+    case "official_role_request":  return "/admin?tab=referees&section=officials";
     case "card_unlink_request":    return "/admin?tab=claims&section=unlinks";
     case "official_role_approved":
     case "official_role_rejected":
