@@ -261,7 +261,7 @@ function ControlBtn({ icon: Icon, onClick, on = false, k, v, label, disabled = f
 
 export default function GameScoreboard({ game, home, guest, players, teams = [] }) {
   const engine = useGameEngine(game, home, guest)
-  const { k, v, w: boardW, portrait } = useBoardScale()
+  const { k, v, w: boardW, portrait, gutter } = useBoardScale()
   const { isAdmin, isLeagueManager } = useAuth()
   const canOverride = isAdmin || isLeagueManager
   // Who may play (suspension / valid medical). undefined = loading, null = failed →
@@ -619,7 +619,7 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
       className="fixed inset-0 z-50 !m-0 overflow-hidden"
       style={{
         background: JL.page, color: "#fff",
-        paddingTop: "max(8px, env(safe-area-inset-top))", paddingBottom: "max(4px, env(safe-area-inset-bottom))",
+        paddingTop: "max(8px, env(safe-area-inset-top))", paddingBottom: `max(${gutter}px, env(safe-area-inset-bottom))`,
         paddingLeft: "max(8px, env(safe-area-inset-left))", paddingRight: "max(8px, env(safe-area-inset-right))",
       }}>
       {/* backdrop: each team's soft glow from its own edge (away left, home right) + a faint rink */}
