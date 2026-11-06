@@ -272,6 +272,24 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   // are re-read every minute. A failed RE-read keeps what we had; only the first one can
   // leave the board without data.
   const [squadTick, setSquadTick] = useState(0)
+  // Field check for "my tap lands somewhere else": /judge/<id>?tapdebug=1 draws a dot where
+  // the browser registered each touch, plus the viewport numbers, so a screenshot from the
+  // judge's own phone shows the offset (the iOS Simulator never reproduced it).
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("tapdebug")) return
+    const box = document.createElement("div")
+    box.style.cssText = "position:fixed;left:50%;top:30%;transform:translateX(-50%);z-index:9999;background:#000c;color:#0f0;font:12px monospace;padding:4px 6px;pointer-events:none;direction:ltr"
+    document.body.appendChild(box)
+    const on = (e) => {
+      const d = document.createElement("div")
+      d.style.cssText = `position:fixed;left:${e.clientX - 7}px;top:${e.clientY - 7}px;width:14px;height:14px;border-radius:7px;background:#f0f;z-index:9999;pointer-events:none`
+      document.body.appendChild(d); setTimeout(() => d.remove(), 5000)
+      const vv = window.visualViewport
+      box.textContent = `x=${Math.round(e.clientX)} y=${Math.round(e.clientY)} scrollY=${Math.round(window.scrollY)} vv=${vv ? `${Math.round(vv.offsetTop)}/${Math.round(vv.height)}` : "-"} ih=${window.innerHeight}`
+    }
+    window.addEventListener("pointerdown", on, true)
+    return () => { window.removeEventListener("pointerdown", on, true); box.remove() }
+  }, [])
   // The board covers the site but the page under it could still scroll: on iOS Safari a
   // swipe on the board scrolled/bounced that page, which cancels the tap (a button that
   // "doesn't press") and a pull from the top reloaded the board mid-game. Freeze the page
@@ -377,6 +395,31 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   const [saveErr, setSaveErr] = useState(null)
   const [isFs, setIsFs] = useState(false)
   const wrapRef = useRef(null)
+  // Judges reported taps landing ~one row too high on iPhone Safari (a card tap counted as a
+  // foul, the bottom bar dead). That is a position:fixed box drawn against one viewport and
+  // hit-tested against another after Safari's toolbar changes size. Keep the page at the
+  // top and pin the board to the VISIBLE viewport every time it changes, then force a
+  // re-layout so WebKit rebuilds the hit regions.
+  useEffect(() => {
+    const vv = window.visualViewport
+    const pin = () => {
+      const el = wrapRef.current
+      if (window.scrollX || window.scrollY) window.scrollTo(0, 0)
+      if (!el || !vv) return
+      el.style.top = `${vv.offsetTop}px`; el.style.left = `${vv.offsetLeft}px`
+      el.style.width = `${vv.width}px`; el.style.height = `${vv.height}px`
+      el.style.right = "auto"; el.style.bottom = "auto"
+      el.style.transform = "translateZ(0)"
+      requestAnimationFrame(() => { if (wrapRef.current) wrapRef.current.style.transform = "" })
+    }
+    pin()
+    vv?.addEventListener("resize", pin); vv?.addEventListener("scroll", pin)
+    window.addEventListener("orientationchange", pin); window.addEventListener("resize", pin)
+    return () => {
+      vv?.removeEventListener("resize", pin); vv?.removeEventListener("scroll", pin)
+      window.removeEventListener("orientationchange", pin); window.removeEventListener("resize", pin)
+    }
+  }, [])
   const T = THEMES[themeKind]
   // Yellow cards: UI-local, kept per game on this device (no backend field yet — see judgeLook.js).
   const [yellows, setYellowsState] = useState(() => loadYellows(game.id))
