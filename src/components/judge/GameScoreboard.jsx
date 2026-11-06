@@ -272,6 +272,19 @@ export default function GameScoreboard({ game, home, guest, players, teams = [] 
   // are re-read every minute. A failed RE-read keeps what we had; only the first one can
   // leave the board without data.
   const [squadTick, setSquadTick] = useState(0)
+  // The board covers the site but the page under it could still scroll: on iOS Safari a
+  // swipe on the board scrolled/bounced that page, which cancels the tap (a button that
+  // "doesn't press") and a pull from the top reloaded the board mid-game. Freeze the page
+  // while the board is open.
+  useEffect(() => {
+    const html = document.documentElement, body = document.body
+    const prev = [html.style.overflow, html.style.overscrollBehavior, body.style.overflow, body.style.overscrollBehavior]
+    html.style.overflow = "hidden"; html.style.overscrollBehavior = "none"
+    body.style.overflow = "hidden"; body.style.overscrollBehavior = "none"
+    return () => {
+      ;[html.style.overflow, html.style.overscrollBehavior, body.style.overflow, body.style.overscrollBehavior] = prev
+    }
+  }, [])
   useEffect(() => {
     const t = setInterval(() => setSquadTick(n => n + 1), 60_000)
     return () => clearInterval(t)
