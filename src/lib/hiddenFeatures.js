@@ -115,7 +115,8 @@ export async function getRecentBroadcasts(limit = 10) {
 }
 
 const ERRORS = {
-  rate_limited: 'אפשר לשלוח עד 3 התראות בשעה',
+  rate_limited: 'אפשר לשלוח עד 3 התראות קבוצתיות בשעה',
+  rate_limited_user: 'אפשר לשלוח עד 20 התראות אישיות בשעה',
   bad_title: 'כותרת: 1–80 תווים',
   bad_body: 'תוכן: 1–500 תווים',
   bad_href: 'קישור חייב להיות נתיב באתר, למשל /games',

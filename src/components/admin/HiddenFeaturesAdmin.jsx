@@ -6,6 +6,7 @@ import {
   buildAnnouncement, countBroadcastRecipients, sendBroadcast, getRecentBroadcasts, broadcastError,
 } from "@/lib/hiddenFeatures"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
+import { getProfiles } from "@/lib/roles"
 
 /**
  * תכונות מוסתרות — switches the iOS / Android apps read from league_settings at launch
@@ -298,6 +299,9 @@ function BroadcastPanel({ teams }) {
   const [href, setHref] = useState("")
   const [audience, setAudience] = useState("all_users")
   const [teamId, setTeamId] = useState("")
+  const [userId, setUserId] = useState("")
+  const [userQuery, setUserQuery] = useState("")
+  const [profiles, setProfiles] = useState([])
   const [confirm, setConfirm] = useState(null) // { count }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
@@ -306,9 +310,19 @@ function BroadcastPanel({ teams }) {
 
   const loadRecent = () => getRecentBroadcasts().then(setRecent).catch(() => {})
   useEffect(() => { loadRecent() }, [])
+  useEffect(() => {
+    getProfiles().then((p) => setProfiles((p || []).filter((x) => !x.is_bot))).catch(() => {})
+  }, [])
+  const userName = (id) => profiles.find((p) => p.id === id)?.display_name || "משתמש"
+  const userMatches = useMemo(() => {
+    const q = userQuery.trim().toLowerCase()
+    if (!q) return []
+    return profiles.filter((p) => (p.display_name || "").toLowerCase().includes(q)).slice(0, 8)
+  }, [profiles, userQuery])
 
   const sortedTeams = useMemo(() => [...teams].sort((a, b) => (a.name || "").localeCompare(b.name || "", "he")), [teams])
-  const aud = audience === "team" ? (teamId ? `team:${teamId}` : "") : audience
+  const aud = audience === "team" ? (teamId ? `team:${teamId}` : "")
+    : audience === "user" ? (userId ? `user:${userId}` : "") : audience
   const hrefOk = !href.trim() || (/^\/(?!\/)\S*$/.test(href.trim()) && href.trim().length <= 300)
   const valid = title.trim() && title.trim().length <= 80 && body.trim() && body.trim().length <= 500 && aud && hrefOk
   const payload = { title: title.trim(), body: body.trim(), href: href.trim(), audience: aud }
@@ -331,16 +345,17 @@ function BroadcastPanel({ teams }) {
   const input = "w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
   const lbl = "block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1"
   const audLabel = (a) => a === "all_users" ? "כל המשתמשים" : a === "app_users" ? "משתמשי האפליקציה"
-    : a?.startsWith("team:") ? `קבוצה: ${teams.find((t) => `team:${t.id}` === a)?.name || "?"}` : a
+    : a?.startsWith("team:") ? `קבוצה: ${teams.find((t) => `team:${t.id}` === a)?.name || "?"}`
+    : a?.startsWith("user:") ? `משתמש: ${userName(a.slice(5))}` : a
 
   return (
     <section className="card p-4 sm:p-5 space-y-4">
       <div className="flex items-start gap-3">
         <Send className="w-5 h-5 text-brand mt-0.5 shrink-0" />
         <div>
-          <h3 className="font-semibold text-slate-800 dark:text-slate-100">שליחת התראה לכולם</h3>
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">שליחת התראה</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            התראה בפעמון + פוש לכל המכשירים של הנמענים. עד 3 שליחות בשעה. אין ביטול אחרי שליחה.
+            התראה בפעמון + פוש לכל המכשירים של הנמענים. עד 3 שליחות קבוצתיות בשעה, ועד 20 אישיות. אין ביטול אחרי שליחה.
           </p>
         </div>
       </div>
@@ -364,8 +379,43 @@ function BroadcastPanel({ teams }) {
             <option value="all_users">כל המשתמשים</option>
             <option value="app_users">משתמשי האפליקציה (עם מכשיר רשום)</option>
             <option value="team">קבוצה — אוהדים + סגל</option>
+            <option value="user">משתמש אחד</option>
           </select>
         </div>
+        {audience === "user" && (
+          <div>
+            <label className={lbl}>משתמש</label>
+            {userId ? (
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
+                <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">{userName(userId)}</span>
+                <button type="button" onClick={() => { setUserId(""); setConfirm(null) }} aria-label="החלפת משתמש"
+                  className="ms-auto text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input className={input} value={userQuery} onChange={(e) => setUserQuery(e.target.value)}
+                  placeholder="חיפוש לפי שם…" />
+                {userMatches.length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+                    {userMatches.map((p) => (
+                      <li key={p.id}>
+                        <button type="button" onClick={() => { setUserId(p.id); setUserQuery(""); setConfirm(null) }}
+                          className="w-full text-start px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
+                          <span className="truncate">{p.display_name || "ללא שם"}</span>
+                          {p.player_id && <span className="text-[11px] text-slate-400 shrink-0">שחקן</span>}
+                          <span className="ms-auto text-[11px] text-slate-400 font-mono shrink-0" dir="ltr">{p.id.slice(0, 6)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {userQuery.trim() && userMatches.length === 0 && (
+                  <p className="text-xs text-slate-500 mt-1">לא נמצא משתמש</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {audience === "team" && (
           <div>
             <label className={lbl}>קבוצה</label>
@@ -380,7 +430,7 @@ function BroadcastPanel({ teams }) {
       {confirm ? (
         <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-3 space-y-2">
           <p className="text-sm text-amber-900 dark:text-amber-200">
-            לשלוח את „{payload.title}“ ל־<b dir="ltr">{confirm.count}</b> משתמשים ({audLabel(aud)})? אי אפשר לבטל.
+            לשלוח את „{payload.title}“ ל־<b dir="ltr">{confirm.count}</b> {confirm.count === 1 ? "משתמש" : "משתמשים"} ({audLabel(aud)})? אי אפשר לבטל.
           </p>
           <div className="flex gap-2">
             <button disabled={busy || !confirm.count} onClick={send}
