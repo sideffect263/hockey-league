@@ -41,6 +41,7 @@ export const TOOL_META = {
   medics: { icon: 'medic', sub: 'שיבוץ חובשים למשחקים' },
   official_pay: { icon: 'coin', sub: 'תעריפי שופטים וחובשים · תשלומים' },
   venues: { icon: 'location', sub: 'רשימת האולמות' },
+  weather: { icon: 'warning', sub: 'מנוע הגשם · התראות להעברת משחק' },
   reports: { icon: 'report', sub: 'דיווחים על תוכן' },
   clusters: { icon: 'highlights', sub: 'זיהוי שחקנים בתמונות' },
   analytics: { icon: 'stats', sub: 'שימוש באתר ובאפליקציות' },
@@ -60,7 +61,7 @@ export const TOOL_META = {
 
 /** Index groups (board Manage). Every tab id appears in exactly one group. */
 export const TOOL_GROUPS = [
-  { title: 'לוח המשחקים', ids: ['games', 'calendar', 'game_requests', 'referees', 'medics', 'official_pay', 'venues'] },
+  { title: 'לוח המשחקים', ids: ['games', 'calendar', 'game_requests', 'referees', 'medics', 'official_pay', 'venues', 'weather'] },
   { title: 'סגל וקבוצות', ids: ['players', 'teams', 'coaches', 'tournaments', 'birthdates', 'season'] },
   { title: 'רפואה וזמינות', ids: ['medical', 'unavailability', 'suspensions', 'notifications', 'payments'] },
   { title: 'תוכן וקהילה', ids: ['claims', 'fans', 'reports', 'clusters', 'surveys'] },

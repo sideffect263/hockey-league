@@ -63,8 +63,9 @@ import WhatsNew from "@/components/admin/WhatsNew"
 import ClustersAdmin from "@/components/admin/ClustersAdmin"
 import SurveysAdmin from "@/components/admin/SurveysAdmin"
 import HoneypotAdmin from "@/components/admin/HoneypotAdmin"
+import WeatherAdmin from "@/components/admin/WeatherAdmin"
 import { SortBar, sortItems } from "@/components/admin/SortBar"
-import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart, Radio, Ambulance } from "lucide-react"
+import { Award, Images, HeartPulse, Gavel, MapPin, BellRing, Ban, CalendarDays, Cake, CalendarOff, Activity, Wallet, ClipboardList, Smartphone, Newspaper, CalendarCheck, LineChart as LineChartIcon, ToggleRight, ClipboardCheck, TestTube2, Heart, Radio, Ambulance, CloudRain } from "lucide-react"
 import { BRAND_ORANGE } from '@/lib/brand'
 import { AdminSkeleton, AdminPanelSkeleton, SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
 import { ilDate } from "@/lib/ilTime"
@@ -93,6 +94,8 @@ const tabs = [
   { id: "medics", label: "חובשים", icon: Ambulance },
   { id: "official_pay", label: "תעריפים ותשלומים", icon: Wallet },
   { id: "venues", label: "מגרשים", icon: MapPin },
+  // Rain engine (weather-watch) + game-page weather card. LM: read-only view.
+  { id: "weather", label: "מזג אוויר", icon: CloudRain },
   { id: "reports", label: "דיווחים", icon: Flag },
   { id: "clusters", label: "קבוצות תמונות", icon: Images },
   { id: "analytics", label: "ניתוח משתמשים", icon: LineChartIcon },
@@ -142,7 +145,7 @@ export default function Admin() {
     // to approve players, and approve_player_submission already permits him.
     // "calendar" is the league manager's — laying out the season's fixtures,
     // including a season that has not started yet, is their job.
-    ...(isLeagueManager ? ["fans", "tournaments", "teams", "claims", "game_requests", "medical", "payments", "notifications", "suspensions", "referees", "medics", "official_pay", "venues", "calendar", "birthdates", "unavailability"] : []),
+    ...(isLeagueManager ? ["fans", "tournaments", "teams", "claims", "game_requests", "medical", "payments", "notifications", "suspensions", "referees", "medics", "official_pay", "venues", "weather", "calendar", "birthdates", "unavailability"] : []),
     // Medic / referee managers: their own officials tab only — never official_pay.
     ...(isMedicManager ? ["medics"] : []),
     ...(isRefereeManager ? ["referees"] : []),
@@ -297,6 +300,7 @@ export default function Admin() {
               {currentTab === "medics" && <OfficialsAdmin games={games} teamsMap={teamsMap} role="medic" />}
               {currentTab === "official_pay" && (isAdmin || isLeagueManager) && <OfficialsPayAdmin />}
               {currentTab === "venues" && <VenuesAdmin />}
+              {currentTab === "weather" && <WeatherAdmin isAdmin={isAdmin} games={games} teamsMap={teamsMap} />}
               {currentTab === "reports" && <ReportsReview />}
               {currentTab === "clusters" && <ClustersAdmin players={players} />}
               {currentTab === "analytics" && <UserAnalyticsAdmin />}

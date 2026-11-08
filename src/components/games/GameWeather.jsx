@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning, Umbrella, Wind, Droplets } from "lucide-react"
-import { getGameWeather, describeWeather, weatherWindowOpen } from "@/lib/weather"
+import { getGameWeather, describeWeather, weatherWindowOpen, getWeatherSettings } from "@/lib/weather"
 
 const ICONS = {
   sun: Sun, moon: Moon, partly: CloudSun, partlyNight: CloudMoon, cloud: Cloud, fog: CloudFog,
@@ -11,13 +11,17 @@ const hh = (h) => `${String(h).padStart(2, '0')}:00`
 
 /**
  * מזג אוויר במגרש — forecast at the venue for kick-off (or now, while live).
- * Shown from 7 days before the game until it ends; renders nothing when the venue has
+ * Shown from card_lead_days (default 7) before the game until it ends; renders nothing when the venue has
  * no pin, the game is out of the window, or the forecast can't be fetched.
  */
 export default function GameWeather({ game, venue, live = false }) {
   const [wx, setWx] = useState(null)
+  const [cfg, setCfg] = useState(null)
+  useEffect(() => { let alive = true; getWeatherSettings().then(c => { if (alive) setCfg(c) }); return () => { alive = false } }, [])
   const lat = venue?.lat, lng = venue?.lng
-  const open = !!game?.game_date && weatherWindowOpen(game.game_date)
+  // Admin switches (/admin מזג אוויר): card off, how many days ahead, indoor rinks.
+  const indoor = !!venue?.name && (cfg?.indoor_venues || []).some(n => n.trim() === venue.name.trim())
+  const open = !!cfg && cfg.card_enabled && !indoor && !!game?.game_date && weatherWindowOpen(game.game_date, new Date(), cfg.card_lead_days)
 
   useEffect(() => {
     if (!open || lat == null || lng == null) { setWx(null); return }

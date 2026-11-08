@@ -32,17 +32,37 @@ create policy game_weather_checks_staff_read on public.game_weather_checks
                where r.user_id = (select auth.uid()) and r.role = 'league_manager')
   );
 
--- Who gets a weather alert: every admin (admin_users by email) + every league manager.
-create or replace function public.weather_alert_recipients()
+-- Who gets a weather alert: admins (admin_users by email) and/or league managers —
+-- the admin tab's switches (league_settings 'weather' notify_admins / notify_league_managers).
+drop function if exists public.weather_alert_recipients();
+create or replace function public.weather_alert_recipients(p_admins boolean default true, p_league_managers boolean default true)
 returns table (user_id uuid)
 language sql stable security definer set search_path = public
 as $$
   select u.id from auth.users u
-   where lower(u.email) in (select lower(email) from public.admin_users)
+   where p_admins and lower(u.email) in (select lower(email) from public.admin_users)
   union
-  select r.user_id from public.user_roles r where r.role = 'league_manager'
+  select r.user_id from public.user_roles r where p_league_managers and r.role = 'league_manager'
 $$;
-revoke all on function public.weather_alert_recipients() from public, anon, authenticated;
+revoke all on function public.weather_alert_recipients(boolean, boolean) from public, anon, authenticated;
+
+-- Admin tab: how many people each switch reaches (counts only, no ids).
+create or replace function public.admin_weather_recipient_counts()
+returns table (admins int, league_managers int)
+language sql stable security definer set search_path = public
+as $$
+  select
+    (select count(*)::int from auth.users u where lower(u.email) in (select lower(email) from public.admin_users)),
+    (select count(distinct r.user_id)::int from public.user_roles r where r.role = 'league_manager')
+  where public.is_admin()
+$$;
+revoke all on function public.admin_weather_recipient_counts() from public, anon;
+grant execute on function public.admin_weather_recipient_counts() to authenticated;
+
+-- Settings (also read by the game-page card on web + apps): league_settings key 'weather'.
+insert into public.league_settings(key, value, updated_at) values ('weather',
+  '{"card_enabled":true,"card_lead_days":7,"indoor_venues":[],"engine_enabled":true,"horizon_hours":72,"notify_admins":true,"notify_league_managers":true,"send_all_clear":true,"before_hours":3,"game_hours":2,"clash_hours":2,"move_prob":60,"move_mm_hour":0.5,"move_total_mm":1,"move_total_prob":50,"move_before_mm":2,"move_gust":50,"thunder_moves":true,"watch_prob":35,"watch_mm":0.2,"watch_before_mm":0.5}',
+  now()) on conflict (key) do nothing;
 
 -- Cron entry point (same pattern as run_stream_sweep).
 create or replace function public.run_weather_watch()
