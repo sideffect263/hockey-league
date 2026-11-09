@@ -12,6 +12,9 @@ import { ilDate } from "@/lib/ilTime"
 const UPCOMING = ["scheduled", "postponed", "waiting_result", "in_progress"]
 const roleIcon = { judge: Gavel, medic: Medic }
 const ROLE_PLURAL = { judge: "שופטים", medic: "חובשים" }
+const WEEKDAY = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
+/** "יום שבת 14.11" — Israel wall-clock day. */
+const dayHeader = (iso) => { const d = ilDate(iso); return `יום ${WEEKDAY[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}` }
 
 function RefreshButton({ onClick }) {
   return (
@@ -55,6 +58,11 @@ export default function OfficialsAdmin({ games = [], teamsMap = {}, role = "judg
   // second one used to be invisible here (and impossible to remove).
   const confirmedFor = (gameId) =>
     overview.filter(o => o.game_id === gameId && (o.status === "assigned" || o.status === "approved"))
+  // Same person confirmed on another game starting within 2 hours.
+  const clashFor = (cur, game) => !cur.user_id ? null : overview
+    .filter(o => o.user_id === cur.user_id && o.game_id !== game.id && (o.status === "assigned" || o.status === "approved"))
+    .map(o => games.find(g => g.id === o.game_id))
+    .find(g => g && Math.abs(new Date(g.game_date) - new Date(game.game_date)) < 2 * 3600e3) || null
   const applications = overview.filter(o => o.status === "applied")
   const missingCount = upcoming.filter(g => confirmedFor(g.id).length === 0).length
 
@@ -93,6 +101,14 @@ export default function OfficialsAdmin({ games = [], teamsMap = {}, role = "judg
           <button onClick={() => doRemove(cur.id)} disabled={busy === cur.id} aria-label="הסר מהשיבוץ" className="text-slate-300 hover:text-red-500 transition-colors shrink-0"><X className="w-3.5 h-3.5" /></button>
         </div>
         ))}
+        {confirmed.map(cur => {
+          const other = clashFor(cur, game)
+          return other && (
+            <span key={`c${cur.id}`} className="text-[11px] text-red-500">
+              ⚠ {cur.full_name || cur.display_name} משובץ גם ל{teamsMap[other.home_team_id]?.name || "?"} נגד {teamsMap[other.away_team_id]?.name || "?"} ב-<span dir="ltr">{format(ilDate(other.game_date), "HH:mm")}</span>
+            </span>
+          )
+        })}
         </div>
       )
     }
@@ -159,15 +175,23 @@ export default function OfficialsAdmin({ games = [], teamsMap = {}, role = "judg
         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700"><h3 className="text-sm font-bold text-slate-900 dark:text-white">שיבוץ {ROLE_PLURAL[role]} למשחקים קרובים</h3></div>
         <div className="p-3 space-y-2">
           {upcoming.length === 0 && <p className="text-center text-sm text-slate-400 py-6">אין משחקים קרובים</p>}
-          {upcoming.map(game => (
-            <div key={game.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          {/* Grouped by game day, each fixture with time + rink (2026-11-09) — same as the apps. */}
+          {upcoming.map((game, i) => {
+            const day = dayHeader(game.game_date)
+            const newDay = i === 0 || dayHeader(upcoming[i - 1].game_date) !== day
+            return (
+            <div key={game.id}>
+              {newDay && <h4 className={`text-xs font-bold text-brand border-b border-slate-100 dark:border-slate-700 pb-1 mb-2 ${i ? "mt-4" : ""}`}>{day}</h4>}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="min-w-0">
                 <span className="block text-sm font-semibold text-slate-900 dark:text-white truncate">{teamsMap[game.home_team_id]?.name || "?"} <span className="text-slate-400 font-normal">נגד</span> {teamsMap[game.away_team_id]?.name || "?"}</span>
-                <span className="text-[11px] text-slate-400" dir="ltr">{format(ilDate(game.game_date), "d/M HH:mm")}</span>
+                <span className="text-[11px] text-slate-400"><span dir="ltr">{format(ilDate(game.game_date), "HH:mm")}</span>{game.venue?.trim() ? ` · ${game.venue.trim()}` : ""}</span>
               </div>
               <RoleSlot game={game} />
             </div>
-          ))}
+            </div>
+            )
+          })}
         </div>
       </div>
     </div>
