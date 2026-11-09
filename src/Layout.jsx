@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { RinkIcon, Trophy as BrandTrophy, MatchFallback, TeamsIcon, PlayerIcon, Referee, VideoLibrary, Person, Table, StatsIcon, EditIcon, Manage, Loan, DocumentIcon, PlayerPose, Market, GameForm } from "@/components/icons/BrandIcons"
 import { useAuth } from "./lib/AuthContext"
+import { useFantasyListed } from "./lib/fantasy"
 import OgCelebration from "./components/OgCelebration"
 import NotificationBell from "./components/NotificationBell"
 import { lazy, Suspense } from "react"
@@ -235,6 +236,7 @@ export default function Layout({ children }) {
   const location = useLocation()
   const fullscreen = isFullscreen(location.pathname)
   const { user, isAdmin, hasRole, coachTeamIds, isJudgeRole, isContentEditor, isLeagueManager, isDeveloper, profile, signOut, openAuth, authOpen } = useAuth()
+  const fantasyListed = useFantasyListed({ isAdmin, isDeveloper })
 
 
   // The header is split into three groups so its width no longer depends on how
@@ -251,6 +253,7 @@ export default function Layout({ children }) {
     // touches no league data, and is the one page here a visitor who has never
     // heard of the sport might actually stay on.
     { title: "ליגיונר", url: "/career", icon: NavCareer },
+    ...(fantasyListed ? [{ title: "פנטזי", url: "/fantasy", icon: BrandTrophy }] : []),
     // סטופר מרקט is signed-in only: the page is gated to 18+ league players
     // anyway, and the public site should not advertise a betting board to the
     // youth-team visitors who make up much of its traffic.

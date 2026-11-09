@@ -1,0 +1,28 @@
+-- Undo supabase/fantasy.sql. Drops every manager's squad and private league.
+drop function if exists public.fantasy_leave_league(uuid);
+drop function if exists public.fantasy_join_league(text);
+drop function if exists public.fantasy_create_league(text);
+drop function if exists public.fantasy_save_lineup(text, jsonb);
+drop function if exists public.fantasy_league_by_code(text);
+drop function if exists public.fantasy_entry_round(uuid, date);
+drop function if exists public.fantasy_leaderboard(uuid, int);
+drop function if exists public.fantasy_state();
+drop function if exists public.fantasy_reprice(uuid);
+drop function if exists public.fantasy_scores(uuid, uuid);
+drop function if exists public.fantasy_round_score(uuid, date);
+drop function if exists public.fantasy_round_transfers(uuid, date);
+drop function if exists public.fantasy_round_detail(uuid, date);
+drop function if exists public.fantasy_effective_round(uuid, date);
+drop function if exists public.fantasy_player_game_points(uuid);
+drop function if exists public.fantasy_open_round(uuid);
+drop function if exists public.fantasy_rounds(uuid);
+drop function if exists public.fantasy_games(uuid);
+drop function if exists public.fantasy_season();
+drop function if exists public.fantasy_enabled();
+drop table if exists public.fantasy_league_members;
+drop table if exists public.fantasy_leagues;
+drop table if exists public.fantasy_lineup_players;
+drop table if exists public.fantasy_lineups;
+drop table if exists public.fantasy_entries;
+drop table if exists public.fantasy_prices;
+delete from public.league_settings where key = 'feature_fantasy';
