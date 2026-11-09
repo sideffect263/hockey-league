@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
-import { X, Check, RefreshCw, Download, Copy } from "lucide-react"
+import { X, Check, RefreshCw, Download, Copy, Search, Plus } from "lucide-react"
 import { Medic, Warning as AlertTriangle, Wallet as Coins, GameForm as ClipboardCheck, Gavel } from "@/components/icons/BrandIcons"
 import {
   OFFICIAL_ROLE_LABEL, listAssignableOfficials, getOfficialsOverview, getOfficialRates,
   getOfficialsPaylog, assignOfficial, removeOfficial, setOfficialRate, reviewOfficialApplication,
+  searchOfficialCandidates, grantOfficialRole, revokeOfficialRole,
 } from "@/lib/officials"
 import { ilDate } from "@/lib/ilTime"
 
@@ -38,8 +39,9 @@ export default function OfficialsAdmin({ games = [], teamsMap = {}, role = "judg
   const [busy, setBusy] = useState(null)
   const RIcon = roleIcon[role]
 
-  const load = async () => {
-    setLoading(true)
+  // quiet = refresh in place (no skeleton), so the role card keeps its search box.
+  const load = async (quiet = false) => {
+    if (!quiet) setLoading(true)
     try {
       const [ov, as] = await Promise.all([
         getOfficialsOverview().catch(() => []),
@@ -135,8 +137,11 @@ export default function OfficialsAdmin({ games = [], teamsMap = {}, role = "judg
             </span>
           )}
         </h2>
-        <RefreshButton onClick={load} />
+        <RefreshButton onClick={() => load()} />
       </div>
+
+      {/* Who is a medic at all: the medic manager makes accounts medics here (2026-11-09). */}
+      {role === "medic" && <RoleHolders role={role} holders={assignable} onChange={() => load(true)} onError={fail} />}
 
       {/* Applications to review */}
       {applications.length > 0 && (
@@ -193,6 +198,97 @@ export default function OfficialsAdmin({ games = [], teamsMap = {}, role = "judg
             )
           })}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The people holding an official role, plus a name search to grant it. Writes go through
+ * grant_official_role / revoke_official_role (official-role-grant.sql), which allow the
+ * role's own manager (medic_manager → medic) and admin / LM — nobody else.
+ */
+function RoleHolders({ role, holders, onChange, onError }) {
+  const [q, setQ] = useState("")
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState(false)
+  const [busy, setBusy] = useState(null)
+  const label = OFFICIAL_ROLE_LABEL[role]
+
+  useEffect(() => {
+    const term = q.trim()
+    if (term.length < 2) { setResults([]); setSearchError(false); return }
+    let alive = true
+    setSearching(true)
+    const t = setTimeout(async () => {
+      try { const r = await searchOfficialCandidates(role, term); if (alive) { setResults(r); setSearchError(false) } }
+      catch (e) { if (alive) { setResults([]); setSearchError(true) } }
+      finally { if (alive) setSearching(false) }
+    }, 300)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q, role])
+
+  const grant = async (u) => {
+    setBusy(u.user_id)
+    try {
+      await grantOfficialRole(u.user_id, role)
+      setResults(rs => rs.map(r => r.user_id === u.user_id ? { ...r, has_role: true } : r))
+      await onChange()
+    } catch (e) { onError(e) } finally { setBusy(null) }
+  }
+  const revoke = async (h) => {
+    if (!confirm(`להסיר את ${h.display_name || "המשתמש"} מתפקיד ${label}? שיבוצים קיימים למשחקים יישארו.`)) return
+    setBusy(h.user_id)
+    try {
+      await revokeOfficialRole(h.user_id, role)
+      setResults(rs => rs.map(r => r.user_id === h.user_id ? { ...r, has_role: false } : r))
+      await onChange()
+    } catch (e) { onError(e) } finally { setBusy(null) }
+  }
+
+  return (
+    <div className="card p-4 space-y-3">
+      <h3 className="text-sm font-bold text-slate-900 dark:text-white">{ROLE_PLURAL[role]} בליגה (<span className="tabular-nums">{holders.length}</span>)</h3>
+      {holders.length === 0
+        ? <p className="text-xs text-slate-400">עדיין אין {ROLE_PLURAL[role]}. חפשו משתמש למטה כדי להוסיף.</p>
+        : (
+          <div className="flex flex-wrap gap-1.5">
+            {holders.map(h => (
+              <span key={h.user_id} className="inline-flex items-center gap-1 text-xs font-semibold ps-2.5 pe-1 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                {h.display_name || "—"}
+                <button onClick={() => revoke(h)} disabled={busy === h.user_id} aria-label={`הסר ${h.display_name || ""} מתפקיד ${label}`}
+                  className="p-0.5 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"><X className="w-3.5 h-3.5" /></button>
+              </span>
+            ))}
+          </div>
+        )}
+      <div>
+        <label className="relative block">
+          <span className="sr-only">חיפוש משתמש להוספה כ{label}</span>
+          <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={`הוספת ${label}: חפשו לפי שם…`}
+            className="w-full text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg ps-9 pe-3 py-2 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+        </label>
+        {q.trim().length >= 2 && (
+          <div className="mt-2 space-y-1">
+            {searching && results.length === 0 && <p className="text-xs text-slate-400 px-1">מחפש…</p>}
+            {!searching && searchError && <p className="text-xs text-red-500 px-1">החיפוש נכשל. נסו שוב.</p>}
+            {!searching && !searchError && results.length === 0 && <p className="text-xs text-slate-400 px-1">לא נמצאו משתמשים בשם הזה</p>}
+            {results.map(u => (
+              <div key={u.user_id} className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                <div className="min-w-0 text-sm">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{u.display_name || "—"}</span>
+                  {u.player_name && u.player_name !== u.display_name && <span className="text-[11px] text-slate-400"> · שחקן: {u.player_name}</span>}
+                </div>
+                {u.has_role
+                  ? <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"><Check className="w-3.5 h-3.5" /> {label}</span>
+                  : <button onClick={() => grant(u)} disabled={busy === u.user_id}
+                      className="shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-brand text-brand-fg hover:opacity-90 disabled:opacity-50"><Plus className="w-3.5 h-3.5" /> הפוך ל{label}</button>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
