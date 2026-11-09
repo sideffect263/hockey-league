@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Trophy } from "@/components/icons/BrandIcons"
 import { cn } from '@/lib/utils'
-import { FOREIGN_CLUBS, BAND_LABEL, COUNTRY_FLAG } from '../clubs'
+import { FOREIGN_CLUBS, BAND_LABEL, COUNTRY_FLAG, allClubs, leagueTeams, snapshotLeague } from '../clubs'
 import Setup from './Setup'
 
 /**
@@ -21,7 +21,14 @@ function ladderRungs(israeliTeams) {
       .slice(0, n)
       .map((c) => `${COUNTRY_FLAG[c.country] || ''} ${c.name}`)
 
-  const local = (israeliTeams || []).slice(0, 3).map((t) => `🇮🇱 ${t.name}`)
+  const all = israeliTeams || []
+  // Built through the same code a new career uses, so the rungs name exactly
+  // the clubs you can be offered: real youth teams are the academies, and
+  // they don't appear again as senior clubs.
+  const il = allClubs(leagueTeams(snapshotLeague(all), all))
+  const names = (band) => il.filter((c) => c.band === band).slice(0, 3).map((c) => `🇮🇱 ${c.name}`)
+  const local = names('israel')
+  const youth = names('academy')
 
   // Top of the list is the top of the ladder. Built the other way round first,
   // which put the biggest rung at the BOTTOM — directly contradicting the
@@ -31,8 +38,8 @@ function ladderRungs(israeliTeams) {
     { band: 'elite', note: 'ליגות הצמרת של הענף', clubs: sample('elite', 3) },
     { band: 'strong', note: 'ליגות מקצועניות', clubs: sample('strong', 3) },
     { band: 'entry', note: 'החוזה הראשון בחו״ל', clubs: sample('entry', 3) },
-    { band: 'israel', note: 'שבע קבוצות, ליגה אחת', clubs: local },
-    { band: 'academy', note: 'כאן אתה מתחיל, בגיל 16', clubs: local, start: true },
+    { band: 'israel', note: `${all.length || 'שבע'} קבוצות, ליגה אחת`, clubs: local },
+    { band: 'academy', note: 'כאן אתה מתחיל, בגיל 16', clubs: youth, start: true },
   ]
 }
 
@@ -85,11 +92,11 @@ export default function Landing({ hall, teams, onStart }) {
             ליגיונר על גלגלים
           </h1>
           <p className="text-fg-muted mt-3 text-pretty">
-            ישראל מדורגת 26 בעולם בהוקי גלגיליות, והליגה שלנו מונה שבע קבוצות.
-            ברצלונה נמצאת שישה שלבים מעליך.
+            ישראל מדורגת 26 בעולם בהוקי גלגיליות, והליגה שלנו מונה {teams?.length || 'שבע'} קבוצות.
+            ברצלונה נמצאת חמישה שלבים מעליך.
           </p>
           <p className="text-fg-muted mt-2 text-pretty">
-            אתה מתחיל בן 16 במחלקת נוער אמיתית מהליגה הישראלית, ומקבל החלטה בכל עונה.
+            אתה מתחיל בן 16 במחלקת נוער אמיתית מהליגה הישראלית, ומחליט לאן ממשיכים.
             הגורל עושה את השאר.
           </p>
 

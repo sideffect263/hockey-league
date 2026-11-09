@@ -24,9 +24,11 @@
  * The grade cutoffs in engine.js were measured from these runs. If you move
  * the balance constants, re-measure them.
  */
-import { start, choose, careerSummary, replay, POSITIONS, CADENCES } from '../src/career/engine.js'
+import { start, choose, careerSummary, replay, POSITIONS, CADENCES, RULES_VERSION } from '../src/career/engine.js'
+import { snapshotLeague, leagueTeams, allClubs } from '../src/career/clubs.js'
+import { restoreCareer } from '../src/career/restore.js'
 
-const teams = [
+const TEAMS_RAW = [
   { slug:'kb', name:'קריית ביאליק', primary_color:'#15d3f9', secondary_color:'#ea580c' },
   { slug:'bb', name:'בלג בוגרים', primary_color:'#15f919', secondary_color:'#ea580c' },
   { slug:'bn', name:'בלג נוער', primary_color:'#2e8e41', secondary_color:'#ea580c' },
@@ -35,6 +37,22 @@ const teams = [
   { slug:'km', name:'קריית מוצקין', primary_color:'#969696', secondary_color:'#ea580c' },
   { slug:'ry', name:'רמת ישי', primary_color:'#f91515', secondary_color:'#ea580c' },
 ]
+// Mid-season standings, so strengths come from the table like on the live site.
+const LIVE = TEAMS_RAW.map((t, i) => ({ ...t, points: [9, 6, 1, 4, 9, 3, 0][i] }))
+// The same league one game day later — a save must not notice.
+const LATER = TEAMS_RAW.map((t, i) => ({ ...t, points: [12, 6, 4, 4, 9, 6, 3][i] }))
+const LEAGUE = snapshotLeague(LIVE)
+const teams = leagueTeams(LEAGUE, LIVE)
+const teamsLater = leagueTeams(LEAGUE, LATER)
+
+const issues = []
+{
+  // Structure: no Israeli club name twice, and real youth teams are academies.
+  const il = allClubs(teams).filter((c) => c.isIsraeli)
+  const names = il.map((c) => c.name)
+  if (new Set(names).size !== names.length) issues.push(`DUPLICATE IL CLUB NAMES ${names.join(',')}`)
+  if (il.some((c) => c.band === 'israel' && /נוער\s*$/.test(c.name))) issues.push('YOUTH TEAM OFFERED AS SENIOR CLUB')
+}
 
 // Strategies a real player might follow.
 const STRATS = {
@@ -46,7 +64,6 @@ const STRATS = {
 
 function mulberry(a){return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-const issues = []
 const rows = []
 
 let n = 0
@@ -56,7 +73,7 @@ for (const pos of POSITIONS.map(p=>p.key)) {
       for (let i=0;i<12;i++){
         n++
         const rnd = mulberry(n*7919)
-        const cfg = { seed:`qa-${pos}-${cad}-${sname}-${i}`, lastName:'בדיקה', number:9, hand:'right', position:pos, cadence:cad }
+        const cfg = { seed:`qa-${pos}-${cad}-${sname}-${i}`, lastName:'בדיקה', number:9, hand:'right', position:pos, cadence:cad, rules:Number(process.env.RULES||RULES_VERSION), league:LEAGUE }
         let s, choices=[]
         try { s = start(cfg, teams) } catch(e){ issues.push(`START THREW ${cfg.seed}: ${e.message}`); continue }
         let guard=0
@@ -93,6 +110,10 @@ for (const pos of POSITIONS.map(p=>p.key)) {
         // replay determinism
         const r = replay(cfg, choices, teams)
         if (JSON.stringify(careerSummary(r))!==JSON.stringify(sum)) issues.push(`REPLAY MISMATCH ${cfg.seed}`)
+        // ...and after the live table has moved on (the bug that broke every
+        // save and share link on each game day).
+        const r2 = replay(cfg, choices, teamsLater)
+        if (JSON.stringify(careerSummary(r2))!==JSON.stringify(sum)) issues.push(`REPLAY DRIFT AFTER STANDINGS ${cfg.seed}`)
 
         rows.push({pos,cad,strat:sname,seasons:sum.seasons,peak:sum.peak,band:sum.topBand,trophies:sum.trophies.length,
                    apps:sum.apps,goals:sum.goals,caps:sum.caps,earn:sum.earnings,endAge:s.player.age,clubs:sum.clubCount,
@@ -100,6 +121,21 @@ for (const pos of POSITIONS.map(p=>p.key)) {
       }
     }
   }
+}
+
+// Legacy saves (made before the league was frozen, while the table was still
+// zeroed) must restore in full against today's moved-on table.
+{
+  const ZERO = TEAMS_RAW.map((t) => ({ ...t }))
+  let bad = 0
+  for (let i = 0; i < 60; i++) {
+    const cfg = { seed: `legacy-${i}`, lastName: 'ישן', number: 7, position: ['GK','DEF','MID','FWD'][i % 4], cadence: 'intense' }
+    let s = start(cfg, ZERO), ch = []
+    while (s.pending && !s.retired) { const k = s.pending.options[i % s.pending.options.length].key; ch.push(k); s = choose(s, k, ZERO) }
+    const r = restoreCareer(cfg, ch, LIVE)
+    if (r.partial || JSON.stringify(careerSummary(r.state)) !== JSON.stringify(careerSummary(s))) bad++
+  }
+  if (bad) issues.push(`LEGACY RESTORE FAILED ${bad}/60`)
 }
 
 console.log('careers simulated:', rows.length)

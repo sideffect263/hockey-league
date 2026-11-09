@@ -28,7 +28,10 @@ export default function Timeline({ blocks, highlightFrom = 0 }) {
         <span className="text-2xs text-fg-muted tabular-nums">{blocks.length} עונות</span>
       </header>
 
-      <ol className="max-h-[30rem] overflow-y-auto">
+      {/* Capped only on desktop, where it sits in a sticky side column. On a
+          phone it's the bottom of the page, and a scroll box inside a
+          scrolling page fights the thumb. */}
+      <ol className="lg:max-h-[30rem] lg:overflow-y-auto">
         {blocks.map((b, i) => {
           const delta = b.overallAfter - b.overallBefore
           return (
@@ -52,8 +55,8 @@ export default function Timeline({ blocks, highlightFrom = 0 }) {
                 </span>
                 <span className="text-sm font-bold text-fg-strong tabular-nums shrink-0">{b.overallAfter}</span>
                 {delta !== 0 && (
-                  <span className={cn('text-3xs tabular-nums shrink-0', delta > 0 ? 'text-pos' : 'text-neg')}>
-                    {delta > 0 ? '+' : ''}{delta}
+                  <span dir="ltr" className={cn('text-3xs tabular-nums shrink-0', delta > 0 ? 'text-pos' : 'text-neg')}>
+                    {delta > 0 ? '+' : '−'}{Math.abs(delta)}
                   </span>
                 )}
               </div>

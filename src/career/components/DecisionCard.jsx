@@ -43,7 +43,9 @@ function Option({ children, onPick, optionKey, accent }) {
 
 function OfferOption({ option, overall, onPick }) {
   const c = option.club
-  const level = c ? levelOf(overall, c) : null
+  // Comparing a 16-year-old to a youth side's level only ever said "below
+  // your level" about the place you're supposed to start, so it's skipped.
+  const level = c && c.band !== 'academy' ? levelOf(overall, c) : null
   const LevelIcon = level?.icon
 
   return (

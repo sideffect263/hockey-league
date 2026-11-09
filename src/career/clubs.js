@@ -197,8 +197,8 @@ export const BAND_ORDER = ['academy', 'israel', 'entry', 'strong', 'elite', 'wor
 export const BAND_LABEL = {
   academy: 'מחלקת נוער',
   israel: 'הליגה הישראלית',
-  entry: 'ליגת כניסה באירופה',
-  strong: 'ליגה אירופית חזקה',
+  entry: 'ליגת כניסה בחו״ל',
+  strong: 'ליגה מקצוענית חזקה',
   elite: 'ליגת צמרת',
   world: 'מועדון עולמי',
 }
@@ -316,13 +316,93 @@ function israeliStrengths(teams) {
   return out
 }
 
+// ── The league a career is played in ──────────────────────────────────────
+/**
+ * A career replays from `{seed, choices}`, so EVERYTHING the engine reads has
+ * to be the same every time it replays. The Israeli clubs used to be built
+ * from the live `teams` table on every load — and that table's standings move
+ * every game day. The moment a result came in, club strengths shifted, the
+ * offers a save was made against no longer existed, and saved careers and
+ * share links replayed into a different (usually half-finished) career.
+ *
+ * So the league is frozen into the save when the career starts:
+ *   { v, t: [[slug, strength], …] }
+ * Live data is only used for decoration (names, colours, crests), matched by
+ * slug — a team that later disappears falls back to its slug as its name.
+ *
+ *   v1 — the original club structure (every team gets an academy twin).
+ *        Only used to keep careers saved before the freeze replayable.
+ *   v2 — real youth teams ("… נוער") ARE the academy of their club and are
+ *        not offered as senior clubs; they still sit in the league table.
+ */
+export const LEAGUE_VERSION = 2
+
+const isTestTeam = (t) => /^\s*🧪/.test(t?.name || '')
+
+export function snapshotLeague(liveTeams, { v = LEAGUE_VERSION, keepTest = false, zeroed = false } = {}) {
+  const teams = (liveTeams || []).filter((t) => t?.name && (keepTest || !isTestTeam(t)))
+  const ranked = zeroed ? teams.map((t) => ({ ...t, points: 0, wins: 0 })) : teams
+  const strength = israeliStrengths(ranked)
+  return { v, t: teams.map((t) => [t.slug || t.name, strength.get(t.slug || t.name) ?? 48]) }
+}
+
+/** Team-shaped rows for the engine, built from a frozen league. */
+export function leagueTeams(league, liveTeams) {
+  const live = new Map((liveTeams || []).map((t) => [t.slug || t.name, t]))
+  return (league?.t || []).map(([slug, strength]) => {
+    const l = live.get(slug) || {}
+    return {
+      slug,
+      name: l.name || slug.replace(/-/g, ' '),
+      primary_color: l.primary_color,
+      secondary_color: l.secondary_color,
+      logo_url: l.logo_url,
+      _strength: strength,
+      _v: league.v,
+    }
+  })
+}
+
+const YOUTH_RE = /\s*נוער\s*$/
+
+/** "בלג נוער" → "בלג אריות": the senior club a youth team belongs to. */
+function seniorSisterOf(team, teams) {
+  const base = team.name.replace(YOUTH_RE, '').trim()
+  if (!base) return null
+  return teams.find((t) => t !== team && !YOUTH_RE.test(t.name) && t.name.startsWith(base)) || null
+}
+
 /** Every club the engine can route you through, Israeli side included. */
 export function allClubs(israeliTeams) {
   const teams = israeliTeams || []
-  const strength = israeliStrengths(teams)
-  const il = teams.flatMap((t) => {
-    const base = strength.get(t.slug || t.name) ?? 48
-    return [israeliClub(t, { base }), israeliClub(t, { youth: true, base })]
-  })
+  const frozen = teams.length > 0 && teams[0]._strength != null
+  const strength = frozen
+    ? new Map(teams.map((t) => [t.slug || t.name, t._strength]))
+    : israeliStrengths(teams)
+  const baseOf = (t) => strength.get(t.slug || t.name) ?? 48
+
+  if (frozen && teams[0]._v >= 2) {
+    const il = []
+    for (const t of teams) {
+      if (YOUTH_RE.test(t.name)) {
+        // A real youth team: the academy, never a senior signing. It still
+        // plays in the senior table, so it carries its full strength for that.
+        const club = israeliClub(t, { youth: true, base: baseOf(t) })
+        club.tableBase = baseOf(t)
+        il.push(club)
+        continue
+      }
+      il.push(israeliClub(t, { base: baseOf(t) }))
+      // Clubs whose youth side is already a real team don't get a made-up twin.
+      const hasRealYouth = teams.some((y) => YOUTH_RE.test(y.name) && seniorSisterOf(y, teams) === t)
+      if (!hasRealYouth) il.push(israeliClub(t, { youth: true, base: baseOf(t) }))
+    }
+    return [...il, ...FOREIGN_CLUBS]
+  }
+
+  const il = teams.flatMap((t) => [
+    israeliClub(t, { base: baseOf(t) }),
+    israeliClub(t, { youth: true, base: baseOf(t) }),
+  ])
   return [...il, ...FOREIGN_CLUBS]
 }
