@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { BrandIcon } from '@/components/icons/BrandIcons'
+import StickScrollbar from '@/components/fl/StickScrollbar'
 import { getPendingTeams } from '@/lib/api'
 import { getPendingClaims } from '@/lib/claims'
 import { getPendingPlayerSubmissions } from '@/lib/playerSubmissions'
@@ -200,7 +201,8 @@ export function AdminIndex({ tabs, counts, onOpen, subs = {}, viewOnly = new Set
 export function AdminRail({ tabs, counts, current, onOpen }) {
   const byId = Object.fromEntries(tabs.map((t) => [t.id, t]))
   return (
-    <nav aria-label="כלי ניהול" className="card p-2 flex flex-col gap-0.5 overflow-y-auto max-h-[calc(100vh-7rem)] [scrollbar-width:thin]">
+    <StickScrollbar className="card" innerClassName="max-h-[calc(100vh-7rem)]">
+    <nav aria-label="כלי ניהול" className="p-2 flex flex-col gap-0.5">
       <RailItem active={!current} onClick={() => onOpen(null)} icon="manage" label="סקירה" />
       {TOOL_GROUPS.map((g) => {
         const items = g.ids.map((id) => byId[id]).filter(Boolean)
@@ -215,6 +217,7 @@ export function AdminRail({ tabs, counts, current, onOpen }) {
         )
       })}
     </nav>
+    </StickScrollbar>
   )
 }
 
