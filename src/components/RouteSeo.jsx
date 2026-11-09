@@ -28,6 +28,7 @@ const ROUTES = {
   '/devs': { title: 'מפתחים' },
   '/archive': { title: 'ארכיון', description: 'עונות קודמות של ליגת הוקי הגלגיליות הישראלית' },
   '/privacy': { title: 'מדיניות פרטיות' },
+  '/fantasy': { title: 'ליגת הפנטזי', description: 'בונים חמישייה משחקני הליגה, צוברים נקודות מהמשחקים האמיתיים ומתחרים בחברים' },
   // Private routes. They stay noindex (isNoindexPath) — these titles are for the
   // browser tab, history and the screen-reader page announcement, which otherwise
   // fell back to the bare site name on every one of them.

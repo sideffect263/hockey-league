@@ -11,10 +11,12 @@ function Delta({ from, to }) {
   return (
     <span className={cn("inline-flex items-center gap-1", tone)}>
       <Icon className="size-3.5" aria-hidden="true" />
-      <span className="tabular-nums font-semibold">
+      {/* LTR island: inside an RTL row "47 → 51" rendered as "51 ← 47"-ish
+          with the arrow pointing at the OLD number, and "+4" became "4+". */}
+      <span dir="ltr" className="tabular-nums font-semibold">
         {from} → {to}
+        {d !== 0 && <span className="text-2xs font-normal ms-1">({d > 0 ? '+' : '−'}{Math.abs(d)})</span>}
       </span>
-      {d !== 0 && <span className="text-2xs">({d > 0 ? '+' : ''}{d})</span>}
     </span>
   )
 }

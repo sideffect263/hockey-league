@@ -2,7 +2,7 @@
 // (fan / player / coach / LM / referee / admin) can be checked without a real login.
 // Reads are the real public data (anon key); writes and auth-only RPCs simply fail.
 //   npx vite --config scripts/qa-harness/vite.config.js --port 5300
-//   open http://localhost:5300/?as=player   (guest | fan | player | coach | lm | ref | admin)
+//   open http://localhost:5300/?as=player   (guest | fan | player | coach | lm | ref | mm | rm | admin)
 // The role sticks for the tab (sessionStorage); ?as=guest signs out. Dev only — never built.
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'

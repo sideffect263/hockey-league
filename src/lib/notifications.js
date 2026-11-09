@@ -129,6 +129,10 @@ function movedSummary(d) {
 // The officials digest is only useful if it leads with what's MISSING — that is the
 // whole point of sending it on Tuesday and again on Thursday.
 function officialsSummary(d) {
+  // A medic / referee manager's copy carries only their role (scope), sent when it is
+  // missing — say just that, nothing about the other role.
+  if (d.scope === 'medic') return 'חסר חובש'
+  if (d.scope === 'judge') return 'חסר שופט'
   const missing = []
   if (!(d.judges > 0)) missing.push('שופט')
   if (!(d.medics > 0)) missing.push('חובש')
@@ -441,7 +445,7 @@ export function notificationHref(n) {
     case 'team_join_rejected':     return n.entity_id ? `/teams/${n.entity_id}` : '/me'
     case 'coach_request':          return '/admin?tab=claims&section=coaches'
     case 'coach_request_rejected': return n.entity_id ? `/teams/${n.entity_id}` : '/me'
-    case 'official_role_request':  return '/admin?tab=claims&section=officials'
+    case 'official_role_request':  return '/admin?tab=referees&section=officials'
     case 'card_unlink_request':    return '/admin?tab=claims&section=unlinks'
     case 'official_role_approved':
     case 'official_role_rejected':
@@ -469,7 +473,7 @@ export function notificationHref(n) {
     case 'official_assigned':
     case 'official_application_approved':
     case 'official_application_rejected': return n.entity_id ? `/games/${n.entity_id}` : '/games'
-    case 'official_application':   return '/admin?tab=officials'
+    case 'official_application':   return n.data?.role === 'medic' ? '/admin?tab=medics' : '/admin?tab=referees'
     case 'market_resolved':        return n.entity_id ? `/market/${n.entity_id}` : '/market'
     case 'market_coins':           return '/market'
     // The post's permalink page (entity_id = the post's uuid).

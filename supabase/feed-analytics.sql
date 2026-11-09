@@ -12,6 +12,15 @@
 --                                                tapped. Signed-in WEB viewers only until the
 --                                                native apps ship their impression logging.
 --
+-- 2026-11-03: staff (admin_users + device_accounts) are left out of every number, so the
+-- tab shows the league's audience, not us testing. top_items returns up to 100 rows with
+-- what the admin list needs to read and open each one: kind, post id + source link, the
+-- game (teams, score, date) for game-/ms- cards and game-bound posts, and average time.
+-- Window semantics: an item counts when a viewer looked at it in the window
+-- (last_seen_at >= since); its time and clicks are that viewer's totals for the item
+-- (feed_impressions keeps one running row per viewer+item, no per-day split). Likes and
+-- comments are the ones made inside the window.
+--
 -- Free-tier cost: nothing stored, reads existing tables.
 -- Rollback: drop function public.analytics_feed(int);
 
@@ -29,18 +38,37 @@ declare
 begin
   if not public.is_admin() then raise exception 'not_authorized'; end if;
 
-  with pages as (
+  with staff as (
+    select u.id user_id from auth.users u join public.admin_users a on lower(a.email) = lower(u.email)
+    union
+    select user_id from public.device_accounts
+  ),
+  pages as (
     select coalesce(e.user_id::text, 's:' || e.session_id) who, e.user_id, e.platform,
            e.path in ('/', '/feed') is_feed,
            (e.created_at at time zone 'Asia/Jerusalem')::date as day
       from public.app_events e
      where e.kind = 'page' and e.created_at >= since
+       and (e.user_id is null or e.user_id not in (select user_id from staff))
   ),
   feedp as (select * from pages where is_feed),
   -- One row per (viewer, item) looked at in the window, classified.
   imp as (
     select fi.user_id, fi.item_key, fi.view_count, fi.dwell_ms, fi.open_count,
-           po.id post_id, po.source_name, po.created_at published_at,
+           po.id post_id, po.source_name, po.created_at published_at, po.link_url,
+           coalesce(po.game_id, case when fi.item_key ~ '^(game|ms)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+                                     then substring(fi.item_key from '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')::uuid end) game_id,
+           case
+             when fi.item_key like 'post-%' and po.source_name = 'יום הולדת' then 'birthday'
+             when fi.item_key like 'post-%' and po.source_name like 'תצוגה מקדימה%' then 'preview'
+             when fi.item_key like 'post-%' and coalesce(pr.is_bot, false) and po.source_name is null and po.game_id is not null then 'live_update'
+             when fi.item_key like 'post-%' and coalesce(pr.is_bot, false) then 'news'
+             when fi.item_key like 'post-%' then 'post'
+             when fi.item_key like 'game-%' then 'game'
+             when fi.item_key like 'ms-%' then 'goal'
+             when fi.item_key like 'market-%' then 'market'
+             else 'other'
+           end kind,
            left(split_part(coalesce(po.body, ''), E'\n', 1), 140) title,
            (po.link_url ~* '(youtube\.com|youtu\.be)') is_video,
            case
@@ -54,6 +82,7 @@ begin
       left join public.posts po on fi.item_key = 'post-' || po.id::text
       left join public.profiles pr on pr.id = po.author_id
      where fi.last_seen_at >= since
+       and fi.user_id not in (select user_id from staff)
   ),
   likes as (
     select 'post-' || post_id::text item_key, count(*) n from public.post_likes where created_at >= since group by 1
@@ -67,8 +96,10 @@ begin
     select item_key, count(*) from public.feed_item_comments where deleted_at is null and created_at >= since group by 1
   ),
   items as (
-    select i.item_key, min(i.item_type) item_type, min(i.source_name) source_name, min(i.title) title,
+    select i.item_key, min(i.item_type) item_type, min(i.kind) kind, min(i.source_name) source_name, min(i.title) title,
            bool_or(i.is_video) is_video, min(i.published_at) published_at,
+           min(i.post_id::text) post_id, min(i.link_url) link_url, min(i.game_id::text)::uuid game_id,
+           round(avg(i.dwell_ms)) avg_dwell_ms,
            count(distinct i.user_id) viewers, sum(i.view_count) views,
            percentile_cont(0.5) within group (order by i.dwell_ms) median_dwell_ms,
            count(*) filter (where i.dwell_ms >= 5000) engaged_viewers,
@@ -101,6 +132,7 @@ begin
       ) x), '[]'),
     'depth', jsonb_build_object(
       'tracked_viewers', (select count(distinct user_id) from imp),
+      'staff_excluded',  (select count(*) from staff),
       'items_seen',      (select count(*) from items),
       'card_views',      (select coalesce(sum(view_count), 0) from imp),
       'median_dwell_ms', (select percentile_cont(0.5) within group (order by dwell_ms) from imp),
@@ -137,9 +169,16 @@ begin
           left join items i on i.source_name = s.source_name
          group by s.source_name) x), '[]'),
     'top_items', coalesce((select jsonb_agg(x) from (
-        select item_key, item_type, source_name, title, is_video, published_at, viewers, views,
-               round(median_dwell_ms) median_dwell_ms, engaged_viewers, opens, likes, comments
-          from items order by viewers desc, median_dwell_ms desc limit 15) x), '[]')
+        select i.item_key, i.item_type, i.kind, i.source_name, i.title, i.is_video, i.published_at,
+               i.post_id, i.link_url, i.game_id, g.slug game_slug, g.game_date, g.status game_status,
+               g.home_score, g.away_score, ht.name home_team, awt.name away_team,
+               i.viewers, i.views, round(i.median_dwell_ms) median_dwell_ms, i.avg_dwell_ms,
+               i.engaged_viewers, i.opens, i.likes, i.comments
+          from items i
+          left join public.games g on g.id = i.game_id
+          left join public.teams ht on ht.id = g.home_team_id
+          left join public.teams awt on awt.id = g.away_team_id
+         order by i.viewers desc, i.median_dwell_ms desc limit 100) x), '[]')
   ) into result;
 
   return result;

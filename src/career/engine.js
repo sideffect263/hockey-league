@@ -19,6 +19,7 @@ import { BAND_ORDER, BAND_LABEL, CONTINENTAL_LABEL, allClubs } from './clubs.js'
 import { EVENTS } from './events.js'
 
 export const START_AGE = 16
+export const RULES_VERSION = 1
 export const START_SEASON = 2026
 
 export const POSITIONS = [
@@ -130,6 +131,13 @@ function simulateTable(rng, club, peers, playerBoost) {
 
 /** Clubs that plausibly share a league with `club`. */
 function peersOf(clubs, club) {
+  // The Israeli table includes the real youth teams that play in it, even
+  // though they're never offered as a senior move.
+  if (club.band === 'israel') {
+    return clubs
+      .filter((c) => c.isIsraeli && c.id !== club.id && (c.band === 'israel' || c.tableBase != null))
+      .map((c) => (c.tableBase != null ? { ...c, baseOverall: c.tableBase } : c))
+  }
   const same = clubs.filter((c) => c.id !== club.id && c.league === club.league)
   if (same.length >= 5) return same.slice(0, 11)
   return clubs.filter((c) => c.id !== club.id && c.band === club.band).slice(0, 9)
@@ -496,6 +504,10 @@ export function start(config, israeliTeams) {
   const state = {
     seed,
     step: 0,
+    // Engine rules this career was started under. Anything that changes the
+    // RANDOM OUTCOME of a season must be gated on it, or old saves and share
+    // links replay into a different career. Display-only changes needn't be.
+    rules: config.rules || 1,
     cadence: config.cadence || 'intense',
     identity: {
       lastName: config.lastName || 'השחקן',
@@ -540,6 +552,10 @@ export function choose(state, optionKey, israeliTeams) {
   if (!option) return state
 
   let next = { ...state, step: state.step + 1, lastBlocks: [] }
+  // An event can move OVR before the season is played. The first season
+  // after it starts from the pre-event number, so the timeline's +/- shows the
+  // whole change instead of hiding the event's share of it.
+  let preEventOverall = null
 
   if (option.kind === 'retire') {
     return { ...next, retired: true, pending: null }
@@ -555,6 +571,7 @@ export function choose(state, optionKey, israeliTeams) {
     next.usedEvents = [...state.usedEvents, event.id]
     next.lastOutcome = { title: event.title, text: outcome?.label || '', good: roll.value }
     const fx = outcome?.effects || {}
+    preEventOverall = state.player.overall
     next.player = {
       ...state.player,
       overall: clamp(state.player.overall + (fx.overall || 0), 40, 99),
@@ -581,7 +598,7 @@ export function choose(state, optionKey, israeliTeams) {
   for (let i = 0; i < seasons; i++) {
     if (next.player.age >= 40) break
     const res = playSeason(next, clubs)
-    const b = res.block
+    const b = i === 0 && preEventOverall != null ? { ...res.block, overallBefore: preEventOverall } : res.block
     blocks.push(b)
     next.player = { ...next.player, overall: res.overall, age: next.player.age + 1 }
     next.totals = {
@@ -625,7 +642,10 @@ export function choose(state, optionKey, israeliTeams) {
 export function replay(config, choices, israeliTeams) {
   let s = start(config, israeliTeams)
   for (const key of choices) {
-    if (!s.pending) break
+    // A key that isn't on the card means this save was made against a
+    // different world. Applying the rest would play every later move against
+    // the wrong decision, so stop here; `step` says how far it got.
+    if (!s.pending || !s.pending.options.some((o) => o.key === key)) break
     s = choose(s, key, israeliTeams)
   }
   return s
@@ -635,7 +655,7 @@ export function replay(config, choices, israeliTeams) {
 export function careerSummary(state) {
   const peak = state.blocks.reduce((m, b) => Math.max(m, b.overallAfter), 0)
   const clubs = [...new Set(state.blocks.map((b) => b.clubName))]
-  const countries = [...new Set(state.blocks.map((b) => b.band))]
+  const countries = [...new Set(state.blocks.map((b) => b.country))]
   const topBand = BAND_ORDER.reduce((best, b) => (state.blocks.some((x) => x.band === b) ? b : best), 'academy')
   return {
     peak,

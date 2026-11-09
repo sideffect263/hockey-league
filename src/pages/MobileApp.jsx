@@ -1,18 +1,13 @@
-import { Download, Newspaper } from "lucide-react"
+import { Newspaper } from "lucide-react"
 import { Approved as ShieldCheck, StatsIcon as BarChart3, Bell, Trophy, Hourglass } from "@/components/icons/BrandIcons"
 import { Whistle } from "@/components/icons/HockeyIcons"
 import { Link } from "react-router-dom"
 
-// Direct APK download — the file lives in public/ so Vercel serves it as a static
-// asset at this path (see vercel.json for the download headers). Bump the copy in
-// public/ + the VERSION label below whenever a new build ships.
-const APK_URL = "/rinkhockeyIL.apk"
-// Keep in step with app/build.gradle.kts whenever public/rinkhockeyIL.apk is replaced.
-// This drifted three versions behind once (the page still offered 1.4.4 while 1.4.5 was
-// live), so it is only the label — the in-app update banner reads the real versionCode
-// that deploy-public.sh pulls out of the APK itself and writes to league_settings.
-const APK_VERSION = "1.5.5 (69)"
-const APK_SIZE = "‎25MB"
+// Android: LIVE on Google Play production since 2026-11-06 (1.6.0, build 93).
+// The sideload flow (public/rinkhockeyIL.apk) is retired from this page — Play is
+// signed with the same key as the old APK, so sideloaded installs update in place
+// from the store. The file stays in public/ for old links and old in-app banners.
+const PLAY_URL = "https://play.google.com/store/apps/details?id=com.arielbiton.rinkhockeyil"
 
 // iOS: LIVE on the App Store since 2026-07-16 (v1.0, build 15 — READY_FOR_SALE).
 // Set IOS_LIVE=false to fall back to the "coming soon" state if ever pulled.
@@ -74,7 +69,7 @@ export default function MobileApp() {
 
       {/* Download cards */}
       <div className="grid sm:grid-cols-2 gap-4">
-        {/* Android — direct APK download */}
+        {/* Android — Google Play */}
         <div className="card p-5 flex flex-col">
           <div className="flex items-center gap-2.5 mb-1">
             <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -82,29 +77,26 @@ export default function MobileApp() {
             </span>
             <div>
               <h2 className="text-lg font-extrabold text-fg-strong leading-tight">Android</h2>
-              <p className="text-xs text-fg-muted">גרסה {APK_VERSION} · {APK_SIZE}</p>
+              <p className="text-xs text-fg-muted">Android · Google Play</p>
             </div>
           </div>
 
           <a
-            href={APK_URL}
-            download
+            href={PLAY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="mt-4 inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
           >
-            <Download className="w-5 h-5" /> הורדת קובץ APK
+            <AndroidGlyph className="w-5 h-5" /> הורדה מ‑Google Play
           </a>
 
-          <div className="mt-3 text-[12.5px] text-fg-muted leading-relaxed">
-            <p className="font-semibold text-fg-soft mb-1">איך מתקינים:</p>
-            <ol className="list-decimal pr-4 space-y-0.5">
-              <li>לחצו על הכפתור להורדת הקובץ.</li>
-              <li>פתחו את הקובץ שהורד ואשרו התקנה.</li>
-              <li>אם מופיעה הודעה — אשרו התקנה ״ממקור לא ידוע״ להתקנה חד־פעמית.</li>
-            </ol>
-          </div>
+          <p className="mt-3 text-[12.5px] text-fg-muted leading-relaxed">
+            האפליקציה זמינה עכשיו להורדה חינמית מ‑Google Play, עם עדכונים אוטומטיים.
+            התקנתם בעבר מקובץ APK? אפשר לעדכן ישירות מ‑Google Play, בלי למחוק.
+          </p>
         </div>
 
-        {/* iPhone — awaiting App Store approval */}
+        {/* iPhone — App Store */}
         <div className="card p-5 flex flex-col">
           <div className="flex items-center gap-2.5 mb-1">
             <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">

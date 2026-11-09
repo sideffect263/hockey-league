@@ -5,7 +5,7 @@ import { COUNTRY_FLAG, BAND_BADGE } from '../clubs'
 function Stat({ label, value, strong = false }) {
   return (
     <div className="text-center">
-      <div className={cn('font-bold text-fg-strong tabular-nums leading-none', strong ? 'text-2xl' : 'text-lg')}>
+      <div className={cn('font-bold text-fg-strong tabular-nums leading-none whitespace-nowrap', strong ? 'text-2xl' : 'text-lg')}>
         {value}
       </div>
       <div className="text-2xs text-fg-muted mt-1">{label}</div>
@@ -87,7 +87,7 @@ export default function PlayerHud({ state, club }) {
           <Stat strong label="תארים" value={state.trophies.length} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:w-44">
+        <div className="grid grid-cols-2 gap-4 sm:w-auto sm:shrink-0">
           <Stat label="רווחי קריירה" value={formatMoney(state.careerEarnings)} />
           <Stat label="נבחרת ישראל" value={national.caps} />
         </div>

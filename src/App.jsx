@@ -44,6 +44,7 @@ const Support = lazy(() => import('./pages/Support'))
 const MobileApp = lazy(() => import('./pages/MobileApp'))
 const Features = lazy(() => import('./pages/Features'))
 const Career = lazy(() => import('./pages/Career'))
+const Fantasy = lazy(() => import('./pages/Fantasy'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 const Search = lazy(() => import('./pages/Search'))
 
@@ -255,6 +256,8 @@ function App() {
             <Route path="/app" element={<MobileApp />} />
             <Route path="/guide" element={<Features />} />
             <Route path="/career" element={<Career />} />
+            {/* ליגת הפנטזי — supabase/fantasy.sql; gated by league_settings.feature_fantasy */}
+            <Route path="/fantasy" element={<Fantasy />} />
             <Route path="/media" element={<Media />} />
             <Route path="/creators" element={<ContentCreators />} />
             <Route path="/devs" element={<Devs />} />

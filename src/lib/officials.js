@@ -36,6 +36,22 @@ export async function getOfficialsPaylog() {
   return data || []
 }
 
+// ---- who holds the role (managers grant / revoke their own role: official-role-grant.sql) ----
+/** Accounts matching a name (display name or linked player), for making them `role`. */
+export async function searchOfficialCandidates(role, query) {
+  const { data, error } = await supabase.rpc('official_role_candidates', { p_role: role, p_query: query })
+  if (error) throw error
+  return data || []
+}
+export async function grantOfficialRole(userId, role) {
+  const { error } = await supabase.rpc('grant_official_role', { p_user_id: userId, p_role: role })
+  if (error) throw error
+}
+export async function revokeOfficialRole(userId, role) {
+  const { error } = await supabase.rpc('revoke_official_role', { p_user_id: userId, p_role: role })
+  if (error) throw error
+}
+
 // ---- writes ----
 export async function assignOfficial(gameId, userId, role) {
   const { error } = await supabase.rpc('assign_official', { p_game_id: gameId, p_user_id: userId, p_role: role })

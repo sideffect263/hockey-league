@@ -70,7 +70,7 @@ export function fanItems(auth) {
 
 /** The "עוד" sheet: every destination, grouped like the PlusMore board. */
 export function moreGroups(auth) {
-  const { user, isAdmin, hasRole = () => false, coachTeamIds = [], isJudgeRole, isLeagueManager, isContentEditor, isDeveloper, canPost, profile } = auth
+  const { user, isAdmin, hasRole = () => false, coachTeamIds = [], isJudgeRole, isLeagueManager, isContentEditor, isDeveloper, canPost, profile, fantasy } = auth
   const g = []
   if (user) {
     g.push({ title: 'שלי', items: [
@@ -98,6 +98,8 @@ export function moreGroups(auth) {
     { title: 'ארכיון', url: '/archive', brand: 'History' },
     ...(user ? [{ title: 'סטופר מרקט', url: '/market', brand: 'Coin' }] : []),
     { title: 'ליגיונר', url: '/career', brand: 'Star' },
+    // ליגת הפנטזי: listed once league_settings.feature_fantasy = 'on' (admins/devs see it before)
+    ...(fantasy ? [{ title: 'פנטזי', url: '/fantasy', brand: 'Trophy' }] : []),
   ] })
   const tools = [
     ...((isAdmin || coachTeamIds.length > 0 || isJudgeRole || isLeagueManager) ? [{ title: 'ניהול', url: '/admin', brand: 'Manage' }] : []),

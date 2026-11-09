@@ -28,6 +28,7 @@ import GameFans from "@/components/games/GameFans"
 import { usePinSeason } from "@/components/SeasonPicker"
 import GameStory from "@/components/games/GameStory"
 import GameMediaUpload from "@/components/games/GameMediaUpload"
+import GameWeather from "@/components/games/GameWeather"
 import { MATCH_STATS_GAMES } from "@/lib/matchStats"
 import { getMyGameChangeRequest, cancelGameChangeRequest } from "@/lib/gameRequests"
 import { canEnterResults, isAwaitingResult } from "@/lib/gameFormResult"
@@ -233,7 +234,10 @@ export default function GameDetail() {
   const inThisGame = (tid) => tid === game.home_team_id || tid === game.away_team_id
   const myPlayer = profile?.player_id ? playersMap[profile.player_id] : null
   const myAvailPlayerId = (myPlayer && inThisGame(myPlayer.team_id)) ? myPlayer.id : null
-  const officialTeamIds = isAdmin ? [game.home_team_id, game.away_team_id] : (coachTeamIds || []).filter(inThisGame)
+  // The viewer's own team first: the מגיע/לא מגיע buttons sit right above the first list,
+  // so an admin who plays for the away side must not see them over the home team.
+  const officialTeamIds = (isAdmin ? [game.home_team_id, game.away_team_id] : (coachTeamIds || []).filter(inThisGame))
+    .sort((a, b) => (b === myPlayer?.team_id) - (a === myPlayer?.team_id))
   const playerTeamId = (myPlayer && inThisGame(myPlayer.team_id) && !officialTeamIds.includes(myPlayer.team_id)) ? myPlayer.team_id : null
   // Any signed-in viewer sees both squads' answers (status only); a coach — or an admin /
   // league manager, for either side — can also push a reminder to the silent ones.
@@ -358,6 +362,10 @@ export default function GameDetail() {
       showCalendar={game.status === 'scheduled'} showNav={canNav} />
   )
 
+  // מזג אוויר במגרש — up to 7 days ahead and during the game; gone once it ends / is postponed
+  S.weather = !pastSeason && (stage === STAGE.before || stage === STAGE.gameDay || liveStage) && (
+    <GameWeather game={game} venue={venue} live={liveStage} />
+  )
   S.liveBand = liveStage && <GameLiveBand home={home} away={away} live={live} />
   S.liveMeta = liveStage && (
     <div className="text-center -mt-1">
@@ -688,13 +696,13 @@ export default function GameDetail() {
   const upcoming = stage === STAGE.before || stage === STAGE.gameDay || stage === STAGE.postponed
   let phone, main, side
   if (liveStage) {
-    phone = ['tools', 'video', 'liveBand', 'liveMeta', 'quick', 'timeline', 'kiosk', 'fans', 'market', 'mediaUpload', 'formCard', 'lmBroadcast', 'posts', 'medics', 'preGame', 'teamLinks']
+    phone = ['tools', 'video', 'liveBand', 'liveMeta', 'quick', 'weather', 'timeline', 'kiosk', 'fans', 'market', 'mediaUpload', 'formCard', 'lmBroadcast', 'posts', 'medics', 'preGame', 'teamLinks']
     main = ['video', 'liveBand', 'liveMeta', 'quick', 'timeline', 'posts', 'mediaUpload']
-    side = ['tools', 'kiosk', 'fans', 'market', 'formCard', 'lmBroadcast', 'medics', 'preGame', 'teamLinks']
+    side = ['tools', 'weather', 'kiosk', 'fans', 'market', 'formCard', 'lmBroadcast', 'medics', 'preGame', 'teamLinks']
   } else if (upcoming) {
-    phone = ['postponed', 'quick', 'broadcastNote', 'video', 'kiosk', 'loan', 'availability', 'market', 'fans', 'preGame', 'changeRequest', 'opponent', 'selfSubmit', 'formCard', 'lmBroadcast', 'medics', 'about', 'posts', 'teamLinks']
+    phone = ['postponed', 'quick', 'weather', 'broadcastNote', 'video', 'kiosk', 'loan', 'availability', 'market', 'fans', 'preGame', 'changeRequest', 'opponent', 'selfSubmit', 'formCard', 'lmBroadcast', 'medics', 'about', 'posts', 'teamLinks']
     main = ['postponed', 'broadcastNote', 'video', 'loan', 'availability', 'posts', 'about']
-    side = ['quick', 'kiosk', 'market', 'fans', 'preGame', 'changeRequest', 'opponent', 'selfSubmit', 'formCard', 'lmBroadcast', 'medics', 'teamLinks']
+    side = ['quick', 'weather', 'kiosk', 'market', 'fans', 'preGame', 'changeRequest', 'opponent', 'selfSubmit', 'formCard', 'lmBroadcast', 'medics', 'teamLinks']
   } else {
     phone = ['video', 'goals', 'timeline', 'kiosk', 'about', 'story', 'tiles', 'formCard', 'posts', 'mvp', 'boxScore', 'scorers', 'matchCentre', 'market', 'squads', 'fans', 'mediaUpload', 'lmBroadcast', 'medics', 'preGame', 'teamLinks']
     main = ['video', 'goals', 'timeline', 'story', 'posts', 'boxScore', 'squads', 'mediaUpload']

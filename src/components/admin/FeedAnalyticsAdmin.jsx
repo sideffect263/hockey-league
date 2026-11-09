@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { Newspaper, Repeat, Eye, RefreshCw, PlayCircle, Lightbulb, ArrowDownWideNarrow, Rss, Monitor, Smartphone } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Newspaper, Repeat, Eye, RefreshCw, PlayCircle, Lightbulb, ArrowDownWideNarrow, Rss, Monitor, Smartphone, ExternalLink } from "lucide-react"
 import { Squad as Users, DocumentIcon as FileText, InfoIcon as Info, Clock, Trophy } from "@/components/icons/BrandIcons"
 import { supabase } from "@/lib/supabase"
 import { useTheme } from "@/lib/ThemeContext"
@@ -18,7 +19,8 @@ import { SkeletonPanelRows } from "@/components/skeletons/PageSkeletons"
  *
  * Two coverages, and the tab says which number comes from which:
  *   reach  = app_events page views of '/' — every visitor, web + iOS + Android, guests too.
- *   depth  = feed_impressions — signed-in WEB viewers only (native doesn't log cards yet).
+ *   depth  = feed_impressions — signed-in viewers (web + apps); guests aren't tracked.
+ * Admins and club device accounts are left out of both.
  */
 
 const WINDOWS = [
@@ -44,6 +46,7 @@ const TYPE = {
 
 const secs = (ms) => ms == null ? "—" : `${(Number(ms) / 1000).toFixed(Number(ms) < 10000 ? 1 : 0)} שנ׳`
 const pct = (a, b) => b ? Math.round((100 * a) / b) : 0
+const fmtDateY = (iso) => new Date(iso).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric", year: "2-digit" })
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric" }) : "—"
 
 export default function FeedAnalyticsAdmin() {
@@ -170,7 +173,7 @@ function Body({ d, dark }) {
           title="עומק גלילה"
           subtitle="כמה כרטיסים שונים כל צופה ראה בתקופה"
           icon={<ArrowDownWideNarrow className="w-4 h-4 text-brand" />}
-          footnote="מבוסס על צופים מחוברים באתר בלבד."
+          footnote="מבוסס על צופים מחוברים בלבד."
           table={{ head: ["כרטיסים", "צופים"], rows: (dp.scroll || []).map(s => [s.bucket, s.viewers]) }}
         >
           <BarChart data={(dp.scroll || []).map(s => ({ label: s.bucket, value: s.viewers }))} unit="צופים" color={singleColor(dark)} />
@@ -216,33 +219,190 @@ function Body({ d, dark }) {
         />
       </div>
 
-      <div className="card p-4">
-        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2 mb-3">
-          <Trophy className="w-4 h-4 text-brand" /> הפריטים הנצפים ביותר
-        </h3>
-        <ol className="space-y-2">
-          {(d.top_items || []).map((it, i) => (
-            <li key={it.item_key} className="flex items-start gap-3 text-sm">
-              <span className="w-5 shrink-0 text-slate-400 tabular-nums">{i + 1}</span>
-              {it.is_video ? <PlayCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-500" /> : <FileText className="w-4 h-4 mt-0.5 shrink-0 text-slate-400" />}
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-slate-900 dark:text-white line-clamp-2">{it.title || it.item_key}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {it.source_name || TYPE[it.item_type]?.label || it.item_type} · {fmtDate(it.published_at)} · {it.viewers} צופים · {secs(it.median_dwell_ms)} · {it.opens} לחיצות{it.likes ? ` · ${it.likes} ❤` : ""}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
+      <TopItems items={d.top_items || []} days={d.days} />
 
       <div className="flex items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400 px-1">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <p>
-          כניסות ומבקרים נספרים בכל הפלטפורמות, כולל אורחים. נתוני עומק (כרטיסים, זמן, לחיצות) נאספים כרגע רק ממשתמשים
-          מחוברים באתר — {dp.tracked_viewers ?? 0} צופים — כי האפליקציות עדיין לא מדווחות על כרטיסים. התמונה האמיתית רחבה יותר.
+          כניסות ומבקרים נספרים בכל הפלטפורמות, כולל אורחים. נתוני עומק (כרטיסים, זמן, לחיצות) נאספים רק ממשתמשים
+          מחוברים — {dp.tracked_viewers ?? 0} צופים — כי אורחים לא נמדדים. מנהלים ומכשירי מועדון ({dp.staff_excluded ?? 0} חשבונות) לא נספרים בשום מספר בלשונית.
         </p>
       </div>
+    </div>
+  )
+}
+
+/** Finer kind from analytics_feed().top_items.kind → label + where the row opens. */
+const KIND = {
+  game: { label: "תוצאת משחק", icon: Trophy },
+  goal: { label: "שער / אבן דרך", icon: Trophy },
+  live_update: { label: "עדכון ממשחק", icon: Trophy },
+  news: { label: "חדשות", icon: FileText },
+  birthday: { label: "יום הולדת", icon: Users },
+  preview: { label: "תצוגה מקדימה", icon: Newspaper },
+  post: { label: "פוסט", icon: Users },
+  market: { label: "ניחושים", icon: Trophy },
+  other: { label: "כרטיס מערכת", icon: Rss },
+}
+
+const SORTS = [
+  { id: "viewers", label: "צופים" },
+  { id: "avg_dwell_ms", label: "זמן" },
+  { id: "opens", label: "לחיצות" },
+  { id: "ctr", label: "CTR" },
+  { id: "likes", label: "לייקים" },
+]
+
+const CTR_MIN_VIEWS = 10
+const ctrOf = (it) => it.views ? (100 * it.opens) / it.views : 0
+const isOwnSite = (url) => /^https?:\/\/(www\.)?rinkhockeyil\.com/i.test(url || "")
+
+/** Where tapping the row goes: in-app path (`to`) and, for outside news, the source (`href`). */
+function itemLinks(it) {
+  const game = it.game_id ? `/games/${it.game_id}` : null
+  const post = it.post_id ? `/posts/${it.post_id}` : null
+  const source = it.link_url && !isOwnSite(it.link_url) ? it.link_url : null
+  if (it.kind === "game" || it.kind === "goal") return { to: game }
+  if (post) return { to: post, game: it.kind === "live_update" ? game : null, source }
+  if (it.kind === "market") return { to: "/market" }
+  if (it.item_key === "top-scorer") return { to: "/statistics" }
+  return { to: "/" }
+}
+
+function itemTitle(it) {
+  const k = it.kind
+  if ((k === "game" || k === "goal" || k === "live_update") && it.home_team) {
+    const played = it.home_score != null && it.away_score != null
+    const match = (
+      <>
+        {it.home_team}{" "}
+        {played ? <span dir="ltr" className="tabular-nums">{it.away_score}–{it.home_score}</span> : "נגד"}{" "}
+        {it.away_team}
+      </>
+    )
+    if (k === "game") return match
+    return <>{match}<span className="text-slate-500 dark:text-slate-400 font-normal"> · {it.title || (k === "goal" ? "שער" : "")}</span></>
+  }
+  if (it.item_key === "top-scorer") return "מלכי השערים"
+  if (it.item_key === "world" || it.item_key === "row-world") return "חדשות מהעולם (שורה מקובצת)"
+  if (k === "market") return `ניחושים · ${it.item_key.replace(/^market-/, "")}`
+  return it.title || it.item_key
+}
+
+function TopItems({ items, days }) {
+  const [sort, setSort] = useState("viewers")
+  const [kind, setKind] = useState("all")
+  const [limit, setLimit] = useState(15)
+
+  const kinds = useMemo(() => {
+    const n = {}
+    for (const it of items) n[it.kind] = (n[it.kind] || 0) + 1
+    return Object.entries(n).sort((a, b) => b[1] - a[1])
+  }, [items])
+
+  const rows = useMemo(() => {
+    // A card shown once and tapped once is "100%": CTR only ranks cards with enough showings.
+    const val = (it) => sort === "ctr" ? (it.views >= CTR_MIN_VIEWS ? ctrOf(it) : -1) : Number(it[sort]) || 0
+    return items
+      .filter(it => kind === "all" || it.kind === kind)
+      .sort((a, b) => val(b) - val(a) || b.viewers - a.viewers)
+  }, [items, sort, kind])
+
+  const shown = rows.slice(0, limit)
+
+  return (
+    <div className="card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
+        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-brand" /> הפריטים הנצפים ביותר
+        </h3>
+        <SegToggle label="מיון" value={sort} onChange={setSort} options={SORTS} />
+      </div>
+      <details className="text-[11px] text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
+        <summary className="cursor-pointer select-none">
+          {days} הימים האחרונים (חלון הזמן למעלה) · {items.length} הפריטים עם הכי הרבה צופים · בלי מנהלים ומכשירי מועדון · <span className="text-brand">איך נספר?</span>
+        </summary>
+        <p className="mt-1">
+          <b>צופים</b> = משתמשים מחוברים שונים שהכרטיס היה לפחות חצי מסך מולם בתקופה.
+          {" "}<b>זמן</b> = ממוצע לצופה (סך כל הפעמים שלו על הכרטיס); החציון מופיע במעבר עכבר.
+          {" "}<b>לחיצות</b> = כניסות מהכרטיס (קישור, עמוד משחק, סרטון); <b>CTR</b> = לחיצות מתוך הופעות הכרטיס על המסך (מיון לפי CTR — רק פריטים עם {CTR_MIN_VIEWS} הופעות ומעלה בראש).
+          {" "}<b>לייקים</b> = שניתנו בתקופה. זמן ולחיצות הם סך הכול של הצופה על הפריט, גם אם התחיל לפני התקופה.
+        </p>
+      </details>
+
+      <div className="flex flex-wrap gap-1.5 mb-3" role="group" aria-label="סינון לפי סוג">
+        {[["all", items.length], ...kinds].map(([k, n]) => (
+          <button key={k} type="button" onClick={() => { setKind(k); setLimit(15) }} aria-pressed={kind === k}
+            className={`px-2.5 py-1 rounded-full text-[12px] border transition-colors ${kind === k
+              ? "bg-brand text-white border-brand font-semibold"
+              : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand"}`}>
+            {k === "all" ? "הכל" : KIND[k]?.label || k} <span className="tabular-nums opacity-70">{n}</span>
+          </button>
+        ))}
+      </div>
+
+      {!shown.length ? <p className="text-xs text-slate-400">אין נתונים בתקופה</p> : (
+        <ol className="divide-y divide-slate-100 dark:divide-slate-800">
+          {shown.map((it, i) => <TopItemRow key={it.item_key} it={it} rank={i + 1} />)}
+        </ol>
+      )}
+
+      {rows.length > limit && (
+        <button type="button" onClick={() => setLimit(l => l + 25)}
+          className="mt-3 w-full min-h-[40px] rounded-lg text-[13px] font-semibold text-brand bg-surface-sunken hover:opacity-80">
+          הצג עוד ({rows.length - limit} נוספים)
+        </button>
+      )}
+    </div>
+  )
+}
+
+function TopItemRow({ it, rank }) {
+  const k = KIND[it.kind] || KIND.other
+  const Icon = it.is_video ? PlayCircle : k.icon
+  const links = itemLinks(it)
+  const when = it.game_date || it.published_at
+  const label = it.kind === "news" && it.is_video ? "חדשות · סרטון" : k.label
+  return (
+    <li className="py-2.5 flex items-start gap-3">
+      <span className="w-6 shrink-0 text-slate-400 tabular-nums text-sm pt-0.5">{rank}</span>
+      <Icon className={`w-4 h-4 mt-1 shrink-0 ${it.is_video ? "text-red-500" : "text-slate-400"}`} aria-hidden="true" />
+      <div className="min-w-0 flex-1 md:flex md:items-center md:gap-4">
+        <div className="min-w-0 flex-1">
+          {links.to ? (
+            <Link to={links.to} target="_blank" rel="noopener" className="font-medium text-sm text-slate-900 dark:text-white line-clamp-2 hover:text-brand hover:underline underline-offset-2">
+              {itemTitle(it)}
+            </Link>
+          ) : <p className="font-medium text-sm text-slate-900 dark:text-white line-clamp-2">{itemTitle(it)}</p>}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <span className="px-1.5 py-0.5 rounded bg-surface-sunken text-fg font-medium">{label}</span>
+            {when && <span dir="ltr">{fmtDateY(when)}</span>}
+            {it.source_name && it.kind === "news" && <span>{it.source_name}</span>}
+            {links.game && <Link to={links.game} target="_blank" rel="noopener" className="text-brand hover:underline">עמוד המשחק</Link>}
+            {links.source && (
+              <a href={links.source} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-brand hover:underline">
+                למקור <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+        </div>
+        <dl className="mt-2 md:mt-0 grid grid-cols-5 gap-1 w-full max-w-[340px] md:w-[340px] shrink-0">
+          <Metric label="צופים" value={it.viewers} />
+          <Metric label="זמן" value={secs(it.avg_dwell_ms)} title={`חציון ${secs(it.median_dwell_ms)}`} />
+          <Metric label="לחיצות" value={it.opens} />
+          <Metric label="CTR" value={`${ctrOf(it).toFixed(ctrOf(it) < 10 ? 1 : 0)}%`} title={`${it.opens} לחיצות מתוך ${it.views} הופעות`} />
+          <Metric label="לייקים" value={it.likes || 0} />
+        </dl>
+      </div>
+    </li>
+  )
+}
+
+function Metric({ label, value, title }) {
+  return (
+    <div className="rounded-md bg-surface-sunken px-1 py-1 text-center" title={title}>
+      <dt className="text-[10px] text-fg-muted">{label}</dt>
+      <dd className="text-[12px] sm:text-[13px] font-semibold text-fg-strong tabular-nums whitespace-nowrap">{value}</dd>
     </div>
   )
 }

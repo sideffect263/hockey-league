@@ -46,12 +46,13 @@ drop trigger if exists zz_sandbox_guard on public.admin_broadcasts;
 create trigger zz_sandbox_guard before insert or update or delete on public.admin_broadcasts
   for each row execute function public.sandbox_guard();
 
--- Recipients for an audience. all_users | app_users | team:<uuid>. Bots never.
+-- Recipients for an audience. all_users | app_users | team:<uuid> | user:<uuid>. Bots never.
 create or replace function public.admin_broadcast_recipients(p_audience text)
 returns table (user_id uuid)
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_team uuid;
+  v_user uuid;
 begin
   if not public.is_admin() then
     raise exception using errcode = '42501', message = 'not_authorized';
@@ -93,6 +94,18 @@ begin
       ) u
       join public.profiles p on p.id = u.uid
      where not coalesce(p.is_bot, false);
+
+  elsif p_audience like 'user:%' then
+    -- one account (2026-11-07): personal message / test-send to yourself
+    begin
+      v_user := substring(p_audience from 6)::uuid;
+    exception when others then
+      raise exception using errcode = '22023', message = 'bad_audience';
+    end;
+    if not exists (select 1 from public.profiles p where p.id = v_user and not coalesce(p.is_bot, false)) then
+      raise exception using errcode = '22023', message = 'bad_audience';
+    end if;
+    return query select v_user;
 
   else
     raise exception using errcode = '22023', message = 'bad_audience';
@@ -136,10 +149,15 @@ begin
     return v_count;
   end if;
 
-  -- 3 real broadcasts per hour, league-wide
+  -- 3 real group broadcasts per hour, league-wide; single-user sends have their own 20/hour
   perform pg_advisory_xact_lock(hashtext('admin_broadcast_notification'));
-  if (select count(*) from public.admin_broadcasts
-       where created_at > now() - interval '1 hour') >= 3 then
+  if v_aud like 'user:%' then
+    if (select count(*) from public.admin_broadcasts
+         where created_at > now() - interval '1 hour' and audience like 'user:%') >= 20 then
+      raise exception using errcode = 'P0001', message = 'rate_limited_user', detail = 'אפשר לשלוח עד 20 התראות אישיות בשעה';
+    end if;
+  elsif (select count(*) from public.admin_broadcasts
+          where created_at > now() - interval '1 hour' and audience not like 'user:%') >= 3 then
     raise exception using errcode = 'P0001', message = 'rate_limited', detail = 'אפשר לשלוח עד 3 התראות בשעה';
   end if;
 

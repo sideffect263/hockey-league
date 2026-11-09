@@ -10,6 +10,7 @@ import * as BI from '@/components/icons/BrandIcons'
 import { useAuth } from '@/lib/AuthContext'
 import { useTheme } from '@/lib/ThemeContext'
 import { tabs, fanItems, moreGroups, isActive } from './navModel'
+import { useFantasyListed } from '@/lib/fantasy'
 
 const LINE = {
   rink: <><rect x="3" y="5" width="18" height="14" rx="3" /><line x1="12" y1="5" x2="12" y2="19" /><circle cx="12" cy="12" r="2.5" /></>,
@@ -163,7 +164,8 @@ function PlusFan({ auth, onClose, onMore }) {
 
 /** "כל הפעולות": search + every destination in groups, plus appearance. */
 export function MoreSheet({ auth, onClose }) {
-  const groups = moreGroups(auth)
+  const fantasy = useFantasyListed(auth)
+  const groups = moreGroups({ ...auth, fantasy })
   const navigate = useNavigate()
   const { mode, setMode } = useTheme()
   const [q, setQ] = useState('')

@@ -123,11 +123,17 @@ export function cardClock(seconds) {
  * rows instead of dead space.
  */
 function measure() {
-  if (typeof window === 'undefined') return { k: 1, v: 1, w: 828, portrait: false }
-  const w = window.innerWidth - 16, h = window.innerHeight - 12
+  if (typeof window === 'undefined') return { k: 1, v: 1, w: 828, portrait: false, gutter: 4 }
+  // A landscape phone's bottom edge belongs to the OS: iOS Safari (toolbar minimized)
+  // and the home indicator swallow taps there, so the control bar and timeouts were dead.
+  // The site has no viewport-fit=cover, so env(safe-area-inset-bottom) is 0 and can't
+  // help — keep our own clear band instead, and fit the board above it.
+  const phone = window.matchMedia?.('(pointer: coarse)').matches && window.innerHeight < 500
+  const gutter = phone ? 34 : 4
+  const w = window.innerWidth - 16, h = window.innerHeight - 8 - gutter
   const k = Math.max(0.6, Math.min(w / 812, h / 368))
   const v = Math.max(0.6, Math.min(h / 368, k * 1.35))
-  return { k, v, w, portrait: window.innerHeight > window.innerWidth && window.innerWidth < 900 }
+  return { k, v, w, gutter, portrait: window.innerHeight > window.innerWidth && window.innerWidth < 900 }
 }
 
 export function useBoardScale() {

@@ -100,6 +100,9 @@ function movedSummary(d: Record<string, any>): string {
 }
 
 function officialsSummary(d: Record<string, any>): string {
+  // A medic / referee manager's copy carries only their role (scope) — say just that.
+  if (d.scope === "medic") return "חסר חובש";
+  if (d.scope === "judge") return "חסר שופט";
   const missing: string[] = [];
   if (!(d.judges > 0)) missing.push("שופט");
   if (!(d.medics > 0)) missing.push("חובש");
@@ -257,7 +260,7 @@ function notificationHref(n: NotificationRow): string {
     case "content_report":         return "/admin?tab=reports";
     case "game_change_request":    return "/admin?tab=game_requests";
     case "coach_request":          return "/admin?tab=claims&section=coaches";
-    case "official_role_request":  return "/admin?tab=claims&section=officials";
+    case "official_role_request":  return "/admin?tab=referees&section=officials";
     case "card_unlink_request":    return "/admin?tab=claims&section=unlinks";
     case "official_role_approved":
     case "official_role_rejected":

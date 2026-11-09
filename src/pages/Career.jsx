@@ -3,8 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { getTeams } from '@/lib/api'
 import { useSeo } from '@/lib/seo'
 import { cn } from '@/lib/utils'
-import { start, choose, replay, clubById, careerSummary } from '@/career/engine'
-import { allClubs } from '@/career/clubs'
+import { start, choose, clubById, careerSummary, RULES_VERSION } from '@/career/engine'
+import { allClubs, snapshotLeague, leagueTeams } from '@/career/clubs'
+import { restoreCareer } from '@/career/restore'
 import { newSeed } from '@/career/rng'
 import { loadSave, writeSave, clearSave, loadHall, addToHall, decodeShare } from '@/career/storage'
 import PlayerHud from '@/career/components/PlayerHud'
@@ -32,6 +33,24 @@ import { CareerSkeleton } from "@/components/skeletons/PageSkeletons"
  * The only network call on this page is that team fetch, and it's cached for
  * the session.
  */
+/**
+ * Event results end in effects like "+2 OVR" or "-4 OVR, -3 פוטנציאל". In an
+ * RTL line the bidi algorithm moves the sign to the end ("OVR 1-"), so each
+ * signed number is isolated as its own left-to-right run.
+ */
+function OutcomeText({ text }) {
+  const parts = text.split(/([+-]\d+(?:\s?OVR)?)/)
+  return parts.map((p, i) =>
+    i % 2 ? (
+      <span key={i} dir="ltr" className="tabular-nums whitespace-nowrap">
+        {p.replace('-', '−')}
+      </span>
+    ) : (
+      p
+    )
+  )
+}
+
 export default function Career() {
   const [params, setParams] = useSearchParams()
   const [teams, setTeams] = useState(null)
@@ -40,6 +59,8 @@ export default function Career() {
   const [state, setState] = useState(null)
   const [hall, setHall] = useState(() => loadHall())
   const [viewingShared, setViewingShared] = useState(false)
+  const [ownShared, setOwnShared] = useState(false)
+  const [partial, setPartial] = useState(false)
 
   useSeo({
     title: config?.lastName ? `${config.lastName} · ליגיונר על גלגלים` : 'ליגיונר על גלגלים',
@@ -61,79 +82,109 @@ export default function Career() {
     return () => { alive = false }
   }, [])
 
-  const clubs = useMemo(() => (teams ? allClubs(teams) : []), [teams])
+  // The engine never sees the live table: it plays the league frozen into
+  // this career's config, decorated with today's names and crests.
+  const world = useMemo(
+    () => (config?.league && teams ? leagueTeams(config.league, teams) : []),
+    [config, teams]
+  )
+  const clubs = useMemo(() => allClubs(world), [world])
+  // Admin-only test teams are visible to admins through RLS; keep them off
+  // the landing ladder (new careers drop them in snapshotLeague too).
+  const publicTeams = useMemo(() => (teams || []).filter((t) => !/^\s*🧪/.test(t.name)), [teams])
 
   // Restore: a ?c= share link wins over the local save, because following a
   // link and landing in your own half-finished career would be baffling.
   useEffect(() => {
     if (!teams) return
     const token = params.get('c')
-    if (token) {
-      const decoded = decodeShare(token)
-      if (decoded) {
-        setConfig(decoded.config)
-        setChoices(decoded.choices)
-        setState(replay(decoded.config, decoded.choices, teams))
-        setViewingShared(true)
-        return
-      }
-    }
+    const decoded = token ? decodeShare(token) : null
     const saved = loadSave()
-    if (saved?.config) {
-      setConfig(saved.config)
-      setChoices(saved.choices || [])
-      setState(replay(saved.config, saved.choices || [], teams))
+    const source = decoded || (saved?.config ? { config: saved.config, choices: saved.choices || [] } : null)
+    if (!source) {
+      setConfig(null); setChoices([]); setState(null); setViewingShared(false); setPartial(false)
+      return
+    }
+    const r = restoreCareer(source.config, source.choices, teams)
+    setConfig(r.config)
+    setChoices(r.choices)
+    setState(r.state)
+    setPartial(r.partial)
+    if (decoded) {
+      const seed = decoded.config.seed
+      setViewingShared(true)
+      setOwnShared(saved?.config?.seed === seed || loadHall().some((h) => h.seed === seed))
+    } else {
+      setViewingShared(false)
+      // Upgrade an old save in place, so it's frozen from now on.
+      writeSave(r.config, r.choices)
     }
   }, [teams, params])
 
   const begin = useCallback((identity) => {
-    const cfg = { ...identity, seed: newSeed() }
+    const cfg = { ...identity, seed: newSeed(), rules: RULES_VERSION, league: snapshotLeague(teams) }
+    const w = leagueTeams(cfg.league, teams)
     setConfig(cfg)
     setChoices([])
-    setState(start(cfg, teams))
+    setState(start(cfg, w))
+    setPartial(false)
     writeSave(cfg, [])
     setViewingShared(false)
     if (params.get('c')) setParams({}, { replace: true })
+    // The setup form is long on a phone; without this the career opens
+    // scrolled past the player card.
+    requestAnimationFrame(() => window.scrollTo({ top: 0 }))
   }, [teams, params, setParams])
 
+  // Computed from the rendered state rather than inside a setState updater:
+  // the updater ran side effects (save, hall) and read `choices` from a stale
+  // closure, so a fast double-tap could save a move list that didn't match the
+  // career on screen.
   const pick = useCallback((key) => {
-    setState((prev) => {
-      const next = choose(prev, key, teams)
-      const nextChoices = [...choices, key]
-      setChoices(nextChoices)
-      writeSave(config, nextChoices)
-      if (next.retired) {
-        const sum = careerSummary(next)
-        setHall(addToHall({
-          seed: config.seed,
-          lastName: config.lastName,
-          peak: sum.peak,
-          seasons: sum.seasons,
-          goals: sum.goals,
-          trophies: sum.trophies.length,
-          topBand: sum.topBandLabel,
-          at: Date.now(),
-        }))
-      }
-      return next
-    })
+    if (!state?.pending || !state.pending.options.some((o) => o.key === key)) return
+    const next = choose(state, key, world)
+    const nextChoices = [...choices, key]
+    setState(next)
+    setChoices(nextChoices)
+    writeSave(config, nextChoices)
+    if (next.retired) {
+      const sum = careerSummary(next)
+      setHall(addToHall({
+        seed: config.seed,
+        lastName: config.lastName,
+        peak: sum.peak,
+        seasons: sum.seasons,
+        goals: sum.goals,
+        trophies: sum.trophies.length,
+        topBand: sum.topBandLabel,
+        at: Date.now(),
+      }))
+    }
     // Fresh card, fresh scroll position — on a phone the options otherwise
     // land below the fold and it reads as if nothing happened.
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
-  }, [teams, choices, config])
+  }, [state, world, choices, config])
 
   const restart = useCallback(() => {
     clearSave()
     setConfig(null)
     setChoices([])
     setState(null)
+    setPartial(false)
     setViewingShared(false)
     if (params.get('c')) setParams({}, { replace: true })
   }, [params, setParams])
 
+  // Leaving someone else's career must not touch your own save: drop the
+  // link and let the restore effect bring back whatever you had going.
+  const leaveShared = useCallback(() => {
+    setParams({}, { replace: true })
+    requestAnimationFrame(() => window.scrollTo({ top: 0 }))
+  }, [setParams])
+
   if (!teams) return <CareerSkeleton />
 
-  if (!config || !state) return <Landing hall={hall} teams={teams} onStart={begin} />
+  if (!config || !state) return <Landing hall={hall} teams={publicTeams} onStart={begin} />
 
   const club = state.clubId ? clubById(clubs, state.clubId) : null
   const freshFrom = state.blocks.length - (state.lastBlocks?.length || 0)
@@ -142,10 +193,21 @@ export default function Career() {
     <div className="max-w-5xl mx-auto px-4 py-6">
         {viewingShared && (
           <div className="mb-4 rounded-xl border border-brand/30 bg-brand/10 p-3 text-sm text-fg flex items-center justify-between gap-3 flex-wrap">
-            <span>אתה צופה בקריירה של מישהו אחר.</span>
-            <button onClick={restart} className="px-3 py-1.5 rounded-lg bg-brand text-brand-fg text-xs font-semibold">
-              להתחיל קריירה משלי
+            <span>{ownShared ? 'זה הקישור לקריירה שלך — ככה חברים יראו אותה.' : 'אתה צופה בקריירה של מישהו אחר.'}</span>
+            <button onClick={leaveShared} className="px-3 py-1.5 rounded-lg bg-brand text-brand-fg text-xs font-semibold">
+              {loadSave()?.config ? 'חזרה לקריירה שלי' : 'להתחיל קריירה משלי'}
             </button>
+          </div>
+        )}
+
+        {partial && !viewingShared && (
+          <div className="mb-4 rounded-xl border border-line bg-surface p-3 text-sm text-fg text-pretty">
+            חלק מהמהלכים בקריירה הזו נשמרו לפני עדכון של המשחק ולא ניתן היה לשחזר אותם. הקריירה ממשיכה מהמהלך האחרון ששוחזר.
+          </div>
+        )}
+        {partial && viewingShared && (
+          <div className="mb-4 rounded-xl border border-line bg-surface p-3 text-sm text-fg text-pretty">
+            הקישור נוצר לפני עדכון של המשחק, ולכן הקריירה מוצגת רק עד המהלך האחרון שאפשר היה לשחזר.
           </div>
         )}
 
@@ -174,7 +236,7 @@ export default function Career() {
                   )}
                 >
                   <div className="text-2xs opacity-70 mb-0.5">{state.lastOutcome.title}</div>
-                  {state.lastOutcome.text}
+                  <OutcomeText text={state.lastOutcome.text} />
                 </div>
               )}
 
