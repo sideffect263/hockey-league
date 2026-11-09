@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowRight, MessageSquareOff } from "lucide-react"
-import { getPost, getMyLikes, getRoleBadges, getTeams, getPlayers, getGameById, getGamePosts } from "@/lib/api"
+import { getPost, getMyLikes, getRoleBadges, getTeams, getPlayers, getGameById, getGamePosts, getGames } from "@/lib/api"
+import { reelDay, dayGameLabel, localDay } from "@/lib/reelGames"
+import { entityPath } from "@/lib/slugs"
+import { fmtDay } from "@/lib/pageSummary"
 import { getMyBlocks } from "@/lib/moderation"
 import { getMentions, MENTION_KIND } from "@/lib/mentionsApi"
 import { birthdayPlayerId } from "@/lib/feed"
@@ -35,6 +38,7 @@ export default function PostDetail() {
   const [blocked, setBlocked] = useState(() => new Set())
   const [game, setGame] = useState(null)   // the game it is attached to → GameChip
   const [related, setRelated] = useState([]) // the game's other video posts → "עוד סרטונים מהמשחק"
+  const [dayGames, setDayGames] = useState([]) // a game-day reel's games → "המשחקים מ-…"
   const [params] = useSearchParams()
   const startAt = Math.max(0, Math.floor(Number(params.get("t")) || 0))
 
@@ -59,10 +63,17 @@ export default function PostDetail() {
         // Players decorate only (birthday banner, OG badge) — never hold the page up.
         getPlayers().then(pl => alive && setPlayers(pl || [])).catch(() => {})
         if (p.game_id) getGameById(p.game_id).then(g => alive && setGame(g)).catch(() => {})
-        if (p.game_id) getGamePosts(p.game_id)
-          .then(ps => alive && setRelated((ps || []).filter(r => r.id !== p.id && r.video_uid && r.video_cf_code)
+        const clipsOf = (gameIds) => Promise.all(gameIds.map(g => getGamePosts(g).catch(() => [])))
+          .then(lists => alive && setRelated(lists.flat().filter(r => r.id !== p.id && r.video_uid && r.video_cf_code)
             .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).slice(0, 12)))
-          .catch(() => {})
+        if (p.game_id) clipsOf([p.game_id])
+        // A reel of a whole game day (no game_id) → that day's games + their clips (same as api/seo.js).
+        const day = !p.game_id ? reelDay(p.body, p.created_at) : null
+        if (day) getGames("game_date", true).then(gs => {
+          const list = (gs || []).filter(g => g.game_date && localDay(g.game_date) === day)
+          if (!alive || !list.length) return
+          setDayGames(list); clipsOf(list.map(g => g.id))
+        }).catch(() => {})
       })
       .catch(() => alive && setState("error"))
     return () => { alive = false }
@@ -133,9 +144,25 @@ export default function PostDetail() {
         />
       )}
 
+      {state === "ready" && dayGames.length > 0 && (
+        <section className="-mx-4 sm:mx-0 bg-surface sm:rounded-card sm:border sm:border-line p-4">
+          <h2 className="text-[17px] font-extrabold text-fg-strong mb-2">המשחקים מ-<span dir="ltr">{fmtDay(dayGames[0].game_date)}</span></h2>
+          <ul className="space-y-1">
+            {dayGames.map(g => (
+              <li key={g.id} className="text-[14px]">
+                <Link to={entityPath("games", g)} className="font-semibold text-fg-strong hover:underline underline-offset-4">
+                  {dayGameLabel(g, teamsMap[g.home_team_id]?.name, teamsMap[g.away_team_id]?.name)}
+                </Link>
+                {g.venue && <span className="text-fg-muted"> — {g.venue}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {state === "ready" && related.length > 0 && (
         <section className="-mx-4 sm:mx-0 bg-surface sm:rounded-card sm:border sm:border-line p-4">
-          <h2 className="text-[17px] font-extrabold text-fg-strong mb-3">עוד סרטונים מהמשחק</h2>
+          <h2 className="text-[17px] font-extrabold text-fg-strong mb-3">{dayGames.length ? "עוד סרטונים מהמשחקים" : "עוד סרטונים מהמשחק"}</h2>
           <ul className="grid grid-cols-2 gap-3">
             {related.map(r => (
               <li key={r.id}>

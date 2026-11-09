@@ -38,6 +38,8 @@ const GAME_LENGTH_MS = 90 * 60 * 1000
 import { postOg, postHeadline, postText, POST_SELECT } from './og.js'
 import { streamPlayer, streamThumb, streamHls, videoMetaFor, isoDuration } from './sitemap.js'
 import { gameSummary, playerSummary, headToHead, formBefore } from '../src/lib/pageSummary.js'
+import { reelDay, dayGameLabel } from '../src/lib/reelGames.js'
+import { youTubeInText } from '../src/lib/youtube.js'
 
 class UpstreamError extends Error {}
 
@@ -623,9 +625,16 @@ const BUILDERS = {
     if (!p) return null
     const og = postOg(p)
     const player = streamPlayer(p)
+    // A YouTube post (e.g. "📺 המשחק המלא") — the SPA card plays it, so the bot copy embeds it too.
+    const yt = !player ? youTubeInText(`${p.body || ''} ${p.link_url || ''}`) : null
+    // A reel of a whole game day (no game_id): that day's games, and their clips as related.
+    const day = !p.game_id ? reelDay(p.body, p.created_at) : null
+    const dayGames = day ? await sb(`games?game_date=gte.${day}T00:00:00&game_date=lte.${day}T23:59:59&select=id,slug,game_date,venue,status,home_score,away_score,` +
+      `home:teams!games_home_team_id_fkey(name,slug),away:teams!games_away_team_id_fkey(name,slug)&order=game_date.asc`) : []
+    const relGames = p.game_id ? [p.game_id] : dayGames.map(x => x.id)
     const [tags, related, metas] = await Promise.all([
       sb(`mentions?post_id=eq.${p.id}&removed_at=is.null&select=display,player:players(slug,id,first_name,last_name)`),
-      p.game_id ? sb(`posts?game_id=eq.${p.game_id}&deleted_at=is.null&video_uid=not.is.null&id=neq.${p.id}&select=${POST_SELECT},created_at&order=created_at.asc&limit=12`) : [],
+      relGames.length ? sb(`posts?game_id=in.(${relGames.join(',')})&deleted_at=is.null&video_uid=not.is.null&id=neq.${p.id}&select=${POST_SELECT},created_at&order=created_at.asc&limit=12`) : [],
       player ? videoMetaFor(sb, [p.video_uid]) : {},
     ])
     const meta = metas[p.video_uid]
@@ -641,12 +650,22 @@ const BUILDERS = {
     const media = player
       ? `<figure>${videoTag({ code: p.video_cf_code, uid: p.video_uid, meta, poster: og.image || streamThumb(p.video_cf_code, p.video_uid), title: headline, t: start })}` +
         (meta?.duration_s ? `<figcaption>${esc(durText(meta.duration_s))}</figcaption>` : '') + `</figure>`
+      : yt ? `<figure><iframe src="https://www.youtube.com/embed/${esc(yt.id)}" title="${esc(headline)}" width="640" height="360" loading="lazy" allowfullscreen></iframe></figure>`
       : (absImg(p.image_url) ? `<figure>${img(p.image_url, headline, 640).replace(/ height="640"/, '')}</figure>` : '')
+    const ytLd = yt && {
+      '@type': 'VideoObject', '@id': `${url}#video`, name: headline.slice(0, 100),
+      description: (postText(p.body) || headline).slice(0, 2000),
+      thumbnailUrl: [`https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg`], uploadDate: p.created_at,
+      embedUrl: `https://www.youtube.com/embed/${yt.id}`, url, inLanguage: 'he-IL', isFamilyFriendly: true, publisher: ORG_REF(site),
+      ...(gPath ? { about: { '@id': `${site}${gPath}#event` } } : {}),
+    }
+    const dayHtml = dayGames.length ? `<h2>המשחקים מ-${esc(fmtDate(day))}</h2><ul>${dayGames.map(x =>
+      `<li>${link(path('games', x.slug || x.id), dayGameLabel(x, x.home?.name, x.away?.name))}${x.venue ? ` — ${esc(x.venue)}` : ''}</li>`).join('')}</ul>` : ''
     const tagged = tags.filter(m => m.player)
     return {
-      title: `${headline} | ${SITE_NAME}`, desc: og.desc, image: og.image, canonicalPath: `/posts/${p.id}`, ogType: player ? 'video.other' : 'article',
+      title: `${headline} | ${SITE_NAME}`, desc: og.desc, image: og.image, canonicalPath: `/posts/${p.id}`, ogType: player || yt ? 'video.other' : 'article',
       jsonLd: [
-        player ? videoLd(site, p, meta, { gameUrl: gPath ? `${site}${gPath}` : null }) : {
+        player ? videoLd(site, p, meta, { gameUrl: gPath ? `${site}${gPath}` : null }) : ytLd || {
           '@type': 'SocialMediaPosting', '@id': `${url}#post`, url, headline: headline.slice(0, 110),
           ...(p.body ? { articleBody: p.body } : {}), datePublished: p.created_at, dateModified: p.updated_at || p.created_at,
           ...(absImg(og.image) ? { image: og.image } : {}), author: { '@type': 'Organization', name: og.title.split(' · ')[0] }, publisher: ORG_REF(site),
@@ -659,8 +678,8 @@ const BUILDERS = {
         (tagged.length ? `<p>בסרטון: ${tagged.map(m => link(path('players', m.player.slug || m.player.id), fullName(m.player))).join(', ')}</p>` : '') +
         (g ? `<p>${link(gPath, gPlayed ? `${g.home?.name} ${g.home_score} - ${g.away_score} ${g.away?.name}` : gName)}` +
           `${[fmtDate(g.game_date), g.venue].filter(Boolean).length ? ` — ${esc([fmtDate(g.game_date), g.venue].filter(Boolean).join(', '))}` : ''}</p>` : '') +
-        `<p>פורסם ${esc(fmtDate(p.created_at))} · ${esc(og.title.split(' · ')[0])}</p></article>` +
-        (related.length ? `<h2>עוד סרטונים מהמשחק</h2><ul>${related.map(r => {
+        `<p>פורסם ${esc(fmtDate(p.created_at))} · ${esc(og.title.split(' · ')[0])}</p></article>` + dayHtml +
+        (related.length ? `<h2>${dayGames.length ? 'עוד סרטונים מהמשחקים' : 'עוד סרטונים מהמשחק'}</h2><ul>${related.map(r => {
           const ro = postOg(r)
           return `<li>${ro.image ? `${img(ro.image, postHeadline(r.body) || ro.title, 160).replace(/ height="160"/, '')} ` : ''}${link(`/posts/${r.id}`, postHeadline(r.body) || ro.title)}</li>`
         }).join('')}</ul>` : ''),
