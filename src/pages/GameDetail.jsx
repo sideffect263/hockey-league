@@ -41,6 +41,7 @@ import GameLiveBand, { GameTimeline } from "@/components/fl/games/GameLiveBand"
 import { FLSection, GameQuickActions, BroadcastNote, PostponedCards, KioskAndNotes, GoalsList } from "@/components/fl/games/GamePieces"
 import { GameDetailSkeletonFL } from "@/components/fl/games/GamesSkeletons"
 import { getGameHeroPhoto } from "@/components/fl/games/gameCover"
+import { getGamePreviewVideo } from "@/components/fl/games/gamePreviewVideo"
 import { useIsDesktop } from "@/components/fl/games/useIsDesktop"
 import {
   STAGE, resolveStage, isPlayedStage, isLiveStage, chipText, roundsOf, dayAndDate, timeOf, shortDate, buildTimeline,
@@ -353,7 +354,8 @@ export default function GameDetail() {
     <GameHero game={game} home={home} away={away} stage={stage} round={round} scores={scores}
       chip={shared ? 'הקישור הועתק' : chipText(game, stage, { live, now, round })}
       judges={judgeNames} address={venue?.address || null} photoUrl={isPlayedStage(stage) ? heroPhoto : null}
-      onShare={share} typeLabel={typeLabel} />
+      onShare={share} typeLabel={typeLabel}
+      preview={!isPlayedStage(stage) && stage !== STAGE.postponed ? getGamePreviewVideo(game.id) : null} />
   )
 
   const canNav = !!game.venue?.trim() && (game.status === 'scheduled' || liveStage)

@@ -5,8 +5,9 @@
  * through when postponed — and a meta line (round · rink · referee) + the rink address.
  * The top row: back to /games, the stage chip, share. Crest and name open the team page.
  */
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, RotateCcw } from "lucide-react"
 import { Share } from "@/components/icons/BrandIcons"
 import { CrestDisc, FLScore, RinkDrawing, TeamBlend } from "@/components/fl/Floodlight"
 import { teamBlend } from "@/lib/flTeam"
@@ -41,7 +42,63 @@ function TeamColumn({ team, role, crest, lost, played }) {
   )
 }
 
-export default function GameHero({ game, home, away, stage, chip, round, judges = [], address, photoUrl, onShare, scores, typeLabel }) {
+/** Pre-game face-off clip (gamePreviewVideo.js): plays once, muted, and holds on the two
+ *  players standing face to face; their names fade in once they stop. Reduced motion → the
+ *  last frame as a still. The top row (back · chip · share) floats over the clip. */
+function PreviewVideo({ preview, topRow }) {
+  const ref = useRef(null)
+  const [stood, setStood] = useState(false)
+  const [still, setStill] = useState(false)
+
+  useEffect(() => {
+    const v = ref.current
+    if (!v) return
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setStill(true); setStood(true); return }
+    const p = v.play()
+    if (p?.catch) p.catch(() => { setStill(true); setStood(true) })
+  }, [])
+
+  const replay = () => {
+    const v = ref.current
+    if (!v) return
+    setStill(false); setStood(false)
+    try { v.currentTime = 0 } catch { /* not seekable yet */ }
+    v.play()?.catch?.(() => {})
+  }
+
+  const tag = (p, side) => p && (
+    <span className={`absolute bottom-2.5 ${side === "left" ? "left-3 text-left" : "right-3 text-right"} z-10 text-white leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.6)] transition-all duration-500 ${stood ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"}`}>
+      <span className="block text-[13px] sm:text-[15px] font-extrabold">{p.name}</span>
+      {p.number != null && <span className="block text-[11.5px] text-white/80" dir="ltr">#{p.number}</span>}
+    </span>
+  )
+
+  return (
+    <div className="relative -mx-3 sm:-mx-6 -mt-3 lg:rounded-t-[28px] overflow-hidden aspect-video max-h-[440px] w-[calc(100%+1.5rem)] sm:w-[calc(100%+3rem)] bg-black">
+      {still ? (
+        <img src={preview.endFrame} alt="" className="absolute inset-0 size-full object-cover" />
+      ) : (
+        <video ref={ref} src={preview.src} poster={preview.poster} muted playsInline preload="auto"
+          aria-label={`${preview.away?.name || ""} מול ${preview.home?.name || ""}`}
+          onTimeUpdate={e => { if (e.currentTarget.currentTime >= preview.standAt) setStood(true) }}
+          onEnded={() => setStood(true)}
+          className="absolute inset-0 size-full object-cover" />
+      )}
+      <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-[rgba(5,7,12,0.8)]" />
+      <div className="absolute inset-x-3 sm:inset-x-6 top-3 z-10">{topRow}</div>
+      {tag(preview.away, "left")}
+      {tag(preview.home, "right")}
+      {!still && (
+        <button type="button" onClick={replay} aria-label="להפעיל שוב את הסרטון"
+          className={`absolute bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full ${glass} text-[11.5px] font-bold px-3 py-1 transition-opacity ${stood ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+          <RotateCcw className="size-3" /> שוב
+        </button>
+      )}
+    </div>
+  )
+}
+
+export default function GameHero({ game, home, away, stage, chip, round, judges = [], address, photoUrl, onShare, scores, typeLabel, preview }) {
   const played = isPlayedStage(stage)
   const postponed = stage === STAGE.postponed
   const s = scores
@@ -82,14 +139,19 @@ export default function GameHero({ game, home, away, stage, chip, round, judges 
       )}
       <span aria-hidden="true" className="absolute inset-0 -z-10" style={{ backgroundImage: "linear-gradient(180deg, rgba(10,13,20,0) 45%, rgba(10,13,20,0.5) 100%)" }} />
 
-      <div className="relative flex items-center justify-between gap-2">
-        <HeroIconButton to="/games" label="חזרה למשחקים"><ArrowRight className="size-5" /></HeroIconButton>
-        {chip && <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap ${chipTone}`}>{chip}</span>}
-        <HeroIconButton onClick={onShare} label="שיתוף המשחק"><Share className="size-6" /></HeroIconButton>
-      </div>
+      {(() => {
+        const topRow = (
+          <div className="relative flex items-center justify-between gap-2">
+            <HeroIconButton to="/games" label="חזרה למשחקים"><ArrowRight className="size-5" /></HeroIconButton>
+            {chip && <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap ${chipTone}`}>{chip}</span>}
+            <HeroIconButton onClick={onShare} label="שיתוף המשחק"><Share className="size-6" /></HeroIconButton>
+          </div>
+        )
+        return preview ? <PreviewVideo preview={preview} topRow={topRow} /> : topRow
+      })()}
 
-      <div className="relative mt-5 sm:mt-6 py-3.5">
-        {!photoUrl && <RinkDrawing strength={0.3} className="absolute inset-0 -z-10 size-full opacity-50" />}
+      <div className={`relative ${preview ? "mt-2 sm:mt-3" : "mt-5 sm:mt-6"} py-3.5`}>
+        {!photoUrl && !preview && <RinkDrawing strength={0.3} className="absolute inset-0 -z-10 size-full opacity-50" />}
         {/* Physical left → right: away, centre, home (home on the RIGHT). */}
         <div dir="ltr" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-6 max-w-3xl mx-auto">
           <div dir="rtl" className="min-w-0 flex justify-center"><TeamColumn team={away} role="חוץ" crest={crest} lost={awayLost} played={played} /></div>
