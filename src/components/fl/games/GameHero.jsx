@@ -132,7 +132,20 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
       ? <Link to={`/teams/${team.slug || team.id}`} aria-label={`${team.name}, ${role} — לעמוד הקבוצה`} className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">{crest}</Link>
       : <span className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{crest}</span>
   }
-  // the info block between the two heads: crest · time · crest, the date, then round · rink
+  // top of the stage, between the heads: the date, then round · rink
+  const dateLine = (
+    <div dir="rtl" className="flex flex-col items-center text-center [text-shadow:0_2px_8px_rgba(0,0,0,0.65)]">
+      <span className="text-[16px] sm:text-[20px] font-extrabold">{dayAndDate(game.game_date)}</span>
+      {meta.length > 0 && (
+        <p className="mt-0.5 text-[14px] sm:text-[16px] font-bold text-white/95 leading-snug">
+          {meta.map((m, i) => (
+            <span key={i} className="whitespace-nowrap">{i > 0 && <span aria-hidden="true" className="mx-1.5 opacity-70">·</span>}{m}</span>
+          )).reduce((acc, el) => acc.concat(el, " "), [])}
+        </p>
+      )}
+    </div>
+  )
+  // mid-stage, under the faces: crest · time · crest
   const centre = (
     <div dir="rtl" className="flex flex-col items-center text-center [text-shadow:0_2px_8px_rgba(0,0,0,0.65)]">
       <div dir="ltr" className="flex items-center gap-2 sm:gap-5">
@@ -142,14 +155,6 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
         <span className="sm:hidden">{crestLink(home, "בית", 72)}</span>
         <span className="hidden sm:inline">{crestLink(home, "בית", 100)}</span>
       </div>
-      <span className="mt-1.5 text-[16px] sm:text-[20px] font-extrabold">{dayAndDate(game.game_date)}</span>
-      {meta.length > 0 && (
-        <p className="mt-0.5 text-[14px] sm:text-[16px] font-bold text-white/95 leading-snug">
-          {meta.map((m, i) => (
-            <span key={i} className="whitespace-nowrap">{i > 0 && <span aria-hidden="true" className="mx-1.5 opacity-70">·</span>}{m}</span>
-          )).reduce((acc, el) => acc.concat(el, " "), [])}
-        </p>
-      )}
       <span className="sr-only">{away?.name} (חוץ) נגד {home?.name} (בית)</span>
     </div>
   )
@@ -180,8 +185,9 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
 
       <div className="relative px-3 sm:px-6 pt-3 pb-5 sm:pb-6 sm:min-h-[640px] lg:min-h-[680px] flex flex-col">
         {topRow}
-        {/* the info block sits mid-stage, over the chests, under the faces */}
-        <div className="h-[165px] sm:h-[200px] lg:h-[215px]" />
+        <div className="mt-2">{dateLine}</div>
+        {/* time + crests sit mid-stage, over the chests, under the faces */}
+        <div className="h-[110px] sm:h-[140px] lg:h-[155px]" />
         <div className="mt-3 sm:mt-0">{centre}</div>
         <div className="flex-1 min-h-[24px] sm:min-h-[40px]" />
         {/* the two cards stand at the bottom: away LEFT, home RIGHT */}
