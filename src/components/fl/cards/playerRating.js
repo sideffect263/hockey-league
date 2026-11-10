@@ -6,7 +6,7 @@
  * Five axes, each shown as its REAL value; how the shape is drawn and how OVR is made is
  * documented on playerCard() below.
  *   שערים  — goals he scored THIS season
- *            (goalkeepers: שערים נקיים — THIS season's games he was on the sheet and his team
+ *            (goalkeepers: שערים נקיים — games of ALL seasons he was on the sheet and his team
  *            conceded 0; the sheets' clean_sheet flag is never set, so it's worked out from the score)
  *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
@@ -59,7 +59,7 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
       a.tgp++
       a.scored += home ? g.home_score : g.away_score
       a.conceded += home ? g.away_score : g.home_score
-      if (g.season_id === currentSeasonId && (home ? g.away_score : g.home_score) === 0) a.scs++
+      if ((home ? g.away_score : g.home_score) === 0) a.scs++ // clean sheet, any season
     }
     out.set(s.player_id, a)
   }
