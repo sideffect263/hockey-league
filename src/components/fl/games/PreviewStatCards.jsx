@@ -1,6 +1,6 @@
 /**
- * EA FC line-up overlay: the two players' cards sit ON the game-preview clip, bottom corners
- * (away LEFT, home RIGHT, like the clip). The clip already shows the players, so each card
+ * EA FC line-up cards for the game-preview stage (GameHero's PreviewStage): the two
+ * players' cards sit on the clip, away LEFT, home RIGHT, like the clip. The clip already shows the players, so each card
  * shrinks his cutout to a portrait chip. Data + radar come from fl/cards/PlayerStatCard.
  */
 import { Radar, usePlayerCards } from "@/components/fl/cards/PlayerStatCard"
@@ -9,7 +9,7 @@ import { CrestDisc } from "@/components/fl/Floodlight"
 function OverlayCard({ who, team, card }) {
   const accent = team?.primary_color || "#4ade80"
   return (
-    <div dir="rtl" className="pointer-events-auto relative min-w-0 w-[48%] sm:w-[232px] overflow-hidden rounded-2xl border border-white/15 bg-[rgba(8,11,17,0.66)] backdrop-blur-md text-white p-2 sm:p-3 shadow-[0_8px_28px_rgba(0,0,0,0.45)]">
+    <div dir="rtl" className="relative min-w-0 w-full overflow-hidden rounded-2xl border border-white/15 bg-[rgba(8,11,17,0.66)] backdrop-blur-md text-white p-2 sm:p-3 shadow-[0_8px_28px_rgba(0,0,0,0.45)]">
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} />
       <div className="flex items-start gap-1.5 sm:gap-2">
         {card?.cutout
@@ -38,20 +38,16 @@ function OverlayCard({ who, team, card }) {
   )
 }
 
-/** Absolute layer — render inside the clip's relative box. */
-export default function PreviewStatCards({ preview, home, away }) {
-  const cards = usePlayerCards([preview.away?.playerId, preview.home?.playerId])
-  return (
-    <div dir="ltr" className="pointer-events-none absolute inset-x-2 sm:inset-x-6 bottom-2 sm:bottom-4 z-10 flex items-end justify-between gap-2">
-      <OverlayCard who={preview.away} team={away} card={cards?.[0]} />
-      <OverlayCard who={preview.home} team={home} card={cards?.[1]} />
-    </div>
-  )
+/** The two players' card data, [away, home]. */
+export function usePreviewCards(preview) {
+  return usePlayerCards([preview.away?.playerId, preview.home?.playerId])
 }
+
+export { OverlayCard }
 
 export function PreviewStatsNote() {
   return (
-    <p className="relative mt-2 text-center text-[10.5px] leading-relaxed text-white/60">
+    <p className="relative mt-2 text-center text-[10.5px] leading-relaxed text-white/65 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
       שערים: העונה · ניסיון (משחקים), התקפה / הגנה: ממוצע השערים שהקבוצה הבקיעה / ספגה במשחקים שבהם שיחק · אוהדים: עוקבים אמיתיים
     </p>
   )

@@ -12,7 +12,7 @@ import { Share } from "@/components/icons/BrandIcons"
 import { CrestDisc, FLScore, RinkDrawing, TeamBlend } from "@/components/fl/Floodlight"
 import { teamBlend } from "@/lib/flTeam"
 import { STAGE, isPlayedStage, timeOf, dayAndDate } from "./flGamesKit"
-import PreviewStatCards, { PreviewStatsNote } from "./PreviewStatCards"
+import { OverlayCard, PreviewStatsNote, usePreviewCards } from "./PreviewStatCards"
 
 const glass = "bg-[rgba(8,12,18,0.35)] text-white"
 
@@ -47,7 +47,7 @@ function TeamColumn({ team, role, crest, lost, played }) {
  *  players standing face to face; their names fade in once they stop. `preview.loop` → loops
  *  forever (ping-pong baked into the file), no replay button. Reduced motion → the
  *  last frame as a still. The top row (back · chip · share) floats over the clip. */
-function PreviewVideo({ preview, topRow, home, away }) {
+function PreviewVideo({ preview, topRow }) {
   const ref = useRef(null)
   const [stood, setStood] = useState(false)
   const [still, setStill] = useState(false)
@@ -76,7 +76,7 @@ function PreviewVideo({ preview, topRow, home, away }) {
   )
 
   return (
-    <div className={`relative -mx-3 sm:-mx-6 -mt-3 lg:rounded-t-[28px] overflow-hidden ${preview.cards ? "aspect-[4/5] max-h-[560px] sm:aspect-video sm:max-h-[520px]" : "aspect-video max-h-[440px]"} w-[calc(100%+1.5rem)] sm:w-[calc(100%+3rem)] bg-black`}>
+    <div className={`relative -mx-3 sm:-mx-6 -mt-3 lg:rounded-t-[28px] overflow-hidden aspect-video max-h-[440px] w-[calc(100%+1.5rem)] sm:w-[calc(100%+3rem)] bg-black`}>
       {still ? (
         <img src={preview.endFrame} alt="" className="absolute inset-0 size-full object-cover object-[50%_18%]" />
       ) : (
@@ -88,9 +88,8 @@ function PreviewVideo({ preview, topRow, home, away }) {
       )}
       <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-[rgba(5,7,12,0.8)]" />
       <div className="absolute inset-x-3 sm:inset-x-6 top-3 z-10">{topRow}</div>
-      {preview.cards && <PreviewStatCards preview={preview} home={home} away={away} />}
-      {!preview.cards && tag(preview.away, "left")}
-      {!preview.cards && tag(preview.home, "right")}
+      {tag(preview.away, "left")}
+      {tag(preview.home, "right")}
       {!still && !preview.loop && (
         <button type="button" onClick={replay} aria-label="להפעיל שוב את הסרטון"
           className={`absolute bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full ${glass} text-[11.5px] font-bold px-3 py-1 transition-opacity ${stood ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
@@ -98,6 +97,99 @@ function PreviewVideo({ preview, topRow, home, away }) {
         </button>
       )}
     </div>
+  )
+}
+
+/** Hex → rgba, for the team-colour wash. */
+const tint = (hex, a) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "")
+  if (!m) return `rgba(20,26,38,${a})`
+  const n = parseInt(m[1], 16)
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`
+}
+
+/**
+ * The whole pre-game hero as one stage on the line-up clip (preview.cards), EA FC style:
+ * the looping clip fills it, the kick-off time + both crests sit in the gap between the two
+ * heads, the players' stat cards stand on it (phone: a row under the faces; wide: either side
+ * of the players), and the team colours wash up from the bottom, split down the middle —
+ * away LEFT, home RIGHT — with a slanted seam like a centre line.
+ */
+function PreviewStage({ game, home, away, preview, topRow, meta, address, postponed }) {
+  const ref = useRef(null)
+  const [still, setStill] = useState(false)
+  const cards = usePreviewCards(preview)
+  useEffect(() => {
+    const v = ref.current
+    if (!v) return
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setStill(true); return }
+    v.play()?.catch?.(() => setStill(true))
+  }, [])
+  const awayC = away?.primary_color, homeC = home?.primary_color
+  const crestLink = (team, role) => {
+    const crest = <CrestDisc team={team} size={40} disc={false} />
+    return team?.id
+      ? <Link to={`/teams/${team.slug || team.id}`} aria-label={`${team.name}, ${role} — לעמוד הקבוצה`} className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">{crest}</Link>
+      : <span className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{crest}</span>
+  }
+  const centre = (
+    <div dir="rtl" className="flex flex-col items-center text-center [text-shadow:0_2px_8px_rgba(0,0,0,0.6)]">
+      <div dir="ltr" className="flex items-center gap-2 sm:gap-3">
+        {crestLink(away, "חוץ")}
+        <span className={`fl-num text-[36px] sm:text-[48px] leading-none ${postponed ? "line-through opacity-60" : ""}`} aria-label={`שעת פתיחה ${timeOf(game.game_date)}`}>{timeOf(game.game_date)}</span>
+        {crestLink(home, "בית")}
+      </div>
+      <span className="mt-1 text-[12.5px] sm:text-[14px] font-bold">{dayAndDate(game.game_date)}</span>
+      <span className="sr-only">{away?.name} (חוץ) נגד {home?.name} (בית)</span>
+    </div>
+  )
+  return (
+    <section aria-label="המשחק" className={`relative isolate overflow-hidden rounded-b-[30px] lg:rounded-[28px] bg-[#0b0f15] text-white ${postponed ? "grayscale-[1] opacity-[0.92]" : ""}`}>
+      {/* the clip: top 470px on a phone (faces stay in frame), the whole stage when wide */}
+      <div aria-hidden={still ? "true" : undefined} className="absolute inset-x-0 top-0 h-[470px] sm:h-full -z-20">
+        {still
+          ? <img src={preview.endFrame} alt="" className="size-full object-cover object-[50%_15%]" />
+          : <video ref={ref} src={preview.src} poster={preview.poster} muted playsInline preload="auto" loop={!!preview.loop}
+              aria-label={`${preview.away?.name || ""} מול ${preview.home?.name || ""}`}
+              className="size-full object-cover object-[50%_15%]" />}
+        <span className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#0b0f15] sm:hidden" />
+      </div>
+      {/* split wash: away colour LEFT, home colour RIGHT, slanted seam in the middle */}
+      <span aria-hidden="true" className="absolute inset-0 -z-10" style={{
+        clipPath: "polygon(0 0, 52% 0, 48% 100%, 0 100%)",
+        backgroundImage: `linear-gradient(180deg, ${tint(awayC, 0)} 28%, ${tint(awayC, 0.55)} 62%, ${tint(awayC, 0.9)} 100%)`,
+      }} />
+      <span aria-hidden="true" className="absolute inset-0 -z-10" style={{
+        clipPath: "polygon(52% 0, 100% 0, 100% 100%, 48% 100%)",
+        backgroundImage: `linear-gradient(180deg, ${tint(homeC, 0)} 28%, ${tint(homeC, 0.55)} 62%, ${tint(homeC, 0.9)} 100%)`,
+      }} />
+      <svg aria-hidden="true" className="absolute inset-0 -z-10 size-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+        <line x1="52" y1="38" x2="48" y2="100" stroke="rgba(255,255,255,0.35)" strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-28 -z-10 bg-gradient-to-b from-[rgba(5,7,12,0.55)] to-transparent" />
+
+      <div className="relative px-3 sm:px-6 pt-3 pb-5 sm:pb-6 sm:min-h-[560px] lg:min-h-[600px] flex flex-col">
+        {topRow}
+        {/* phone: time+crests between the heads, cards below the faces */}
+        <div className="sm:hidden mt-3">{centre}</div>
+        <div className="sm:hidden h-[120px]" />
+        {/* wide: card · time+crests · card across the stage */}
+        <div dir="ltr" className="mt-2 sm:mt-4 grid grid-cols-2 sm:grid-cols-[232px_minmax(0,1fr)_232px] items-start gap-2 sm:gap-4 sm:flex-1">
+          <OverlayCard who={preview.away} team={away} card={cards?.[0]} />
+          <div className="hidden sm:block pt-1">{centre}</div>
+          <OverlayCard who={preview.home} team={home} card={cards?.[1]} />
+        </div>
+        {meta.length > 0 && (
+          <p className="mt-3 text-center text-[13px] text-white/90 leading-relaxed [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
+            {meta.map((m, i) => (
+              <span key={i} className="whitespace-nowrap">{i > 0 && <span aria-hidden="true" className="mx-2 opacity-70">·</span>}{m}</span>
+            )).reduce((acc, el) => acc.concat(el, " "), [])}
+          </p>
+        )}
+        {address && <p className="mt-1 text-center text-[11.5px] text-white/70">{address}</p>}
+        <PreviewStatsNote />
+      </div>
+    </section>
   )
 }
 
@@ -131,6 +223,17 @@ export default function GameHero({ game, home, away, stage, chip, round, judges 
 
   const chipTone = stage === STAGE.gameDay ? "bg-fl-accent text-[#11161D]" : postponed ? "bg-fl-disc text-[#11161D]" : glass
 
+  if (preview?.cards && !played) {
+    const topRow = (
+      <div className="relative flex items-center justify-between gap-2">
+        <HeroIconButton to="/games" label="חזרה למשחקים"><ArrowRight className="size-5" /></HeroIconButton>
+        {chip && <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap ${chipTone}`}>{chip}</span>}
+        <HeroIconButton onClick={onShare} label="שיתוף המשחק"><Share className="size-6" /></HeroIconButton>
+      </div>
+    )
+    return <PreviewStage game={game} home={home} away={away} preview={preview} topRow={topRow} meta={meta} address={address} postponed={postponed} />
+  }
+
   return (
     <TeamBlend as="section" aria-label="המשחק" home={home} away={away}
       className={`rounded-b-[30px] lg:rounded-[28px] px-3 sm:px-6 pt-3 pb-6 ${postponed ? "grayscale-[1] opacity-[0.92]" : ""}`}>
@@ -150,9 +253,8 @@ export default function GameHero({ game, home, away, stage, chip, round, judges 
             <HeroIconButton onClick={onShare} label="שיתוף המשחק"><Share className="size-6" /></HeroIconButton>
           </div>
         )
-        return preview ? <PreviewVideo preview={preview} topRow={topRow} home={home} away={away} /> : topRow
+        return preview ? <PreviewVideo preview={preview} topRow={topRow} /> : topRow
       })()}
-      {preview?.cards && <PreviewStatsNote />}
 
       <div className={`relative ${preview ? "mt-2 sm:mt-3" : "mt-5 sm:mt-6"} py-3.5`}>
         {!photoUrl && !preview && <RinkDrawing strength={0.3} className="absolute inset-0 -z-10 size-full opacity-50" />}
