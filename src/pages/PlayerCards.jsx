@@ -39,21 +39,21 @@ export default function PlayerCards() {
   const pill = on => `shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-bold border transition-colors ${on ? "bg-fl-accent text-[#11161D] border-transparent" : "border-white/15 text-current hover:bg-white/5"}`
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-5">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-5">
       <h1 className="text-[26px] font-black">כרטיסי שחקנים</h1>
       <p className="mt-1 text-[13px] opacity-70 leading-relaxed">
         כרטיס לכל שחקן, מנתוני משחקי הליגה. <a href="#how" className="underline underline-offset-2">איך מחושב כל ערך</a>
       </p>
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+      <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-3 px-3 sm:-mx-4 sm:px-4">
         <button type="button" className={pill(team === "all")} onClick={() => setTeam("all")}>כל הליגה</button>
         {teams.filter(t => rows.some(r => r.p.team_id === t.id)).map(t => (
           <button key={t.id} type="button" className={pill(team === t.id)} onClick={() => setTeam(t.id)}>{t.name}</button>
         ))}
       </div>
       {err && <p className="mt-6 text-center opacity-70">לא הצלחנו לטעון את הכרטיסים</p>}
-      {!data && !err && <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[430px] rounded-2xl bg-white/5 animate-pulse" />)}</div>}
+      {!data && !err && <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[430px] rounded-2xl bg-white/5 animate-pulse" />)}</div>}
       {data && (
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
           {shown.map(({ p, card }) => (
             <Link key={p.id} to={`/players/${p.id}`} className="block min-w-0 rounded-2xl focus-visible:outline-2">
               <PlayerStatCard who={{ name: `${p.first_name} ${p.last_name}`.trim(), number: p.jersey_number }} team={teamById[p.team_id]} card={card} />
@@ -81,7 +81,6 @@ function HowItsCalculated({ minGames, fansPct }) {
       <h2 className="text-[20px] font-black">איך מחושב כל ערך</h2>
       <p className="mt-1 opacity-75">
         כל המספרים מגיעים ממשחקי הליגה שהסתיימו, בעונה הזו ובעונה שעברה, ומטופסי השיפוט שלהם. שערים נספרים רק מהעונה הזו. משחקי ידידות וטורנירים לא נספרים.
-        שימו לב: בטופסים של העונה שעברה רשומים רק חלק מהשחקנים בכל משחק, כך שמספר המשחקים של העונה שעברה נמוך מהמציאות אצל חלק מהשחקנים.
       </p>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         {items.map(([k, v]) => (

@@ -79,27 +79,27 @@ export function cardFor(id, d) {
  *  point on the radar), and what the rating is made of. */
 function BestLegend({ axes, goalie }) {
   return (
-    <div className="mt-1.5 border-t border-white/10 pt-1.5 text-[10.5px] leading-[1.55]">
-      <p className="text-white/55 mb-0.5">המוביל {goalie ? "בין השוערים" : "בליגה"} = נקודה מלאה</p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-2">
+    <div className="mt-1.5 border-t border-white/10 pt-1.5 text-[10px] sm:text-[10.5px] leading-[1.5]">
+      <p className="text-white/55 mb-0.5">מוביל {goalie ? "השוערים" : "הליגה"} = נקודה מלאה</p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-1.5 sm:gap-x-2">
         {axes.map(ax => (
           <div key={ax.key} className="contents">
-            <dt className="text-white/70">{ax.label}</dt>
+            <dt className="text-white/70 whitespace-nowrap">{ax.label}</dt>
             <dd className="tabular-nums whitespace-nowrap">
               <b className="font-black">{ax.shown}</b>
-              <span className="text-white/50"> · מוביל {ax.bestShown}</span>
+              <span className="text-white/50"> / {ax.bestShown}</span>
             </dd>
           </div>
         ))}
       </dl>
-      <p className="mt-1 text-white/55">דירוג: שערים, ניסיון, התקפה והגנה + קצת אוהדים</p>
+      <p className="mt-1 text-white/55 hidden sm:block">דירוג: שערים, ניסיון, התקפה והגנה + קצת אוהדים</p>
     </div>
   )
 }
 
 /** Pentagon radar: the shape is the percentile, the labels are the real numbers. */
-export function Radar({ axes, size = 132 }) {
-  const c = size / 2, R = size / 2 - 24
+export function Radar({ axes, size = 132, padX = 0, fs = 1, className = "max-w-[160px]" }) {
+  const c = size / 2, R = size / 2 - 24 * fs
   const pt = (i, r) => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / axes.length
     return [c + r * Math.cos(a), c + r * Math.sin(a)]
@@ -107,17 +107,17 @@ export function Radar({ axes, size = 132 }) {
   const ring = f => axes.map((_, i) => pt(i, R * f).join(",")).join(" ")
   const shape = axes.map((ax, i) => pt(i, R * Math.max(0.1, ax.pct)).join(",")).join(" ")
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[160px] mx-auto block" role="img"
+    <svg viewBox={`${-padX} 0 ${size + 2 * padX} ${size}`} className={`w-full mx-auto block ${className}`} role="img"
       aria-label={axes.map(ax => `${ax.label} ${ax.shown}`).join(", ")}>
       {[1, 0.66, 0.33].map(f => <polygon key={f} points={ring(f)} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1" />)}
       {axes.map((_, i) => { const [x, y] = pt(i, R); return <line key={i} x1={c} y1={c} x2={x} y2={y} stroke="rgba(255,255,255,0.1)" /> })}
       <polygon points={shape} fill="rgba(74,222,128,0.38)" stroke="#4ade80" strokeWidth="1.6" strokeLinejoin="round" />
       {axes.map((ax, i) => {
-        const [x, y] = pt(i, R + 14)
+        const [x, y] = pt(i, R + 14 * fs)
         return (
           <text key={ax.key} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fill="#fff">
-            <tspan x={x} dy="-4" fontSize="8.5" fontWeight="700" fill="rgba(255,255,255,0.7)">{ax.label}</tspan>
-            <tspan x={x} dy="10.5" fontSize="11" fontWeight="900">{ax.shown}</tspan>
+            <tspan x={x} dy={-4 * fs} fontSize={8.5 * fs} fontWeight="700" fill="rgba(255,255,255,0.7)">{ax.label}</tspan>
+            <tspan x={x} dy={10.5 * fs} fontSize={11 * fs} fontWeight="900">{ax.shown}</tspan>
           </text>
         )
       })}
@@ -132,26 +132,26 @@ export function PlayerStatCard({ who, team, card }) {
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[15px] sm:text-[17px] font-black leading-tight truncate">{who.name}</p>
+          <p className="text-[15px] sm:text-[17px] font-black leading-tight line-clamp-2 break-words">{who.name}</p>
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-white/75 whitespace-nowrap">
             <span className="size-1.5 rounded-full bg-[#4ade80]" aria-hidden="true" />
             {card?.goalie ? "שוער" : "שחקן שדה"}
             {who.number != null && <span dir="ltr">· #{who.number}</span>}
           </p>
-          <p className="mt-1 flex items-center gap-1.5 text-[12px] font-bold min-w-0">
+          <p className="mt-1 flex items-center gap-1.5 text-[11.5px] sm:text-[12px] font-bold min-w-0 leading-tight">
             <CrestDisc team={team} size={18} disc={false} />
-            <span className="truncate">{team?.name}</span>
+            <span className="line-clamp-2">{team?.name}</span>
           </p>
         </div>
         <div className="text-left leading-none shrink-0">
           <span className="block text-[10px] font-bold tracking-wide text-white/60" dir="ltr">OVR</span>
-          <span className="block fl-num text-[34px] sm:text-[40px] font-black text-[#4ade80] tabular-nums" dir="ltr">{card?.ovr ?? "–"}</span>
+          <span className="block fl-num text-[30px] sm:text-[40px] font-black text-[#4ade80] tabular-nums" dir="ltr">{card?.ovr ?? "–"}</span>
           {card?.axes && card.ovr == null && (
             <span className="block mt-1 text-[9.5px] font-bold text-white/55 whitespace-nowrap">אחרי {card.minGames} משחקים</span>
           )}
         </div>
       </div>
-      <div className="relative mt-1 h-44 sm:h-56 flex items-end justify-center">
+      <div className="relative mt-1 h-36 sm:h-56 flex items-end justify-center">
         <span aria-hidden="true" className="absolute inset-x-2 bottom-2 top-4 rounded-full blur-2xl opacity-40" style={{ background: `radial-gradient(closest-side, ${accent}, transparent)` }} />
         {card?.cutout ? (
           <img src={card.cutout} alt={who.name} loading="lazy" decoding="async"
@@ -165,8 +165,8 @@ export function PlayerStatCard({ who, team, card }) {
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-b from-transparent to-[rgba(10,13,19,0.9)]" />
       </div>
       <div className="border-t border-white/10 pt-1">
-        {card?.axes ? <Radar axes={card.axes} />
-          : card ? <div className="aspect-square max-w-[160px] mx-auto grid place-items-center text-[12px] text-white/55">עוד אין משחקים</div>
+        {card?.axes ? <Radar axes={card.axes} padX={16} fs={1.2} className="max-w-[200px]" />
+          : card ? <div className="aspect-square max-w-[150px] mx-auto grid place-items-center text-[12px] text-white/55">עוד אין משחקים</div>
           : <div className="aspect-square max-w-[160px] mx-auto" />}
       </div>
       {card?.axes && <BestLegend axes={card.axes} goalie={card.goalie} />}
