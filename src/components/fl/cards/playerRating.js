@@ -28,10 +28,16 @@ const AXES = [ // radar order: top, then clockwise
   { key: "goals", label: "שערים" },
 ]
 
+// Same games the league table counts (recompute_player_season_stats): scored, not a test,
+// not a friendly, not a tournament.
 const played = g => g && g.home_score != null && g.away_score != null && !g.is_test
+  && g.game_type !== "ידידותי" && !g.tournament_id
 
-/** Per-player raw totals over all seasons. `players` = { id → { team_id, position } }. */
-export function aggregate({ games, stats, players, currentSeasonId }) {
+/** Per-player raw totals over all seasons. `players` = { id → { team_id, position } }.
+ *  `seasonTeams` = { seasonId → { playerId → team_id } }: the team he was on THAT season
+ *  (player_season_stats, frozen at season close). Without it a player who changed teams
+ *  had last season's games dropped, or credited to the side he played against. */
+export function aggregate({ games, stats, players, currentSeasonId, seasonTeams = {} }) {
   const gameById = new Map(games.filter(played).map(g => [g.id, g]))
   const out = new Map()
   for (const s of stats) {
@@ -42,9 +48,10 @@ export function aggregate({ games, stats, players, currentSeasonId }) {
     a.gp++
     a.goals += s.goals || 0
     if (g.season_id === currentSeasonId) a.sgoals += s.goals || 0
-    const pTeam = players[s.player_id]?.team_id
-    const team = s.played_for_team_id
-      || (pTeam === g.home_team_id || pTeam === g.away_team_id ? pTeam : null)
+    const inGame = t => (t && (t === g.home_team_id || t === g.away_team_id) ? t : null)
+    const team = inGame(s.played_for_team_id)
+      || inGame(seasonTeams[g.season_id]?.[s.player_id])
+      || inGame(players[s.player_id]?.team_id)
     if (team) {
       const home = team === g.home_team_id
       a.tgp++

@@ -53,6 +53,19 @@ describe("playerRating", () => {
     expect(ace.axes.find(a => a.key === "goals").pct).toBe(1) // league top scorer this season
   })
 
+  it("uses the team a player was on THAT season, not his current one", () => {
+    // mid moved A → B over the summer; last season (S0) he still played for A
+    const moved = { ...players, mid: { team_id: "B", position: "Field Player" } }
+    const t = aggregate({ games, stats, players: moved, currentSeasonId: "S1", seasonTeams: { S0: { mid: "A" }, S1: { mid: "A" } } })
+    expect(t.get("mid")).toMatchObject({ tgp: 3, scored: 9, conceded: 3 })
+  })
+
+  it("skips friendlies and tournament games, like the league table", () => {
+    const extra = [...games, { ...g("5", "A", "B", 9, 0), game_type: "ידידותי" }, { ...g("6", "A", "B", 9, 0), tournament_id: "T" }]
+    const t = aggregate({ games: extra, stats: [...stats, row("5", "ace", 5), row("6", "ace", 5)], players, currentSeasonId: "S1" })
+    expect(t.get("ace").gp).toBe(3)
+  })
+
   it("returns null for a player with no games", () => {
     expect(playerCard("nobody", { totals, players: { ...players, nobody: { team_id: "A" } } })).toBeNull()
   })

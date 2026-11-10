@@ -23,10 +23,11 @@ async function allRows(fn, args) {
 let leagueData // one fetch per page load, shared by every card
 export function loadLeague() {
   leagueData ??= (async () => {
-    const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }] = await Promise.all([
+    const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }, { data: frozen }] = await Promise.all([
       supabase.from("seasons").select("id, status"),
       supabase.from("players").select("id, first_name, last_name, jersey_number, team_id, position, is_referee"),
       supabase.from("player_cutouts").select("player_ids, image_url").eq("status", "approved"),
+      supabase.from("player_season_stats").select("season_id, player_id, team_id"),
     ])
     if (se) throw se
     if (pe) throw pe
@@ -37,7 +38,9 @@ export function loadLeague() {
     ])))
     const players = Object.fromEntries((plist || []).map(p => [p.id, p]))
     const currentSeasonId = seasons?.find(s => s.status === "active")?.id
-    const totals = aggregate({ games: per.flatMap(([g]) => g), stats: per.flatMap(([, st]) => st), players, currentSeasonId })
+    const seasonTeams = {}
+    for (const r of frozen || []) (seasonTeams[r.season_id] ??= {})[r.player_id] = r.team_id
+    const totals = aggregate({ games: per.flatMap(([g]) => g), stats: per.flatMap(([, st]) => st), players, currentSeasonId, seasonTeams })
     const fans = Object.fromEntries((fanRows || []).map(r => [r.target_id, Number(r.followers)]))
     // a player's own solo cutouts, first one (1.png) first
     const cutouts = {}
