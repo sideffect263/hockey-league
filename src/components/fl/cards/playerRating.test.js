@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { aggregate, playerCard } from "./playerRating"
+import { aggregate, playerCard, minGamesFor } from "./playerRating"
 
 const g = (id, home, away, hs, as, season = "S1") =>
   ({ id, home_team_id: home, away_team_id: away, home_score: hs, away_score: as, season_id: season })
@@ -9,84 +9,83 @@ const players = {
   mid: { team_id: "A", position: "Field Player" },
   low: { team_id: "B", position: "Field Player" },
   gk: { team_id: "B", position: "Goalkeeper" },
+  new: { team_id: "A", position: "Field Player" },
 }
-// last season (S0) counts too
-const games = [g("1", "A", "B", 3, 1), g("2", "B", "A", 2, 2), g("3", "A", "B", 4, 0, "S0"), g("4", "A", "B", null, null)]
+// S1 = this season; S0 = last season, which must NOT count
+const games = [
+  g("1", "A", "B", 3, 1), g("2", "B", "A", 2, 2), g("3", "A", "B", 4, 0), g("4", "A", "B", 5, 5),
+  g("9", "A", "B", 9, 0, "S0"), g("5", "A", "B", null, null),
+]
 const row = (game_id, player_id, goals = 0, extra = {}) => ({ game_id, player_id, goals, ...extra })
 const stats = [
-  row("1", "ace", 2), row("2", "ace", 1), row("3", "ace", 3),
+  row("1", "ace", 2), row("2", "ace", 1), row("3", "ace", 3), row("4", "ace", 0),
   row("1", "mid", 1), row("2", "mid", 1), row("3", "mid", 0),
   row("1", "low", 1), row("2", "low", 0), row("3", "low", 0),
   row("1", "gk", 0), row("2", "gk", 0), row("3", "gk", 0),
-  row("4", "ace", 9), // unplayed game — ignored
+  row("4", "new", 4), // one game only
+  row("9", "ace", 7), // last season — ignored
+  row("5", "ace", 9), // unplayed game — ignored
   row("1", null, 5, { is_guest_player: true }), // guest — ignored
 ]
 
 describe("playerRating", () => {
   const totals = aggregate({ games, stats, players, currentSeasonId: "S1" })
   const fans = { ace: 4, low: 1 }
+  const card = id => playerCard(id, { totals, players, fans })
+  const axis = (id, key) => card(id).axes.find(a => a.key === key)
 
-  it("counts every season's completed games, and real players only", () => {
-    expect(totals.get("ace")).toMatchObject({ gp: 3, goals: 6, sgoals: 3, tgp: 3, scored: 9, conceded: 3 })
-    expect(totals.size).toBe(4)
+  it("counts only this season's completed games, and real players only", () => {
+    expect(totals.get("ace")).toMatchObject({ gp: 4, sgoals: 6, tgp: 4, scored: 14, conceded: 8 })
+    expect(totals.size).toBe(5)
   })
 
-  it("shows the real numbers on each axis — goals from this season only", () => {
-    const ace = playerCard("ace", { totals, players, fans })
-    const by = Object.fromEntries(ace.axes.map(a => [a.key, a.shown]))
-    expect(by).toEqual({ goals: "3", exp: "3", att: "3.0", def: "1.0", fans: "4" })
-  })
-
-  it("treats fewer goals conceded as the better defence", () => {
-    const ace = playerCard("ace", { totals, players, fans })
-    const low = playerCard("low", { totals, players, fans })
-    const def = c => c.axes.find(a => a.key === "def").pct
-    expect(def(ace)).toBeGreaterThan(def(low))
-    expect(ace.ovr).toBeGreaterThan(low.ovr)
-    expect(ace.ovr).toBeLessThanOrEqual(99)
-  })
-
-  it("draws counts against the league's best, so one fan stays small", () => {
-    const low = playerCard("low", { totals, players, fans })
-    expect(low.axes.find(a => a.key === "fans").pct).toBeCloseTo(0.1) // 1 of a 10-fan floor
-    const ace = playerCard("ace", { totals, players, fans })
-    expect(ace.axes.find(a => a.key === "goals").pct).toBe(1) // league top scorer this season
-  })
-
-  it("uses the team a player was on THAT season, not his current one", () => {
-    // mid moved A → B over the summer; last season (S0) he still played for A
-    const moved = { ...players, mid: { team_id: "B", position: "Field Player" } }
-    const t = aggregate({ games, stats, players: moved, currentSeasonId: "S1", seasonTeams: { S0: { mid: "A" }, S1: { mid: "A" } } })
-    expect(t.get("mid")).toMatchObject({ tgp: 3, scored: 9, conceded: 3 })
-  })
-
-  it("skips friendlies and tournament games, like the league table", () => {
-    const extra = [...games, { ...g("5", "A", "B", 9, 0), game_type: "ידידותי" }, { ...g("6", "A", "B", 9, 0), tournament_id: "T" }]
-    const t = aggregate({ games: extra, stats: [...stats, row("5", "ace", 5), row("6", "ace", 5)], players, currentSeasonId: "S1" })
-    expect(t.get("ace").gp).toBe(3)
+  it("shows the real numbers on each axis", () => {
+    const by = Object.fromEntries(card("ace").axes.map(a => [a.key, a.shown]))
+    expect(by).toEqual({ goals: "6", exp: "4", att: "3.5", def: "2.0", fans: "4" })
   })
 
   it("draws every point against the best in the group, and says who the best is", () => {
-    const low = playerCard("low", { totals, players, fans })
-    const by = Object.fromEntries(low.axes.map(a => [a.key, a]))
-    // goals this season: low 1, best (ace) 3 → a third
-    expect(by.goals.pct).toBeCloseTo(1 / 3)
-    expect(by.goals.bestShown).toBe("3")
+    // goals: low 1, best (ace) 6
+    expect(axis("low", "goals").pct).toBeCloseTo(1 / 6)
+    expect(axis("low", "goals").bestShown).toBe("6")
     // defence: fewest conceded is best → best / his
-    expect(by.def.pct).toBeCloseTo(by.def.best / by.def.value)
+    const d = axis("low", "def")
+    expect(d.pct).toBeCloseTo(d.best / d.value)
+    // fans: out of at least 10
+    expect(axis("low", "fans").pct).toBeCloseTo(0.1)
   })
 
-  it("leaves attack, defence and the rating empty under the games minimum", () => {
-    const one = aggregate({ games, stats: [row("1", "ace", 2)], players, currentSeasonId: "S1" })
-    const c = playerCard("ace", { totals: one, players })
+  it("needs half the most games played (rounded up) for attack, defence and a rating", () => {
+    expect(minGamesFor(3)).toBe(2)
+    expect(minGamesFor(16)).toBe(8)
+    expect(minGamesFor(0)).toBe(1)
+    // most games = 4 → minimum 2; "new" has 1
+    const c = card("new")
+    expect(c.minGames).toBe(2)
     expect(c.ovr).toBeNull()
     expect(c.axes.find(a => a.key === "att").shown).toBe("–")
+    expect(card("ace").ovr).not.toBeNull()
   })
 
   it("keeps fans out of the rating", () => {
     const a = playerCard("low", { totals, players, fans: {} }).ovr
     const b = playerCard("low", { totals, players, fans: { low: 9 } }).ovr
     expect(b).toBe(a)
+  })
+
+  it("ranks the better player higher", () => {
+    expect(card("ace").ovr).toBeGreaterThan(card("low").ovr)
+  })
+
+  it("credits a loan game to the team he played for", () => {
+    const t = aggregate({ games, stats: [row("1", "low", 0, { played_for_team_id: "A" })], players, currentSeasonId: "S1" })
+    expect(t.get("low")).toMatchObject({ scored: 3, conceded: 1 })
+  })
+
+  it("skips friendlies and tournament games, like the league table", () => {
+    const extra = [...games, { ...g("6", "A", "B", 9, 0), game_type: "ידידותי" }, { ...g("7", "A", "B", 9, 0), tournament_id: "T" }]
+    const t = aggregate({ games: extra, stats: [...stats, row("6", "ace", 5), row("7", "ace", 5)], players, currentSeasonId: "S1" })
+    expect(t.get("ace").gp).toBe(4)
   })
 
   it("returns null for a player with no games", () => {

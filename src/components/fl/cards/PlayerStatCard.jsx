@@ -21,26 +21,25 @@ async function allRows(fn, args) {
 }
 
 let leagueData // one fetch per page load, shared by every card
+/** THIS season's games + sheets, players, fans and cutouts. Past seasons are left out on
+ *  purpose: their judge sheets list only some of the players who played. */
 export function loadLeague() {
   leagueData ??= (async () => {
-    const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }, { data: frozen }] = await Promise.all([
+    const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }] = await Promise.all([
       supabase.from("seasons").select("id, status"),
       supabase.from("players").select("id, first_name, last_name, jersey_number, team_id, position, is_referee"),
       supabase.from("player_cutouts").select("player_ids, image_url").eq("status", "approved"),
-      supabase.from("player_season_stats").select("season_id, player_id, team_id"),
     ])
     if (se) throw se
     if (pe) throw pe
-    const { data: fanRows } = await supabase.rpc("follower_counts", { p_type: "player", p_ids: (plist || []).map(p => p.id) })
-    const per = await Promise.all((seasons || []).map(s => Promise.all([
-      allRows("season_games", { p_season_id: s.id }),
-      allRows("season_game_stats", { p_season_id: s.id }),
-    ])))
-    const players = Object.fromEntries((plist || []).map(p => [p.id, p]))
     const currentSeasonId = seasons?.find(s => s.status === "active")?.id
-    const seasonTeams = {}
-    for (const r of frozen || []) (seasonTeams[r.season_id] ??= {})[r.player_id] = r.team_id
-    const totals = aggregate({ games: per.flatMap(([g]) => g), stats: per.flatMap(([, st]) => st), players, currentSeasonId, seasonTeams })
+    const [{ data: fanRows }, games, stats] = await Promise.all([
+      supabase.rpc("follower_counts", { p_type: "player", p_ids: (plist || []).map(p => p.id) }),
+      currentSeasonId ? allRows("season_games", { p_season_id: currentSeasonId }) : [],
+      currentSeasonId ? allRows("season_game_stats", { p_season_id: currentSeasonId }) : [],
+    ])
+    const players = Object.fromEntries((plist || []).map(p => [p.id, p]))
+    const totals = aggregate({ games, stats, players, currentSeasonId })
     const fans = Object.fromEntries((fanRows || []).map(r => [r.target_id, Number(r.followers)]))
     // a player's own solo cutouts, first one (1.png) first
     const cutouts = {}

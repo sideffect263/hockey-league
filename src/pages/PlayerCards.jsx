@@ -41,7 +41,7 @@ export default function PlayerCards() {
     <div className="max-w-6xl mx-auto px-4 py-5">
       <h1 className="text-[26px] font-black">כרטיסי שחקנים</h1>
       <p className="mt-1 text-[13px] opacity-70 leading-relaxed">
-        שערים: העונה · ניסיון (משחקים), התקפה / הגנה: ממוצע השערים שהקבוצה הבקיעה / ספגה במשחקים שבהם שיחק, מכל העונות · אוהדים: עוקבים אמיתיים
+        כרטיס לכל שחקן, מנתוני משחקי העונה. <a href="#how" className="underline underline-offset-2">איך מחושב כל ערך</a>
       </p>
       <div className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
         <button type="button" className={pill(team === "all")} onClick={() => setTeam("all")}>כל הליגה</button>
@@ -60,6 +60,51 @@ export default function PlayerCards() {
           ))}
         </div>
       )}
+      {data && <HowItsCalculated minGames={rows.find(r => r.card.minGames)?.card.minGames} />}
     </div>
+  )
+}
+
+/** The explanation at the bottom: how every number on the card is made (playerRating.js). */
+function HowItsCalculated({ minGames }) {
+  const items = [
+    ["שערים", "כמה שערים השחקן הבקיע העונה, לפי טופסי השיפוט."],
+    ["ניסיון", "בכמה משחקים העונה השחקן רשום בטופס השיפוט."],
+    ["התקפה", "ממוצע השערים שהקבוצה שלו הבקיעה במשחקים שבהם שיחק. אם שיחק בהשאלה, נספרת הקבוצה ששיחק בה באותו משחק."],
+    ["הגנה", "ממוצע השערים שהקבוצה שלו ספגה במשחקים שבהם שיחק. פחות שערים = הגנה טובה יותר."],
+    ["אוהדים", "כמה אנשים עוקבים אחרי השחקן באפליקציה. שחקני הקבוצה שלו לא נספרים."],
+  ]
+  return (
+    <section id="how" className="mt-10 scroll-mt-20 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 text-[14px] leading-relaxed">
+      <h2 className="text-[20px] font-black">איך מחושב כל ערך</h2>
+      <p className="mt-1 opacity-75">
+        כל המספרים מגיעים ממשחקי הליגה של העונה הנוכחית שהסתיימו ומטופסי השיפוט שלהם. משחקי עונות קודמות לא נספרים, כי בטופסים שלהן רשומים רק חלק מהשחקנים. משחקי ידידות וטורנירים לא נספרים.
+      </p>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        {items.map(([k, v]) => (
+          <div key={k} className="rounded-xl bg-white/[0.04] p-3">
+            <dt className="font-black">{k}</dt>
+            <dd className="mt-0.5 opacity-80">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <h3 className="mt-6 text-[16px] font-black">הגרף</h3>
+      <p className="mt-1 opacity-80">
+        כל נקודה בגרף משווה את השחקן למוביל באותה עמדה (שחקני שדה מול שחקני שדה, שוערים מול שוערים). המוביל מקבל נקודה מלאה, וכל השאר מקבלים את החלק היחסי שלהם.
+        לדוגמה: אם המוביל הבקיע 10 שערים ושחקן הבקיע 1, הנקודה שלו בשערים תהיה 10% מהדרך.
+        בהגנה הכיוון הפוך: המוביל הוא מי שהקבוצה שלו ספגה הכי מעט, והנקודה של כל שחקן היא היחס בין המוביל אליו.
+        באוהדים הנקודה המלאה היא לפחות 10 עוקבים, כדי שעוקב אחד לא ייראה כמו הרבה.
+        מתחת לכל גרף כתוב הערך של השחקן לצד הערך של המוביל.
+      </p>
+      <h3 className="mt-6 text-[16px] font-black">הדירוג (OVR)</h3>
+      <p className="mt-1 opacity-80">
+        הממוצע של ארבע נקודות: שערים, ניסיון, התקפה והגנה, בסולם 40 עד 99 (‏40 + 59 × הממוצע). אוהדים מופיעים בגרף אבל לא נכנסים לדירוג, כי הם לא מודדים משחק.
+      </p>
+      <h3 className="mt-6 text-[16px] font-black">מינימום משחקים</h3>
+      <p className="mt-1 opacity-80">
+        כדי שמשחק אחד מוצלח לא יקבע דירוג, התקפה, הגנה והדירוג מוצגים רק לשחקן ששיחק לפחות חצי ממספר המשחקים הגבוה ביותר העונה (מעוגל למעלה)
+        {minGames ? <>. כרגע: <b>{minGames} משחקים</b></> : null}. עד אז יופיע "–". המינימום עולה ככל שהעונה מתקדמת.
+      </p>
+    </section>
   )
 }
