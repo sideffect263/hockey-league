@@ -23,18 +23,18 @@ const stats = [
 ]
 
 describe("playerRating", () => {
-  const totals = aggregate({ games, stats, players })
+  const totals = aggregate({ games, stats, players, currentSeasonId: "S1" })
   const fans = { ace: 4, low: 1 }
 
   it("counts every season's completed games, and real players only", () => {
-    expect(totals.get("ace")).toMatchObject({ gp: 3, goals: 6, tgp: 3, scored: 9, conceded: 3 })
+    expect(totals.get("ace")).toMatchObject({ gp: 3, goals: 6, sgoals: 3, tgp: 3, scored: 9, conceded: 3 })
     expect(totals.size).toBe(4)
   })
 
-  it("shows the real numbers on each axis", () => {
+  it("shows the real numbers on each axis — goals from this season only", () => {
     const ace = playerCard("ace", { totals, players, fans })
     const by = Object.fromEntries(ace.axes.map(a => [a.key, a.shown]))
-    expect(by).toEqual({ goals: "6", exp: "3", att: "3.0", def: "1.0", fans: "4" })
+    expect(by).toEqual({ goals: "3", exp: "3", att: "3.0", def: "1.0", fans: "4" })
   })
 
   it("treats fewer goals conceded as the better defence", () => {

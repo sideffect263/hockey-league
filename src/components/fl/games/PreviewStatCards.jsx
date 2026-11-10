@@ -25,7 +25,7 @@ let leagueData // one fetch per page load, shared by both cards
 function loadLeague() {
   leagueData ??= (async () => {
     const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }] = await Promise.all([
-      supabase.from("seasons").select("id"),
+      supabase.from("seasons").select("id, status"),
       supabase.from("players").select("id, team_id, position"),
       supabase.from("player_cutouts").select("player_ids, image_url").eq("status", "approved"),
     ])
@@ -37,7 +37,8 @@ function loadLeague() {
       allRows("season_game_stats", { p_season_id: s.id }),
     ])))
     const players = Object.fromEntries((plist || []).map(p => [p.id, p]))
-    const totals = aggregate({ games: per.flatMap(([g]) => g), stats: per.flatMap(([, st]) => st), players })
+    const currentSeasonId = seasons?.find(s => s.status === "active")?.id
+    const totals = aggregate({ games: per.flatMap(([g]) => g), stats: per.flatMap(([, st]) => st), players, currentSeasonId })
     const fans = Object.fromEntries((fanRows || []).map(r => [r.target_id, Number(r.followers)]))
     // a player's own solo cutouts, first one (1.png) first
     const cutouts = {}
@@ -136,7 +137,7 @@ export default function PreviewStatCards({ preview, home, away }) {
       <Card who={preview.away} team={away} card={cards?.[0]} />
       <Card who={preview.home} team={home} card={cards?.[1]} />
       <p dir="rtl" className="col-span-2 text-center text-[10.5px] leading-relaxed text-white/60">
-        שערים וניסיון (משחקים) מכל העונות · התקפה / הגנה: ממוצע השערים שהקבוצה הבקיעה / ספגה במשחקים שבהם שיחק · אוהדים: עוקבים אמיתיים
+        שערים: העונה · ניסיון (משחקים), התקפה / הגנה: ממוצע השערים שהקבוצה הבקיעה / ספגה במשחקים שבהם שיחק · אוהדים: עוקבים אמיתיים
       </p>
     </div>
   )

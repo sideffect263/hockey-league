@@ -5,7 +5,7 @@
  *
  * Five axes, each shown as its REAL value; the radar shape is the player's percentile among
  * players in the same position group (min MIN_GP games):
- *   שערים  — goals he scored, all seasons
+ *   שערים  — goals he scored THIS season only
  *   ניסיון — games he played, all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better)
@@ -27,16 +27,17 @@ const AXES = [
 const played = g => g && g.home_score != null && g.away_score != null && !g.is_test
 
 /** Per-player raw totals over all seasons. `players` = { id → { team_id, position } }. */
-export function aggregate({ games, stats, players }) {
+export function aggregate({ games, stats, players, currentSeasonId }) {
   const gameById = new Map(games.filter(played).map(g => [g.id, g]))
   const out = new Map()
   for (const s of stats) {
     if (!s.player_id || s.is_guest_player) continue
     const g = gameById.get(s.game_id)
     if (!g) continue
-    const a = out.get(s.player_id) || { gp: 0, goals: 0, tgp: 0, scored: 0, conceded: 0 }
+    const a = out.get(s.player_id) || { gp: 0, goals: 0, sgoals: 0, tgp: 0, scored: 0, conceded: 0 }
     a.gp++
     a.goals += s.goals || 0
+    if (g.season_id === currentSeasonId) a.sgoals += s.goals || 0
     const pTeam = players[s.player_id]?.team_id
     const team = s.played_for_team_id
       || (pTeam === g.home_team_id || pTeam === g.away_team_id ? pTeam : null)
@@ -52,7 +53,7 @@ export function aggregate({ games, stats, players }) {
 }
 
 const raw = (a, fans) => ({
-  goals: a.goals,
+  goals: a.sgoals,
   exp: a.gp,
   att: a.tgp ? a.scored / a.tgp : null,
   def: a.tgp ? a.conceded / a.tgp : null,
