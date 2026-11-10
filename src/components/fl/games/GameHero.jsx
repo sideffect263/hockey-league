@@ -43,7 +43,8 @@ function TeamColumn({ team, role, crest, lost, played }) {
 }
 
 /** Pre-game face-off clip (gamePreviewVideo.js): plays once, muted, and holds on the two
- *  players standing face to face; their names fade in once they stop. Reduced motion → the
+ *  players standing face to face; their names fade in once they stop. `preview.loop` → loops
+ *  forever (ping-pong baked into the file), no replay button. Reduced motion → the
  *  last frame as a still. The top row (back · chip · share) floats over the clip. */
 function PreviewVideo({ preview, topRow }) {
   const ref = useRef(null)
@@ -78,7 +79,7 @@ function PreviewVideo({ preview, topRow }) {
       {still ? (
         <img src={preview.endFrame} alt="" className="absolute inset-0 size-full object-cover" />
       ) : (
-        <video ref={ref} src={preview.src} poster={preview.poster} muted playsInline preload="auto"
+        <video ref={ref} src={preview.src} poster={preview.poster} muted playsInline preload="auto" loop={!!preview.loop}
           aria-label={`${preview.away?.name || ""} מול ${preview.home?.name || ""}`}
           onTimeUpdate={e => { if (e.currentTarget.currentTime >= preview.standAt) setStood(true) }}
           onEnded={() => setStood(true)}
@@ -88,7 +89,7 @@ function PreviewVideo({ preview, topRow }) {
       <div className="absolute inset-x-3 sm:inset-x-6 top-3 z-10">{topRow}</div>
       {tag(preview.away, "left")}
       {tag(preview.home, "right")}
-      {!still && (
+      {!still && !preview.loop && (
         <button type="button" onClick={replay} aria-label="להפעיל שוב את הסרטון"
           className={`absolute bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full ${glass} text-[11.5px] font-bold px-3 py-1 transition-opacity ${stood ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
           <RotateCcw className="size-3" /> שוב

@@ -12,13 +12,14 @@ const PREVIEWS = {
     away: { name: "יובל מוקדי", number: 81 },
     standAt: 3.1,
   },
-  // 2026-12-19 בלג אריות (home) – קריית ביאליק (away). An action clip, not a face-off: Ariel
-  // (בלג, green) beats עדי רז one-on-one and scores past אורי לירמן (kneeling). Ariel is physically
-  // LEFT in the clip, so he takes the left ("away") tag slot; names fade in at the goal.
+  // 2026-12-19 בלג אריות (home) – קריית ביאליק (away). Cinematic line-up: עדי רז (away, blue)
+  // left, Ariel (home, green) right. `loop`: the file is baked forward + reversed (ping-pong),
+  // so a plain <video loop> rewinds smoothly back to the start forever.
   "6135793f-3a81-4c9c-a848-c546c5720e6f": {
-    home: { name: "עדי רז", number: null },
-    away: { name: "אריאל ביטון", number: null },
-    standAt: 6.3,
+    home: { name: "אריאל ביטון", number: null },
+    away: { name: "עדי רז", number: null },
+    standAt: 1.5,
+    loop: true,
   },
 }
 
