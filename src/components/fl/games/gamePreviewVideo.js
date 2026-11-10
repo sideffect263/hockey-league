@@ -20,7 +20,7 @@ const PREVIEWS = {
     away: { name: "עדי רז", number: null, playerId: "b6000004-0000-0000-0000-000000000004" },
     standAt: 1.5,
     loop: true,
-    cards: true, // EA FC-style stat cards under the clip (PreviewStatCards); faces cropped from the clip
+    cards: true, // EA FC-style stat cards under the clip (PreviewStatCards) with each player's cutout
   },
 }
 
@@ -28,8 +28,5 @@ export function getGamePreviewVideo(gameId) {
   const p = gameId && PREVIEWS[gameId]
   if (!p) return null
   const base = `/game-previews/${gameId}`
-  return {
-    ...p, src: `${base}/clip.mp4`, poster: `${base}/poster.jpg`, endFrame: `${base}/end.jpg`,
-    ...(p.cards ? { homeFace: `${base}/home.jpg`, awayFace: `${base}/away.jpg` } : {}),
-  }
+  return { ...p, src: `${base}/clip.mp4`, poster: `${base}/poster.jpg`, endFrame: `${base}/end.jpg` }
 }
