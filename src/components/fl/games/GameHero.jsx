@@ -12,6 +12,7 @@ import { Share } from "@/components/icons/BrandIcons"
 import { CrestDisc, FLScore, RinkDrawing, TeamBlend } from "@/components/fl/Floodlight"
 import { teamBlend } from "@/lib/flTeam"
 import { STAGE, isPlayedStage, timeOf, dayAndDate } from "./flGamesKit"
+import PreviewStatCards from "./PreviewStatCards"
 
 const glass = "bg-[rgba(8,12,18,0.35)] text-white"
 
@@ -77,18 +78,18 @@ function PreviewVideo({ preview, topRow }) {
   return (
     <div className="relative -mx-3 sm:-mx-6 -mt-3 lg:rounded-t-[28px] overflow-hidden aspect-video max-h-[440px] w-[calc(100%+1.5rem)] sm:w-[calc(100%+3rem)] bg-black">
       {still ? (
-        <img src={preview.endFrame} alt="" className="absolute inset-0 size-full object-cover" />
+        <img src={preview.endFrame} alt="" className="absolute inset-0 size-full object-cover object-[50%_18%]" />
       ) : (
         <video ref={ref} src={preview.src} poster={preview.poster} muted playsInline preload="auto" loop={!!preview.loop}
           aria-label={`${preview.away?.name || ""} מול ${preview.home?.name || ""}`}
           onTimeUpdate={e => { if (e.currentTarget.currentTime >= preview.standAt) setStood(true) }}
           onEnded={() => setStood(true)}
-          className="absolute inset-0 size-full object-cover" />
+          className="absolute inset-0 size-full object-cover object-[50%_18%]" />
       )}
       <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-[rgba(5,7,12,0.8)]" />
       <div className="absolute inset-x-3 sm:inset-x-6 top-3 z-10">{topRow}</div>
-      {tag(preview.away, "left")}
-      {tag(preview.home, "right")}
+      {!preview.cards && tag(preview.away, "left")}
+      {!preview.cards && tag(preview.home, "right")}
       {!still && !preview.loop && (
         <button type="button" onClick={replay} aria-label="להפעיל שוב את הסרטון"
           className={`absolute bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full ${glass} text-[11.5px] font-bold px-3 py-1 transition-opacity ${stood ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
@@ -150,6 +151,7 @@ export default function GameHero({ game, home, away, stage, chip, round, judges 
         )
         return preview ? <PreviewVideo preview={preview} topRow={topRow} /> : topRow
       })()}
+      {preview?.cards && <PreviewStatCards preview={preview} home={home} away={away} />}
 
       <div className={`relative ${preview ? "mt-2 sm:mt-3" : "mt-5 sm:mt-6"} py-3.5`}>
         {!photoUrl && !preview && <RinkDrawing strength={0.3} className="absolute inset-0 -z-10 size-full opacity-50" />}

@@ -16,10 +16,11 @@ const PREVIEWS = {
   // left, Ariel (home, green) right. `loop`: the file is baked forward + reversed (ping-pong),
   // so a plain <video loop> rewinds smoothly back to the start forever.
   "6135793f-3a81-4c9c-a848-c546c5720e6f": {
-    home: { name: "אריאל ביטון", number: null },
-    away: { name: "עדי רז", number: null },
+    home: { name: "אריאל ביטון", number: null, playerId: "b2000007-0000-0000-0000-000000000007" },
+    away: { name: "עדי רז", number: null, playerId: "b6000004-0000-0000-0000-000000000004" },
     standAt: 1.5,
     loop: true,
+    cards: true, // EA FC-style stat cards under the clip (PreviewStatCards); faces cropped from the clip
   },
 }
 
@@ -27,5 +28,8 @@ export function getGamePreviewVideo(gameId) {
   const p = gameId && PREVIEWS[gameId]
   if (!p) return null
   const base = `/game-previews/${gameId}`
-  return { ...p, src: `${base}/clip.mp4`, poster: `${base}/poster.jpg`, endFrame: `${base}/end.jpg` }
+  return {
+    ...p, src: `${base}/clip.mp4`, poster: `${base}/poster.jpg`, endFrame: `${base}/end.jpg`,
+    ...(p.cards ? { homeFace: `${base}/home.jpg`, awayFace: `${base}/away.jpg` } : {}),
+  }
 }
