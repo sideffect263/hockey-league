@@ -126,27 +126,37 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
     v.play()?.catch?.(() => setStill(true))
   }, [])
   const awayC = away?.primary_color, homeC = home?.primary_color
-  const crestLink = (team, role) => {
-    const crest = <CrestDisc team={team} size={40} disc={false} />
+  const crestLink = (team, role, size) => {
+    const crest = <CrestDisc team={team} size={size} disc={false} />
     return team?.id
       ? <Link to={`/teams/${team.slug || team.id}`} aria-label={`${team.name}, ${role} — לעמוד הקבוצה`} className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">{crest}</Link>
       : <span className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{crest}</span>
   }
+  // the info block between the two heads: crest · time · crest, the date, then round · rink
   const centre = (
-    <div dir="rtl" className="flex flex-col items-center text-center [text-shadow:0_2px_8px_rgba(0,0,0,0.6)]">
-      <div dir="ltr" className="flex items-center gap-2 sm:gap-3">
-        {crestLink(away, "חוץ")}
-        <span className={`fl-num text-[36px] sm:text-[48px] leading-none ${postponed ? "line-through opacity-60" : ""}`} aria-label={`שעת פתיחה ${timeOf(game.game_date)}`}>{timeOf(game.game_date)}</span>
-        {crestLink(home, "בית")}
+    <div dir="rtl" className="flex flex-col items-center text-center [text-shadow:0_2px_8px_rgba(0,0,0,0.65)]">
+      <div dir="ltr" className="flex items-center gap-2.5 sm:gap-4">
+        <span className="sm:hidden">{crestLink(away, "חוץ", 54)}</span>
+        <span className="hidden sm:inline">{crestLink(away, "חוץ", 76)}</span>
+        <span className={`fl-num text-[48px] sm:text-[68px] leading-none ${postponed ? "line-through opacity-60" : ""}`} aria-label={`שעת פתיחה ${timeOf(game.game_date)}`}>{timeOf(game.game_date)}</span>
+        <span className="sm:hidden">{crestLink(home, "בית", 54)}</span>
+        <span className="hidden sm:inline">{crestLink(home, "בית", 76)}</span>
       </div>
-      <span className="mt-1 text-[12.5px] sm:text-[14px] font-bold">{dayAndDate(game.game_date)}</span>
+      <span className="mt-1.5 text-[16px] sm:text-[20px] font-extrabold">{dayAndDate(game.game_date)}</span>
+      {meta.length > 0 && (
+        <p className="mt-0.5 text-[14px] sm:text-[16px] font-bold text-white/95 leading-snug">
+          {meta.map((m, i) => (
+            <span key={i} className="whitespace-nowrap">{i > 0 && <span aria-hidden="true" className="mx-1.5 opacity-70">·</span>}{m}</span>
+          )).reduce((acc, el) => acc.concat(el, " "), [])}
+        </p>
+      )}
       <span className="sr-only">{away?.name} (חוץ) נגד {home?.name} (בית)</span>
     </div>
   )
   return (
     <section aria-label="המשחק" className={`relative isolate overflow-hidden rounded-b-[30px] lg:rounded-[28px] bg-[#0b0f15] text-white ${postponed ? "grayscale-[1] opacity-[0.92]" : ""}`}>
-      {/* the clip: top 470px on a phone (faces stay in frame), the whole stage when wide */}
-      <div aria-hidden={still ? "true" : undefined} className="absolute inset-x-0 top-0 h-[470px] sm:h-full -z-20">
+      {/* the clip: top 500px on a phone (faces stay in frame), the whole stage when wide */}
+      <div aria-hidden={still ? "true" : undefined} className="absolute inset-x-0 top-0 h-[500px] sm:h-full -z-20">
         {still
           ? <img src={preview.endFrame} alt="" className="size-full object-cover object-[50%_15%]" />
           : <video ref={ref} src={preview.src} poster={preview.poster} muted playsInline preload="auto" loop={!!preview.loop}
@@ -168,25 +178,18 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
       </svg>
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-28 -z-10 bg-gradient-to-b from-[rgba(5,7,12,0.55)] to-transparent" />
 
-      <div className="relative px-3 sm:px-6 pt-3 pb-5 sm:pb-6 sm:min-h-[560px] lg:min-h-[600px] flex flex-col">
+      <div className="relative px-3 sm:px-6 pt-3 pb-5 sm:pb-6 sm:min-h-[640px] lg:min-h-[680px] flex flex-col">
         {topRow}
-        {/* phone: time+crests between the heads, cards below the faces */}
-        <div className="sm:hidden mt-3">{centre}</div>
-        <div className="sm:hidden h-[120px]" />
-        {/* wide: card · time+crests · card across the stage */}
-        <div dir="ltr" className="mt-2 sm:mt-4 grid grid-cols-2 sm:grid-cols-[232px_minmax(0,1fr)_232px] items-start gap-2 sm:gap-4 sm:flex-1">
-          <OverlayCard who={preview.away} team={away} card={cards?.[0]} />
-          <div className="hidden sm:block pt-1">{centre}</div>
-          <OverlayCard who={preview.home} team={home} card={cards?.[1]} />
+        {/* phone: faces first, the info block sits over their chests; wide: between the heads */}
+        <div className="h-[165px] sm:hidden" />
+        <div className="mt-3 sm:mt-1">{centre}</div>
+        <div className="flex-1 min-h-[24px] sm:min-h-[110px]" />
+        {/* the two cards stand at the bottom: away LEFT, home RIGHT */}
+        <div dir="ltr" className="grid grid-cols-2 gap-2 sm:flex sm:justify-between sm:gap-4">
+          <div className="min-w-0 sm:w-[300px]"><OverlayCard who={preview.away} team={away} card={cards?.[0]} /></div>
+          <div className="min-w-0 sm:w-[300px]"><OverlayCard who={preview.home} team={home} card={cards?.[1]} /></div>
         </div>
-        {meta.length > 0 && (
-          <p className="mt-3 text-center text-[13px] text-white/90 leading-relaxed [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
-            {meta.map((m, i) => (
-              <span key={i} className="whitespace-nowrap">{i > 0 && <span aria-hidden="true" className="mx-2 opacity-70">·</span>}{m}</span>
-            )).reduce((acc, el) => acc.concat(el, " "), [])}
-          </p>
-        )}
-        {address && <p className="mt-1 text-center text-[11.5px] text-white/70">{address}</p>}
+        {address && <p className="mt-2 text-center text-[11.5px] text-white/75">{address}</p>}
         <PreviewStatsNote />
       </div>
     </section>
