@@ -12,7 +12,7 @@ import { Share } from "@/components/icons/BrandIcons"
 import { CrestDisc, FLScore, RinkDrawing, TeamBlend } from "@/components/fl/Floodlight"
 import { teamBlend } from "@/lib/flTeam"
 import { STAGE, isPlayedStage, timeOf, dayAndDate } from "./flGamesKit"
-import PreviewStatCards from "./PreviewStatCards"
+import PreviewStatCards, { PreviewStatsNote } from "./PreviewStatCards"
 
 const glass = "bg-[rgba(8,12,18,0.35)] text-white"
 
@@ -47,7 +47,7 @@ function TeamColumn({ team, role, crest, lost, played }) {
  *  players standing face to face; their names fade in once they stop. `preview.loop` → loops
  *  forever (ping-pong baked into the file), no replay button. Reduced motion → the
  *  last frame as a still. The top row (back · chip · share) floats over the clip. */
-function PreviewVideo({ preview, topRow }) {
+function PreviewVideo({ preview, topRow, home, away }) {
   const ref = useRef(null)
   const [stood, setStood] = useState(false)
   const [still, setStill] = useState(false)
@@ -76,7 +76,7 @@ function PreviewVideo({ preview, topRow }) {
   )
 
   return (
-    <div className="relative -mx-3 sm:-mx-6 -mt-3 lg:rounded-t-[28px] overflow-hidden aspect-video max-h-[440px] w-[calc(100%+1.5rem)] sm:w-[calc(100%+3rem)] bg-black">
+    <div className={`relative -mx-3 sm:-mx-6 -mt-3 lg:rounded-t-[28px] overflow-hidden ${preview.cards ? "aspect-[4/5] max-h-[560px] sm:aspect-video sm:max-h-[520px]" : "aspect-video max-h-[440px]"} w-[calc(100%+1.5rem)] sm:w-[calc(100%+3rem)] bg-black`}>
       {still ? (
         <img src={preview.endFrame} alt="" className="absolute inset-0 size-full object-cover object-[50%_18%]" />
       ) : (
@@ -88,6 +88,7 @@ function PreviewVideo({ preview, topRow }) {
       )}
       <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-[rgba(5,7,12,0.8)]" />
       <div className="absolute inset-x-3 sm:inset-x-6 top-3 z-10">{topRow}</div>
+      {preview.cards && <PreviewStatCards preview={preview} home={home} away={away} />}
       {!preview.cards && tag(preview.away, "left")}
       {!preview.cards && tag(preview.home, "right")}
       {!still && !preview.loop && (
@@ -149,9 +150,9 @@ export default function GameHero({ game, home, away, stage, chip, round, judges 
             <HeroIconButton onClick={onShare} label="שיתוף המשחק"><Share className="size-6" /></HeroIconButton>
           </div>
         )
-        return preview ? <PreviewVideo preview={preview} topRow={topRow} /> : topRow
+        return preview ? <PreviewVideo preview={preview} topRow={topRow} home={home} away={away} /> : topRow
       })()}
-      {preview?.cards && <PreviewStatCards preview={preview} home={home} away={away} />}
+      {preview?.cards && <PreviewStatsNote />}
 
       <div className={`relative ${preview ? "mt-2 sm:mt-3" : "mt-5 sm:mt-6"} py-3.5`}>
         {!photoUrl && !preview && <RinkDrawing strength={0.3} className="absolute inset-0 -z-10 size-full opacity-50" />}

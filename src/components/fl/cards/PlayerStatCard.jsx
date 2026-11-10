@@ -69,7 +69,7 @@ export function cardFor(id, d) {
 }
 
 /** Pentagon radar: the shape is the percentile, the labels are the real numbers. */
-function Radar({ axes, size = 132 }) {
+export function Radar({ axes, size = 132 }) {
   const c = size / 2, R = size / 2 - 24
   const pt = (i, r) => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / axes.length
