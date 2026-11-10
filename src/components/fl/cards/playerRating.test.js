@@ -66,6 +66,29 @@ describe("playerRating", () => {
     expect(t.get("ace").gp).toBe(3)
   })
 
+  it("draws every point against the best in the group, and says who the best is", () => {
+    const low = playerCard("low", { totals, players, fans })
+    const by = Object.fromEntries(low.axes.map(a => [a.key, a]))
+    // goals this season: low 1, best (ace) 3 → a third
+    expect(by.goals.pct).toBeCloseTo(1 / 3)
+    expect(by.goals.bestShown).toBe("3")
+    // defence: fewest conceded is best → best / his
+    expect(by.def.pct).toBeCloseTo(by.def.best / by.def.value)
+  })
+
+  it("leaves attack, defence and the rating empty under the games minimum", () => {
+    const one = aggregate({ games, stats: [row("1", "ace", 2)], players, currentSeasonId: "S1" })
+    const c = playerCard("ace", { totals: one, players })
+    expect(c.ovr).toBeNull()
+    expect(c.axes.find(a => a.key === "att").shown).toBe("–")
+  })
+
+  it("keeps fans out of the rating", () => {
+    const a = playerCard("low", { totals, players, fans: {} }).ovr
+    const b = playerCard("low", { totals, players, fans: { low: 9 } }).ovr
+    expect(b).toBe(a)
+  })
+
   it("returns null for a player with no games", () => {
     expect(playerCard("nobody", { totals, players: { ...players, nobody: { team_id: "A" } } })).toBeNull()
   })

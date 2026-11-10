@@ -3,20 +3,16 @@
  * every completed game + game_stats row of every season (season_games / season_game_stats RPCs)
  * and real follower counts (follower_counts RPC — the team's own roster doesn't count).
  *
- * Five axes, each shown as its REAL value. Radar shape: counts (goals, games, fans) are the
- * value as a share of the league's best (fans out of at least FANS_FLOOR, so 1 fan stays
- * small); the two averages (attack / defence) are a percentile among players in the same
- * position group (min MIN_GP games), since an average has no natural "full" mark.
+ * Five axes, each shown as its REAL value; how the shape is drawn and how OVR is made is
+ * documented on playerCard() below.
  *   שערים  — goals he scored THIS season only
  *   ניסיון — games he played, all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better)
  *   אוהדים — people following him
- * OVR = the five shape values, averaged and mapped to 45–99.
  */
 export const MIN_GP = 3
 export const FANS_FLOOR = 10
-const COUNTS = new Set(["goals", "exp", "fans"])
 
 const isGoalie = p => /goal|שוער/i.test(p?.position || "")
 
@@ -71,37 +67,51 @@ const raw = (a, fans) => ({
   fans: fans || 0,
 })
 
-/** Share of `pool` below v (ties half), 0..1. `lowerIsBetter` flips it (goals conceded). */
-function pct(pool, v, lowerIsBetter = false) {
-  const xs = pool.filter(x => x != null)
-  if (v == null || !xs.length) return 0.5
-  let below = 0, eq = 0
-  for (const x of xs) { if (lowerIsBetter ? x > v : x < v) below++; else if (x === v) eq++ }
-  return (below + eq / 2) / xs.length
-}
-
 const fmt = (key, v) => v == null ? "–" : key === "att" || key === "def" ? v.toFixed(1) : String(v)
 
-/** The card for one player id, or null when he has no completed games on record.
- *  `fans` = { id → follower count }. */
+/** Axes that need MIN_GP games before they mean anything (one 10–3 win is luck). */
+const NEEDS_GAMES = new Set(["att", "def"])
+/** Axes in the rating. Fans are shown but don't rate how someone plays. */
+const RATED = ["goals", "exp", "att", "def"]
+
+/**
+ * The card for one player id, or null when he has no completed games on record.
+ * `fans` = { id → follower count }.
+ *
+ * ONE rule for every point: compared with the best in his position group (field players vs
+ * goalkeepers). The best gets a full point, everyone else his share of it — so
+ * "1 goal, the best has 10" draws at 10%. Defence: fewest goals conceded is best (best / his).
+ * Fans are out of at least FANS_FLOOR, so 1 fan stays small while the league has few.
+ * Attack / defence (and so the rating) need MIN_GP games; below that they show "–" and the
+ * card has no OVR yet. OVR = the four rated points averaged, on a 40–99 scale.
+ */
 export function playerCard(playerId, { totals, players, fans = {} }) {
   const a = totals.get(playerId)
   const me = players[playerId]
   if (!a || !me) return null
   const goalie = isGoalie(me)
-  const peers = [...totals.entries()]
-    .filter(([id, t]) => t.gp >= MIN_GP && isGoalie(players[id]) === goalie)
-    .map(([id, t]) => raw(t, fans[id]))
+  const group = [...totals.entries()].filter(([id]) => isGoalie(players[id]) === goalie)
+  const enough = a.gp >= MIN_GP
   const mine = raw(a, fans[playerId])
   const axes = AXES.map(ax => {
-    const pool = peers.map(m => m[ax.key])
-    let p
-    if (COUNTS.has(ax.key)) {
-      const top = Math.max(ax.key === "fans" ? FANS_FLOOR : 1, mine[ax.key], ...pool)
-      p = mine[ax.key] / top
-    } else p = pct(pool, mine[ax.key], ax.key === "def")
-    return { ...ax, value: mine[ax.key], shown: fmt(ax.key, mine[ax.key]), pct: p }
+    const pool = group
+      .filter(([, t]) => !NEEDS_GAMES.has(ax.key) || t.gp >= MIN_GP)
+      .map(([id, t]) => raw(t, fans[id])[ax.key])
+      .filter(v => v != null)
+    const v = NEEDS_GAMES.has(ax.key) && !enough ? null : mine[ax.key]
+    let best, p
+    if (ax.key === "def") {
+      best = pool.length ? Math.min(...pool) : null
+      p = v == null || best == null ? null : v <= best ? 1 : best / v
+    } else {
+      best = Math.max(ax.key === "fans" ? FANS_FLOOR : 0, ...pool)
+      p = v == null ? null : best > 0 ? Math.min(1, v / best) : 0
+    }
+    return { ...ax, value: v, shown: fmt(ax.key, v), pct: p, best, bestShown: fmt(ax.key, best) }
   })
-  const ovr = Math.round(45 + 54 * (axes.reduce((s, ax) => s + ax.pct, 0) / axes.length))
-  return { ovr, axes, goalie }
+  const rated = axes.filter(ax => RATED.includes(ax.key))
+  const ovr = enough && rated.every(ax => ax.pct != null)
+    ? Math.round(40 + 59 * (rated.reduce((s, ax) => s + ax.pct, 0) / rated.length))
+    : null
+  return { ovr, axes, goalie, gp: a.gp, minGames: MIN_GP }
 }

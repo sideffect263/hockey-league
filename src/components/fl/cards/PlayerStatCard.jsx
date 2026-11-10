@@ -71,6 +71,28 @@ export function cardFor(id, d) {
   return { ...(playerCard(id, d) || {}), cutout: d.cutouts[id] }
 }
 
+/** Why the shape looks the way it does: each stat next to the best in the group (a full
+ *  point on the radar), and what the rating is made of. */
+function BestLegend({ axes, goalie }) {
+  return (
+    <div className="mt-1.5 border-t border-white/10 pt-1.5 text-[10.5px] leading-[1.55]">
+      <p className="text-white/55 mb-0.5">המוביל {goalie ? "בין השוערים" : "בליגה"} = נקודה מלאה</p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-2">
+        {axes.map(ax => (
+          <div key={ax.key} className="contents">
+            <dt className="text-white/70">{ax.label}</dt>
+            <dd className="tabular-nums whitespace-nowrap">
+              <b className="font-black">{ax.shown}</b>
+              <span className="text-white/50"> · מוביל {ax.bestShown}</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-1 text-white/55">דירוג: ממוצע שערים, ניסיון, התקפה והגנה</p>
+    </div>
+  )
+}
+
 /** Pentagon radar: the shape is the percentile, the labels are the real numbers. */
 export function Radar({ axes, size = 132 }) {
   const c = size / 2, R = size / 2 - 24
@@ -120,6 +142,9 @@ export function PlayerStatCard({ who, team, card }) {
         <div className="text-left leading-none shrink-0">
           <span className="block text-[10px] font-bold tracking-wide text-white/60" dir="ltr">OVR</span>
           <span className="block fl-num text-[34px] sm:text-[40px] font-black text-[#4ade80] tabular-nums" dir="ltr">{card?.ovr ?? "–"}</span>
+          {card?.axes && card.ovr == null && (
+            <span className="block mt-1 text-[9.5px] font-bold text-white/55 whitespace-nowrap">אחרי {card.minGames} משחקים</span>
+          )}
         </div>
       </div>
       <div className="relative mt-1 h-44 sm:h-56 flex items-end justify-center">
@@ -140,6 +165,7 @@ export function PlayerStatCard({ who, team, card }) {
           : card ? <div className="aspect-square max-w-[160px] mx-auto grid place-items-center text-[12px] text-white/55">עוד אין משחקים</div>
           : <div className="aspect-square max-w-[160px] mx-auto" />}
       </div>
+      {card?.axes && <BestLegend axes={card.axes} goalie={card.goalie} />}
     </div>
   )
 }
