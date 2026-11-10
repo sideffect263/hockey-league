@@ -12,7 +12,7 @@ import { Share } from "@/components/icons/BrandIcons"
 import { CrestDisc, FLScore, RinkDrawing, TeamBlend } from "@/components/fl/Floodlight"
 import { teamBlend } from "@/lib/flTeam"
 import { STAGE, isPlayedStage, timeOf, dayAndDate } from "./flGamesKit"
-import { OverlayCard, PreviewStatsNote, usePreviewCards } from "./PreviewStatCards"
+import { OverlayCard, usePreviewCards } from "./PreviewStatCards"
 
 const glass = "bg-[rgba(8,12,18,0.35)] text-white"
 
@@ -190,7 +190,6 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
           <div className="min-w-0 sm:w-[300px]"><OverlayCard who={preview.home} team={home} card={cards?.[1]} /></div>
         </div>
         {address && <p className="mt-2 text-center text-[11.5px] text-white/75">{address}</p>}
-        <PreviewStatsNote />
       </div>
     </section>
   )

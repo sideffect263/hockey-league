@@ -46,11 +46,3 @@ export function usePreviewCards(preview) {
 }
 
 export { OverlayCard }
-
-export function PreviewStatsNote() {
-  return (
-    <p className="relative mt-2 text-center text-[10.5px] leading-relaxed text-white/65 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-      שערים: העונה · ניסיון (משחקים), התקפה / הגנה: ממוצע השערים שהקבוצה הבקיעה / ספגה במשחקים שבהם שיחק · אוהדים: עוקבים אמיתיים
-    </p>
-  )
-}
