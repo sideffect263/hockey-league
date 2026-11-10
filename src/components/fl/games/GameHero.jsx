@@ -135,12 +135,12 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
   // the info block between the two heads: crest · time · crest, the date, then round · rink
   const centre = (
     <div dir="rtl" className="flex flex-col items-center text-center [text-shadow:0_2px_8px_rgba(0,0,0,0.65)]">
-      <div dir="ltr" className="flex items-center gap-2.5 sm:gap-4">
-        <span className="sm:hidden">{crestLink(away, "חוץ", 54)}</span>
-        <span className="hidden sm:inline">{crestLink(away, "חוץ", 76)}</span>
+      <div dir="ltr" className="flex items-center gap-2 sm:gap-5">
+        <span className="sm:hidden">{crestLink(away, "חוץ", 72)}</span>
+        <span className="hidden sm:inline">{crestLink(away, "חוץ", 100)}</span>
         <span className={`fl-num text-[48px] sm:text-[68px] leading-none ${postponed ? "line-through opacity-60" : ""}`} aria-label={`שעת פתיחה ${timeOf(game.game_date)}`}>{timeOf(game.game_date)}</span>
-        <span className="sm:hidden">{crestLink(home, "בית", 54)}</span>
-        <span className="hidden sm:inline">{crestLink(home, "בית", 76)}</span>
+        <span className="sm:hidden">{crestLink(home, "בית", 72)}</span>
+        <span className="hidden sm:inline">{crestLink(home, "בית", 100)}</span>
       </div>
       <span className="mt-1.5 text-[16px] sm:text-[20px] font-extrabold">{dayAndDate(game.game_date)}</span>
       {meta.length > 0 && (
@@ -180,10 +180,10 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
 
       <div className="relative px-3 sm:px-6 pt-3 pb-5 sm:pb-6 sm:min-h-[640px] lg:min-h-[680px] flex flex-col">
         {topRow}
-        {/* phone: faces first, the info block sits over their chests; wide: between the heads */}
-        <div className="h-[165px] sm:hidden" />
-        <div className="mt-3 sm:mt-1">{centre}</div>
-        <div className="flex-1 min-h-[24px] sm:min-h-[110px]" />
+        {/* the info block sits mid-stage, over the chests, under the faces */}
+        <div className="h-[165px] sm:h-[200px] lg:h-[215px]" />
+        <div className="mt-3 sm:mt-0">{centre}</div>
+        <div className="flex-1 min-h-[24px] sm:min-h-[40px]" />
         {/* the two cards stand at the bottom: away LEFT, home RIGHT */}
         <div dir="ltr" className="grid grid-cols-2 gap-2 sm:flex sm:justify-between sm:gap-4">
           <div className="min-w-0 sm:w-[300px]"><OverlayCard who={preview.away} team={away} card={cards?.[0]} /></div>
