@@ -46,6 +46,13 @@ describe("playerRating", () => {
     expect(ace.ovr).toBeLessThanOrEqual(99)
   })
 
+  it("draws counts against the league's best, so one fan stays small", () => {
+    const low = playerCard("low", { totals, players, fans })
+    expect(low.axes.find(a => a.key === "fans").pct).toBeCloseTo(0.1) // 1 of a 10-fan floor
+    const ace = playerCard("ace", { totals, players, fans })
+    expect(ace.axes.find(a => a.key === "goals").pct).toBe(1) // league top scorer this season
+  })
+
   it("returns null for a player with no games", () => {
     expect(playerCard("nobody", { totals, players: { ...players, nobody: { team_id: "A" } } })).toBeNull()
   })

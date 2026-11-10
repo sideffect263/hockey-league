@@ -3,16 +3,20 @@
  * every completed game + game_stats row of every season (season_games / season_game_stats RPCs)
  * and real follower counts (follower_counts RPC — the team's own roster doesn't count).
  *
- * Five axes, each shown as its REAL value; the radar shape is the player's percentile among
- * players in the same position group (min MIN_GP games):
+ * Five axes, each shown as its REAL value. Radar shape: counts (goals, games, fans) are the
+ * value as a share of the league's best (fans out of at least FANS_FLOOR, so 1 fan stays
+ * small); the two averages (attack / defence) are a percentile among players in the same
+ * position group (min MIN_GP games), since an average has no natural "full" mark.
  *   שערים  — goals he scored THIS season only
  *   ניסיון — games he played, all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better)
  *   אוהדים — people following him
- * OVR = the five percentiles, averaged and mapped to 45–99.
+ * OVR = the five shape values, averaged and mapped to 45–99.
  */
 export const MIN_GP = 3
+export const FANS_FLOOR = 10
+const COUNTS = new Set(["goals", "exp", "fans"])
 
 const isGoalie = p => /goal|שוער/i.test(p?.position || "")
 
@@ -83,7 +87,12 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
     .map(([id, t]) => raw(t, fans[id]))
   const mine = raw(a, fans[playerId])
   const axes = AXES.map(ax => {
-    const p = pct(peers.map(m => m[ax.key]), mine[ax.key], ax.key === "def")
+    const pool = peers.map(m => m[ax.key])
+    let p
+    if (COUNTS.has(ax.key)) {
+      const top = Math.max(ax.key === "fans" ? FANS_FLOOR : 1, mine[ax.key], ...pool)
+      p = mine[ax.key] / top
+    } else p = pct(pool, mine[ax.key], ax.key === "def")
     return { ...ax, value: mine[ax.key], shown: fmt(ax.key, mine[ax.key]), pct: p }
   })
   const ovr = Math.round(45 + 54 * (axes.reduce((s, ax) => s + ax.pct, 0) / axes.length))
