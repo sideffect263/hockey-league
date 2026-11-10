@@ -6,6 +6,8 @@
  * Five axes, each shown as its REAL value; how the shape is drawn and how OVR is made is
  * documented on playerCard() below.
  *   שערים  — goals he scored THIS season
+ *            (goalkeepers: שערים נקיים — THIS season's games he was on the sheet and his team
+ *            conceded 0; the sheets' clean_sheet flag is never set, so it's worked out from the score)
  *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better)
@@ -24,6 +26,8 @@ const AXES = [ // radar order: top, then clockwise
   { key: "fans", label: "אוהדים" },
   { key: "goals", label: "שערים" },
 ]
+/** A goalkeeper's "goals" point is clean sheets — same key, so weights and layout stay put. */
+const axesFor = goalie => goalie ? AXES.map(ax => ax.key === "goals" ? { ...ax, label: "שערים נקיים" } : ax) : AXES
 
 // Same games the league table counts (recompute_player_season_stats): scored, not a test,
 // not a friendly, not a tournament.
@@ -42,7 +46,7 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
     if (!s.player_id || s.is_guest_player) continue
     const g = gameById.get(s.game_id)
     if (!g) continue
-    const a = out.get(s.player_id) || { gp: 0, goals: 0, sgoals: 0, tgp: 0, scored: 0, conceded: 0 }
+    const a = out.get(s.player_id) || { gp: 0, goals: 0, sgoals: 0, scs: 0, tgp: 0, scored: 0, conceded: 0 }
     a.gp++
     a.goals += s.goals || 0
     if (g.season_id === currentSeasonId) a.sgoals += s.goals || 0
@@ -55,14 +59,15 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
       a.tgp++
       a.scored += home ? g.home_score : g.away_score
       a.conceded += home ? g.away_score : g.home_score
+      if (g.season_id === currentSeasonId && (home ? g.away_score : g.home_score) === 0) a.scs++
     }
     out.set(s.player_id, a)
   }
   return out
 }
 
-const raw = (a, fans) => ({
-  goals: a.sgoals,
+const raw = (a, fans, goalie) => ({
+  goals: goalie ? a.scs : a.sgoals,
   exp: a.gp,
   att: a.tgp ? a.scored / a.tgp : null,
   def: a.tgp ? a.conceded / a.tgp : null,
@@ -95,11 +100,11 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
   const group = [...totals.entries()].filter(([id]) => isGoalie(players[id]) === goalie)
   const minGames = MIN_GP
   const enough = a.gp >= minGames
-  const mine = raw(a, fans[playerId])
-  const axes = AXES.map(ax => {
+  const mine = raw(a, fans[playerId], goalie)
+  const axes = axesFor(goalie).map(ax => {
     const pool = group
       .filter(([, t]) => !NEEDS_GAMES.has(ax.key) || t.gp >= minGames)
-      .map(([id, t]) => raw(t, fans[id])[ax.key])
+      .map(([id, t]) => raw(t, fans[id], goalie)[ax.key])
       .filter(v => v != null)
     const v = NEEDS_GAMES.has(ax.key) && !enough ? null : mine[ax.key]
     let best, p

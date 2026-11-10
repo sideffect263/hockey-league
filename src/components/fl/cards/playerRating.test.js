@@ -86,6 +86,19 @@ describe("playerRating", () => {
     expect(t.get("ace").gp).toBe(5) // 4 this season + 1 last season, no friendly/tournament
   })
 
+  it("gives goalkeepers clean sheets (this season) instead of goals", () => {
+    // B keeps a clean sheet this season (game 8, 2–0) and last season (game 10, 1–0)
+    const g2 = [...games, g("8", "B", "A", 2, 0), g("10", "B", "A", 1, 0, "S0")]
+    const st2 = [...stats, row("8", "gk", 0), row("8", "low", 0), row("10", "gk", 0)]
+    const t = aggregate({ games: g2, stats: st2, players, currentSeasonId: "S1" })
+    const gk = playerCard("gk", { totals: t, players })
+    const ax = gk.axes.find(a => a.key === "goals")
+    expect(ax.label).toBe("שערים נקיים")
+    expect(ax.shown).toBe("1") // game 8 only; last season's 1–0 doesn't count
+    // a field player in the same game still shows goals
+    expect(playerCard("low", { totals: t, players }).axes.find(a => a.key === "goals").label).toBe("שערים")
+  })
+
   it("returns null for a player with no games", () => {
     expect(playerCard("nobody", { totals, players: { ...players, nobody: { team_id: "A" } } })).toBeNull()
   })
