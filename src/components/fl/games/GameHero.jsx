@@ -126,11 +126,18 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
     v.play()?.catch?.(() => setStill(true))
   }, [])
   const awayC = away?.primary_color, homeC = home?.primary_color
+  // a crest with the team name under it; the whole block opens the team page
   const crestLink = (team, role, size) => {
-    const crest = <CrestDisc team={team} size={size} disc={false} />
+    const inner = (
+      <>
+        <span className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]"><CrestDisc team={team} size={size} disc={false} /></span>
+        <span dir="rtl" className="mt-1 text-[13px] sm:text-[16px] font-extrabold leading-tight text-center line-clamp-2 [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]">{team?.name || "—"}</span>
+      </>
+    )
+    const cls = "flex flex-col items-center w-[88px] sm:w-[130px] rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
     return team?.id
-      ? <Link to={`/teams/${team.slug || team.id}`} aria-label={`${team.name}, ${role} — לעמוד הקבוצה`} className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">{crest}</Link>
-      : <span className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">{crest}</span>
+      ? <Link to={`/teams/${team.slug || team.id}`} aria-label={`${team.name}, ${role} — לעמוד הקבוצה`} className={cls}>{inner}</Link>
+      : <span className={cls}>{inner}</span>
   }
   // top of the stage, between the heads: the date, then round · rink
   const dateLine = (
@@ -148,10 +155,10 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
   // mid-stage, under the faces: crest · time · crest
   const centre = (
     <div dir="rtl" className="flex flex-col items-center text-center [text-shadow:0_2px_8px_rgba(0,0,0,0.65)]">
-      <div dir="ltr" className="flex items-center gap-2 sm:gap-5">
+      <div dir="ltr" className="flex items-start gap-1 sm:gap-4">
         <span className="sm:hidden">{crestLink(away, "חוץ", 72)}</span>
         <span className="hidden sm:inline">{crestLink(away, "חוץ", 100)}</span>
-        <span className={`fl-num text-[48px] sm:text-[68px] leading-none ${postponed ? "line-through opacity-60" : ""}`} aria-label={`שעת פתיחה ${timeOf(game.game_date)}`}>{timeOf(game.game_date)}</span>
+        <span className={`self-start mt-[12px] sm:mt-[16px] fl-num text-[48px] sm:text-[68px] leading-none ${postponed ? "line-through opacity-60" : ""}`} aria-label={`שעת פתיחה ${timeOf(game.game_date)}`}>{timeOf(game.game_date)}</span>
         <span className="sm:hidden">{crestLink(home, "בית", 72)}</span>
         <span className="hidden sm:inline">{crestLink(home, "בית", 100)}</span>
       </div>
