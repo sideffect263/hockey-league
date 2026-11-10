@@ -5,7 +5,7 @@ import { getTeams } from "@/lib/api"
 import { PlayerStatCard, loadLeague, cardFor } from "@/components/fl/cards/PlayerStatCard"
 
 /**
- * כרטיסי שחקנים — /cards (dev trial). An EA FC-style card for every league player, best OVR
+ * כרטיסי שחקנים — /cards (dev trial). An EA FC-style card for every player on a current team (referees who play included), best OVR
  * first, filterable by team. Same card and numbers as the game-preview hero.
  */
 export default function PlayerCards() {
@@ -27,7 +27,9 @@ export default function PlayerCards() {
   const rows = useMemo(() => {
     if (!data) return []
     return Object.values(data.players)
-      .filter(p => !p.is_referee && p.team_id && teamById[p.team_id])
+      // is_referee = "also referees", not "not a player": many of the league's players judge
+      // too (e.g. עדן אמון, עדי רז), so they stay. Only players on a real current team show.
+      .filter(p => p.team_id && teamById[p.team_id] && !teamById[p.team_id].name?.startsWith("🧪"))
       .map(p => ({ p, card: cardFor(p.id, data) }))
       .sort((a, b) => (b.card.ovr ?? 0) - (a.card.ovr ?? 0) || `${a.p.first_name}`.localeCompare(`${b.p.first_name}`, "he"))
   }, [data, teamById])
