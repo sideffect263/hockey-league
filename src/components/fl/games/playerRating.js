@@ -20,12 +20,12 @@ const COUNTS = new Set(["goals", "exp", "fans"])
 
 const isGoalie = p => /goal|שוער/i.test(p?.position || "")
 
-const AXES = [
-  { key: "goals", label: "שערים" },
+const AXES = [ // radar order: top, then clockwise
+  { key: "exp", label: "ניסיון" },
   { key: "att", label: "התקפה" },
   { key: "def", label: "הגנה" },
   { key: "fans", label: "אוהדים" },
-  { key: "exp", label: "ניסיון" },
+  { key: "goals", label: "שערים" },
 ]
 
 const played = g => g && g.home_score != null && g.away_score != null && !g.is_test
