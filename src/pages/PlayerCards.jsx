@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { useSeo } from "@/lib/seo"
 import { getTeams } from "@/lib/api"
 import { PlayerStatCard, loadLeague, cardFor } from "@/components/fl/cards/PlayerStatCard"
+import { WEIGHTS } from "@/components/fl/cards/playerRating"
 
 /**
  * כרטיסי שחקנים — /cards (dev trial). An EA FC-style card for every player on a current team (referees who play included), best OVR
@@ -41,7 +42,7 @@ export default function PlayerCards() {
     <div className="max-w-6xl mx-auto px-4 py-5">
       <h1 className="text-[26px] font-black">כרטיסי שחקנים</h1>
       <p className="mt-1 text-[13px] opacity-70 leading-relaxed">
-        כרטיס לכל שחקן, מנתוני משחקי העונה. <a href="#how" className="underline underline-offset-2">איך מחושב כל ערך</a>
+        כרטיס לכל שחקן, מנתוני משחקי הליגה. <a href="#how" className="underline underline-offset-2">איך מחושב כל ערך</a>
       </p>
       <div className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
         <button type="button" className={pill(team === "all")} onClick={() => setTeam("all")}>כל הליגה</button>
@@ -60,25 +61,26 @@ export default function PlayerCards() {
           ))}
         </div>
       )}
-      {data && <HowItsCalculated minGames={rows.find(r => r.card.minGames)?.card.minGames} />}
+      {data && <HowItsCalculated minGames={rows.find(r => r.card.minGames)?.card.minGames} fansPct={Math.round(WEIGHTS.fans * 100)} />}
     </div>
   )
 }
 
 /** The explanation at the bottom: how every number on the card is made (playerRating.js). */
-function HowItsCalculated({ minGames }) {
+function HowItsCalculated({ minGames, fansPct }) {
   const items = [
     ["שערים", "כמה שערים השחקן הבקיע העונה, לפי טופסי השיפוט."],
-    ["ניסיון", "בכמה משחקים העונה השחקן רשום בטופס השיפוט."],
-    ["התקפה", "ממוצע השערים שהקבוצה שלו הבקיעה במשחקים שבהם שיחק. אם שיחק בהשאלה, נספרת הקבוצה ששיחק בה באותו משחק."],
-    ["הגנה", "ממוצע השערים שהקבוצה שלו ספגה במשחקים שבהם שיחק. פחות שערים = הגנה טובה יותר."],
+    ["ניסיון", "בכמה משחקים השחקן רשום בטופס השיפוט, בעונה הזו ובעונה שעברה."],
+    ["התקפה", "ממוצע השערים שהקבוצה שלו הבקיעה במשחקים שבהם שיחק, בשתי העונות. נספרת הקבוצה ששיחק בה באותו משחק: בעונה שעברה זו הקבוצה שהיה בה אז, ובהשאלה הקבוצה ששיחק בשבילה."],
+    ["הגנה", "ממוצע השערים שהקבוצה שלו ספגה במשחקים שבהם שיחק, בשתי העונות. פחות שערים = הגנה טובה יותר."],
     ["אוהדים", "כמה אנשים עוקבים אחרי השחקן באפליקציה. שחקני הקבוצה שלו לא נספרים."],
   ]
   return (
     <section id="how" className="mt-10 scroll-mt-20 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 text-[14px] leading-relaxed">
       <h2 className="text-[20px] font-black">איך מחושב כל ערך</h2>
       <p className="mt-1 opacity-75">
-        כל המספרים מגיעים ממשחקי הליגה של העונה הנוכחית שהסתיימו ומטופסי השיפוט שלהם. משחקי עונות קודמות לא נספרים, כי בטופסים שלהן רשומים רק חלק מהשחקנים. משחקי ידידות וטורנירים לא נספרים.
+        כל המספרים מגיעים ממשחקי הליגה שהסתיימו, בעונה הזו ובעונה שעברה, ומטופסי השיפוט שלהם. שערים נספרים רק מהעונה הזו. משחקי ידידות וטורנירים לא נספרים.
+        שימו לב: בטופסים של העונה שעברה רשומים רק חלק מהשחקנים בכל משחק, כך שמספר המשחקים של העונה שעברה נמוך מהמציאות אצל חלק מהשחקנים.
       </p>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         {items.map(([k, v]) => (
@@ -98,12 +100,11 @@ function HowItsCalculated({ minGames }) {
       </p>
       <h3 className="mt-6 text-[16px] font-black">הדירוג (OVR)</h3>
       <p className="mt-1 opacity-80">
-        הממוצע של ארבע נקודות: שערים, ניסיון, התקפה והגנה, בסולם 40 עד 99 (‏40 + 59 × הממוצע). אוהדים מופיעים בגרף אבל לא נכנסים לדירוג, כי הם לא מודדים משחק.
+        ממוצע משוקלל של חמש הנקודות, בסולם 40 עד 99 (‏40 + 59 × הממוצע). שערים, ניסיון, התקפה והגנה שווים כל אחד כמעט רבע. אוהדים שווים רק {fansPct}% מהדירוג, כי הם מודדים פופולריות ולא משחק: גם 10 עוקבים מוסיפים לכל היותר {Math.round(59 * fansPct / 100)} נקודות.
       </p>
       <h3 className="mt-6 text-[16px] font-black">מינימום משחקים</h3>
       <p className="mt-1 opacity-80">
-        כדי שמשחק אחד מוצלח לא יקבע דירוג, התקפה, הגנה והדירוג מוצגים רק לשחקן ששיחק לפחות חצי ממספר המשחקים הגבוה ביותר העונה (מעוגל למעלה)
-        {minGames ? <>. כרגע: <b>{minGames} משחקים</b></> : null}. עד אז יופיע "–". המינימום עולה ככל שהעונה מתקדמת.
+        כדי שמשחק אחד מוצלח לא יקבע דירוג, התקפה, הגנה והדירוג מוצגים רק לשחקן ששיחק לפחות <b>{minGames} משחקים</b> (בשתי העונות יחד). עד אז יופיע "–".
       </p>
     </section>
   )

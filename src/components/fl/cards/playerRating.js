@@ -1,19 +1,18 @@
 /**
- * EA FC-style player card numbers, from real league data only: THIS season's completed games
- * and their judge sheets (season_games / season_game_stats RPCs)
+ * EA FC-style player card numbers, from real league data only: completed league games of every
+ * season and their judge sheets (season_games / season_game_stats RPCs)
  * and real follower counts (follower_counts RPC — the team's own roster doesn't count).
  *
  * Five axes, each shown as its REAL value; how the shape is drawn and how OVR is made is
  * documented on playerCard() below.
- *   שערים  — goals he scored
- *   ניסיון — games he played (on the judge sheet)
+ *   שערים  — goals he scored THIS season
+ *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better)
  *   אוהדים — people following him
  */
-/** Games needed before attack / defence and a rating: half the most games anyone has played
- *  this season, rounded up — 2 when teams have played 3, 8 once they've played 16. */
-export const minGamesFor = maxGp => Math.max(1, Math.ceil(maxGp / 2))
+/** Games (all seasons) needed before attack / defence and a rating — one 10–3 win is luck. */
+export const MIN_GP = 3
 export const FANS_FLOOR = 10
 
 const isGoalie = p => /goal|שוער/i.test(p?.position || "")
@@ -31,8 +30,8 @@ const AXES = [ // radar order: top, then clockwise
 const played = g => g && g.home_score != null && g.away_score != null && !g.is_test
   && g.game_type !== "ידידותי" && !g.tournament_id
 
-/** Per-player raw totals. Only games of `currentSeasonId` count (past seasons' sheets are
- *  incomplete). `players` = { id → { team_id, position } }.
+/** Per-player raw totals over every season; goals only from `currentSeasonId`.
+ *  `players` = { id → { team_id, position } }.
  *  `seasonTeams` = { seasonId → { playerId → team_id } }: the team he was on THAT season
  *  (player_season_stats, frozen at season close). Without it a player who changed teams
  *  had last season's games dropped, or credited to the side he played against. */
@@ -42,7 +41,7 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
   for (const s of stats) {
     if (!s.player_id || s.is_guest_player) continue
     const g = gameById.get(s.game_id)
-    if (!g || (currentSeasonId && g.season_id !== currentSeasonId)) continue
+    if (!g) continue
     const a = out.get(s.player_id) || { gp: 0, goals: 0, sgoals: 0, tgp: 0, scored: 0, conceded: 0 }
     a.gp++
     a.goals += s.goals || 0
@@ -74,8 +73,8 @@ const fmt = (key, v) => v == null ? "–" : key === "att" || key === "def" ? v.t
 
 /** Axes that need the minimum games before they mean anything (one 10–3 win is luck). */
 const NEEDS_GAMES = new Set(["att", "def"])
-/** Axes in the rating. Fans are shown but don't rate how someone plays. */
-const RATED = ["goals", "exp", "att", "def"]
+/** Weights in the rating. Fans count, but only a little: they're popularity, not play. */
+export const WEIGHTS = { goals: 0.2375, exp: 0.2375, att: 0.2375, def: 0.2375, fans: 0.05 }
 
 /**
  * The card for one player id, or null when he has no completed games on record.
@@ -85,8 +84,8 @@ const RATED = ["goals", "exp", "att", "def"]
  * goalkeepers). The best gets a full point, everyone else his share of it — so
  * "1 goal, the best has 10" draws at 10%. Defence: fewest goals conceded is best (best / his).
  * Fans are out of at least FANS_FLOOR, so 1 fan stays small while the league has few.
- * Attack / defence (and so the rating) need minGamesFor(most games played); below that they show "–" and the
- * card has no OVR yet. OVR = the four rated points averaged, on a 40–99 scale.
+ * Attack / defence (and so the rating) need MIN_GP games; below that they show "–" and the
+ * card has no OVR yet. OVR = the five points weighted by WEIGHTS (fans 5%), on a 40–99 scale.
  */
 export function playerCard(playerId, { totals, players, fans = {} }) {
   const a = totals.get(playerId)
@@ -94,7 +93,7 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
   if (!a || !me) return null
   const goalie = isGoalie(me)
   const group = [...totals.entries()].filter(([id]) => isGoalie(players[id]) === goalie)
-  const minGames = minGamesFor(Math.max(0, ...[...totals.values()].map(t => t.gp)))
+  const minGames = MIN_GP
   const enough = a.gp >= minGames
   const mine = raw(a, fans[playerId])
   const axes = AXES.map(ax => {
@@ -113,9 +112,8 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
     }
     return { ...ax, value: v, shown: fmt(ax.key, v), pct: p, best, bestShown: fmt(ax.key, best) }
   })
-  const rated = axes.filter(ax => RATED.includes(ax.key))
-  const ovr = enough && rated.every(ax => ax.pct != null)
-    ? Math.round(40 + 59 * (rated.reduce((s, ax) => s + ax.pct, 0) / rated.length))
+  const ovr = enough && axes.every(ax => ax.pct != null)
+    ? Math.round(40 + 59 * axes.reduce((s, ax) => s + ax.pct * WEIGHTS[ax.key], 0))
     : null
   return { ovr, axes, goalie, gp: a.gp, minGames }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { aggregate, playerCard, minGamesFor } from "./playerRating"
+import { aggregate, playerCard, MIN_GP, WEIGHTS } from "./playerRating"
 
 const g = (id, home, away, hs, as, season = "S1") =>
   ({ id, home_team_id: home, away_team_id: away, home_score: hs, away_score: as, season_id: season })
@@ -11,7 +11,7 @@ const players = {
   gk: { team_id: "B", position: "Goalkeeper" },
   new: { team_id: "A", position: "Field Player" },
 }
-// S1 = this season; S0 = last season, which must NOT count
+// S1 = this season; S0 = last season: games count, goals don't
 const games = [
   g("1", "A", "B", 3, 1), g("2", "B", "A", 2, 2), g("3", "A", "B", 4, 0), g("4", "A", "B", 5, 5),
   g("9", "A", "B", 9, 0, "S0"), g("5", "A", "B", null, null),
@@ -23,7 +23,7 @@ const stats = [
   row("1", "low", 1), row("2", "low", 0), row("3", "low", 0),
   row("1", "gk", 0), row("2", "gk", 0), row("3", "gk", 0),
   row("4", "new", 4), // one game only
-  row("9", "ace", 7), // last season — ignored
+  row("9", "ace", 7), // last season — a game, but not a goal this season
   row("5", "ace", 9), // unplayed game — ignored
   row("1", null, 5, { is_guest_player: true }), // guest — ignored
 ]
@@ -34,14 +34,14 @@ describe("playerRating", () => {
   const card = id => playerCard(id, { totals, players, fans })
   const axis = (id, key) => card(id).axes.find(a => a.key === key)
 
-  it("counts only this season's completed games, and real players only", () => {
-    expect(totals.get("ace")).toMatchObject({ gp: 4, sgoals: 6, tgp: 4, scored: 14, conceded: 8 })
+  it("counts every season's games, goals from this season only, and real players only", () => {
+    expect(totals.get("ace")).toMatchObject({ gp: 5, sgoals: 6, tgp: 5, scored: 23, conceded: 8 })
     expect(totals.size).toBe(5)
   })
 
   it("shows the real numbers on each axis", () => {
     const by = Object.fromEntries(card("ace").axes.map(a => [a.key, a.shown]))
-    expect(by).toEqual({ goals: "6", exp: "4", att: "3.5", def: "2.0", fans: "4" })
+    expect(by).toEqual({ goals: "6", exp: "5", att: "4.6", def: "1.6", fans: "4" })
   })
 
   it("draws every point against the best in the group, and says who the best is", () => {
@@ -55,22 +55,20 @@ describe("playerRating", () => {
     expect(axis("low", "fans").pct).toBeCloseTo(0.1)
   })
 
-  it("needs half the most games played (rounded up) for attack, defence and a rating", () => {
-    expect(minGamesFor(3)).toBe(2)
-    expect(minGamesFor(16)).toBe(8)
-    expect(minGamesFor(0)).toBe(1)
-    // most games = 4 → minimum 2; "new" has 1
-    const c = card("new")
-    expect(c.minGames).toBe(2)
+  it("needs 3 games for attack, defence and a rating", () => {
+    const c = card("new") // 1 game
+    expect(c.minGames).toBe(MIN_GP)
     expect(c.ovr).toBeNull()
     expect(c.axes.find(a => a.key === "att").shown).toBe("–")
     expect(card("ace").ovr).not.toBeNull()
   })
 
-  it("keeps fans out of the rating", () => {
+  it("counts fans in the rating, but only a little", () => {
+    expect(WEIGHTS.fans).toBeLessThan(0.1)
+    expect(Object.values(WEIGHTS).reduce((a, b) => a + b, 0)).toBeCloseTo(1)
     const a = playerCard("low", { totals, players, fans: {} }).ovr
-    const b = playerCard("low", { totals, players, fans: { low: 9 } }).ovr
-    expect(b).toBe(a)
+    const b = playerCard("low", { totals, players, fans: { low: 10 } }).ovr
+    expect(b - a).toBe(Math.round(59 * WEIGHTS.fans)) // 0 → 10 fans: +3
   })
 
   it("ranks the better player higher", () => {
@@ -85,7 +83,7 @@ describe("playerRating", () => {
   it("skips friendlies and tournament games, like the league table", () => {
     const extra = [...games, { ...g("6", "A", "B", 9, 0), game_type: "ידידותי" }, { ...g("7", "A", "B", 9, 0), tournament_id: "T" }]
     const t = aggregate({ games: extra, stats: [...stats, row("6", "ace", 5), row("7", "ace", 5)], players, currentSeasonId: "S1" })
-    expect(t.get("ace").gp).toBe(4)
+    expect(t.get("ace").gp).toBe(5) // 4 this season + 1 last season, no friendly/tournament
   })
 
   it("returns null for a player with no games", () => {
