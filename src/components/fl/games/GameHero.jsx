@@ -12,7 +12,8 @@ import { Share } from "@/components/icons/BrandIcons"
 import { CrestDisc, FLScore, RinkDrawing, TeamBlend } from "@/components/fl/Floodlight"
 import { teamBlend } from "@/lib/flTeam"
 import { STAGE, isPlayedStage, timeOf, dayAndDate } from "./flGamesKit"
-import { OverlayCard, usePreviewCards } from "./PreviewStatCards"
+import { usePreviewCards } from "./PreviewStatCards"
+import { PlayerStatCard } from "@/components/fl/cards/PlayerStatCard"
 
 const glass = "bg-[rgba(8,12,18,0.35)] text-white"
 
@@ -199,8 +200,8 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
         <div className="flex-1 min-h-[24px] sm:min-h-[40px]" />
         {/* the two cards stand at the bottom: away LEFT, home RIGHT */}
         <div dir="ltr" className="grid grid-cols-2 gap-2 sm:flex sm:justify-between sm:gap-4">
-          <div className="min-w-0 sm:w-[300px]"><OverlayCard who={preview.away} team={away} card={cards?.[0]} /></div>
-          <div className="min-w-0 sm:w-[300px]"><OverlayCard who={preview.home} team={home} card={cards?.[1]} /></div>
+          <div className="min-w-0 sm:w-[300px]"><PlayerStatCard who={preview.away} team={away} card={cards?.[0]} /></div>
+          <div className="min-w-0 sm:w-[300px]"><PlayerStatCard who={preview.home} team={home} card={cards?.[1]} /></div>
         </div>
         {address && <p className="mt-2 text-center text-[11.5px] text-white/75">{address}</p>}
       </div>
