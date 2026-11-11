@@ -3,15 +3,16 @@
  * season and their judge sheets (season_games / season_game_stats RPCs)
  * and real follower counts (follower_counts RPC — the team's own roster doesn't count).
  *
- * Five axes, each shown as its REAL value; how the shape is drawn and how OVR is made is
+ * Five axes, each SHOWN as a 0–99 score against the best in the group (99 = the best), built
+ * from these real figures; how the score is made and how OVR is made is
  * documented on playerCard() below.
  *   שערים  — goals he scored THIS season
  *            (goalkeepers: שערים נקיים — games of ALL seasons he was on the sheet and his team
  *            conceded 0; the sheets' clean_sheet flag is never set, so it's worked out from the score)
  *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
- *   הגנה   — a 0–99 score, HIGHER = better: 99 × (fewest conceded in the group / his team's
- *            average conceded in the games he played). The raw average stays on the axis as `conceded`.
+ *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better, so its
+ *            score is 99 × fewest-in-group / his)
  *   אוהדים — people following him
  */
 /** Games (all seasons) needed before attack / defence and a rating — one 10–3 win is luck. */
@@ -116,11 +117,11 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
       best = Math.max(ax.key === "fans" ? FANS_FLOOR : 0, ...pool)
       p = v == null ? null : best > 0 ? Math.min(1, v / best) : 0
     }
-    if (ax.key === "def") {
-      // Shown as a score so every axis reads the same way: bigger number = bigger point.
-      return { ...ax, value: v, conceded: v, shown: p == null ? "–" : String(Math.round(99 * p)), pct: p, best, bestShown: best == null ? "–" : "99" }
-    }
-    return { ...ax, value: v, shown: fmt(ax.key, v), pct: p, best, bestShown: fmt(ax.key, best) }
+    // Every axis is SHOWN as a 0–99 score (99 = the best in the group), so a bigger number is
+    // always a bigger point. The real figure stays as `value` / `raw` (defence also `conceded`).
+    const score = p == null ? null : Math.round(99 * p)
+    return { ...ax, value: v, raw: fmt(ax.key, v), score, shown: score == null ? "–" : String(score), pct: p, best, bestShown: fmt(ax.key, best),
+      ...(ax.key === "def" ? { conceded: v } : {}) }
   })
   const ovr = enough && axes.every(ax => ax.pct != null)
     ? Math.round(40 + 59 * axes.reduce((s, ax) => s + ax.pct * WEIGHTS[ax.key], 0))

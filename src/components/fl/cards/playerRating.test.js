@@ -39,9 +39,20 @@ describe("playerRating", () => {
     expect(totals.size).toBe(5)
   })
 
-  it("shows the real numbers on each axis", () => {
-    const by = Object.fromEntries(card("ace").axes.map(a => [a.key, a.shown]))
-    expect(by).toEqual({ goals: "6", exp: "5", att: "4.6", def: "62", fans: "4" })
+  it("keeps the real figure behind each axis", () => {
+    const by = Object.fromEntries(card("ace").axes.map(a => [a.key, a.raw]))
+    expect(by).toEqual({ goals: "6", exp: "5", att: "4.6", def: "1.6", fans: "4" })
+  })
+
+  it("shows every axis as a 0–99 score: the best in the group gets 99", () => {
+    for (const ax of card("ace").axes) {
+      expect(ax.shown).toBe(String(Math.round(99 * ax.pct)))
+      expect(ax.score).toBeGreaterThanOrEqual(0)
+      expect(ax.score).toBeLessThanOrEqual(99)
+    }
+    expect(axis("ace", "goals").shown).toBe("99") // ace has the most goals
+    expect(axis("low", "goals").shown).toBe("17") // 1 of 6
+    expect(axis("low", "fans").shown).toBe("10")  // 1 fan, out of at least 10
   })
 
   it("shows defence as a score where higher is better, keeping the real conceded average", () => {
@@ -103,7 +114,7 @@ describe("playerRating", () => {
     const gk = playerCard("gk", { totals: t, players })
     const ax = gk.axes.find(a => a.key === "goals")
     expect(ax.label).toBe("שערים נקיים")
-    expect(ax.shown).toBe("2") // game 8 this season + game 10 last season
+    expect(ax.raw).toBe("2") // game 8 this season + game 10 last season
     // a field player in the same game still shows goals
     expect(playerCard("low", { totals: t, players }).axes.find(a => a.key === "goals").label).toBe("שערים")
   })
