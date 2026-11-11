@@ -21,9 +21,9 @@ const PREVIEWS = {
     standAt: 1.5,
     loop: true,
     cards: true, // the full-hero stage with both players' stat cards (GameHero PreviewStage)
-    // pilot: one solo clip per player (Gemini, ping-pong baked), paired on the stage —
+    // pilot: one solo clip per player (Gemini, static camera, 9 s crossfade loop), paired on the stage —
     // x = where the player stands in his frame (object-position %), so his half centres on him
-    split: { away: { file: "away", x: 45 }, home: { file: "home", x: 58 } },
+    split: { away: { file: "away", x: 36 }, home: { file: "home", x: 70 } },
   },
 }
 
