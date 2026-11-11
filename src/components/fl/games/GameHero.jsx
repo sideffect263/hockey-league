@@ -130,16 +130,23 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
     vids.forEach(v => { try { v.currentTime = 0 } catch { /* not seekable yet */ } })
     vids.forEach(v => v.play()?.catch?.(() => setStill(true)))
   }, [split])
-  // one solo clip in its half, cut on the same slanted seam as the colour wash
-  const half = (side, clip, r) => (
-    <div className={`absolute inset-y-0 ${side === "left" ? "left-0" : "right-0"} w-[52%]`}
-      style={{ clipPath: side === "left" ? "polygon(0 0, 100% 0, 92.3% 100%, 0 100%)" : "polygon(7.7% 0, 100% 0, 100% 100%, 0 100%)" }}>
-      {still
-        ? <img src={clip.poster} alt="" className="size-full object-cover" style={{ objectPosition: `${clip.x ?? 50}% 15%` }} />
-        : <video ref={r} src={clip.src} poster={clip.poster} muted playsInline preload="auto" loop
-            className="size-full object-cover" style={{ objectPosition: `${clip.x ?? 50}% 15%` }} />}
-    </div>
-  )
+  // one solo clip in its half, cut on the same slanted seam as the colour wash. Every solo
+  // clip is made from the same arena plate, so the frame's horizontal centre is the goal: each
+  // clip is full height with its centre pinned on the seam (where it crosses goal height,
+  // ~49.6% of the stage), so the two half-goals meet as one goal at any screen size.
+  const SEAM_IN_LEFT = "95.4%", SEAM_IN_RIGHT = "3.1%" // 49.6% of the stage, inside each 52% box
+  const half = (side, clip, r) => {
+    const style = { position: "absolute", top: 0, height: "100%", width: "auto", maxWidth: "none",
+      left: side === "left" ? SEAM_IN_LEFT : SEAM_IN_RIGHT, transform: "translateX(-50%)" }
+    return (
+      <div className={`absolute inset-y-0 overflow-hidden ${side === "left" ? "left-0" : "right-0"} w-[52%]`}
+        style={{ clipPath: side === "left" ? "polygon(0 0, 100% 0, 92.3% 100%, 0 100%)" : "polygon(7.7% 0, 100% 0, 100% 100%, 0 100%)" }}>
+        {still
+          ? <img src={clip.poster} alt="" style={style} />
+          : <video ref={r} src={clip.src} poster={clip.poster} muted playsInline preload="auto" loop style={style} />}
+      </div>
+    )
+  }
   const awayC = away?.primary_color, homeC = home?.primary_color
   // a crest with the team name under it; the whole block opens the team page
   const crestLink = (team, role, size) => {

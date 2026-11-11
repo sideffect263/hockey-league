@@ -22,8 +22,8 @@ const PREVIEWS = {
     loop: true,
     cards: true, // the full-hero stage with both players' stat cards (GameHero PreviewStage)
     // pilot: one solo clip per player (Gemini, static camera, 9 s crossfade loop), paired on the stage —
-    // x = where the player stands in his frame (object-position %), so his half centres on him
-    split: { away: { file: "away", x: 36 }, home: { file: "home", x: 70 } },
+    // each clip's centre (the goal) is pinned on the seam, so the two halves share one goal
+    split: { away: { file: "away" }, home: { file: "home" } },
   },
 }
 
