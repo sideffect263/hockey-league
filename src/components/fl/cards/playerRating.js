@@ -128,3 +128,36 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
     : null
   return { ovr, axes, goalie, gp: a.gp, minGames }
 }
+
+/**
+ * What changed in a player's last game: his card now vs the card the league gave him just
+ * BEFORE that game (the whole league without that one game — other players' numbers move
+ * the "best in group" too, exactly as they did on the day). Returns the game and the
+ * differences: OVR and each axis score (0–99); null where either side has no number yet.
+ * `cache` (Map) shares the "league without game X" totals between players of the same game.
+ */
+export function lastGameChange(playerId, { games, stats, players, fans = {}, currentSeasonId, seasonTeams = {}, totals }, cache = new Map()) {
+  const counted = new Map(games.filter(played).map(g => [g.id, g]))
+  let last = null
+  for (const s of stats) {
+    if (s.player_id !== playerId || s.is_guest_player) continue
+    const g = counted.get(s.game_id)
+    if (g && (!last || String(g.game_date || "") > String(last.game_date || ""))) last = g
+  }
+  if (!last) return null
+  let before = cache.get(last.id)
+  if (!before) {
+    before = aggregate({ games: games.filter(g => g.id !== last.id), stats, players, currentSeasonId, seasonTeams })
+    cache.set(last.id, before)
+  }
+  const now = playerCard(playerId, { totals: totals || aggregate({ games, stats, players, currentSeasonId, seasonTeams }), players, fans })
+  const prev = playerCard(playerId, { totals: before, players, fans })
+  if (!now) return null
+  const diff = (a, b) => (a == null || b == null ? null : a - b)
+  return {
+    game: last,
+    firstGame: !prev,
+    ovr: diff(now.ovr, prev?.ovr),
+    axes: Object.fromEntries(now.axes.map(ax => [ax.key, diff(ax.score, prev?.axes.find(p => p.key === ax.key)?.score)])),
+  }
+}

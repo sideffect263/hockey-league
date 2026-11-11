@@ -7,7 +7,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { CrestDisc } from "@/components/fl/Floodlight"
 import { KeeperStickMark, FieldStickMark } from "@/components/fl/teams/FLTeamsKit"
-import { aggregate, playerCard } from "./playerRating"
+import { aggregate, playerCard, lastGameChange } from "./playerRating"
 
 const PAGE = 1000
 
@@ -45,14 +45,15 @@ export function loadLeague() {
     const currentSeasonId = seasons?.find(s => s.status === "active")?.id
     const seasonTeams = {}
     for (const r of frozen || []) (seasonTeams[r.season_id] ??= {})[r.player_id] = r.team_id
-    const totals = aggregate({ games: per.flatMap(([g]) => g), stats: per.flatMap(([, st]) => st), players, currentSeasonId, seasonTeams })
+    const games = per.flatMap(([g]) => g), stats = per.flatMap(([, st]) => st)
+    const totals = aggregate({ games, stats, players, currentSeasonId, seasonTeams })
     const fans = Object.fromEntries((fanRows || []).map(r => [r.target_id, Number(r.followers)]))
     // a player's own solo cutouts, first one (1.png) first
     const cutouts = {}
     for (const c of [...(cuts || [])].sort((a, b) => a.image_url.localeCompare(b.image_url))) {
       if (c.player_ids?.length === 1) (cutouts[c.player_ids[0]] ??= c.image_url)
     }
-    return { totals, players, fans, cutouts }
+    return { totals, players, fans, cutouts, games, stats, currentSeasonId, seasonTeams, changeCache: new Map() }
   })().catch(err => { leagueData = undefined; throw err })
   return leagueData
 }
@@ -73,13 +74,30 @@ export function usePlayerCards(ids) {
 
 /** Card data for one player: rating (null axes when he has no games yet) + his cutout. */
 export function cardFor(id, d) {
-  return { ...(playerCard(id, d) || {}), cutout: d.cutouts[id] }
+  return { ...(playerCard(id, d) || {}), cutout: d.cutouts[id], change: lastGameChange(id, d, d.changeCache) }
+}
+
+/** ▲4 / ▼3 since the player's last game; nothing when it didn't move. */
+export function Delta({ d, className = "" }) {
+  if (!d) return null
+  const up = d > 0
+  return (
+    <span dir="ltr" className={`inline-block font-black tabular-nums ${up ? "text-[#4ade80]" : "text-[#f87171]"} ${className}`}
+      aria-label={`${up ? "עלה" : "ירד"} ${Math.abs(d)} מהמשחק הקודם`}>
+      {up ? "▲" : "▼"}{Math.abs(d)}
+    </span>
+  )
+}
+
+const shortDate = iso => {
+  const d = iso ? new Date(iso) : null
+  return d && !isNaN(d) ? `${d.getDate()}.${d.getMonth() + 1}.${String(d.getFullYear()).slice(2)}` : ""
 }
 
 /** Pentagon radar: the shape is the share of the best, the labels are the real numbers.
  *  Labels are HTML laid over the SVG, not SVG <text>: iOS Safari breaks Hebrew <tspan>s
  *  mid-word in an RTL page ("ניסיו / ן"). */
-export function Radar({ axes, size = 132, padX = 0, className = "max-w-[160px]", labelClass = "text-[9px]", valueClass = "text-[12px]" }) {
+export function Radar({ axes, size = 132, padX = 0, className = "max-w-[160px]", labelClass = "text-[9px]", valueClass = "text-[12px]", changes }) {
   const c = size / 2, R = size / 2 - 26
   const W = size + 2 * padX
   const pt = (i, r) => {
@@ -101,7 +119,7 @@ export function Radar({ axes, size = 132, padX = 0, className = "max-w-[160px]",
           <div key={ax.key} aria-hidden="true" className="absolute -translate-x-1/2 -translate-y-1/2 text-center leading-[1.1] whitespace-nowrap"
             style={{ left: `${((x + padX) / W) * 100}%`, top: `${(y / size) * 100}%` }}>
             <span className={`block font-bold text-white/70 ${labelClass}`}>{ax.label}</span>
-            <span className={`block font-black text-white tabular-nums ${valueClass}`} dir="ltr">{ax.shown}</span>
+            <span className={`block font-black text-white tabular-nums ${valueClass}`} dir="ltr">{ax.shown}{changes?.[ax.key] ? <Delta d={changes[ax.key]} className="ms-0.5 text-[0.7em] align-[0.15em]" /> : null}</span>
           </div>
         )
       })}
@@ -133,6 +151,7 @@ export function PlayerStatCard({ who, team, card }) {
         <div className="text-left leading-none shrink-0">
           <span className="block text-[10px] font-bold tracking-wide text-white/60" dir="ltr">OVR</span>
           <span className="block fl-num text-[30px] sm:text-[40px] font-black text-[#4ade80] tabular-nums" dir="ltr">{card?.ovr ?? "–"}</span>
+          {card?.change?.ovr ? <Delta d={card.change.ovr} className="mt-0.5 text-[12px] sm:text-[13px]" /> : null}
           {card?.axes && card.ovr == null && (
             <span className="block mt-1 text-[9.5px] font-bold text-white/55 whitespace-nowrap">אחרי {card.minGames} משחקים</span>
           )}
@@ -152,10 +171,15 @@ export function PlayerStatCard({ who, team, card }) {
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-b from-transparent to-[rgba(10,13,19,0.9)]" />
       </div>
       <div className="border-t border-white/10 pt-1">
-        {card?.axes ? <Radar axes={card.axes} padX={18} className="max-w-[210px]" labelClass="text-[10px] sm:text-[11px]" valueClass="text-[13px] sm:text-[14px]" />
+        {card?.axes ? <Radar axes={card.axes} changes={card.change?.axes} padX={18} className="max-w-[210px]" labelClass="text-[10px] sm:text-[11px]" valueClass="text-[13px] sm:text-[14px]" />
           : card ? <div className="aspect-square max-w-[150px] mx-auto grid place-items-center text-[12px] text-white/55">עוד אין משחקים</div>
           : <div className="aspect-square max-w-[160px] mx-auto" />}
       </div>
+      {card?.change?.game && !card.change.firstGame && (
+        <p className="mt-1 text-center text-[10px] sm:text-[11px] text-white/50">
+          <span className="text-[#4ade80]">▲</span><span className="text-[#f87171]">▼</span> מאז המשחק האחרון · <span dir="ltr">{shortDate(card.change.game.game_date)}</span>
+        </p>
+      )}
     </div>
   )
 }

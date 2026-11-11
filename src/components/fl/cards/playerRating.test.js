@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { aggregate, playerCard, MIN_GP, WEIGHTS } from "./playerRating"
+import { aggregate, playerCard, lastGameChange, MIN_GP, WEIGHTS } from "./playerRating"
 
 const g = (id, home, away, hs, as, season = "S1") =>
   ({ id, home_team_id: home, away_team_id: away, home_score: hs, away_score: as, season_id: season })
@@ -117,6 +117,26 @@ describe("playerRating", () => {
     expect(ax.raw).toBe("2") // game 8 this season + game 10 last season
     // a field player in the same game still shows goals
     expect(playerCard("low", { totals: t, players }).axes.find(a => a.key === "goals").label).toBe("שערים")
+  })
+
+  it("shows what changed in his last game: the card now vs the league just before it", () => {
+    const dated = games.map(x => ({ ...x, game_date: x.season_id === "S0" ? "2025-10-01" : `2026-10-0${x.id}` })) // game 4 is ace's latest
+    const d = { games: dated, stats, players, fans, currentSeasonId: "S1" }
+    const ch = lastGameChange("ace", d)
+    expect(ch.game.id).toBe("4")
+    const now = playerCard("ace", { totals: aggregate(d), players, fans })
+    const before = playerCard("ace", { totals: aggregate({ ...d, games: dated.filter(x => x.id !== "4") }), players, fans })
+    expect(ch.ovr).toBe(now.ovr - before.ovr)
+    expect(ch.axes.exp).toBe(now.axes[0].score - before.axes[0].score)
+    // game 4 was a 5–5 draw: his team let in 5 → his defence score drops
+    expect(ch.axes.def).toBeLessThan(0)
+  })
+
+  it("has no change for a player whose only game is his first", () => {
+    const dated = games.map(x => ({ ...x, game_date: x.season_id === "S0" ? "2025-10-01" : `2026-10-0${x.id}` }))
+    const ch = lastGameChange("new", { games: dated, stats, players, currentSeasonId: "S1" })
+    expect(ch.firstGame).toBe(true)
+    expect(ch.ovr).toBeNull()
   })
 
   it("returns null for a player with no games", () => {
