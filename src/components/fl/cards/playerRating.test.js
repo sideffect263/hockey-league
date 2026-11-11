@@ -41,7 +41,16 @@ describe("playerRating", () => {
 
   it("shows the real numbers on each axis", () => {
     const by = Object.fromEntries(card("ace").axes.map(a => [a.key, a.shown]))
-    expect(by).toEqual({ goals: "6", exp: "5", att: "4.6", def: "1.6", fans: "4" })
+    expect(by).toEqual({ goals: "6", exp: "5", att: "4.6", def: "62", fans: "4" })
+  })
+
+  it("shows defence as a score where higher is better, keeping the real conceded average", () => {
+    // ace's team conceded 1.6 a game; the best field player's (mid) 1.0 → 99 × 1.0 / 1.6 = 62
+    const ace = axis("ace", "def"), mid = axis("mid", "def"), low = axis("low", "def")
+    expect(ace.conceded).toBeCloseTo(1.6)
+    expect(mid.shown).toBe("99")
+    expect(Number(mid.shown)).toBeGreaterThan(Number(ace.shown))
+    expect(Number(ace.shown)).toBeGreaterThan(Number(low.shown)) // low's team conceded 3.0
   })
 
   it("draws every point against the best in the group, and says who the best is", () => {

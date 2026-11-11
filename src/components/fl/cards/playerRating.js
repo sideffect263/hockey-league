@@ -10,7 +10,8 @@
  *            conceded 0; the sheets' clean_sheet flag is never set, so it's worked out from the score)
  *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
- *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better)
+ *   הגנה   — a 0–99 score, HIGHER = better: 99 × (fewest conceded in the group / his team's
+ *            average conceded in the games he played). The raw average stays on the axis as `conceded`.
  *   אוהדים — people following him
  */
 /** Games (all seasons) needed before attack / defence and a rating — one 10–3 win is luck. */
@@ -114,6 +115,10 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
     } else {
       best = Math.max(ax.key === "fans" ? FANS_FLOOR : 0, ...pool)
       p = v == null ? null : best > 0 ? Math.min(1, v / best) : 0
+    }
+    if (ax.key === "def") {
+      // Shown as a score so every axis reads the same way: bigger number = bigger point.
+      return { ...ax, value: v, conceded: v, shown: p == null ? "–" : String(Math.round(99 * p)), pct: p, best, bestShown: best == null ? "–" : "99" }
     }
     return { ...ax, value: v, shown: fmt(ax.key, v), pct: p, best, bestShown: fmt(ax.key, best) }
   })
