@@ -11,6 +11,7 @@ import PlayerCardSubmission from "@/components/PlayerCardSubmission"
 import TeamMembershipCard from "@/components/TeamMembershipCard"
 import MedicalCertificateCard, { medicalDaysLeft } from "@/components/MedicalCertificateCard"
 import BirthDateCard from "@/components/BirthDateCard"
+import PlayerPhotoCard from "@/components/PlayerPhotoCard"
 import BlockedUsersCard from "@/components/BlockedUsersCard"
 import SignInMethodsCard from "@/components/SignInMethodsCard"
 import { ROLE_BADGE, deriveRoleItems } from "@/components/RoleBadges"
@@ -463,6 +464,7 @@ export default function Profile() {
             <TeamMembershipCard player={player} onChange={reloadProfile} />
           </div>
           <LoansRow />
+          <div id="card-photo" className="scroll-mt-20"><PlayerPhotoCard playerId={player.id} /></div>
           {/* An approved card is unlinked only through a league-manager request. */}
           <CardUnlinkRequest playerId={player.id} />
         </AccGroup>

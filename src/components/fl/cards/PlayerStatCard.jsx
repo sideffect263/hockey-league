@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { CrestDisc } from "@/components/fl/Floodlight"
 import { KeeperStickMark, FieldStickMark } from "@/components/fl/teams/FLTeamsKit"
 import { aggregate, playerCard, lastGameChange } from "./playerRating"
+import { getApprovedPlayerPhotos } from "@/lib/playerPhotos"
 
 const PAGE = 1000
 
@@ -26,11 +27,12 @@ let leagueData // one fetch per page load, shared by every card
  *  the team each player was on THAT season (player_season_stats, frozen at season close). */
 export function loadLeague() {
   leagueData ??= (async () => {
-    const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }, { data: frozen }] = await Promise.all([
+    const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }, { data: frozen }, ownPhotos] = await Promise.all([
       supabase.from("seasons").select("id, status"),
       supabase.from("players").select("id, first_name, last_name, jersey_number, team_id, position, is_referee"),
       supabase.from("player_cutouts").select("player_ids, image_url").eq("status", "approved"),
       supabase.from("player_season_stats").select("season_id, player_id, team_id"),
+      getApprovedPlayerPhotos(), // photos players sent themselves, approved by an admin
     ])
     if (se) throw se
     if (pe) throw pe
@@ -48,8 +50,8 @@ export function loadLeague() {
     const games = per.flatMap(([g]) => g), stats = per.flatMap(([, st]) => st)
     const totals = aggregate({ games, stats, players, currentSeasonId, seasonTeams })
     const fans = Object.fromEntries((fanRows || []).map(r => [r.target_id, Number(r.followers)]))
-    // a player's own solo cutouts, first one (1.png) first
-    const cutouts = {}
+    // a photo the player sent himself wins; else his own solo cutouts, first one (0-card / 1.png) first
+    const cutouts = { ...ownPhotos }
     for (const c of [...(cuts || [])].sort((a, b) => a.image_url.localeCompare(b.image_url))) {
       if (c.player_ids?.length === 1) (cutouts[c.player_ids[0]] ??= c.image_url)
     }
