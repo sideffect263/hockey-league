@@ -113,10 +113,10 @@ describe("playerRating", () => {
     const t = aggregate({ games: g2, stats: st2, players, currentSeasonId: "S1" })
     const gk = playerCard("gk", { totals: t, players })
     const ax = gk.axes.find(a => a.key === "goals")
-    expect(ax.label).toBe("שערים נקיים")
+    expect(ax.label).toBe("השפעה")
     expect(ax.raw).toBe("2") // game 8 this season + game 10 last season
-    // a field player in the same game still shows goals
-    expect(playerCard("low", { totals: t, players }).axes.find(a => a.key === "goals").label).toBe("שערים")
+    // a field player's השפעה is his goals (low scored 1 this season)
+    expect(playerCard("low", { totals: t, players }).axes.find(a => a.key === "goals").raw).toBe("1")
   })
 
   it("shows what changed in his last game: the card now vs the league just before it", () => {

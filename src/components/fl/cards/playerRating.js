@@ -6,14 +6,14 @@
  * Five axes, each SHOWN as a 0–99 score against the best in the group (99 = the best), built
  * from these real figures; how the score is made and how OVR is made is
  * documented on playerCard() below.
- *   שערים  — goals he scored THIS season
- *            (goalkeepers: שערים נקיים — games of ALL seasons he was on the sheet and his team
+ *   השפעה  — (goals) goals he scored THIS season
+ *            (goalkeepers: clean sheets — games of ALL seasons he was on the sheet and his team
  *            conceded 0; the sheets' clean_sheet flag is never set, so it's worked out from the score)
  *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better, so its
  *            score is 99 × fewest-in-group / his)
- *   אוהדים — people following him
+ *   הערצה  — (fans) people following him
  */
 /** Games (all seasons) needed before attack / defence and a rating — one 10–3 win is luck. */
 export const MIN_GP = 3
@@ -25,11 +25,11 @@ const AXES = [ // radar order: top, then clockwise
   { key: "exp", label: "ניסיון" },
   { key: "att", label: "התקפה" },
   { key: "def", label: "הגנה" },
-  { key: "fans", label: "אוהדים" },
-  { key: "goals", label: "שערים" },
+  { key: "fans", label: "הערצה" },
+  { key: "goals", label: "השפעה" },
 ]
-/** A goalkeeper's "goals" point is clean sheets — same key, so weights and layout stay put. */
-const axesFor = goalie => goalie ? AXES.map(ax => ax.key === "goals" ? { ...ax, label: "שערים נקיים" } : ax) : AXES
+/** Same labels for everyone: a goalkeeper's השפעה is clean sheets instead of goals (see raw()). */
+const axesFor = () => AXES
 
 // Same games the league table counts (recompute_player_season_stats): scored, not a test,
 // not a friendly, not a tournament.
