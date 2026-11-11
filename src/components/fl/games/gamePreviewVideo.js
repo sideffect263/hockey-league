@@ -20,7 +20,10 @@ const PREVIEWS = {
     away: { name: "עדי רז", number: null, playerId: "b6000004-0000-0000-0000-000000000004" },
     standAt: 1.5,
     loop: true,
-    cards: true, // EA FC-style stat cards under the clip (PreviewStatCards) with each player's cutout
+    cards: true, // the full-hero stage with both players' stat cards (GameHero PreviewStage)
+    // pilot: one solo clip per player (Gemini, ping-pong baked), paired on the stage —
+    // x = where the player stands in his frame (object-position %), so his half centres on him
+    split: { away: { file: "away", x: 45 }, home: { file: "home", x: 58 } },
   },
 }
 
@@ -28,5 +31,7 @@ export function getGamePreviewVideo(gameId) {
   const p = gameId && PREVIEWS[gameId]
   if (!p) return null
   const base = `/game-previews/${gameId}`
-  return { ...p, src: `${base}/clip.mp4`, poster: `${base}/poster.jpg`, endFrame: `${base}/end.jpg` }
+  const split = p.split && Object.fromEntries(Object.entries(p.split).map(([k, c]) =>
+    [k, { ...c, src: `${base}/${c.file}.mp4`, poster: `${base}/${c.file}.jpg` }]))
+  return { ...p, split, src: `${base}/clip.mp4`, poster: `${base}/poster.jpg`, endFrame: `${base}/end.jpg` }
 }

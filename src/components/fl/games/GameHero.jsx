@@ -118,14 +118,28 @@ const tint = (hex, a) => {
  */
 function PreviewStage({ game, home, away, preview, topRow, meta, address, postponed }) {
   const ref = useRef(null)
+  const awayRef = useRef(null), homeRef = useRef(null)
   const [still, setStill] = useState(false)
   const cards = usePreviewCards(preview)
+  const split = preview.split // { away, home }: one solo clip per player, side by side
   useEffect(() => {
-    const v = ref.current
-    if (!v) return
+    const vids = (split ? [awayRef.current, homeRef.current] : [ref.current]).filter(Boolean)
+    if (!vids.length) return
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setStill(true); return }
-    v.play()?.catch?.(() => setStill(true))
-  }, [])
+    // start together so the two halves breathe in step
+    vids.forEach(v => { try { v.currentTime = 0 } catch { /* not seekable yet */ } })
+    vids.forEach(v => v.play()?.catch?.(() => setStill(true)))
+  }, [split])
+  // one solo clip in its half, cut on the same slanted seam as the colour wash
+  const half = (side, clip, r) => (
+    <div className={`absolute inset-y-0 ${side === "left" ? "left-0" : "right-0"} w-[52%]`}
+      style={{ clipPath: side === "left" ? "polygon(0 0, 100% 0, 92.3% 100%, 0 100%)" : "polygon(7.7% 0, 100% 0, 100% 100%, 0 100%)" }}>
+      {still
+        ? <img src={clip.poster} alt="" className="size-full object-cover" style={{ objectPosition: `${clip.x ?? 50}% 15%` }} />
+        : <video ref={r} src={clip.src} poster={clip.poster} muted playsInline preload="auto" loop
+            className="size-full object-cover" style={{ objectPosition: `${clip.x ?? 50}% 15%` }} />}
+    </div>
+  )
   const awayC = away?.primary_color, homeC = home?.primary_color
   // a crest with the team name under it; the whole block opens the team page
   const crestLink = (team, role, size) => {
@@ -170,7 +184,12 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
     <section aria-label="המשחק" className={`relative isolate overflow-hidden rounded-b-[30px] lg:rounded-[28px] bg-[#0b0f15] text-white ${postponed ? "grayscale-[1] opacity-[0.92]" : ""}`}>
       {/* the clip: top 500px on a phone (faces stay in frame), the whole stage when wide */}
       <div aria-hidden={still ? "true" : undefined} className="absolute inset-x-0 top-0 h-[500px] sm:h-full -z-20">
-        {still
+        {split ? (
+          <div role="img" aria-label={`${preview.away?.name || ""} מול ${preview.home?.name || ""}`} className="absolute inset-0">
+            {half("left", split.away, awayRef)}
+            {half("right", split.home, homeRef)}
+          </div>
+        ) : still
           ? <img src={preview.endFrame} alt="" className="size-full object-cover object-[50%_15%]" />
           : <video ref={ref} src={preview.src} poster={preview.poster} muted playsInline preload="auto" loop={!!preview.loop}
               aria-label={`${preview.away?.name || ""} מול ${preview.home?.name || ""}`}
