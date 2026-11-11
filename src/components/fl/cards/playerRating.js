@@ -7,8 +7,9 @@
  * from these real figures; how the score is made and how OVR is made is
  * documented on playerCard() below.
  *   השפעה  — (goals) goals he scored THIS season
- *            (goalkeepers: goals his team CONCEDED in total in the games he played, all seasons —
- *            fewer = better, needs MIN_GP games. Ariel 2026-11-11; it was clean sheets before)
+ *            (goalkeepers: goals his team CONCEDED per game in the games he played THIS season —
+ *            fewer = better, needs MIN_GP games. Ariel 2026-11-11, knowingly close to הגנה
+ *            (which is the same average over all seasons); it was clean sheets before)
  *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better, so its
@@ -48,7 +49,7 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
     if (!s.player_id || s.is_guest_player) continue
     const g = gameById.get(s.game_id)
     if (!g) continue
-    const a = out.get(s.player_id) || { gp: 0, goals: 0, sgoals: 0, scs: 0, tgp: 0, scored: 0, conceded: 0 }
+    const a = out.get(s.player_id) || { gp: 0, goals: 0, sgoals: 0, scs: 0, tgp: 0, scored: 0, conceded: 0, stgp: 0, sconceded: 0 }
     a.gp++
     a.goals += s.goals || 0
     if (g.season_id === currentSeasonId) a.sgoals += s.goals || 0
@@ -62,6 +63,7 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
       a.scored += home ? g.home_score : g.away_score
       a.conceded += home ? g.away_score : g.home_score
       if ((home ? g.away_score : g.home_score) === 0) a.scs++ // clean sheet, any season
+      if (g.season_id === currentSeasonId) { a.stgp++; a.sconceded += home ? g.away_score : g.home_score }
     }
     out.set(s.player_id, a)
   }
@@ -69,14 +71,14 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
 }
 
 const raw = (a, fans, goalie) => ({
-  goals: goalie ? (a.tgp ? a.conceded : null) : a.sgoals, // keeper: total goals his team let in with him on the sheet
+  goals: goalie ? (a.stgp ? a.sconceded / a.stgp : null) : a.sgoals, // keeper: goals conceded per game, THIS season
   exp: a.gp,
   att: a.tgp ? a.scored / a.tgp : null,
   def: a.tgp ? a.conceded / a.tgp : null,
   fans: fans || 0,
 })
 
-const fmt = (key, v) => v == null ? "–" : key === "att" || key === "def" ? v.toFixed(1) : String(v)
+const fmt = (key, v, goalie) => v == null ? "–" : key === "att" || key === "def" || (goalie && key === "goals") ? v.toFixed(1) : String(v)
 
 /** Axes that need the minimum games before they mean anything (one 10–3 win is luck). */
 const NEEDS_GAMES = new Set(["att", "def"])
@@ -123,11 +125,14 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
     // Every axis is SHOWN as a 0–99 score (99 = the best in the group), so a bigger number is
     // always a bigger point. The real figure stays as `value` / `raw` (defence also `conceded`).
     const score = p == null ? null : Math.round(99 * p)
-    return { ...ax, value: v, raw: fmt(ax.key, v), score, shown: score == null ? "–" : String(score), pct: p, best, bestShown: fmt(ax.key, best),
+    return { ...ax, value: v, raw: fmt(ax.key, v, goalie), score, shown: score == null ? "–" : String(score), pct: p, best, bestShown: fmt(ax.key, best, goalie),
       ...(ax.key === "def" ? { conceded: v } : {}) }
   })
-  const ovr = enough && axes.every(ax => ax.pct != null)
-    ? Math.round(40 + 59 * axes.reduce((s, ax) => s + ax.pct * WEIGHTS[ax.key], 0))
+  // A keeper who hasn't played this season has no השפעה ("–"); it counts as 0 in the rating
+  // instead of taking his whole rating away.
+  const pctFor = ax => (goalie && ax.key === "goals" ? ax.pct ?? 0 : ax.pct)
+  const ovr = enough && axes.every(ax => pctFor(ax) != null)
+    ? Math.round(40 + 59 * axes.reduce((s, ax) => s + pctFor(ax) * WEIGHTS[ax.key], 0))
     : null
   return { ovr, axes, goalie, gp: a.gp, minGames }
 }

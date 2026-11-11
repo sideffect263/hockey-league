@@ -106,18 +106,28 @@ describe("playerRating", () => {
     expect(t.get("ace").gp).toBe(5) // 4 this season + 1 last season, no friendly/tournament
   })
 
-  it("gives goalkeepers goals conceded (all seasons, fewer = better) instead of goals", () => {
-    // games 1–3: gk's team (B) conceded 3 + 2 + 4 = 9; gk2's team (A) 1 + 2 + 0 = 3
+  it("gives goalkeepers goals conceded per game this season (fewer = better) instead of goals", () => {
+    // this season, games 1–3: gk's team (B) conceded 3 + 2 + 4 = 9 → 3.0; gk2's team (A) 1 + 2 + 0 = 3 → 1.0
+    // gk2 also played last season's game 9 (A won 9–0) — it doesn't count here
     const ps = { ...players, gk2: { team_id: "A", position: "Goalkeeper" } }
-    const t = aggregate({ games, stats: [...stats, row("1", "gk2", 0), row("2", "gk2", 0), row("3", "gk2", 0)], players: ps, currentSeasonId: "S1" })
+    const st = [...stats, row("1", "gk2", 0), row("2", "gk2", 0), row("3", "gk2", 0), row("9", "gk2", 0)]
+    const t = aggregate({ games, stats: st, players: ps, currentSeasonId: "S1" })
     const ax = id => playerCard(id, { totals: t, players: ps }).axes.find(a => a.key === "goals")
     expect(ax("gk").label).toBe("השפעה")
-    expect(ax("gk").raw).toBe("9")
-    expect(ax("gk2").raw).toBe("3")
-    expect(ax("gk2").shown).toBe("99")        // fewest conceded = the best
-    expect(ax("gk").shown).toBe("33")         // 99 × 3 / 9
+    expect(ax("gk").raw).toBe("3.0")
+    expect(ax("gk2").raw).toBe("1.0")
+    expect(ax("gk2").shown).toBe("99")        // fewest conceded per game = the best
+    expect(ax("gk").shown).toBe("33")         // 99 × 1.0 / 3.0
     // a field player's השפעה is still his goals (low scored 1 this season)
     expect(playerCard("low", { totals: t, players: ps }).axes.find(a => a.key === "goals").raw).toBe("1")
+  })
+
+  it("a keeper with no games this season shows – but still has a rating", () => {
+    const g0 = [g("21", "B", "A", 1, 1, "S0"), g("22", "B", "A", 2, 1, "S0"), g("23", "B", "A", 3, 0, "S0")]
+    const t = aggregate({ games: g0, stats: ["21", "22", "23"].map(id => row(id, "gk", 0)), players, currentSeasonId: "S1" })
+    const c = playerCard("gk", { totals: t, players })
+    expect(c.axes.find(a => a.key === "goals").shown).toBe("–")
+    expect(c.ovr).not.toBeNull()
   })
 
   it("needs 3 games before a keeper's השפעה counts", () => {
