@@ -71,7 +71,7 @@ export default function PlayerPhotoCard({ playerId }) {
             <div className="h-36 w-28 rounded-xl bg-gradient-to-b from-[#1b2a52] to-[#0d1530] flex items-end justify-center overflow-hidden">
               <img src={preview} alt="" className="h-full w-full object-contain object-bottom" />
             </div>
-            {latest?.status === "approved" && <Link to="/cards" className="text-[13px] font-bold underline h-11 flex items-center">לכרטיס שלי</Link>}
+            {latest?.status === "approved" && <Link to="/players" className="text-[13px] font-bold underline h-11 flex items-center">לכרטיס שלי</Link>}
           </div>
         )}
         {!latest && (

@@ -20,7 +20,6 @@ const PostDetail = lazy(() => import('./pages/PostDetail'))
 const Statistics = lazy(() => import('./pages/Statistics'))
 const Teams = lazy(() => import('./pages/Teams'))
 const TeamDetail = lazy(() => import('./pages/TeamDetail'))
-const Players = lazy(() => import('./pages/Players'))
 const PlayerDetail = lazy(() => import('./pages/PlayerDetail'))
 const Tournaments = lazy(() => import('./pages/Tournaments'))
 const TournamentDetail = lazy(() => import('./pages/TournamentDetail'))
@@ -243,7 +242,7 @@ function App() {
             <Route path="/statistics" element={<Statistics />} />
             <Route path="/teams" element={<Teams />} />
             <Route path="/teams/:id" element={<TeamDetail />} />
-            <Route path="/players" element={<Players />} />
+            <Route path="/players" element={<PlayerCards />} />
             <Route path="/players/:id" element={<PlayerDetail />} />
             {/* סטופר מרקט — play-money prediction market, 18+ league players only.
                 Floodlight palette like the rest of the site (the emerald skin is gone). */}
@@ -259,7 +258,8 @@ function App() {
             <Route path="/career" element={<Career />} />
             {/* ליגת הפנטזי — supabase/fantasy.sql; gated by league_settings.feature_fantasy */}
             <Route path="/fantasy" element={<Fantasy />} />
-            <Route path="/cards" element={<PlayerCards />} />
+            {/* the cards page became /players (dev 2026-11-11); old links still land there */}
+            <Route path="/cards" element={<Navigate to="/players" replace />} />
             <Route path="/media" element={<Media />} />
             <Route path="/creators" element={<ContentCreators />} />
             <Route path="/devs" element={<Devs />} />

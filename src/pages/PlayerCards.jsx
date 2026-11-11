@@ -4,16 +4,24 @@ import { useSeo } from "@/lib/seo"
 import { getTeams } from "@/lib/api"
 import { PlayerStatCard, loadLeague, cardFor } from "@/components/fl/cards/PlayerStatCard"
 import { WEIGHTS } from "@/components/fl/cards/playerRating"
+import { entityPath } from "@/lib/slugs"
+import { ageOf, DEFAULT_AGE } from "@/lib/ageGroups"
+import { Search } from "lucide-react"
 
 /**
- * כרטיסי שחקנים — /cards (dev trial). An EA FC-style card for every player on a current team (referees who play included), best OVR
- * first, filterable by team. Same card and numbers as the game-preview hero.
+ * שחקנים — /players (was /cards; dev 2026-11-11 it replaced the old list page, Players.jsx).
+ * An EA FC-style card for every player on a current senior team (referees who play included),
+ * best OVR first; search, team and position filters, sort by rating or name — the old list's
+ * search/filters kept. Same card and numbers as the game-preview hero.
  */
 export default function PlayerCards() {
-  useSeo({ title: "כרטיסי שחקנים", description: "כרטיס לכל שחקן בליגה: דירוג, השפעה, ניסיון, התקפה, הגנה והערצה", path: "/cards" })
+  useSeo({ title: "שחקנים", description: "כרטיס לכל שחקן בליגה: דירוג, השפעה, ניסיון, התקפה, הגנה והערצה", path: "/players" })
   const [data, setData] = useState(null)
   const [teams, setTeams] = useState([])
   const [team, setTeam] = useState("all")
+  const [search, setSearch] = useState("")
+  const [position, setPosition] = useState("all")
+  const [sortBy, setSortBy] = useState("ovr")
   const [err, setErr] = useState(false)
 
   useEffect(() => {
@@ -31,23 +39,48 @@ export default function PlayerCards() {
       // is_referee = "also referees", not "not a player": many of the league's players judge
       // too (e.g. עדן אמון, עדי רז), so they stay. Only players on a real current team show.
       .filter(p => p.team_id && teamById[p.team_id] && !teamById[p.team_id].name?.startsWith("🧪"))
+      // the senior league's directory, like the old list: youth teams are browsed from /teams
+      .filter(p => ageOf(teamById[p.team_id]) === DEFAULT_AGE)
       .map(p => ({ p, card: cardFor(p.id, data) }))
       .sort((a, b) => (b.card.ovr ?? 0) - (a.card.ovr ?? 0) || `${a.p.first_name}`.localeCompare(`${b.p.first_name}`, "he"))
   }, [data, teamById])
-  const shown = team === "all" ? rows : rows.filter(r => r.p.team_id === team)
+  const q = search.trim()
+  const shown = rows
+    .filter(r => team === "all" || r.p.team_id === team)
+    .filter(r => position === "all" || (position === "gk") === !!r.card.goalie)
+    .filter(r => !q || `${r.p.first_name} ${r.p.last_name}`.includes(q))
+  if (sortBy === "name") shown.sort((a, b) => `${a.p.first_name} ${a.p.last_name}`.localeCompare(`${b.p.first_name} ${b.p.last_name}`, "he"))
 
-  const pill = on => `shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-bold border transition-colors ${on ? "bg-fl-accent text-[#11161D] border-transparent" : "border-white/15 text-current hover:bg-white/5"}`
+  const pill = on => `shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-bold border transition-colors ${on ? "bg-fl-accent text-[#11161D] border-transparent" : "border-line bg-surface text-fg-strong hover:brightness-95"}`
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-5">
-      <h1 className="text-[26px] font-black">כרטיסי שחקנים</h1>
+      <h1 className="text-[26px] font-black">שחקנים</h1>
       <p className="mt-1 text-[13px] opacity-70 leading-relaxed">
-        כרטיס לכל שחקן, מנתוני משחקי הליגה. <a href="#how" className="underline underline-offset-2">איך מחושב כל ערך</a>
+        {data && <><span className="tabular-nums">{rows.length}</span> שחקנים בליגה · </>}כרטיס לכל שחקן, מנתוני משחקי הליגה. <a href="#how" className="underline underline-offset-2">איך מחושב כל ערך</a>
       </p>
+      <div className="mt-3 flex gap-2">
+        <label className="relative flex-1 min-w-0 flex items-center gap-2 min-h-[44px] rounded-2xl bg-surface border border-line px-3.5">
+          <Search className="w-4 h-4 text-fg-muted shrink-0" aria-hidden="true" />
+          <span className="sr-only">חיפוש שחקן</span>
+          <input type="search" placeholder="חיפוש שחקן…" value={search} onChange={e => setSearch(e.target.value)}
+            className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[16px] text-fg-strong placeholder:text-fg-muted" />
+        </label>
+        <select aria-label="מיון השחקנים" value={sortBy} onChange={e => setSortBy(e.target.value)}
+          className="shrink-0 min-h-[44px] rounded-2xl bg-surface border border-line text-fg-strong px-3 text-[13.5px] font-bold">
+          <option value="ovr">מיון: דירוג</option>
+          <option value="name">מיון: שם</option>
+        </select>
+      </div>
       <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-3 px-3 sm:-mx-4 sm:px-4">
         <button type="button" className={pill(team === "all")} onClick={() => setTeam("all")}>כל הליגה</button>
         {teams.filter(t => rows.some(r => r.p.team_id === t.id)).map(t => (
           <button key={t.id} type="button" className={pill(team === t.id)} onClick={() => setTeam(t.id)}>{t.name}</button>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-2" role="group" aria-label="סינון לפי עמדה">
+        {[["all", "כל העמדות"], ["field", "שחקני שדה"], ["gk", "שוערים"]].map(([k, l]) => (
+          <button key={k} type="button" aria-pressed={position === k} className={pill(position === k)} onClick={() => setPosition(k)}>{l}</button>
         ))}
       </div>
       {err && <p className="mt-6 text-center opacity-70">לא הצלחנו לטעון את הכרטיסים</p>}
@@ -55,12 +88,13 @@ export default function PlayerCards() {
       {data && (
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
           {shown.map(({ p, card }) => (
-            <Link key={p.id} to={`/players/${p.id}`} className="block min-w-0 rounded-2xl focus-visible:outline-2">
+            <Link key={p.id} to={entityPath("players", p)} className="block min-w-0 rounded-2xl focus-visible:outline-2">
               <PlayerStatCard who={{ name: `${p.first_name} ${p.last_name}`.trim(), number: p.jersey_number }} team={teamById[p.team_id]} card={card} />
             </Link>
           ))}
         </div>
       )}
+      {data && shown.length === 0 && <p className="mt-10 text-center opacity-70">אין שחקנים תואמים</p>}
       {data && <HowItsCalculated minGames={rows.find(r => r.card.minGames)?.card.minGames} fansPct={Math.round(WEIGHTS.fans * 100)} />}
     </div>
   )
