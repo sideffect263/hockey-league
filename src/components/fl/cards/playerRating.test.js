@@ -106,17 +106,23 @@ describe("playerRating", () => {
     expect(t.get("ace").gp).toBe(5) // 4 this season + 1 last season, no friendly/tournament
   })
 
-  it("gives goalkeepers clean sheets (all seasons) instead of goals", () => {
-    // B keeps a clean sheet this season (game 8, 2–0) and last season (game 10, 1–0)
-    const g2 = [...games, g("8", "B", "A", 2, 0), g("10", "B", "A", 1, 0, "S0")]
-    const st2 = [...stats, row("8", "gk", 0), row("8", "low", 0), row("10", "gk", 0)]
-    const t = aggregate({ games: g2, stats: st2, players, currentSeasonId: "S1" })
-    const gk = playerCard("gk", { totals: t, players })
-    const ax = gk.axes.find(a => a.key === "goals")
-    expect(ax.label).toBe("השפעה")
-    expect(ax.raw).toBe("2") // game 8 this season + game 10 last season
-    // a field player's השפעה is his goals (low scored 1 this season)
-    expect(playerCard("low", { totals: t, players }).axes.find(a => a.key === "goals").raw).toBe("1")
+  it("gives goalkeepers goals conceded (all seasons, fewer = better) instead of goals", () => {
+    // games 1–3: gk's team (B) conceded 3 + 2 + 4 = 9; gk2's team (A) 1 + 2 + 0 = 3
+    const ps = { ...players, gk2: { team_id: "A", position: "Goalkeeper" } }
+    const t = aggregate({ games, stats: [...stats, row("1", "gk2", 0), row("2", "gk2", 0), row("3", "gk2", 0)], players: ps, currentSeasonId: "S1" })
+    const ax = id => playerCard(id, { totals: t, players: ps }).axes.find(a => a.key === "goals")
+    expect(ax("gk").label).toBe("השפעה")
+    expect(ax("gk").raw).toBe("9")
+    expect(ax("gk2").raw).toBe("3")
+    expect(ax("gk2").shown).toBe("99")        // fewest conceded = the best
+    expect(ax("gk").shown).toBe("33")         // 99 × 3 / 9
+    // a field player's השפעה is still his goals (low scored 1 this season)
+    expect(playerCard("low", { totals: t, players: ps }).axes.find(a => a.key === "goals").raw).toBe("1")
+  })
+
+  it("needs 3 games before a keeper's השפעה counts", () => {
+    const t = aggregate({ games, stats: [row("1", "gk", 0)], players, currentSeasonId: "S1" })
+    expect(playerCard("gk", { totals: t, players }).axes.find(a => a.key === "goals").shown).toBe("–")
   })
 
   it("shows what changed in his last game: the card now vs the league just before it", () => {

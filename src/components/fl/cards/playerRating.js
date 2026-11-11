@@ -7,8 +7,8 @@
  * from these real figures; how the score is made and how OVR is made is
  * documented on playerCard() below.
  *   השפעה  — (goals) goals he scored THIS season
- *            (goalkeepers: clean sheets — games of ALL seasons he was on the sheet and his team
- *            conceded 0; the sheets' clean_sheet flag is never set, so it's worked out from the score)
+ *            (goalkeepers: goals his team CONCEDED in total in the games he played, all seasons —
+ *            fewer = better, needs MIN_GP games. Ariel 2026-11-11; it was clean sheets before)
  *   ניסיון — games he played (on the judge sheet), all seasons
  *   התקפה  — average goals HIS team scored in the games he played
  *   הגנה   — average goals his team CONCEDED in the games he played (fewer = better, so its
@@ -69,7 +69,7 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
 }
 
 const raw = (a, fans, goalie) => ({
-  goals: goalie ? a.scs : a.sgoals,
+  goals: goalie ? (a.tgp ? a.conceded : null) : a.sgoals, // keeper: total goals his team let in with him on the sheet
   exp: a.gp,
   att: a.tgp ? a.scored / a.tgp : null,
   def: a.tgp ? a.conceded / a.tgp : null,
@@ -80,6 +80,9 @@ const fmt = (key, v) => v == null ? "–" : key === "att" || key === "def" ? v.t
 
 /** Axes that need the minimum games before they mean anything (one 10–3 win is luck). */
 const NEEDS_GAMES = new Set(["att", "def"])
+/** A keeper's השפעה is goals conceded: fewer = better, and like defence it needs the minimum games. */
+const lowerIsBetter = (key, goalie) => key === "def" || (goalie && key === "goals")
+const needsGames = (key, goalie) => NEEDS_GAMES.has(key) || (goalie && key === "goals")
 /** Weights in the rating. Fans count, but only a little: they're popularity, not play. */
 export const WEIGHTS = { goals: 0.2375, exp: 0.2375, att: 0.2375, def: 0.2375, fans: 0.05 }
 
@@ -105,12 +108,12 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
   const mine = raw(a, fans[playerId], goalie)
   const axes = axesFor(goalie).map(ax => {
     const pool = group
-      .filter(([, t]) => !NEEDS_GAMES.has(ax.key) || t.gp >= minGames)
+      .filter(([, t]) => !needsGames(ax.key, goalie) || t.gp >= minGames)
       .map(([id, t]) => raw(t, fans[id], goalie)[ax.key])
       .filter(v => v != null)
-    const v = NEEDS_GAMES.has(ax.key) && !enough ? null : mine[ax.key]
+    const v = needsGames(ax.key, goalie) && !enough ? null : mine[ax.key]
     let best, p
-    if (ax.key === "def") {
+    if (lowerIsBetter(ax.key, goalie)) {
       best = pool.length ? Math.min(...pool) : null
       p = v == null || best == null ? null : v <= best ? 1 : best / v
     } else {

@@ -89,11 +89,6 @@ export function Delta({ d, className = "" }) {
   )
 }
 
-const shortDate = iso => {
-  const d = iso ? new Date(iso) : null
-  return d && !isNaN(d) ? `${d.getDate()}.${d.getMonth() + 1}.${String(d.getFullYear()).slice(2)}` : ""
-}
-
 /** Pentagon radar: the shape is the share of the best, the labels are the real numbers.
  *  Labels are HTML laid over the SVG, not SVG <text>: iOS Safari breaks Hebrew <tspan>s
  *  mid-word in an RTL page ("ניסיו / ן"). */
@@ -175,11 +170,6 @@ export function PlayerStatCard({ who, team, card }) {
           : card ? <div className="aspect-square max-w-[150px] mx-auto grid place-items-center text-[12px] text-white/55">עוד אין משחקים</div>
           : <div className="aspect-square max-w-[160px] mx-auto" />}
       </div>
-      {card?.change?.game && !card.change.firstGame && (
-        <p className="mt-1 text-center text-[10px] sm:text-[11px] text-white/50">
-          <span className="text-[#4ade80]">▲</span><span className="text-[#f87171]">▼</span> מאז המשחק האחרון · <span dir="ltr">{shortDate(card.change.game.game_date)}</span>
-        </p>
-      )}
     </div>
   )
 }
