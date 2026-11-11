@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { CrestDisc } from "@/components/fl/Floodlight"
+import { KeeperStickMark, FieldStickMark } from "@/components/fl/teams/FLTeamsKit"
 import { aggregate, playerCard } from "./playerRating"
 
 const PAGE = 1000
@@ -75,28 +76,6 @@ export function cardFor(id, d) {
   return { ...(playerCard(id, d) || {}), cutout: d.cutouts[id] }
 }
 
-/** Why the shape looks the way it does: each stat next to the best in the group (a full
- *  point on the radar), and what the rating is made of. */
-function BestLegend({ axes, goalie }) {
-  return (
-    <div className="mt-1.5 border-t border-white/10 pt-1.5 text-[10px] sm:text-[10.5px] leading-[1.5]">
-      <p className="text-white/55 mb-0.5">מוביל {goalie ? "השוערים" : "הליגה"} = נקודה מלאה</p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-1.5 sm:gap-x-2">
-        {axes.map(ax => (
-          <div key={ax.key} className="contents">
-            <dt className="text-white/70 whitespace-nowrap">{ax.label}</dt>
-            <dd className="tabular-nums whitespace-nowrap">
-              <b className="font-black">{ax.shown}</b>
-              <span className="text-white/50"> / {ax.bestShown}</span>
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-1 text-white/55 hidden sm:block">דירוג: שערים, ניסיון, התקפה והגנה + קצת אוהדים</p>
-    </div>
-  )
-}
-
 /** Pentagon radar: the shape is the share of the best, the labels are the real numbers.
  *  Labels are HTML laid over the SVG, not SVG <text>: iOS Safari breaks Hebrew <tspan>s
  *  mid-word in an RTL page ("ניסיו / ן"). */
@@ -141,7 +120,10 @@ export function PlayerStatCard({ who, team, card }) {
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-white/75 whitespace-nowrap">
             <span className="size-1.5 rounded-full bg-[#4ade80]" aria-hidden="true" />
             {card?.goalie ? "שוער" : "שחקן שדה"}
-            {who.number != null && <span dir="ltr">· #{who.number}</span>}
+            {card?.goalie
+              ? <KeeperStickMark size={20} className="!text-white" title="" />
+              : <FieldStickMark size={20} title="" />}
+            {who.number != null && <span dir="ltr">#{who.number}</span>}
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-[11.5px] sm:text-[12px] font-bold min-w-0 leading-tight">
             <CrestDisc team={team} size={18} disc={false} />
@@ -174,7 +156,6 @@ export function PlayerStatCard({ who, team, card }) {
           : card ? <div className="aspect-square max-w-[150px] mx-auto grid place-items-center text-[12px] text-white/55">עוד אין משחקים</div>
           : <div className="aspect-square max-w-[160px] mx-auto" />}
       </div>
-      {card?.axes && <BestLegend axes={card.axes} goalie={card.goalie} />}
     </div>
   )
 }

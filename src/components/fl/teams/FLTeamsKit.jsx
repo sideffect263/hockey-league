@@ -189,6 +189,25 @@ export function KeeperStickMark({ size = 22, className = '', title = 'שוער' 
   )
 }
 
+/**
+ * The field player's mark, the partner of KeeperStickMark: one pale-wood rink stick (same
+ * drawing as the tab bar's + glyph / iOS StickPlusGlyph), leaning 28°. Labelled "שחקן שדה".
+ */
+export function FieldStickMark({ size = 22, className = '', title = 'שחקן שדה' }) {
+  const d = 'M30 6V47q0 8-8 8H18'
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={title} className={`shrink-0 ${className}`}>
+      <title>{title}</title>
+      <g transform="rotate(28 32 32) translate(4 1)" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} stroke="#11161D" strokeWidth="8.5" />
+        <path d={d} stroke="#E2C792" strokeWidth="5.4" />
+        <path d="M30 6v5" stroke="#11161D" strokeWidth="6" />
+        <path d="M27.6 39l4.8-2M27.6 43l4.8-2" stroke="#11161D" strokeWidth="1.6" />
+      </g>
+    </svg>
+  )
+}
+
 export const isKeeper = (p) => p?.position === 'Goalkeeper'
 
 /* ---------------------------------------------------------------- goal cage */
