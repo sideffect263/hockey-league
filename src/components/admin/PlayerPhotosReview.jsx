@@ -75,7 +75,7 @@ export default function PlayerPhotosReview({ teamsMap = {} }) {
                 )}
                 {item.cutout_url && (
                   <div className="h-44 w-32 rounded-lg bg-gradient-to-b from-[#1b2a52] to-[#0d1530] flex items-end justify-center overflow-hidden">
-                    <img src={item.cutout_url} alt="חיתוך" className="max-h-full max-w-full object-contain" />
+                    <img src={item.cutout_url} alt="חיתוך" className="h-full w-full object-contain object-bottom" />
                   </div>
                 )}
               </div>

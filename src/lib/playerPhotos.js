@@ -13,9 +13,16 @@ const MAX_SIDE = 2000
 async function normalise(file) {
   let bmp
   try {
-    bmp = await createImageBitmap(file, { imageOrientation: "from-image" })
+    bmp = await createImageBitmap(file) // browsers apply the EXIF rotation by default
   } catch {
-    throw new Error("unreadable-image")
+    // older Safari: decode through an <img> (also applies EXIF rotation)
+    bmp = await new Promise((res, rej) => {
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => { URL.revokeObjectURL(url); res(img) }
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("unreadable-image")) }
+      img.src = url
+    })
   }
   const s = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height))
   const w = Math.round(bmp.width * s), h = Math.round(bmp.height * s)
