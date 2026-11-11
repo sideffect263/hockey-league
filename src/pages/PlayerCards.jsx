@@ -66,6 +66,8 @@ export default function PlayerCards() {
   )
 }
 
+const pct = w => Math.round(w * 100)
+
 /** The explanation at the bottom: how every number on the card is made (playerRating.js). */
 function HowItsCalculated({ minGames, fansPct }) {
   const items = [
@@ -100,7 +102,7 @@ function HowItsCalculated({ minGames, fansPct }) {
       </p>
       <h3 className="mt-6 text-[16px] font-black">הדירוג (OVR)</h3>
       <p className="mt-1 opacity-80">
-        ממוצע משוקלל של חמשת הציונים, בסולם 40 עד 99 (‏40 + 59 × הממוצע). השפעה, ניסיון, התקפה והגנה שוות כל אחת כמעט רבע. הערצה שווה רק {fansPct}% מהדירוג, כי הם מודדים פופולריות ולא משחק: גם 10 עוקבים מוסיפים לכל היותר {Math.round(59 * fansPct / 100)} נקודות.
+        ממוצע משוקלל של חמשת הציונים, בסולם 40 עד 99 (‏40 + 59 × הממוצע). המשקלים: השפעה {pct(WEIGHTS.goals)}%, התקפה {pct(WEIGHTS.att)}%, הגנה {pct(WEIGHTS.def)}%, ניסיון {pct(WEIGHTS.exp)}%, הערצה {fansPct}%. הערצה שווה הכי מעט, כי היא מודדת פופולריות ולא משחק: גם 10 עוקבים מוסיפים לכל היותר {Math.round(59 * fansPct / 100)} נקודות.
       </p>
       <h3 className="mt-6 text-[16px] font-black">החיצים ▲▼</h3>
       <p className="mt-1 opacity-80">

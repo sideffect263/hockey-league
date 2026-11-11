@@ -86,7 +86,7 @@ const NEEDS_GAMES = new Set(["att", "def"])
 const lowerIsBetter = (key, goalie) => key === "def" || (goalie && key === "goals")
 const needsGames = (key, goalie) => NEEDS_GAMES.has(key) || (goalie && key === "goals")
 /** Weights in the rating. Fans count, but only a little: they're popularity, not play. */
-export const WEIGHTS = { goals: 0.2375, exp: 0.2375, att: 0.2375, def: 0.2375, fans: 0.05 }
+export const WEIGHTS = { goals: 0.30, exp: 0.15, att: 0.25, def: 0.25, fans: 0.05 } // Ariel 2026-11-11
 
 /**
  * The card for one player id, or null when he has no completed games on record.
