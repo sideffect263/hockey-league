@@ -6,7 +6,8 @@
  * Five axes, each SHOWN as a score on a soft curve: 30 = nothing, 92 = the best in his position
  * group, so nobody shows 99 (Ariel 2026-11-12). How the score is made and how OVR is made is
  * documented on playerCard() below.
- *   השפעה  — (goals) goals he scored THIS season
+ *   השפעה  — (goals) goals per game, ALL seasons (Ariel 2026-11-12: this-season-only sank players
+ *            who had barely played yet this season); needs MIN_GP games
  *            (goalkeepers: goals his team CONCEDED per game in the games he played THIS season —
  *            fewer = better, needs MIN_GP games. Ariel 2026-11-11, knowingly close to הגנה
  *            (which is the same average over all seasons); it was clean sheets before)
@@ -135,14 +136,14 @@ function teamAdjusted(gameById, on, out) {
 }
 
 const raw = (a, fans, goalie) => ({
-  goals: goalie ? (a.stgp ? a.sconceded / a.stgp : null) : a.sgoals, // keeper: goals conceded per game, THIS season
+  goals: goalie ? (a.stgp ? a.sconceded / a.stgp : null) : (a.gp ? a.goals / a.gp : null), // keeper: conceded per game THIS season; field: goals per game, all seasons
   exp: a.gp,
   att: a.tgp ? a.scored / a.tgp : null,
   def: a.tgp ? a.conceded / a.tgp : null,
   fans: fans || 0,
 })
 
-const fmt = (key, v, goalie) => v == null ? "–" : key === "att" || key === "def" || (goalie && key === "goals") ? v.toFixed(1) : String(v)
+const fmt = (key, v, goalie) => v == null ? "–" : key === "goals" && !goalie ? v.toFixed(2) : key === "att" || key === "def" || key === "goals" ? v.toFixed(1) : String(v)
 
 /** Axes that need the minimum games before they mean anything (one 10–3 win is luck). */
 const NEEDS_GAMES = new Set(["att", "def"])
@@ -181,7 +182,7 @@ function adjustedPcts(totals, players, goalie) {
   byGroup.set(goalie, res)
   return res
 }
-const needsGames = (key, goalie) => NEEDS_GAMES.has(key) || (goalie && key === "goals")
+const needsGames = key => NEEDS_GAMES.has(key) || key === "goals" // goals per game (keeper: conceded per game) needs the minimum too
 /** Weights in the rating. Fans count, but only a little: they're popularity, not play. */
 export const WEIGHTS = { goals: 0.30, exp: 0.15, att: 0.25, def: 0.25, fans: 0.05 } // Ariel 2026-11-11
 

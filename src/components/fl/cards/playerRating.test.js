@@ -41,7 +41,7 @@ describe("playerRating", () => {
 
   it("keeps the real figure behind each axis", () => {
     const by = Object.fromEntries(card("ace").axes.map(a => [a.key, a.raw]))
-    expect(by).toEqual({ goals: "6", exp: "5", att: "4.6", def: "1.6", fans: "4" })
+    expect(by).toEqual({ goals: "2.60", exp: "5", att: "4.6", def: "1.6", fans: "4" }) // goals: 13 in 5 games, all seasons
   })
 
   it("shows every axis on the soft curve: 30 = nothing, 92 = the best, never 99", () => {
@@ -53,7 +53,7 @@ describe("playerRating", () => {
       expect(ax.score).toBeLessThanOrEqual(92)
     }
     expect(axis("ace", "goals").shown).toBe("92") // ace has the most goals
-    expect(axis("low", "goals").shown).toBe("40") // 1 of 6 → 30 + 62/6
+    expect(axis("low", "goals").shown).toBe("38") // 0.33 a game vs the best 2.6 → 30 + 62 × 0.128
     expect(axis("low", "fans").shown).toBe("36")  // 1 fan, out of at least 10
   })
 
@@ -80,9 +80,9 @@ describe("playerRating", () => {
   })
 
   it("draws every point against the best in the group, and says who the best is", () => {
-    // goals: low 1, best (ace) 6
-    expect(axis("low", "goals").pct).toBeCloseTo(1 / 6)
-    expect(axis("low", "goals").bestShown).toBe("6")
+    // השפעה = goals per game, all seasons: low 1 in 3 games, best (ace) 13 in 5
+    expect(axis("low", "goals").pct).toBeCloseTo((1 / 3) / 2.6)
+    expect(axis("low", "goals").bestShown).toBe("2.60")
     // attack / defence: best = full point, worst = none (within the position group)
     const defs = ["ace", "mid", "low"].map(id => axis(id, "def").pct)
     expect(Math.max(...defs)).toBe(1)
@@ -134,8 +134,8 @@ describe("playerRating", () => {
     expect(ax("gk2").raw).toBe("1.0")
     expect(ax("gk2").shown).toBe("92")        // fewest conceded per game = the best
     expect(ax("gk").shown).toBe("51")         // 30 + 62 × (1.0 / 3.0)
-    // a field player's השפעה is still his goals (low scored 1 this season)
-    expect(playerCard("low", { totals: t, players: ps }).axes.find(a => a.key === "goals").raw).toBe("1")
+    // a field player's השפעה is his goals per game (low: 1 in 3)
+    expect(playerCard("low", { totals: t, players: ps }).axes.find(a => a.key === "goals").raw).toBe("0.33")
   })
 
   it("a keeper with no games this season shows – but still has a rating", () => {
