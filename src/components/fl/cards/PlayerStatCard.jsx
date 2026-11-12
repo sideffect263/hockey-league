@@ -127,7 +127,7 @@ export function Radar({ axes, size = 132, padX = 0, className = "max-w-[160px]",
 export function PlayerStatCard({ who, team, card }) {
   const accent = team?.primary_color || "#4ade80"
   return (
-    <div dir="rtl" className="relative min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(160deg,rgba(22,28,40,0.92),rgba(8,11,17,0.95))] text-white p-2.5 sm:p-3.5 shadow-[0_6px_24px_rgba(0,0,0,0.35)]">
+    <div dir="rtl" className="relative h-full flex flex-col min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(160deg,rgba(22,28,40,0.92),rgba(8,11,17,0.95))] text-white p-2.5 sm:p-3.5 shadow-[0_6px_24px_rgba(0,0,0,0.35)]">
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -154,7 +154,8 @@ export function PlayerStatCard({ who, team, card }) {
           )}
         </div>
       </div>
-      <div className={`relative mt-1 ${card?.cutout ? "h-40" : "h-20"} sm:h-56 flex items-end justify-center`}>
+      {/* same photo height with or without a cutout, so every card in the grid is the same height */}
+      <div className="relative mt-1 h-40 sm:h-56 flex items-end justify-center">
         <span aria-hidden="true" className="absolute inset-x-2 bottom-2 top-4 rounded-full blur-2xl opacity-40" style={{ background: `radial-gradient(closest-side, ${accent}, transparent)` }} />
         {card?.cutout ? (
           <img src={card.cutout} alt={who.name} loading="lazy" decoding="async"

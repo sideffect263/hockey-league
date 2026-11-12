@@ -86,9 +86,10 @@ export default function PlayerCards() {
       {err && <p className="mt-6 text-center opacity-70">לא הצלחנו לטעון את הכרטיסים</p>}
       {!data && !err && <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[430px] rounded-2xl bg-white/5 animate-pulse" />)}</div>}
       {data && (
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+        // auto-rows-fr: every row as tall as the tallest card, so all cards are the same height
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 auto-rows-fr gap-2 sm:gap-3">
           {shown.map(({ p, card }) => (
-            <Link key={p.id} to={entityPath("players", p)} className="block min-w-0 rounded-2xl focus-visible:outline-2">
+            <Link key={p.id} to={entityPath("players", p)} className="block h-full min-w-0 rounded-2xl focus-visible:outline-2">
               <PlayerStatCard who={{ name: `${p.first_name} ${p.last_name}`.trim(), number: p.jersey_number }} team={teamById[p.team_id]} card={card} />
             </Link>
           ))}

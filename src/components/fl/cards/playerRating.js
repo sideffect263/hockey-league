@@ -25,9 +25,9 @@ const isGoalie = p => /goal|שוער/i.test(p?.position || "")
 const AXES = [ // radar order: top, then clockwise
   { key: "exp", label: "ניסיון" },
   { key: "att", label: "התקפה" },
-  { key: "def", label: "הגנה" },
-  { key: "fans", label: "הערצה" },
   { key: "goals", label: "השפעה" },
+  { key: "fans", label: "הערצה" },
+  { key: "def", label: "הגנה" }, // השפעה and הגנה swapped places (Ariel 2026-11-12)
 ]
 /** Same labels for everyone: a goalkeeper's השפעה is clean sheets instead of goals (see raw()). */
 const axesFor = () => AXES
