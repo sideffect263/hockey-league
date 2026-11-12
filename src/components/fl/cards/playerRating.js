@@ -23,11 +23,11 @@ export const FANS_FLOOR = 10
 const isGoalie = p => /goal|שוער/i.test(p?.position || "")
 
 const AXES = [ // radar order: top, then clockwise
-  { key: "exp", label: "ניסיון" },
+  { key: "goals", label: "השפעה" }, // order set by Ariel 2026-11-12: השפעה on top,
   { key: "att", label: "התקפה" },
-  { key: "goals", label: "השפעה" },
+  { key: "exp", label: "ניסיון" },   // ניסיון bottom right,
   { key: "fans", label: "הערצה" },
-  { key: "def", label: "הגנה" }, // השפעה and הגנה swapped places (Ariel 2026-11-12)
+  { key: "def", label: "הגנה" },     // הגנה top left
 ]
 /** Same labels for everyone: a goalkeeper's השפעה is clean sheets instead of goals (see raw()). */
 const axesFor = () => AXES

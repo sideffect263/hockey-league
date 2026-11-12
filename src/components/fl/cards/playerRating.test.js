@@ -143,7 +143,8 @@ describe("playerRating", () => {
     const now = playerCard("ace", { totals: aggregate(d), players, fans })
     const before = playerCard("ace", { totals: aggregate({ ...d, games: dated.filter(x => x.id !== "4") }), players, fans })
     expect(ch.ovr).toBe(now.ovr - before.ovr)
-    expect(ch.axes.exp).toBe(now.axes[0].score - before.axes[0].score)
+    const exp = c => c.axes.find(x => x.key === "exp").score
+    expect(ch.axes.exp).toBe(exp(now) - exp(before))
     // game 4 was a 5–5 draw: his team let in 5 → his defence score drops
     expect(ch.axes.def).toBeLessThan(0)
   })
