@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { aggregate, playerCard, lastGameChange, MIN_GP, WEIGHTS } from "./playerRating"
+import { aggregate, playerCard, lastGameChange, MIN_GP, WEIGHTS, SCORE_MIN, SCORE_MAX, OVR_MIN, OVR_MAX } from "./playerRating"
 
 const g = (id, home, away, hs, as, season = "S1") =>
   ({ id, home_team_id: home, away_team_id: away, home_score: hs, away_score: as, season_id: season })
@@ -44,33 +44,49 @@ describe("playerRating", () => {
     expect(by).toEqual({ goals: "6", exp: "5", att: "4.6", def: "1.6", fans: "4" })
   })
 
-  it("shows every axis as a 0–99 score: the best in the group gets 99", () => {
-    for (const ax of card("ace").axes) {
-      expect(ax.shown).toBe(String(Math.round(99 * ax.pct)))
-      expect(ax.score).toBeGreaterThanOrEqual(0)
-      expect(ax.score).toBeLessThanOrEqual(99)
+  it("shows every axis on the soft curve: 30 = nothing, 92 = the best, never 99", () => {
+    expect([SCORE_MIN, SCORE_MAX]).toEqual([30, 92])
+    for (const id of ["ace", "mid", "low", "gk"]) for (const ax of card(id).axes) {
+      if (ax.score == null) continue
+      expect(ax.shown).toBe(String(Math.round(30 + 62 * ax.pct)))
+      expect(ax.score).toBeGreaterThanOrEqual(30)
+      expect(ax.score).toBeLessThanOrEqual(92)
     }
-    expect(axis("ace", "goals").shown).toBe("99") // ace has the most goals
-    expect(axis("low", "goals").shown).toBe("17") // 1 of 6
-    expect(axis("low", "fans").shown).toBe("10")  // 1 fan, out of at least 10
+    expect(axis("ace", "goals").shown).toBe("92") // ace has the most goals
+    expect(axis("low", "goals").shown).toBe("40") // 1 of 6 → 30 + 62/6
+    expect(axis("low", "fans").shown).toBe("36")  // 1 fan, out of at least 10
   })
 
-  it("shows defence as a score where higher is better, keeping the real conceded average", () => {
-    // ace's team conceded 1.6 a game; the best field player's (mid) 1.0 → 99 × 1.0 / 1.6 = 62
-    const ace = axis("ace", "def"), mid = axis("mid", "def"), low = axis("low", "def")
-    expect(ace.conceded).toBeCloseTo(1.6)
-    expect(mid.shown).toBe("99")
-    expect(Number(mid.shown)).toBeGreaterThan(Number(ace.shown))
-    expect(Number(ace.shown)).toBeGreaterThan(Number(low.shown)) // low's team conceded 3.0
+  it("attack and defence: half the team's level, half how the team did with him vs without him", () => {
+    // A is the strong team, B the weak one; both only play C. a2 (A) and b1 (B) each played 3 of 6.
+    // A: 3–2 with a2, 8–1 without him. B: 3–3 with b1, 0–5 without him.
+    const ps = { a1: { team_id: "A" }, a2: { team_id: "A" }, b1: { team_id: "B" }, b2: { team_id: "B" }, c1: { team_id: "C" } }
+    const gs = [], st = []
+    for (let i = 0; i < 6; i++) {
+      const withA = i < 3, withB = i < 3
+      gs.push(g(`a${i}`, "A", "C", withA ? 3 : 8, withA ? 2 : 1), g(`b${i}`, "B", "C", withB ? 3 : 0, withB ? 3 : 5))
+      st.push(row(`a${i}`, "a1"), row(`b${i}`, "b2"), row(`a${i}`, "c1"), row(`b${i}`, "c1"))
+      if (withA) st.push(row(`a${i}`, "a2"))
+      if (withB) st.push(row(`b${i}`, "b1"))
+    }
+    const t = aggregate({ games: gs, stats: st, players: ps, currentSeasonId: "S1" })
+    const sc = (id, k) => playerCard(id, { totals: t, players: ps }).axes.find(a => a.key === k).score
+    // b1 plays for the weak team but the team is far better with him; a2 is the opposite
+    expect(sc("b1", "att")).toBeGreaterThan(sc("a2", "att"))
+    expect(sc("b1", "def")).toBeGreaterThan(sc("a2", "def"))
+    // the real figures behind it stay readable
+    expect(t.get("a2").wAtt).toBeLessThan(0)
+    expect(t.get("b1").wDef).toBeGreaterThan(0)
   })
 
   it("draws every point against the best in the group, and says who the best is", () => {
     // goals: low 1, best (ace) 6
     expect(axis("low", "goals").pct).toBeCloseTo(1 / 6)
     expect(axis("low", "goals").bestShown).toBe("6")
-    // defence: fewest conceded is best → best / his
-    const d = axis("low", "def")
-    expect(d.pct).toBeCloseTo(d.best / d.value)
+    // attack / defence: best = full point, worst = none (within the position group)
+    const defs = ["ace", "mid", "low"].map(id => axis(id, "def").pct)
+    expect(Math.max(...defs)).toBe(1)
+    expect(Math.min(...defs)).toBe(0)
     // fans: out of at least 10
     expect(axis("low", "fans").pct).toBeCloseTo(0.1)
   })
@@ -88,7 +104,7 @@ describe("playerRating", () => {
     expect(Object.values(WEIGHTS).reduce((a, b) => a + b, 0)).toBeCloseTo(1)
     const a = playerCard("low", { totals, players, fans: {} }).ovr
     const b = playerCard("low", { totals, players, fans: { low: 10 } }).ovr
-    expect(b - a).toBe(Math.round(59 * WEIGHTS.fans)) // 0 → 10 fans: +3
+    expect(Math.abs(b - a - (OVR_MAX - OVR_MIN) * WEIGHTS.fans)).toBeLessThanOrEqual(1) // 0 → 10 fans: about +3
   })
 
   it("ranks the better player higher", () => {
@@ -116,8 +132,8 @@ describe("playerRating", () => {
     expect(ax("gk").label).toBe("השפעה")
     expect(ax("gk").raw).toBe("3.0")
     expect(ax("gk2").raw).toBe("1.0")
-    expect(ax("gk2").shown).toBe("99")        // fewest conceded per game = the best
-    expect(ax("gk").shown).toBe("33")         // 99 × 1.0 / 3.0
+    expect(ax("gk2").shown).toBe("92")        // fewest conceded per game = the best
+    expect(ax("gk").shown).toBe("51")         // 30 + 62 × (1.0 / 3.0)
     // a field player's השפעה is still his goals (low scored 1 this season)
     expect(playerCard("low", { totals: t, players: ps }).axes.find(a => a.key === "goals").raw).toBe("1")
   })
