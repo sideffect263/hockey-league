@@ -41,7 +41,7 @@ describe("playerRating", () => {
 
   it("keeps the real figure behind each axis", () => {
     const by = Object.fromEntries(card("ace").axes.map(a => [a.key, a.raw]))
-    expect(by).toEqual({ goals: "2.60", exp: "5", att: "4.6", def: "1.6", fans: "4" }) // goals: 13 in 5 games, all seasons
+    expect(by).toEqual({ goals: "1.50", exp: "5", att: "4.6", def: "1.6", fans: "4" }) // goals: 6 in 4 games this season
   })
 
   it("shows every axis on the soft curve: 30 = nothing, 92 = the best, never 99", () => {
@@ -53,7 +53,7 @@ describe("playerRating", () => {
       expect(ax.score).toBeLessThanOrEqual(92)
     }
     expect(axis("ace", "goals").shown).toBe("92") // ace has the most goals
-    expect(axis("low", "goals").shown).toBe("38") // 0.33 a game vs the best 2.6 → 30 + 62 × 0.128
+    expect(axis("low", "goals").shown).toBe("44") // 0.33 a game vs the best 1.5 → 30 + 62 × 0.222
     expect(axis("low", "fans").shown).toBe("36")  // 1 fan, out of at least 10
   })
 
@@ -80,9 +80,9 @@ describe("playerRating", () => {
   })
 
   it("draws every point against the best in the group, and says who the best is", () => {
-    // השפעה = goals per game, all seasons: low 1 in 3 games, best (ace) 13 in 5
-    expect(axis("low", "goals").pct).toBeCloseTo((1 / 3) / 2.6)
-    expect(axis("low", "goals").bestShown).toBe("2.60")
+    // השפעה = goals per game this season: low 1 in 3 games, best (ace) 6 in 4
+    expect(axis("low", "goals").pct).toBeCloseTo((1 / 3) / 1.5)
+    expect(axis("low", "goals").bestShown).toBe("1.50")
     // attack / defence: best = full point, worst = none (within the position group)
     const defs = ["ace", "mid", "low"].map(id => axis(id, "def").pct)
     expect(Math.max(...defs)).toBe(1)
@@ -142,6 +142,14 @@ describe("playerRating", () => {
     const g0 = [g("21", "B", "A", 1, 1, "S0"), g("22", "B", "A", 2, 1, "S0"), g("23", "B", "A", 3, 0, "S0")]
     const t = aggregate({ games: g0, stats: ["21", "22", "23"].map(id => row(id, "gk", 0)), players, currentSeasonId: "S1" })
     const c = playerCard("gk", { totals: t, players })
+    expect(c.axes.find(a => a.key === "goals").shown).toBe("–")
+    expect(c.ovr).not.toBeNull()
+  })
+
+  it("a field player with no games this season shows – for השפעה but still has a rating", () => {
+    const g0 = [g("21", "A", "B", 3, 1, "S0"), g("22", "A", "B", 2, 1, "S0"), g("23", "A", "B", 3, 0, "S0")]
+    const t = aggregate({ games: g0, stats: ["21", "22", "23"].map(id => row(id, "mid", 2)), players, currentSeasonId: "S1" })
+    const c = playerCard("mid", { totals: t, players })
     expect(c.axes.find(a => a.key === "goals").shown).toBe("–")
     expect(c.ovr).not.toBeNull()
   })

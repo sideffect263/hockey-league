@@ -55,10 +55,10 @@ export function aggregate({ games, stats, players, currentSeasonId, seasonTeams 
     if (!s.player_id || s.is_guest_player) continue
     const g = gameById.get(s.game_id)
     if (!g) continue
-    const a = out.get(s.player_id) || { gp: 0, goals: 0, sgoals: 0, scs: 0, tgp: 0, scored: 0, conceded: 0, stgp: 0, sconceded: 0 }
+    const a = out.get(s.player_id) || { gp: 0, sgp: 0, goals: 0, sgoals: 0, scs: 0, tgp: 0, scored: 0, conceded: 0, stgp: 0, sconceded: 0 }
     a.gp++
     a.goals += s.goals || 0
-    if (g.season_id === currentSeasonId) a.sgoals += s.goals || 0
+    if (g.season_id === currentSeasonId) { a.sgp++; a.sgoals += s.goals || 0 }
     const inGame = t => (t && (t === g.home_team_id || t === g.away_team_id) ? t : null)
     const team = inGame(s.played_for_team_id)
       || inGame(seasonTeams[g.season_id]?.[s.player_id])
@@ -136,7 +136,7 @@ function teamAdjusted(gameById, on, out) {
 }
 
 const raw = (a, fans, goalie) => ({
-  goals: goalie ? (a.stgp ? a.sconceded / a.stgp : null) : (a.gp ? a.goals / a.gp : null), // keeper: conceded per game THIS season; field: goals per game, all seasons
+  goals: goalie ? (a.stgp ? a.sconceded / a.stgp : null) : (a.sgp ? a.sgoals / a.sgp : null), // per game THIS season — keeper: conceded; field: goals (Ariel 2026-11-14)
   exp: a.gp,
   att: a.tgp ? a.scored / a.tgp : null,
   def: a.tgp ? a.conceded / a.tgp : null,
@@ -229,9 +229,9 @@ export function playerCard(playerId, { totals, players, fans = {} }) {
     return { ...ax, value: v, raw: fmt(ax.key, v, goalie), score, shown: score == null ? "–" : String(score), pct: p, best, bestShown: fmt(ax.key, best, goalie),
       ...(ax.key === "def" ? { conceded: v } : {}) }
   })
-  // A keeper who hasn't played this season has no השפעה ("–"); it counts as 0 in the rating
+  // Someone who hasn't played this season has no השפעה ("–"); it counts as 0 in the rating
   // instead of taking his whole rating away.
-  const pctFor = ax => (goalie && ax.key === "goals" ? ax.pct ?? 0 : ax.pct)
+  const pctFor = ax => (ax.key === "goals" ? ax.pct ?? 0 : ax.pct)
   const ovr = enough && axes.every(ax => pctFor(ax) != null)
     ? Math.round(OVR_MIN + (OVR_MAX - OVR_MIN) * axes.reduce((s, ax) => s + pctFor(ax) * WEIGHTS[ax.key], 0))
     : null
