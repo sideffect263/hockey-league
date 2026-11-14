@@ -29,7 +29,7 @@ export function loadLeague() {
   leagueData ??= (async () => {
     const [{ data: seasons, error: se }, { data: plist, error: pe }, { data: cuts }, { data: frozen }, ownPhotos] = await Promise.all([
       supabase.from("seasons").select("id, status"),
-      supabase.from("players").select("id, first_name, last_name, jersey_number, team_id, position, is_referee"),
+      supabase.from("players").select("id, first_name, last_name, jersey_number, team_id, position, is_referee, is_core, goals, games_played, blue_cards, red_cards"),
       supabase.from("player_cutouts").select("player_ids, image_url").eq("status", "approved"),
       supabase.from("player_season_stats").select("season_id, player_id, team_id"),
       getApprovedPlayerPhotos(), // photos players sent themselves, approved by an admin
@@ -139,6 +139,7 @@ export function PlayerStatCard({ who, team, card }) {
               ? <KeeperStickMark size={20} className="!text-white" title="" />
               : <FieldStickMark size={20} title="" />}
             {who.number != null && <span dir="ltr">#{who.number}</span>}
+            {who.core && <span className="ms-1 rounded-full bg-[#4ade80]/20 px-1.5 py-px text-[10px] font-bold text-[#4ade80]">סגל קבוע</span>}
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-[11.5px] sm:text-[12px] font-bold min-w-0 leading-tight">
             <CrestDisc team={team} size={18} disc={false} />
@@ -173,6 +174,22 @@ export function PlayerStatCard({ who, team, card }) {
           : card ? <div className="aspect-square max-w-[150px] mx-auto grid place-items-center text-[12px] text-white/55">עוד אין משחקים</div>
           : <div className="aspect-square max-w-[160px] mx-auto" />}
       </div>
+      {/* this season's sheet totals (players table, trigger-maintained) — /players only */}
+      {who.totals && (
+        <div className="mt-auto grid grid-cols-4 gap-1 pt-2">
+          {[
+            { val: who.totals.goals, label: "שערים", color: "text-[#4ade80]" },
+            { val: who.totals.games, label: "משחקים", color: "text-white" },
+            { val: who.totals.blue, label: "כחולים", color: "text-[#6EA0FF]" },
+            { val: who.totals.red, label: "אדומים", color: "text-[#FF6B60]" },
+          ].map(({ val, label, color }) => (
+            <span key={label} className="rounded-lg bg-white/[0.06] py-1.5 flex flex-col items-center gap-0.5">
+              <span className={`fl-num text-[15px] sm:text-[16px] font-black tabular-nums leading-none ${color}`}>{val || 0}</span>
+              <span className="text-[10px] text-white/60 leading-none">{label}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

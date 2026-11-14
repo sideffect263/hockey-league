@@ -90,7 +90,7 @@ export default function PlayerCards() {
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 auto-rows-fr gap-2 sm:gap-3">
           {shown.map(({ p, card }) => (
             <Link key={p.id} to={entityPath("players", p)} className="block h-full min-w-0 rounded-2xl focus-visible:outline-2">
-              <PlayerStatCard who={{ name: `${p.first_name} ${p.last_name}`.trim(), number: p.jersey_number }} team={teamById[p.team_id]} card={card} />
+              <PlayerStatCard who={{ name: `${p.first_name} ${p.last_name}`.trim(), number: p.jersey_number, core: p.is_core, totals: { goals: p.goals, games: p.games_played, blue: p.blue_cards, red: p.red_cards } }} team={teamById[p.team_id]} card={card} />
             </Link>
           ))}
         </div>
