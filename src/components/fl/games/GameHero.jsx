@@ -12,7 +12,7 @@ import { Share } from "@/components/icons/BrandIcons"
 import { CrestDisc, FLScore, RinkDrawing, TeamBlend } from "@/components/fl/Floodlight"
 import { teamBlend } from "@/lib/flTeam"
 import { STAGE, isPlayedStage, timeOf, dayAndDate } from "./flGamesKit"
-import { usePreviewCards } from "./PreviewStatCards"
+import { usePreviewSides } from "./PreviewStatCards"
 import { PlayerStatCard } from "@/components/fl/cards/PlayerStatCard"
 
 const glass = "bg-[rgba(8,12,18,0.35)] text-white"
@@ -120,7 +120,7 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
   const ref = useRef(null)
   const awayRef = useRef(null), homeRef = useRef(null)
   const [still, setStill] = useState(false)
-  const cards = usePreviewCards(preview)
+  const sides = usePreviewSides(preview) // [away, home] = { who, card }
   const split = preview.split // { away, home }: one solo clip per player, side by side
   useEffect(() => {
     const vids = (split ? [awayRef.current, homeRef.current] : [ref.current]).filter(Boolean)
@@ -141,7 +141,7 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
     return (
       <div className={`absolute inset-y-0 overflow-hidden ${side === "left" ? "left-0" : "right-0"} w-[52%]`}
         style={{ clipPath: side === "left" ? "polygon(0 0, 100% 0, 92.3% 100%, 0 100%)" : "polygon(7.7% 0, 100% 0, 100% 100%, 0 100%)" }}>
-        {still
+        {still || !clip.src // no clip (a team without a face player) → the empty arena still
           ? <img src={clip.poster} alt="" style={style} />
           : <video ref={r} src={clip.src} poster={clip.poster} muted playsInline preload="auto" loop style={style} />}
       </div>
@@ -226,8 +226,8 @@ function PreviewStage({ game, home, away, preview, topRow, meta, address, postpo
         <div className="flex-1 min-h-[24px] sm:min-h-[40px]" />
         {/* the two cards stand at the bottom: away LEFT, home RIGHT */}
         <div dir="ltr" className="grid grid-cols-2 gap-2 sm:flex sm:justify-between sm:gap-4">
-          <div className="min-w-0 sm:w-[300px]"><PlayerStatCard who={preview.away} team={away} card={cards?.[0]} /></div>
-          <div className="min-w-0 sm:w-[300px]"><PlayerStatCard who={preview.home} team={home} card={cards?.[1]} /></div>
+          <div className="min-w-0 sm:w-[300px]">{sides?.[0] ? <PlayerStatCard who={sides[0].who} team={away} card={sides[0].card} /> : <PlayerStatCard who={{ name: "" }} team={away} card={null} />}</div>
+          <div className="min-w-0 sm:w-[300px]">{sides?.[1] ? <PlayerStatCard who={sides[1].who} team={home} card={sides[1].card} /> : <PlayerStatCard who={{ name: "" }} team={home} card={null} />}</div>
         </div>
         {address && <p className="mt-2 text-center text-[11.5px] text-white/75">{address}</p>}
       </div>

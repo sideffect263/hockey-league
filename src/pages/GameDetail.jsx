@@ -355,7 +355,7 @@ export default function GameDetail() {
       chip={shared ? 'הקישור הועתק' : chipText(game, stage, { live, now, round })}
       judges={judgeNames} address={venue?.address || null} photoUrl={isPlayedStage(stage) ? heroPhoto : null}
       onShare={share} typeLabel={typeLabel}
-      preview={!isPlayedStage(stage) && stage !== STAGE.postponed ? getGamePreviewVideo(game.id) : null} />
+      preview={!isPlayedStage(stage) && stage !== STAGE.postponed ? getGamePreviewVideo(game) : null} />
   )
 
   const canNav = !!game.venue?.trim() && (game.status === 'scheduled' || liveStage)
