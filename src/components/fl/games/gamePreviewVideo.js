@@ -26,7 +26,7 @@ const FACES = {
   // גבעת עדה איחוד
   "a1b2c3d4-0001-0000-0000-000000000001": { key: "guy", playerId: "b1000001-0000-0000-0000-000000000001", name: "גיא ריכטר" },
   // רמת ישי
-  "a1b2c3d4-0004-0000-0000-000000000004": { key: "marcelo", playerId: "b5000006-0000-0000-0000-000000000006", name: "מרסלו בנדרסקי", sides: "L" }, // _R pending (Gemini daily limit)
+  "a1b2c3d4-0004-0000-0000-000000000004": { key: "marcelo", playerId: "b5000006-0000-0000-0000-000000000006", name: "מרסלו בנדרסקי" },
 }
 
 const EMPTY = { poster: `${BASE}/arena.jpg` } // no src → a still of the empty arena
